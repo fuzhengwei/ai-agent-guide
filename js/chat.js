@@ -93,6 +93,19 @@ const AIChat = {
         input.style.height = Math.min(input.scrollHeight, 120) + 'px';
       });
     }
+
+    // 快捷提示词
+    const quickPrompts = document.querySelectorAll('.quick-prompt');
+    quickPrompts.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (input) {
+          input.value = e.target.dataset.prompt;
+          input.focus();
+          // 可选：直接发送
+          // this.send();
+        }
+      });
+    });
     
     // 模型切换
     const selector = document.getElementById('modelSelector');

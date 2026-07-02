@@ -1,0 +1,1822 @@
+<!-- 第2章：Agent核心架构 -->
+<h1 class="chapter-title">第2章 Agent核心架构</h1>
+<p class="chapter-subtitle">四大模块的内部机制与协同方式</p>
+
+<!-- ===== 2.1 架构总览 ===== -->
+<h2 class="section-heading">2.1 Agent 架构全景图</h2>
+
+<p>上一章我们知道了 Agent 有四大模块。这一章我们把每个模块拆开看，理解它们的内部结构和协同方式。</p>
+
+<p>先看 Agent 的完整架构全景：</p>
+
+<div class="flowchart-container" id="archOverview"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('archOverview', {
+    nodes: [
+      { id: 'user', label: '用户输入', type: 'start' },
+      { id: 'perception', label: '感知层\n(意图理解)', type: 'process' },
+      { id: 'memory', label: '记忆层\n(上下文检索)', type: 'process' },
+      { id: 'planning', label: '规划层\n(任务拆解)', type: 'decision' },
+      { id: 'execute', label: '执行层\n(工具调用)', type: 'tool' },
+      { id: 'observe', label: '观察层\n(结果分析)', type: 'process' },
+      { id: 'respond', label: '返回用户', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'perception' },
+      { from: 'perception', to: 'memory' },
+      { from: 'memory', to: 'planning', label: '需要行动' },
+      { from: 'planning', to: 'execute' },
+      { from: 'execute', to: 'observe' },
+      { from: 'observe', to: 'planning', label: '需要继续', dashed: true },
+      { from: 'observe', to: 'respond', label: '任务完成' },
+      { from: 'perception', to: 'respond', label: '直接回答' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<!-- ===== 2.2 LLM 大脑 ===== -->
+<h2 class="section-heading">2.2 LLM：Agent 的大脑</h2>
+
+<p>LLM 是 Agent 的核心推理引擎。但 Agent 中的 LLM 和普通 ChatBot 中的 LLM 用法不同：</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">ChatBot 中的 LLM</div>
+    <div class="side-content">
+      <div class="highlight-line">用户输入 → LLM → 直接输出</div>
+      <div class="highlight-line">单轮调用，输入输出</div>
+      <div class="highlight-line">不需要结构化输出</div>
+      <div class="highlight-line">不需要理解工具描述</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">角色：对话引擎</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Agent 中的 LLM</div>
+    <div class="side-content">
+      <div class="highlight-line">输入 → LLM → 结构化决策</div>
+      <div class="highlight-line">多轮调用，每轮做一次决策</div>
+      <div class="highlight-line">需输出 JSON 格式的行动计划</div>
+      <div class="highlight-line">需理解工具描述并选择正确工具</div>
+      <div class="highlight-line" style="color: var(--color-success);">角色：推理引擎 + 决策中心</div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">System Prompt：Agent 的"岗位说明书"</h3>
+
+<p>Agent 中 LLM 的行为由 System Prompt 控制。一个好的 System Prompt 就像一份岗位说明书：</p>
+
+<div class="code-block">
+  <span class="code-label">System Prompt 示例</span>
+<pre>你是一个数据分析 Agent。
+
+<strong>你的能力：</strong>
+- 可以调用 search_web 工具搜索信息
+- 可以调用 run_python 工具执行代码
+- 可以调用 write_file 工具写入文件
+
+<strong>你的工作流程：</strong>
+1. 分析用户需求，判断需要哪些工具
+2. 制定执行计划，逐步调用工具
+3. 观察每次工具返回的结果
+4. 如果结果不完整，调整计划继续
+5. 收集足够信息后，整理最终回答
+
+<strong>输出格式：</strong>
+当需要调用工具时，输出 JSON：
+{"action": "工具名", "input": {"参数": "值"}}
+
+当有最终答案时，输出：
+{"answer": "你的回答"}</pre>
+</div>
+
+<h3 class="sub-heading">Function Calling：让 LLM 学会"动手"</h3>
+
+<p>Function Calling 是 LLM 从"只会说"到"会做"的关键技术。原理很简单：</p>
+
+<div class="step-animation" id="fcSteps">
+  <div class="step-canvas">
+    <div class="step-content" id="fcStepContent">
+      <div class="step-number">1</div>
+      <div class="step-title">定义工具 schema</div>
+      <div class="step-desc">用 JSON Schema 描述每个工具的名称、参数和功能。LLM 通过这些描述理解工具能做什么。</div>
+    </div>
+  </div>
+  <div class="step-controls">
+    <button class="step-btn" id="fcPrev" disabled>←</button>
+    <span class="step-indicator" id="fcIndicator">1 / 4</span>
+    <button class="step-btn" id="fcNext">→</button>
+    <button class="step-replay" onclick="FCAnim.reset()">重播</button>
+  </div>
+</div>
+
+<script>
+const FCAnim = {
+  current: 0,
+  steps: [
+    { num: 1, title: '定义工具 schema', desc: '用 JSON Schema 描述每个工具的名称、参数和功能。LLM 通过这些描述理解工具能做什么。就像给 LLM 一本"工具目录"。' },
+    { num: 2, title: 'LLM 接收请求', desc: '用户问"北京明天天气？"，LLM 收到后，结合工具列表判断：这个请求需要调用 weather_api 工具。' },
+    { num: 3, title: 'LLM 输出结构化调用', desc: 'LLM 不再输出自然语言，而是输出结构化 JSON：{"name":"weather_api","arguments":{"city":"北京","date":"明天"}}。这是 Function Calling 的核心。' },
+    { num: 4, title: 'Agent 执行并返回', desc: 'Agent 框架解析 JSON，实际调用天气 API，拿到结果后喂回给 LLM。LLM 基于结果生成自然语言回答给用户。' }
+  ],
+  render() {
+    const s = this.steps[this.current];
+    const c = document.getElementById('fcStepContent');
+    c.innerHTML = `<div class="step-number">${s.num}</div><div class="step-title">${s.title}</div><div class="step-desc">${s.desc}</div>`;
+    c.classList.remove('fade-in'); void c.offsetWidth; c.classList.add('fade-in');
+    document.getElementById('fcIndicator').textContent = `${this.current+1} / ${this.steps.length}`;
+    document.getElementById('fcPrev').disabled = this.current === 0;
+    document.getElementById('fcNext').disabled = this.current === this.steps.length - 1;
+  },
+  next() { if (this.current < this.steps.length-1) { this.current++; this.render(); } },
+  prev() { if (this.current > 0) { this.current--; this.render(); } },
+  reset() { this.current = 0; this.render(); }
+};
+document.getElementById('fcNext').addEventListener('click', () => FCAnim.next());
+document.getElementById('fcPrev').addEventListener('click', () => FCAnim.prev());
+window.FCAnim = FCAnim;
+</script>
+
+<!-- ===== 2.3 记忆系统 ===== -->
+<h2 class="section-heading">2.3 记忆系统：Agent 的时间维度</h2>
+
+<p>记忆让 Agent 拥有"过去"。没有记忆的 Agent 就像每天失忆的人，每次对话都从零开始。</p>
+
+<div class="card">
+  <div class="card-title">🧠 记忆的三层结构</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">短期记忆</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        = LLM 上下文窗口<br>
+        存当前对话历史<br>
+        容量有限（4K~200K token）<br>
+        速度最快
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">长期记忆</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        = 向量数据库<br>
+        存历史交互经验<br>
+        容量无限<br>
+        需语义检索
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">工作记忆</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        = 刮擦板/便签纸<br>
+        存当前任务的中间状态<br>
+        任务结束即清除<br>
+        辅助多步推理
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">短期记忆的压缩问题</h3>
+
+<p>LLM 的上下文窗口有限。对话越长，早期内容会被"挤出"窗口。Agent 需要管理这个问题：</p>
+
+<div class="flowchart-container" id="memoryFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('memoryFlow', {
+    nodes: [
+      { id: 'start', label: '对话开始', type: 'start' },
+      { id: 'grow', label: '上下文增长', type: 'process' },
+      { id: 'check', label: '超过阈值?', type: 'decision' },
+      { id: 'summarize', label: '摘要压缩', type: 'process' },
+      { id: 'continue', label: '继续对话', type: 'process' },
+      { id: 'store', label: '旧内容存入\n长期记忆', type: 'tool' },
+      { id: 'end', label: '对话结束', type: 'end' }
+    ],
+    edges: [
+      { from: 'start', to: 'grow' },
+      { from: 'grow', to: 'check' },
+      { from: 'check', to: 'continue', label: '否' },
+      { from: 'check', to: 'summarize', label: '是' },
+      { from: 'summarize', to: 'store' },
+      { from: 'store', to: 'continue' },
+      { from: 'continue', to: 'end' }
+    ],
+    animate: true
+  });
+}, 500);
+</script>
+
+<h3 class="sub-heading">长期记忆的检索过程</h3>
+
+<p>长期记忆存在向量数据库中（如 Chroma、Pinecone）。检索过程：</p>
+
+<div class="code-block">
+  <span class="code-label">长期记忆检索流程</span>
+<pre>1. 用户输入 → Embedding 模型 → 向量 [0.12, 0.85, ...]
+2. 在向量数据库中做相似度搜索 (top-k=5)
+3. 取回最相关的 5 条历史记忆
+4. 将记忆注入 prompt → "你之前处理过类似问题..."
+5. LLM 基于记忆 + 当前输入生成回答</pre>
+</div>
+
+<!-- ===== 2.4 规划系统 ===== -->
+<h2 class="section-heading">2.4 规划系统：Agent 的思维深度</h2>
+
+<p>规划是 Agent 区别于简单工具调用的关键。面对复杂任务，Agent 不是"想一步做一步"，而是先制定完整计划。</p>
+
+<h3 class="sub-heading">任务拆解：把大问题变成小问题</h3>
+
+<div class="card">
+  <div class="card-title">📋 任务拆解示例</div>
+  <p><strong>用户请求：</strong>"帮我调研 LangGraph 框架，写一份技术报告"</p>
+  <div style="padding: 12px; background: var(--color-bg-alt); border-radius: 8px; margin-top: 12px; font-size: 14px;">
+    <strong style="color: var(--color-accent;">Agent 规划：</strong><br>
+    <span style="color: var(--color-text-secondary);">
+    ① 搜索 LangGraph 官方文档和教程 → search_web<br>
+    ② 搜索 LangGraph GitHub 仓库和 Star 数 → search_web<br>
+    ③ 搜索 LangGraph vs 其他框架对比 → search_web<br>
+    ④ 整理信息，生成报告大纲 → llm_reasoning<br>
+    ⑤ 逐节撰写报告内容 → llm_reasoning<br>
+    ⑥ 将报告保存为文件 → write_file
+    </span>
+  </div>
+</div>
+
+<h3 class="sub-heading">三种规划策略</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">策略</th>
+        <th style="text-align: left; padding: 12px 8px;">原理</th>
+        <th style="text-align: left; padding: 12px 8px;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">CoT（思维链）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Let's think step by step</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单推理任务</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">ToT（思维树）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">分支探索多个方案，选最优</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要搜索的问题</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">ReAct</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">思考→行动→观察循环</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要工具的交互任务</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 2.5 工具系统 ===== -->
+<h2 class="section-heading">2.5 工具系统：Agent 的手脚</h2>
+
+<p>工具让 Agent 能与外部世界交互。常见的工具类型：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">🔍 信息获取类</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">搜索引擎、天气API、新闻API、数据库查询</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">⚙️ 代码执行类</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">Python REPL、Shell命令、沙箱执行</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">📝 文件操作类</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">读写文件、创建目录、搜索文件</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">🌐 通信类</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">发邮件、调API、发消息、 webhook</p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">MCP：工具的 USB 接口</h3>
+
+<p>2024 年 Anthropic 推出的 <strong>MCP（Model Context Protocol）</strong> 正在成为工具调用的标准协议。可以把 MCP 理解为"工具的 USB 接口"：</p>
+
+<div class="quote">
+  以前每个框架自己定义工具格式（像各品牌手机充电器），MCP 统一了接口（像 USB-C），一个 MCP Server 写好后，所有支持 MCP 的 Agent 框架都能用。
+</div>
+
+<div class="flowchart-container" id="mcpFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpFlow', {
+    nodes: [
+      { id: 'agent', label: 'Agent (任意框架)', type: 'process' },
+      { id: 'mcp', label: 'MCP 协议层', type: 'decision' },
+      { id: 'fs', label: '文件系统\nMCP Server', type: 'tool' },
+      { id: 'db', label: '数据库\nMCP Server', type: 'tool' },
+      { id: 'web', label: 'Web搜索\nMCP Server', type: 'tool' },
+      { id: 'git', label: 'Git\nMCP Server', type: 'tool' }
+    ],
+    edges: [
+      { from: 'agent', to: 'mcp' },
+      { from: 'mcp', to: 'fs' },
+      { from: 'mcp', to: 'db' },
+      { from: 'mcp', to: 'web' },
+      { from: 'mcp', to: 'git' }
+    ],
+    animate: true
+  });
+}, 500);
+</script>
+
+<!-- ===== 2.6 模块协同 ===== -->
+<h2 class="section-heading">2.6 四模块如何协同工作</h2>
+
+<p>把四个模块串起来，看一个完整的执行流程：</p>
+
+<div class="code-block">
+  <span class="code-label">四模块协同伪代码</span>
+<pre># 用户输入
+user_input = "帮我查一下最近的 AI Agent 论文并总结"
+
+# ① 感知：LLM 理解意图
+intent = llm.analyze(user_input)
+# → intent: "搜索学术论文 + 总结摘要"
+
+# ② 记忆：检索相关历史
+context = memory.retrieve(user_input, top_k=3)
+# → context: ["用户之前关注LangGraph", "用户偏好简洁总结"]
+
+# ③ 规划：拆解任务
+plan = planner.decompose(intent, context)
+# → plan: ["搜索arxiv", "下载top5论文", "逐篇摘要", "综合总结"]
+
+# ④ 执行：逐步调用工具
+for step in plan:
+    if step.needs_tool:
+        result = tools[step.tool_name](step.tool_input)
+    else:
+        result = llm.reason(step.prompt, context)
+    
+    # 观察结果，更新记忆
+    memory.add(result)
+    context = memory.retrieve(user_input, top_k=5)
+    
+    # 判断是否需要调整计划
+    if not step.is_complete(result):
+        plan = planner.adjust(step, result, plan)
+
+# 返回最终结果
+final_answer = llm.generate(user_input, context)
+print(final_answer)</pre>
+</div>
+
+<!-- ===== 2.7 八种Agent设计模式详解 ===== -->
+<h2 class="section-heading">2.7 八种 Agent 设计模式详解</h2>
+
+<p>前面我们了解了 Agent 的四大模块。但模块如何组合、流程如何编排，决定了 Agent 的"性格"和"能力边界"。业界已总结出<strong>八种经典设计模式</strong>，每种模式解决一类核心问题。</p>
+
+<div class="quote">
+选择设计模式就像选择武功流派——没有"最强的模式"，只有"最适合当前任务的模式"。理解每种模式的原理和适用边界，才能设计出优秀的 Agent。
+</div>
+
+<!-- ===== 2.7.1 ReAct ===== -->
+<h3 class="sub-heading">2.7.1 ReAct 模式：思考→行动→观察循环</h3>
+
+<p>ReAct（Reasoning + Acting）是最经典的 Agent 设计模式，在 2.4 节已有简要介绍。这里我们深入其内部机制。</p>
+
+<div class="card">
+  <div class="card-title">🔄 ReAct 核心循环</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 12px;">每一轮执行三个步骤，循环往复直到任务完成：</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">Thought（思考）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">LLM 分析当前状态<br>决定下一步做什么<br>输出推理过程</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">Action（行动）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">调用外部工具<br>获取新信息<br>改变外部状态</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">Observation（观察）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">接收工具返回结果<br>更新认知状态<br>决定是否继续</p>
+    </div>
+  </div>
+</div>
+
+<p><strong>适用场景：</strong>需要与外部世界交互的动态任务——信息检索、多步推理、实时数据查询。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">推理过程可追溯、可调试<br>每步都有观察反馈，容错性强<br>自然处理不确定性，动态调整路径</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">循环次数多，token消耗大<br>可能陷入死循环（需设置最大轮次）<br>每步单独推理，缺乏全局视野</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">ReAct 模式伪代码</span>
+<pre># ReAct 循环
+max_turns = 10
+history = []
+
+for turn in range(max_turns):
+    # Thought：LLM 分析当前状态并推理
+    thought = llm.generate(
+        prompt=f"当前状态：{history}\n下一步应该做什么？",
+        system="你是ReAct Agent，先思考再行动"
+    )
+    
+    # Action：解析并执行工具调用
+    action = parse_action(thought)  # → {tool: "search", input: "LangGraph"}
+    observation = execute_tool(action)  # → "LangGraph 是一个..."
+    
+    # Observation：记录结果
+    history.append({"thought": thought, "action": action, "observation": observation})
+    
+    # 判断是否完成
+    if is_final_answer(thought):
+        return thought.final_answer
+
+return "未能完成任务（达到最大轮次）"</pre>
+</div>
+
+<!-- ===== 2.7.2 Plan-and-Execute ===== -->
+<h3 class="sub-heading">2.7.2 Plan-and-Execute 模式：先规划后执行</h3>
+
+<p>Plan-and-Execute 将 Agent 的决策拆分为<strong>两个阶段</strong>：规划器一次性制定完整计划，执行器逐步执行，重规划器在遇到偏差时修正。</p>
+
+<div class="flowchart-container" id="planExecFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('planExecFlow', {
+    nodes: [
+      { id: 'input', label: '用户输入', type: 'start' },
+      { id: 'plan', label: '规划器\n制定完整计划', type: 'decision' },
+      { id: 'exec', label: '执行器\n逐步执行步骤', type: 'tool' },
+      { id: 'check', label: '结果符合预期?', type: 'decision' },
+      { id: 'replan', label: '重规划器\n修正计划', type: 'process' },
+      { id: 'done', label: '任务完成', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'plan' },
+      { from: 'plan', to: 'exec' },
+      { from: 'exec', to: 'check' },
+      { from: 'check', to: 'done', label: '是' },
+      { from: 'check', to: 'replan', label: '否', dashed: true },
+      { from: 'replan', to: 'exec' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<p><strong>适用场景：</strong>复杂多步骤任务——项目规划、数据分析流水线、长流程自动化。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">全局视角，计划更连贯<br>执行效率高，减少无效循环<br>计划可审核、可人工干预</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">初始计划可能不完整<br>重规划成本高（需要重新推理）<br>对简单任务过度设计</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Plan-and-Execute 模式伪代码</span>
+<pre># Plan-and-Execute
+plan = planner.generate(user_input)  # 一次性制定完整计划
+# → [步骤1: 搜索, 步骤2: 分析, 步骤3: 写报告]
+
+for step in plan:
+    result = executor.run(step)  # 执行单步
+    
+    # 重规划检查
+    if not meets_expectation(result, step.expected_output):
+        plan = replanner.adjust(
+            original_plan=plan,
+            failed_step=step,
+            actual_result=result
+        )
+        # → 从失败步骤开始重新规划后续步骤
+
+return aggregate_results(plan)</pre>
+</div>
+
+<!-- ===== 2.7.3 Multi-Agent ===== -->
+<h3 class="sub-heading">2.7.3 Multi-Agent 模式：多 Agent 协作</h3>
+
+<p>Multi-Agent 模式将复杂任务分发给多个专职 Agent，每个 Agent 负责一个领域，通过<strong>层级委派</strong>或<strong>平等协作</strong>完成任务。</p>
+
+<div class="card">
+  <div class="card-title">👥 Multi-Agent 两种组织形式</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">层级委派（Orchestrator）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">主 Agent 像项目经理<br>拆解任务→分配给子Agent<br>汇总结果→输出最终答案</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">平等协作（Swarm）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">无主Agent，各自负责领域<br>通过握手协议交接任务<br>适合流水线式工作流</p>
+    </div>
+  </div>
+</div>
+
+<p><strong>适用场景：</strong>跨领域复杂任务——软件开发（需求+设计+编码+测试）、多角色协作（调研+撰写+审核）。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">每个Agent专精一个领域<br>并行执行，效率高<br>可扩展，新增Agent即可覆盖新领域</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">协调复杂，信息传递易丢失<br>Agent间共识困难（理解偏差）<br>资源开销大（多个LLM调用）</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Multi-Agent 层级委派伪代码</span>
+<pre># Multi-Agent (Orchestrator 模式)
+orchestrator = Agent("项目经理", tools=["delegate"])
+researcher = Agent("调研员", tools=["search_web"])
+writer = Agent("撰写员", tools=["write_file"])
+reviewer = Agent("审核员", tools=["read_file"])
+
+# 主Agent拆解并分配任务
+plan = orchestrator.plan("写一份AI Agent调研报告")
+# → 子任务1: 调研, 子任务2: 撰写, 子任务3: 审核
+
+# 执行流水线
+research = researcher.execute(plan.step1)  # → 调研结果
+draft = writer.execute(plan.step2, context=research)  # → 初稿
+final = reviewer.execute(plan.step3, input=draft)  # → 审核意见
+
+# 主Agent汇总
+result = orchestrator.aggregate(research, draft, final)</pre>
+</div>
+
+<!-- ===== 2.7.4 Reflective ===== -->
+<h3 class="sub-heading">2.7.4 Reflective 模式：反思校验</h3>
+
+<p>Reflective 模式让 Agent 在执行后<strong>自我审视</strong>，评估结果质量，发现问题后修正重做。代表技术：Reflexion 和 Self-RAG。</p>
+
+<div class="flowchart-container" id="reflectFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('reflectFlow', {
+    nodes: [
+      { id: 'task', label: '接收任务', type: 'start' },
+      { id: 'act', label: '执行\n生成初步结果', type: 'tool' },
+      { id: 'reflect', label: '反思\n评估结果质量', type: 'decision' },
+      { id: 'fix', label: '修正\n基于反思改进', type: 'process' },
+      { id: 'pass', label: '通过校验\n输出最终结果', type: 'end' }
+    ],
+    edges: [
+      { from: 'task', to: 'act' },
+      { from: 'act', to: 'reflect' },
+      { from: 'reflect', to: 'pass', label: '质量达标' },
+      { from: 'reflect', to: 'fix', label: '发现问题', dashed: true },
+      { from: 'fix', to: 'act' }
+    ],
+    animate: true
+  });
+}, 650);
+</script>
+
+<p><strong>适用场景：</strong>高质量输出任务——代码生成（需自测）、论文写作（需自审）、数据分析（需自验）。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">输出质量显著提升<br>自我纠错减少人工干预<br>反思记录可沉淀为经验</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">额外token消耗（反思轮次）<br>反思标准难定义<br>可能过度反思（无限循环修正）</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Reflective 模式伪代码</span>
+<pre># Reflexion 模式
+max_reflections = 3
+
+for attempt in range(max_reflections):
+    # 执行任务
+    result = agent.execute(task)
+    
+    # 反思：评估结果
+    critique = llm.evaluate(
+        prompt=f"评估以下结果的质量和缺陷：\n{result}\n\n指出问题并给出改进建议"
+    )
+    
+    # 判断是否通过
+    if critique.quality_score >= threshold:
+        return result  # 质量达标，输出
+    
+    # 未通过：将反思注入下次尝试的上下文
+    agent.memory.add(
+        f"上次尝试的问题：{critique.issues}\n改进方向：{critique.suggestions}"
+    )
+
+return result  # 达到最大反思次数，返回最后一次结果</pre>
+</div>
+
+<!-- ===== 2.7.5 Tool-Augmented ===== -->
+<h3 class="sub-heading">2.7.5 Tool-Augmented 模式：工具门禁</h3>
+
+<p>Tool-Augmented 模式的核心思想：<strong>只在需要时才调用工具</strong>。LLM 先自行推理，判断是否需要外部帮助，需要时才"开门"调用工具。</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">传统 Agent</div>
+    <div class="side-content">
+      <div class="highlight-line">每步都尝试调用工具</div>
+      <div class="highlight-line">工具调用是默认行为</div>
+      <div class="highlight-line">大量无效调用</div>
+      <div class="highlight-line">token浪费严重</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Tool-Augmented</div>
+    <div class="side-content">
+      <div class="highlight-line">先推理判断是否需要工具</div>
+      <div class="highlight-line">工具调用是"门禁"式</div>
+      <div class="highlight-line">只在必要时才调用</div>
+      <div class="highlight-line">高效节省 token</div>
+    </div>
+  </div>
+</div>
+
+<p><strong>适用场景：</strong>混合型任务——大部分推理可内部完成，只在关键节点需要外部数据。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">减少无效工具调用<br>降低延迟和成本<br>保留LLM自身推理能力</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">判断"是否需要工具"本身可能出错<br>过于依赖LLM的自省能力<br>复杂任务中门禁判断成本高</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Tool-Augmented 模式伪代码</span>
+<pre># Tool-Augmented (门控调用)
+response = llm.generate(user_input)
+
+# 解析LLM输出，判断是否需要工具
+if contains_tool_call(response):
+    # 需要工具 → 开门
+    tool_result = execute_tool(response.tool_call)
+    final = llm.generate(
+        prompt=f"基于工具结果完善回答：{tool_result}\n原问题：{user_input}"
+    )
+else:
+    # 不需要工具 → 直接返回LLM回答
+    final = response
+
+return final</pre>
+</div>
+
+<!-- ===== 2.7.6 Memory-Augmented ===== -->
+<h3 class="sub-heading">2.7.6 Memory-Augmented 模式：记忆治理</h3>
+
+<p>Memory-Augmented 模式不是简单的"加个向量数据库"，而是<strong>系统性地管理短期、长期、工作记忆的协同</strong>。核心是让 Agent 在正确的时刻获取正确的记忆。</p>
+
+<div class="card">
+  <div class="card-title">🧠 三层记忆协同机制</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 12px;">三层记忆不是独立的，而是通过"治理策略"协同工作：</p>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; font-size: 14px;">
+    <strong style="color: var(--color-info);">写入策略：</strong>对话内容 → 短期记忆；关键决策 → 长期记忆；中间推理 → 工作记忆<br><br>
+    <strong style="color: var(--color-accent);">检索策略：</strong>当前输入 → 短期记忆（近邻）；语义相关 → 长期记忆（相似度）；任务状态 → 工作记忆（精确匹配）<br><br>
+    <strong style="color: var(--color-success);">淘汰策略：</strong>短期记忆超限 → 摘要压缩后存长期；工作记忆任务结束 → 清除；长期记忆定期 → 按重要性衰减
+  </div>
+</div>
+
+<p><strong>适用场景：</strong>长期运行 Agent——客服系统（记住用户偏好）、个人助手（积累用户习惯）、研究助手（追踪项目进展）。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">Agent 越用越"聪明"<br>上下文精准，减少注意力稀释<br>支持跨会话连续性</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">记忆检索增加延迟<br>存储和索引成本高<br>记忆可能过期或冲突</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Memory-Augmented 模式伪代码</span>
+<pre># Memory-Augmented (三层记忆协同)
+def handle_input(user_input):
+    # 检索三层记忆
+    recent = short_term_memory.get_recent(k=5)      # 短期：最近5轮对话
+    related = long_term_memory.search(user_input, k=3) # 长期：语义相关3条
+    state = working_memory.get_current_state()        # 工作：当前任务状态
+    
+    # 组装上下文
+    context = assemble(recent, related, state)
+    
+    # LLM 推理
+    response = llm.generate(user_input, context=context)
+    
+    # 记忆写入
+    short_term_memory.add(user_input, response)           # 写入短期
+    if is_important(response):                             # 判断重要性
+        long_term_memory.store(response, metadata={...})   # 关键信息写入长期
+    working_memory.update(response.intermediate_state)     # 更新工作记忆
+    
+    # 记忆淘汰
+    if short_term_memory.size > threshold:
+        summary = llm.summarize(short_term_memory.oldest)
+        long_term_memory.store(summary)
+        short_term_memory.prune_oldest()
+    
+    return response</pre>
+</div>
+
+<!-- ===== 2.7.7 RAG ===== -->
+<h3 class="sub-heading">2.7.7 RAG 模式：检索增强生成</h3>
+
+<p>RAG（Retrieval-Augmented Generation）将<strong>外部知识库检索</strong>与 LLM 生成结合。Agent 先从知识库检索相关文档，再基于检索结果生成回答，而非纯靠 LLM 的参数记忆。</p>
+
+<div class="flowchart-container" id="ragFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('ragFlow', {
+    nodes: [
+      { id: 'query', label: '用户提问', type: 'start' },
+      { id: 'embed', label: '问题向量化\nEmbedding', type: 'process' },
+      { id: 'retrieve', label: '向量检索\n相似度搜索', type: 'tool' },
+      { id: 'docs', label: '返回相关文档\nTop-K 片段', type: 'process' },
+      { id: 'generate', label: 'LLM 生成\n基于文档回答', type: 'decision' },
+      { id: 'output', label: '输出答案', type: 'end' }
+    ],
+    edges: [
+      { from: 'query', to: 'embed' },
+      { from: 'embed', to: 'retrieve' },
+      { from: 'retrieve', to: 'docs' },
+      { from: 'docs', to: 'generate' },
+      { from: 'generate', to: 'output' }
+    ],
+    animate: true
+  });
+}, 700);
+</script>
+
+<p><strong>适用场景：</strong>知识密集型任务——企业知识问答、技术文档查询、法律条文检索、医学文献分析。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">回答基于事实，减少幻觉<br>知识库可实时更新<br>无需重新训练模型</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">检索质量决定回答质量<br>知识库构建和维护成本<br>检索延迟影响响应速度</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">RAG 模式伪代码</span>
+<pre># RAG (检索增强生成)
+def rag_answer(query):
+    # Step 1: 向量化用户问题
+    query_embedding = embed_model.encode(query)
+    
+    # Step 2: 在知识库中检索相关文档
+    retrieved_docs = vector_db.search(
+        query_embedding, top_k=5, threshold=0.7
+    )
+    # → [doc1: "LangGraph 支持循环状态图", doc2: "...", ...]
+    
+    # Step 3: 组装增强 Prompt
+    augmented_prompt = f"""
+    基于以下参考资料回答问题：
+    {format_docs(retrieved_docs)}
+    
+    问题：{query}
+    
+    如果参考资料不足以回答，请明确说明。
+    """
+    
+    # Step 4: LLM 生成回答
+    answer = llm.generate(augmented_prompt)
+    return answer, retrieved_docs  # 返回答案+来源</pre>
+</div>
+
+<!-- ===== 2.7.8 Autonomous Loop ===== -->
+<h3 class="sub-heading">2.7.8 Autonomous Loop 模式：自主循环</h3>
+
+<p>Autonomous Loop 让 Agent <strong>目标驱动、持续执行</strong>，不需要人类每步指令。Agent 接收一个高层目标后，自主规划、执行、评估、调整，直到达成目标或耗尽资源。</p>
+
+<div class="card">
+  <div class="card-title">🎯 Autonomous Loop 的核心特征</div>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; font-size: 14px; margin-top: 12px;">
+    <strong>目标驱动：</strong>给定高层目标（如"优化这个数据库"），Agent 自行拆解和执行<br><br>
+    <strong>持续执行：</strong>不等待人类确认每一步，自动推进<br><br>
+    <strong>自我评估：</strong>每步完成后自检，判断是否达成子目标<br><br>
+    <strong>动态调整：</strong>遇到阻碍时自动切换策略<br><br>
+    <strong>终止条件：</strong>目标达成 / 达到最大步数 / 资源耗尽 / 人工中断
+  </div>
+</div>
+
+<p><strong>适用场景：</strong>长周期自动化任务——代码重构（自主扫描+修改+测试）、系统运维（自主巡检+修复）、数据清洗（自主检测+处理+验证）。</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+    <strong style="color: var(--color-success);">✅ 优点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">高度自动化，最小人工干预<br>可处理长周期复杂任务<br>具备自我纠错能力</p>
+  </div>
+  <div style="padding: 16px; border: 1px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+    <strong style="color: var(--color-warning);">⚠️ 缺点</strong>
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">失控风险（可能偏离目标）<br>资源消耗不可预测<br>需要严格的安全边界</p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Autonomous Loop 模式伪代码</span>
+<pre># Autonomous Loop (自主循环)
+def autonomous_run(goal, max_steps=50, budget=1000):
+    state = {"goal": goal, "progress": [], "steps_used": 0}
+    
+    while state.steps_used < max_steps and budget > 0:
+        # 自主规划下一步
+        next_step = llm.plan(
+            goal=state.goal,
+            progress=state.progress,
+            remaining_budget=budget
+        )
+        
+        # 执行
+        result = execute(next_step)
+        state.steps_used += 1
+        budget -= calculate_cost(result)
+        
+        # 自我评估
+        evaluation = llm.evaluate(
+            "这个结果是否推进了目标？", result, state.goal
+        )
+        
+        if evaluation.goal_achieved:
+            return result  # 目标达成！
+        
+        # 记录进展，动态调整
+        state.progress.append({"step": next_step, "result": result, "eval": evaluation})
+        
+        if evaluation.should_change_strategy:
+            state.goal = evaluation.refined_goal  # 调整子目标
+    
+    return "未能达成目标"  # 资源耗尽</pre>
+</div>
+
+<!-- ===== 2.7 模式对比表 ===== -->
+<h3 class="sub-heading">2.7 模式对比总览</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 6px;">模式</th>
+        <th style="text-align: left; padding: 10px 6px;">核心思想</th>
+        <th style="text-align: left; padding: 10px 6px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 6px;">关键风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-info);">ReAct</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">思考→行动→观察循环</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">动态交互任务</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">死循环/Token浪费</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-accent);">Plan-and-Execute</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">先规划后执行+重规划</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">复杂多步骤任务</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">初始计划不完整</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-success);">Multi-Agent</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">多Agent协作/委派</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">跨领域复杂任务</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">协调复杂/信息丢失</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-warning);">Reflective</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">执行→反思→修正</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">高质量输出任务</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">过度反思/标准难定义</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-info);">Tool-Augmented</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">只在需要时调用工具</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">混合型推理任务</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">判断失误/过度依赖</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-accent);">Memory-Augmented</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">三层记忆协同治理</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">长期运行Agent</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">记忆过期/检索延迟</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-success);">RAG</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">检索增强生成</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">知识密集型问答</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">检索质量瓶颈</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 6px; font-weight: 500; color: var(--color-warning);">Autonomous Loop</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">目标驱动持续执行</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">长周期自动化</td>
+        <td style="padding: 8px 6px; color: var(--color-text-secondary);">失控风险/资源耗尽</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 2.8 Context Engineering ===== -->
+<h2 class="section-heading">2.8 Context Engineering（上下文工程）</h2>
+
+<p>如果说 Prompt Engineering 是教 Agent "怎么说话"，那么 <strong>Context Engineering</strong> 是教 Agent "在什么环境中说话"。这是 2025 年 Agent 开发领域最重要的认知升级。</p>
+
+<h3 class="sub-heading">从 Prompt Engineering 到 Context Engineering</h3>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">Prompt Engineering</div>
+    <div class="side-content">
+      <div class="highlight-line">关注：怎么写指令</div>
+      <div class="highlight-line">范围：单条 Prompt 文本</div>
+      <div class="highlight-line">假设：LLM 只需要好指令</div>
+      <div class="highlight-line">局限：忽略了LLM的"环境"</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Context Engineering</div>
+    <div class="side-content">
+      <div class="highlight-line">关注：怎么组装完整信息环境</div>
+      <div class="highlight-line">范围：Prompt + 历史 + 工具 + 知识</div>
+      <div class="highlight-line">认知：LLM 需要"正确的上下文"</div>
+      <div class="highlight-line">优势：系统性管理信息输入</div>
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+Prompt Engineering 问的是"你怎么告诉LLM做事"。Context Engineering 问的是"你给LLM的工作环境里有什么"。就像一位厨师——好的食谱（Prompt）固然重要，但新鲜的食材、合适的厨具、安静的环境（Context）才是做出好菜的前提。
+</div>
+
+<h3 class="sub-heading">Context 的三要素</h3>
+
+<div class="card">
+  <div class="card-title">📦 Context 的完整组成</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">用户输入</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">当前请求<br>问题/指令/目标<br>即时意图</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">补充资料</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">检索到的文档<br>工具返回结果<br>知识库片段</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">历史问答</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">之前对话轮次<br>已执行的操作记录<br>积累的推理痕迹</p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Context Rot：注意力稀释问题</h3>
+
+<p>随着对话增长，Context 中充斥着大量<strong>低价值信息</strong>，LLM 的注意力被稀释，关键信息被淹没——这就是 <strong>Context Rot</strong>（上下文腐化）。</p>
+
+<div class="card">
+  <div class="card-title">🧪 Context Rot 的表现</div>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; font-size: 14px; margin-top: 12px;">
+    <strong>症状 1：</strong>LLM "忘了"之前确认的关键约束（如"不要用第三方库"）<br><br>
+    <strong>症状 2：</strong>回答引用了过时信息（早期对话中已被修正的错误）<br><br>
+    <strong>症状 3：</strong>对简单问题给出复杂但不准确的回答<br><br>
+    <strong>根因：</strong>Context 太长 → LLM 注意力分布均匀 → 关键信息权重被稀释
+  </div>
+</div>
+
+<h3 class="sub-heading">Just-in-Time Context：即时上下文</h3>
+
+<p>解决 Context Rot 的核心理念：<strong>Just-in-Time Context</strong>——只在需要的时刻注入需要的信息，而非一次性塞满。</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">一次性塞满</div>
+    <div class="side-content">
+      <div class="highlight-line">启动时加载全部历史</div>
+      <div class="highlight-line">所有工具描述一次性注入</div>
+      <div class="highlight-line">知识库全量检索</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">→ Context Rot</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Just-in-Time</div>
+    <div class="side-content">
+      <div class="highlight-line">每步按需检索相关记忆</div>
+      <div class="highlight-line">只注入当前步骤需要的工具</div>
+      <div class="highlight-line">动态检索最相关的片段</div>
+      <div class="highlight-line" style="color: var(--color-success);">→ 精准高效</div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">上下文压缩策略</h3>
+
+<p>当 Context 不可避免地增长时，需要<strong>压缩策略</strong>保留核心信息：</p>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">策略</th>
+        <th style="text-align: left; padding: 12px 8px;">原理</th>
+        <th style="text-align: left; padding: 12px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 12px 8px;">风险</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">截断</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">直接丢弃最旧的消息</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实时性强的对话</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可能丢失关键约束</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">摘要</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM 对旧内容生成摘要替代原文</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通用场景</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">摘要可能遗漏细节</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">滑动窗口</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">只保留最近N轮对话</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">短期对话型Agent</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">丢失长期上下文</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">选择性保留</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按重要性评分保留关键消息</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">决策密集型任务</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">评分标准难定义</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-danger, #e74c3c);">语义保护型压缩</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">压缩低语义密度内容，保护关键语义</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高精度Agent</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实现复杂度高</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+  <span class="code-label">上下文压缩前后对比示例</span>
+<pre># ===== 压缩前（3000 token，Context Rot严重） =====
+[System] 你是一个代码助手...
+[User] 帮我写一个排序函数
+[Agent] Thought: 用户需要排序函数，我先确认需求...  # ← 低价值
+[Agent] Action: 询问需求细节                           # ← 低价值
+[User] Python，升序
+[Agent] Thought: 用户要求Python升序排序，这很简单...    # ← 低价值
+[Agent] Action: 编写代码
+[Agent] Observation: 代码已生成                          # ← 低价值
+[Agent] def sort_asc(lst): return sorted(lst)           # ← 高价值！但被淹没
+
+# ===== 压缩后（800 token，语义保护型） =====
+[System] 你是一个代码助手
+[Summary] 用户之前请求了Python升序排序函数，已提供实现   # ← 摘要替代5轮低价值对话
+[User] 现在帮我改成降序
+[Agent] # 只保留关键上下文，LLM注意力集中
+def sort_desc(lst): return sorted(lst, reverse=True)</pre>
+</div>
+
+<h3 class="sub-heading">动态 Prompt vs 静态 Prompt</h3>
+
+<p>在上下文组装中，一个关键设计决策是区分<strong>静态 Prompt</strong> 和<strong>动态 Prompt</strong>。这个区分不仅影响信息组织方式，还直接影响缓存命中率和 token 成本。</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">静态 Prompt</div>
+    <div class="side-content">
+      <div class="highlight-line">System Prompt 中的固定部分</div>
+      <div class="highlight-line">角色定义、核心规则、输出格式要求</div>
+      <div class="highlight-line" style="color: var(--color-success);">每次对话都一样 → 可命中 Prompt Cache</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">占用：约 200-500 token</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">动态 Prompt</div>
+    <div class="side-content">
+      <div class="highlight-line">根据当前上下文动态组装</div>
+      <div class="highlight-line">用户偏好、最近任务经验、工具列表、召回记忆</div>
+      <div class="highlight-line" style="color: var(--color-warning);">每次不同 → 无法命中缓存</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">占用：约 300-1000 token</div>
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+为什么要分静态和动态？就像餐厅的菜单——招牌菜（静态）印在菜单上不会变，今日特供（动态）每天根据食材更新。把不变的部分前置，LLM 服务端就能缓存已处理的 prompt 前缀，命中缓存时 token 成本降低 90%。
+</div>
+
+<h3 class="sub-heading">上下文动态组装流程</h3>
+
+<p>Agent 每次调用 LLM 前，都需要<strong>动态组装上下文</strong>——这不是简单的拼接，而是有严格的顺序和优先级：</p>
+
+<div class="flowchart-container" id="contextAssembly"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('contextAssembly', {
+    nodes: [
+      { id: 'step1', label: 'Step 1\n加载静态 System Prompt', type: 'process' },
+      { id: 'step2', label: 'Step 2\n注入当前可用工具列表', type: 'tool' },
+      { id: 'step3', label: 'Step 3\n召回相关长期记忆', type: 'process' },
+      { id: 'step4', label: 'Step 4\n添加当前对话历史', type: 'process' },
+      { id: 'step5', label: 'Step 5\n组装完整上下文→发送LLM', type: 'decision' }
+    ],
+    edges: [
+      { from: 'step1', to: 'step2' },
+      { from: 'step2', to: 'step3' },
+      { from: 'step3', to: 'step4' },
+      { from: 'step4', to: 'step5' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">🎯 组装优化策略</div>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; margin-top: 16px; font-size: 14px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+      <div style="padding: 12px; border: 1px solid var(--color-success); border-radius: 8px;">
+        <strong style="color: var(--color-success);">① 静态部分前置</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">不变的内容放最前面<br>→ 命中 Prompt Cache<br>→ token 成本降低 90%</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid var(--color-warning); border-radius: 8px;">
+        <strong style="color: var(--color-warning);">② 动态部分后置</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">变化的内容放后面<br>→ 不影响缓存前缀命中<br>→ 只增加尾部 token 成本</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid var(--color-info); border-radius: 8px;">
+        <strong style="color: var(--color-info);">③ 记忆插在对话历史之前</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">召回记忆放在对话历史前<br>→ 避免干扰最新对话<br>→ 保证当前输入最高权重</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">动态上下文组装器代码示例</span>
+<pre>class ContextAssembler:
+    """动态上下文组装器：按优先级组装 Prompt，优化缓存命中"""
+
+    def __init__(self, system_prompt: str, tools: list):
+        self.static_prompt = system_prompt  # 静态部分：角色定义+核心规则
+        self.tools = tools                   # 工具定义列表
+        self.memory_store = VectorStore()    # 长期记忆存储
+
+    def assemble(self, user_input: str, chat_history: list) -> str:
+        """组装完整上下文，顺序决定缓存命中率"""
+        context_parts = []
+
+        # Step 1: 静态 System Prompt（每次不变，命中缓存）
+        context_parts.append(self.static_prompt)
+
+        # Step 2: 注入当前可用工具列表（相对稳定，次优缓存）
+        tool_descriptions = self._format_tools(self.tools)
+        context_parts.append(f"\n可用工具:\n{tool_descriptions}")
+
+        # Step 3: 召回相关长期记忆（动态，每次不同）
+        relevant_memories = self.memory_store.search(user_input, top_k=5)
+        memory_text = self._format_memories(relevant_memories)
+        context_parts.append(f"\n相关经验:\n{memory_text}")
+
+        # Step 4: 添加当前对话历史（动态增长）
+        history_text = self._format_history(chat_history)
+        context_parts.append(f"\n对话历史:\n{history_text}")
+
+        # Step 5: 用户当前输入（最后，权重最高）
+        context_parts.append(f"\n当前请求: {user_input}")
+
+        return "\n".join(context_parts)
+
+    def _format_tools(self, tools):
+        # 固定格式模板 → 保持缓存友好
+        return "\n".join(
+            f"- {t['name']}: {t['description']}"
+            for t in tools
+        )
+
+    def _format_memories(self, memories):
+        # 固定格式模板 → 记忆内容不同但格式相同
+        return "\n".join(
+            f"[{m['timestamp']}] {m['content']}"
+            for m in memories
+        )
+
+    def _format_history(self, history, max_rounds=10):
+        # 滑动窗口：只保留最近10轮
+        recent = history[-max_rounds:]
+        return "\n".join(
+            f"[{h['role']}] {h['content']}"
+            for h in recent
+        )</pre>
+</div>
+
+<div class="quote">
+面试锦囊：动态 Prompt vs 静态 Prompt 的核心区别——静态是"固定不变的指令骨架"，动态是"根据上下文动态填充的血肉"。两者分开组装，前置静态命中缓存，后置动态保证灵活性。</div>
+
+<!-- ===== 2.9 Harness Engineering ===== -->
+<h2 class="section-heading">2.9 Harness Engineering（Harness 工程）</h2>
+
+<p>Agent 写好了，但<strong>怎么确保它可靠运行</strong>？这就是 Harness Engineering 要解决的问题——为 Agent 构建"测试 Harness"，验证其性能和可靠性。</p>
+
+<div class="quote">
+Harness 原意是"马具"——套在马身上的缰绳和鞍具。Harness Engineering 就是为 Agent 套上缰绳：测试它跑得稳不稳、方向对不对、会不会失控。
+</div>
+
+<h3 class="sub-heading">三层工程的关系</h3>
+
+<div class="card">
+  <div class="card-title">🔗 Prompt → Context → Harness 三层演进</div>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; margin-top: 16px; font-size: 14px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+      <div style="padding: 12px; border: 1px solid var(--color-info); border-radius: 8px;">
+        <strong style="color: var(--color-info);">Prompt Engineering</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">写好指令<br>让LLM理解意图<br>静态优化</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid var(--color-accent); border-radius: 8px;">
+        <strong style="color: var(--color-accent);">Context Engineering</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">组装环境<br>让LLM获得正确信息<br>动态管理</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid var(--color-success); border-radius: 8px;">
+        <strong style="color: var(--color-success);">Harness Engineering</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">验证可靠<br>让Agent跑得稳<br>持续保障</p>
+      </div>
+    </div>
+    <p style="margin-top: 12px; color: var(--color-text-secondary); font-size: 13px;">三者不是替代关系，而是<strong>层层叠加</strong>：好 Prompt 是基础，好 Context 让 Agent 获得正确输入，好 Harness 让 Agent 经得起考验。</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">Harness 的核心组成</h3>
+
+<div class="card">
+  <div class="card-title">🛡️ Harness 的两大支柱</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">性能基准测试</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">定义测试用例集<br>量化成功率/完成率<br>测量token效率<br>对比不同版本/配置<br>自动化回归测试</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">基础设施保障</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">超时/重试/回退机制<br>工具调用的安全沙箱<br>输出格式校验器<br>资源消耗监控<br>异常状态自动恢复</p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Harness Engineering 示例配置</span>
+<pre># Harness 配置
+harness_config = {
+    # 性能基准测试
+    "benchmarks": [
+        {
+            "name": "信息检索准确率",
+            "test_cases": 50,           # 50个测试问题
+            "metric": "answer_accuracy", # 回答准确率
+            "threshold": 0.85           # 最低85%准确率
+        },
+        {
+            "name": "工具调用成功率",
+            "test_cases": 30,
+            "metric": "tool_success_rate",
+            "threshold": 0.90           # 最低90%成功率
+        }
+    ],
+    
+    # 基础设施保障
+    "guardrails": {
+        "max_steps": 15,             # 最多15步，防止死循环
+        "timeout_per_step": 30,      # 每步30秒超时
+        "retry_on_failure": 2,       # 失败重试2次
+        "sandbox_for_code": True,    # 代码在沙箱执行
+        "output_validator": "json_schema", # 校验输出格式
+        "budget_limit": 5.0          # 最大花费$5
+    }
+}</pre>
+</div>
+
+<p>Harness Engineering 的核心原则：<strong>不是等 Agent 出问题再修，而是在设计时就套上缰绳</strong>。就像汽车出厂前要经过碰撞测试——Agent 上线前也要经过 Harness 测试。</p>
+
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent 的四大核心模块是什么？它们之间如何协同？</div>
+    <div class="qa-answer">
+      四大模块：<strong>LLM（大脑）、记忆（存储）、规划（推理）、工具（执行）</strong>。<br><br>
+      协同流程：感知层接收输入 → 记忆层检索相关上下文 → 规划层拆解任务制定计划 → 执行层调用工具 → 观察层分析结果 → 更新记忆 → 判断是否继续循环。这个闭环可以多轮执行，直到任务完成。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: Function Calling 的原理是什么？它和直接让 LLM 输出 JSON 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Function Calling</strong> 是 LLM 原生支持的能力：你在请求中传入工具的 JSON Schema 描述，LLM 判断需要调用工具时，会输出结构化的函数调用（包含函数名和参数），而不是自然语言。<br><br>
+      区别：直接让 LLM 输出 JSON 依赖 prompt 工程，不稳定（可能输出错误格式、多余文字）。Function Calling 是模型层面训练过的能力，输出格式可靠，支持并行调用多个函数。但本质上都是让 LLM 产出结构化的行动指令。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Agent 的记忆系统有哪几种？各自的特点和实现方式？</div>
+    <div class="qa-answer">
+      <strong>① 短期记忆</strong>：即 LLM 上下文窗口，存当前对话历史。容量有限（4K~200K token），速度最快。管理策略包括滑窗截断和摘要压缩。<br>
+      <strong>② 长期记忆</strong>：通过向量数据库存储，支持语义检索。实现方式：文本 → Embedding → 存入向量库 → 查询时做相似度搜索。容量理论无限，但检索有延迟。<br>
+      <strong>③ 工作记忆</strong>：类似便签纸，存当前任务的中间状态和推理过程。任务结束清除。常用实现：scratchpad、临时变量。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: CoT、ToT、ReAct 三种规划策略的区别？分别适用什么场景？</div>
+    <div class="qa-answer">
+      <strong>CoT（Chain of Thought）</strong>：线性思维链，"Let's think step by step"。简单高效，适合数学推理、逻辑推导等单路径问题。<br><br>
+      <strong>ToT（Tree of Thought）</strong>：树状思维，在每个节点分支探索多个方案，通过评估函数选最优路径。适合需要搜索和回溯的问题，如24点游戏、创意写作。<br><br>
+      <strong>ReAct</strong>：思考→行动→观察的循环，每步可以调用工具获取新信息。适合需要与外部世界交互的任务，如信息检索、代码执行。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: MCP 协议解决了什么问题？它的核心设计是什么？</div>
+    <div class="qa-answer">
+      <strong>解决的问题</strong>：工具定义的碎片化。以前 LangChain、AutoGPT、CrewAI 各自定义工具格式，一个工具要适配多个框架。<br><br>
+      <strong>核心设计</strong>：MCP 定义了统一的 Client-Server 架构。Agent 框架作为 MCP Client，工具作为 MCP Server，通过 JSON-RPC 2.0 通信。一个 MCP Server 写好后，任何支持 MCP 的框架都能直接用——就像 USB-C 统一了充电器接口。<br><br>
+      <strong>核心价值</strong>：工具复用、标准化通信、解耦 Agent 和工具实现。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: 八种 Agent 设计模式如何分类？各自的核心思想是什么？</div>
+    <div class="qa-answer">
+      八种模式可按<strong>核心驱动力</strong>分为三类：<br><br>
+      <strong>推理驱动型</strong>：ReAct（思考→行动→观察循环）、Plan-and-Execute（先规划后执行+重规划器）。核心是优化 Agent 的决策流程。<br><br>
+      <strong>增强驱动型</strong>：Tool-Augmented（只在需要时调用工具）、Memory-Augmented（三层记忆协同治理）、RAG（检索增强生成）。核心是为 Agent 补充能力短板。<br><br>
+      <strong>质量驱动型</strong>：Multi-Agent（多Agent协作委派）、Reflective（执行→反思→修正）、Autonomous Loop（目标驱动持续执行）。核心是提升输出质量或自动化程度。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Context Engineering 的核心原则是什么？它和 Prompt Engineering 有什么本质区别？</div>
+    <div class="qa-answer">
+      <strong>Context Engineering 核心原则</strong>：<br>
+      ① Just-in-Time：只在需要的时刻注入需要的信息，而非一次性塞满<br>
+      ② 防止 Context Rot：主动管理上下文质量，避免注意力稀释<br>
+      ③ 系统性管理：不只优化单条 Prompt，而是管理整个信息环境<br><br>
+      <strong>与 Prompt Engineering 的区别</strong>：Prompt Engineering 关注"怎么写指令"（静态文本优化），Context Engineering 关注"给LLM什么信息环境"（动态信息管理）。前者是单点优化，后者是系统工程。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Harness Engineering 在 Agent 开发中的作用是什么？它与前两层工程的关系？</div>
+    <div class="qa-answer">
+      <strong>作用</strong>：为 Agent 构建测试与可靠性验证体系，包括性能基准测试（量化成功率、token效率）和基础设施保障（超时/重试/沙箱/输出校验）。确保 Agent 在真实环境中稳定运行。<br><br>
+      <strong>与前两层的关系</strong>：三者层层叠加而非替代。Prompt Engineering 优化指令质量（基础），Context Engineering 管理信息环境（增强），Harness Engineering 验证运行可靠性（保障）。好的 Agent 需要三层都到位。
+    </div>
+  </div>
+</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 动态 Prompt 和静态 Prompt 的主要区别是什么？为什么要分开组装？</div>
+    <div class="qa-answer">
+      <strong>主要区别</strong>：静态 Prompt 是 System Prompt 中固定不变的部分（角色定义、核心规则、输出格式），每次对话都一样；动态 Prompt 是根据当前上下文动态组装的部分（用户偏好、工具列表、召回记忆），每次不同。<br><br>
+      <strong>分开组装的原因</strong>：① 静态前置可命中 Prompt Cache，token 成本降低 90%；② 动态后置不影响缓存前缀命中；③ 两者分开使信息组织更清晰，便于独立维护和优化。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: 上下文窗口中各部分的 token 占用比例如何？哪部分占用最多？</div>
+    <div class="qa-answer">
+      <strong>占用比例</strong>：System Prompt（静态）5-10%（约 500-2000 token），工具定义（动态）5-15%（约 500-3000 token），召回记忆 5-10%（约 500-2000 token），对话历史 30-60%（随对话轮数增长），用户当前输入+输出预留 20-30%。<br><br>
+      <strong>占用最多的部分</strong>：对话历史，因为它随对话轮数持续增长，是上下文压力的主要来源，也是 Context Rot 的核心诱因。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: Prompt Caching 的原理是什么？如何通过动静分离优化缓存命中率？</div>
+    <div class="qa-answer">
+      <strong>原理</strong>：LLM 服务端缓存已处理的 prompt 前缀。当新请求的前缀与缓存匹配时，跳过重复计算，直接使用缓存结果。Anthropic 的 Prompt Caching 命中时 token 成本降低 90%，OpenAI 自动缓存相同前缀。<br><br>
+      <strong>动静分离优化</strong>：将不变的静态部分（System Prompt + 工具定义）放在 prompt 最前面，它们构成稳定的缓存前缀；动态部分（记忆召回 + 对话历史 + 用户输入）放在后面，即使变化也不影响前缀缓存命中。策略包括：① 固定 System Prompt 不频繁改动；② 工具定义保持稳定，不在运行时动态增减；③ 记忆召回使用固定格式模板。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q12: 如果上下文窗口 128K token，系统提示词 2000，工具定义 3000，如何分配剩余 token？</div>
+    <div class="qa-answer">
+      <strong>计算</strong>：128K - 2000 - 3000 = 123K 剩余。<br><br>
+      <strong>分配方案</strong>：<br>
+      ① 对话历史：约 60-80K（50-65%）——随对话轮数增长，是主要消耗项，建议设置上限 80K<br>
+      ② 记忆召回：约 5-15K（4-12%）——按需检索，top-5~10 片段，每片段约 500-1500 token<br>
+      ③ 输出预留：约 20-30K（16-24%）——确保 LLM 有足够空间生成完整回答<br><br>
+      <strong>动态调整原则</strong>：对话早期，历史少→可多分配记忆和输出；对话后期，历史增长→压缩旧对话摘要，腾出空间给输出。始终为输出预留 20K+，避免 LLM 因空间不足而截断回答。
+    </div>
+  </div>
+
+<!-- ===== 2.10 上下文窗口token分配与缓存命中 ===== -->
+<h2 class="section-heading">2.10 上下文窗口 Token 分配与缓存命中</h2>
+
+<p>理解了动态/静态 Prompt 的分离之后，下一个问题是：<strong>上下文窗口那么大，各部分应该各占多少？如何让缓存命中率最高？</strong> 这是 Context Engineering 落地时最实际的问题。</p>
+
+<h3 class="sub-heading">上下文窗口容量对比</h3>
+
+<div class="card">
+  <div class="card-title">📊 各主流模型的上下文窗口容量</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 20px; border: 2px solid var(--color-info); border-radius: 12px; text-align: center;">
+      <strong style="color: var(--color-info); font-size: 18px;">128K</strong>
+      <p style="font-size: 14px; margin: 8px 0 0;">GPT-4o</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 0;">约 10 万字中文</p>
+    </div>
+    <div style="padding: 20px; border: 2px solid var(--color-accent); border-radius: 12px; text-align: center;">
+      <strong style="color: var(--color-accent); font-size: 18px;">200K</strong>
+      <p style="font-size: 14px; margin: 8px 0 0;">Claude 3.5 Sonnet</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 0;">约 15 万字中文</p>
+    </div>
+    <div style="padding: 20px; border: 2px solid var(--color-success); border-radius: 12px; text-align: center;">
+      <strong style="color: var(--color-success); font-size: 18px;">1M</strong>
+      <p style="font-size: 14px; margin: 8px 0 0;">Gemini 1.5 Pro</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 0;">约 75 万字中文</p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Token 预算分配方案</h3>
+
+<p>上下文窗口不是"越大越好"——容量越大，LLM 的注意力分布越容易稀释。合理的 token 预算分配是关键：</p>
+
+<div class="card">
+  <div class="card-title">💡 以 128K 窗口为例的 Token 预算分配</div>
+  <div style="margin-top: 16px;">
+    <!-- Token 分配可视化卡片 -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; font-size: 13px;">
+      <div style="background: var(--color-info); color: white; padding: 10px 8px; border-radius: 8px; text-align: center;">
+        <strong>System Prompt</strong><br>5-10%<br>~500-2000
+      </div>
+      <div style="background: var(--color-accent); color: white; padding: 10px 8px; border-radius: 8px; text-align: center;">
+        <strong>工具定义</strong><br>5-15%<br>~500-3000
+      </div>
+      <div style="background: var(--color-success); color: white; padding: 10px 8px; border-radius: 8px; text-align: center;">
+        <strong>召回记忆</strong><br>5-10%<br>~500-2000
+      </div>
+      <div style="background: var(--color-warning); color: white; padding: 10px 8px; border-radius: 8px; text-align: center;">
+        <strong>对话历史</strong><br>30-60%<br>随轮数增长
+      </div>
+      <div style="background: #8b5cf6; color: white; padding: 10px 8px; border-radius: 8px; text-align: center;">
+        <strong>输出预留</strong><br>20-30%<br>确保完整回答
+      </div>
+    </div>
+    <p style="margin-top: 12px; font-size: 13px; color: var(--color-text-secondary);">
+      <strong>关键洞察</strong>：对话历史是唯一"随时间增长"的部分，也是上下文压力的主要来源。当对话历史超过预算上限时，必须触发压缩策略（摘要/截断/滑动窗口）。
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📈 Token 占用比例图</div>
+  <div style="margin-top: 16px;">
+    <!-- 堆叠进度条展示 -->
+    <div style="display: flex; height: 40px; border-radius: 8px; overflow: hidden;">
+      <div style="width: 8%; background: var(--color-info); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 500;">System 8%</div>
+      <div style="width: 10%; background: var(--color-accent); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 500;">Tools 10%</div>
+      <div style="width: 8%; background: var(--color-success); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 500;">Memory 8%</div>
+      <div style="width: 44%; background: var(--color-warning); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 500;">History 44%</div>
+      <div style="width: 30%; background: #8b5cf6; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 500;">Output 30%</div>
+    </div>
+    <p style="margin-top: 8px; font-size: 12px; color: var(--color-text-secondary); text-align: center;">典型 128K 窗口分配示例：System 10K + Tools 13K + Memory 10K + History 56K + Output 39K</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">Prompt Caching：缓存命中的秘密</h3>
+
+<p>token 预算分配只是第一步，<strong>Prompt Caching</strong> 是进一步降低成本的利器：</p>
+
+<div class="card">
+  <div class="card-title">🧊 Prompt Caching 原理</div>
+  <div style="padding: 16px; background: var(--color-bg-alt); border-radius: 8px; margin-top: 16px; font-size: 14px;">
+    <p style="margin: 0 0 12px;"><strong>核心机制</strong>：LLM 服务端缓存已处理的 prompt <em>前缀</em>。当新请求的前缀与缓存匹配时，跳过重复计算，直接使用缓存结果。</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+      <div style="padding: 12px; border: 1px solid var(--color-accent); border-radius: 8px;">
+        <strong style="color: var(--color-accent);">Anthropic Prompt Caching</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">开发者标记缓存边界<br>命中时 token 成本降低 <strong>90%</strong><br>缓存 TTL：5 分钟（滚动续期）</p>
+      </div>
+      <div style="padding: 12px; border: 1px solid var(--color-info); border-radius: 8px;">
+        <strong style="color: var(--color-info);">OpenAI Prompt Caching</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">自动缓存相同前缀<br>命中时 token 成本降低 <strong>50%</strong><br>无需开发者标记，自动优化</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+类比：Prompt Caching 就像浏览器缓存——第一次访问网页要下载所有资源，第二次访问相同网页时，静态资源（CSS/JS/图片）直接从缓存加载，只重新请求动态内容。把 prompt 的"CSS"（静态部分）前置，"动态API数据"（变化部分）后置，缓存就能命中。
+</div>
+
+<h3 class="sub-heading">缓存命中率优化策略</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">策略</th>
+        <th style="text-align: left; padding: 12px 8px;">做法</th>
+        <th style="text-align: left; padding: 12px 8px;">效果</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">固定 System Prompt</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不频繁改动角色定义和核心规则</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">保证最稳定的缓存前缀</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">工具定义保持稳定</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不在运行时动态增减工具，固定工具集</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工具部分也能命中缓存</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">记忆召回使用固定格式模板</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模板不变，只有内容变化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">格式部分命中缓存，内容部分新增</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">动静分离排序</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">静态前置 → 动态后置</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">最大化缓存前缀匹配长度</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Token 预算管理器代码示例</span>
+<pre>class TokenBudgetManager:
+    """Token 预算管理器：根据上下文窗口大小动态分配 token"""
+
+    def __init__(self, window_size: int = 128000):
+        self.window_size = window_size
+
+    def allocate(self, system_tokens: int, tool_tokens: int,
+                 memory_tokens: int) -> dict:
+        """分配 token 预算，返回各部分上限"""
+        fixed = system_tokens + tool_tokens
+        remaining = self.window_size - fixed
+
+        # 输出预留：至少 20%，确保 LLM 完整回答
+        output_reserve = max(int(remaining * 0.25), 20000)
+
+        # 可用于对话历史和记忆的总额
+        available = remaining - output_reserve
+
+        # 对话历史上限：可用额的 80%
+        history_limit = int(available * 0.80)
+
+        # 记忆召回上限：可用额的 20%
+        memory_limit = min(memory_tokens, int(available * 0.20))
+
+        return {
+            "system_prompt": system_tokens,
+            "tool_definitions": tool_tokens,
+            "memory_recall": memory_limit,
+            "chat_history": history_limit,
+            "output_reserve": output_reserve,
+            "total": self.window_size
+        }
+
+    def should_compress(self, current_history_tokens: int,
+                        history_limit: int) -> bool:
+        """判断是否需要压缩对话历史"""
+        return current_history_tokens > history_limit * 0.85
+        # 超过85%就启动压缩，留15%缓冲区
+
+# 使用示例
+manager = TokenBudgetManager(window_size=128000)
+budget = manager.allocate(
+    system_tokens=2000,    # System Prompt 约2000 token
+    tool_tokens=3000,      # 工具定义约3000 token
+    memory_tokens=5000     # 记忆召回上限5000 token
+)
+# 输出:
+# system_prompt:  2000   (1.6%)
+# tool_definitions: 3000 (2.3%)
+# memory_recall:  4750   (3.7%)
+# chat_history:   76250  (59.6%) ← 最大消耗项
+# output_reserve: 32000  (25.0%) ← 确保完整输出
+# total:          128000</pre>
+</div>
+
+<div class="quote">
+面试锦囊：上下文窗口 token 分配的核心原则——"固定部分最小化，对话历史设上限，输出永远留余地"。宁可压缩历史，不可压缩输出空间，否则 LLM 会截断回答丢失关键信息。
+</div>
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch02Questions = [
+  {
+    type: 'single',
+    question: 'Agent 中的 LLM 和 ChatBot 中的 LLM 最关键的区别是什么？',
+    options: [
+      'Agent 中的 LLM 使用更大的模型参数',
+      'Agent 中的 LLM 需要输出结构化决策（如工具调用JSON），不只是自然语言',
+      'Agent 中的 LLM 不需要 System Prompt',
+      'Agent 中的 LLM 只能用 GPT 系列'
+    ],
+    answer: [1],
+    explanation: 'Agent 中 LLM 的核心区别是需要输出结构化决策（工具调用JSON、行动计划等），而不只是自然语言回复。这要求 LLM 具备 Function Calling 能力。'
+  },
+  {
+    type: 'single',
+    question: '关于 Agent 短期记忆的压缩策略，以下说法正确的是？',
+    options: [
+      '直接丢弃最旧的消息，不做任何处理',
+      '当上下文超过阈值时，对旧对话进行摘要压缩后存入长期记忆',
+      '短期记忆可以无限增长，不需要压缩',
+      '压缩会丢失所有信息，所以应该避免'
+    ],
+    answer: [1],
+    explanation: '常见的压缩策略是：当上下文超过阈值时，对旧对话进行摘要压缩，摘要保留在短期记忆中，原始内容存入长期记忆。这样既控制了上下文长度，又不会丢失信息。'
+  },
+  {
+    type: 'single',
+    question: '以下哪种规划策略最适合"需要搜索多个方案并选择最优"的任务？',
+    options: ['CoT（思维链）', 'ToT（思维树）', 'ReAct', '直接调用工具'],
+    answer: [1],
+    explanation: 'ToT（Tree of Thought）在每个节点分支探索多个方案，通过评估函数选择最优路径，最适合需要搜索和比较多个方案的任务。CoT 是单路径的，ReAct 侧重工具交互。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 协议的核心价值是什么？',
+    options: [
+      '让 LLM 推理速度更快',
+      '统一工具调用接口，实现跨框架工具复用',
+      '替代 Function Calling',
+      '减少 LLM 的 token 消耗'
+    ],
+    answer: [1],
+    explanation: 'MCP 的核心价值是标准化工具接口。就像 USB-C 统一了充电器接口，MCP 让一个工具写好后所有框架都能用，解决了工具定义碎片化问题。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 的工作记忆（Working Memory）主要用于存储什么？',
+    options: [
+      '所有历史对话记录',
+      '用户的个人偏好信息',
+      '当前任务的中间状态和推理过程',
+      '向量数据库的索引'
+    ],
+    answer: [2],
+    explanation: '工作记忆类似便签纸，存储当前任务的中间状态和推理过程，任务结束后清除。它不同于短期记忆（存对话历史）和长期记忆（存历史经验）。'
+  },
+  {
+    type: 'single',
+    question: '以下哪种 Agent 设计模式的核心特征是"只在需要时才调用工具"？',
+    options: ['ReAct', 'Tool-Augmented', 'Memory-Augmented', 'Autonomous Loop'],
+    answer: [1],
+    explanation: 'Tool-Augmented 模式的核心思想是"门禁式"工具调用——LLM先自行推理，判断是否需要外部帮助，需要时才调用工具，而非默认每步都尝试调用。'
+  },
+  {
+    type: 'single',
+    question: '关于 Context Engineering，以下说法正确的是？',
+    options: [
+      'Context Engineering 就是优化 Prompt 文本',
+      'Context Engineering 关注的是如何系统性管理LLM的完整信息环境',
+      'Context Rot 是指 LLM 参数失效',
+      'Just-in-Time Context 意味着不加载任何上下文'
+    ],
+    answer: [1],
+    explanation: 'Context Engineering 关注的是系统性管理LLM的完整信息环境（Prompt+历史+工具+知识），而非仅优化单条Prompt。Context Rot是上下文腐化（注意力稀释），Just-in-Time是按需注入而非不加载。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 Agent 执行工具调用的必要步骤？（多选）',
+    options: [
+      'LLM 根据工具 schema 判断需要调用哪个工具',
+      'LLM 输出结构化的函数调用（函数名+参数）',
+      'Agent 框架解析调用并实际执行工具',
+      '将工具返回结果喂回给 LLM 进行下一步推理'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: 'Function Calling 完整流程：LLM 判断需要工具 → 输出结构化调用 → 框架执行工具 → 结果回传 LLM。四步缺一不可。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Agent 的长期记忆，以下说法正确的是？（多选）',
+    options: [
+      '长期记忆通常通过向量数据库实现',
+      '存储前需要将文本通过 Embedding 模型转为向量',
+      '检索时使用相似度搜索（如余弦相似度）',
+      '长期记忆的容量受 LLM 上下文窗口大小限制'
+    ],
+    answer: [0, 1, 2],
+    explanation: '长期记忆通过向量数据库实现，容量不受 LLM 上下文窗口限制。流程是：文本→Embedding→向量存储→相似度检索。上下文窗口只限制短期记忆。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些属于 Agent 工具系统的常见类型？（多选）',
+    options: [
+      '信息获取类（搜索、天气API）',
+      '代码执行类（Python REPL、Shell）',
+      '文件操作类（读写文件）',
+      '模型训练类（训练新的LLM）'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Agent 的工具类型包括信息获取、代码执行、文件操作、通信类等。"训练新LLM"不是 Agent 工具的常见类型，因为成本极高且不适合实时调用。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些属于 Context Rot（上下文腐化）的典型表现？（多选）',
+    options: [
+      'LLM 忘了之前确认的关键约束',
+      '回答引用了已被修正的过时信息',
+      'LLM 推理速度明显变慢',
+      '对简单问题给出复杂但不准确的回答'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Context Rot 的典型表现：LLM忘了关键约束、引用过时信息、对简单问题给出复杂但不准确的回答。推理速度变慢不是Context Rot的特征，Context Rot影响的是质量而非速度。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Harness Engineering，以下哪些属于其基础设施保障的内容？（多选）',
+    options: [
+      '超时/重试/回退机制',
+      '工具调用的安全沙箱',
+      '优化 Prompt 文本措辞',
+      '输出格式校验器'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Harness Engineering的基础设施保障包括：超时/重试/回退、安全沙箱、输出格式校验、资源监控等。优化Prompt措辞属于Prompt Engineering而非Harness Engineering。'
+  },
+  {
+    type: 'single',
+    question: '动态 Prompt 和静态 Prompt 的主要区别是什么？',
+    options: [
+      '静态 Prompt 更长，动态 Prompt 更短',
+      '静态 Prompt 是固定不变的指令骨架，动态 Prompt 是根据上下文动态组装的内容',
+      '静态 Prompt 只用于 System Prompt，动态 Prompt 只用于用户输入',
+      '两者没有本质区别，只是命名不同'
+    ],
+    answer: [1],
+    explanation: '静态 Prompt 是固定不变的指令骨架（角色定义、核心规则、输出格式），每次对话都一样；动态 Prompt 是根据上下文动态组装的内容（用户偏好、工具列表、召回记忆），每次不同。这种分离是为了优化缓存命中和 token 成本。'
+  },
+  {
+    type: 'single',
+    question: '上下文窗口中哪部分占用 token 最多？',
+    options: [
+      'System Prompt（静态）',
+      '工具定义',
+      '召回记忆',
+      '对话历史'
+    ],
+    answer: [3],
+    explanation: '对话历史占用最多（30-60%），因为它随对话轮数持续增长，是上下文压力的主要来源。System Prompt、工具定义、召回记忆的占用量相对固定。'
+  },
+  {
+    type: 'essay',
+    question: '为什么要把 Prompt 分成静态和动态两部分？这种设计如何优化缓存命中？',
+    reference_answer: '分开的核心原因是优化 Prompt Cache 命中率。静态部分（角色定义、核心规则）每次不变，放在 prompt 最前面构成稳定的缓存前缀——LLM 服务端缓存已处理的前缀，命中时跳过重复计算。Anthropic 的 Prompt Caching 命中时 token 成本降低 90%，OpenAI 自动缓存相同前缀降低 50%。动态部分（记忆召回、对话历史）每次不同，放在后面不影响前缀缓存命中。具体策略包括：① 固定 System Prompt 不频繁改动；② 工具定义保持稳定；③ 记忆召回使用固定格式模板。'
+  },
+  {
+    type: 'essay',
+    question: '如果上下文窗口 128K token，系统提示词 2000，工具定义 3000，如何分配剩余 token 给对话历史和记忆召回？',
+    reference_answer: '128K - 2000 - 3000 = 123K 剩余。分配原则：① 输出预留至少 20%（约 25K-30K），确保 LLM 有足够空间生成完整回答，避免截断；② 对话历史分配约 60-80K（50-65%），这是主要消耗项但需设上限，超过时触发压缩策略（摘要/截断）；③ 记忆召回分配约 5-15K（4-12%），按需检索 top-5~10 片段。动态调整：对话早期历史少→可多分配记忆；对话后期历史增长→压缩旧对话摘要腾出空间。始终为输出预留 20K+，这是底线。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch02Questions); }, 500);
+</script>

@@ -143,38 +143,38 @@ body {
 /* ===== 主布局 ===== */
 .app-layout {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) var(--chat-width);
+  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) var(--chat-width) 48px;
   grid-template-rows: 100vh;
   height: 100vh;
   transition: grid-template-columns var(--transition);
 }
 
 .app-layout.sidebar-collapsed {
-  grid-template-columns: 0 1fr var(--toc-width) var(--chat-width);
+  grid-template-columns: 0 1fr var(--toc-width) var(--chat-width) 48px;
 }
 
 .app-layout.chat-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) 0;
+  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) 0 48px;
 }
 
 .app-layout.sidebar-collapsed.chat-collapsed {
-  grid-template-columns: 0 1fr var(--toc-width) 0;
+  grid-template-columns: 0 1fr var(--toc-width) 0 48px;
 }
 
 .app-layout.toc-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr 48px var(--chat-width);
+  grid-template-columns: var(--sidebar-width) 1fr 0 var(--chat-width) 48px;
 }
 
 .app-layout.toc-collapsed.chat-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr 48px 0;
+  grid-template-columns: var(--sidebar-width) 1fr 0 0 48px;
 }
 
 .app-layout.sidebar-collapsed.toc-collapsed {
-  grid-template-columns: 0 1fr 48px var(--chat-width);
+  grid-template-columns: 0 1fr 0 var(--chat-width) 48px;
 }
 
 .app-layout.sidebar-collapsed.toc-collapsed.chat-collapsed {
-  grid-template-columns: 0 1fr 48px 0;
+  grid-template-columns: 0 1fr 0 0 48px;
 }
 
 /* ===== 左侧目录栏 ===== */
@@ -1010,6 +1010,11 @@ p {
   width: 100%;
 }
 
+.app-layout.toc-collapsed .toc-panel {
+  background: transparent;
+  border-left: none;
+}
+
 .app-layout.toc-collapsed .toc-header h3 {
   display: none;
 }
@@ -1021,6 +1026,7 @@ p {
 .app-layout.toc-collapsed .toc-header {
   justify-content: center;
   padding: var(--space-md) 0;
+  border-bottom: none;
 }
 
 .toc-header {
@@ -1166,6 +1172,71 @@ p {
   transition: var(--transition);
 }
 
+.app-layout.chat-collapsed .chat-panel {
+  background: transparent;
+  border-left: none;
+}
+
+.app-layout.chat-collapsed .chat-header .title-text {
+  display: none;
+}
+
+.app-layout.chat-collapsed .chat-model-selector,
+.app-layout.chat-collapsed .chat-quick-prompts,
+.app-layout.chat-collapsed .chat-context-badge,
+.app-layout.chat-collapsed .chat-messages,
+.app-layout.chat-collapsed .chat-input-area,
+.app-layout.chat-collapsed #chatClearBtn {
+  display: none;
+}
+
+.app-layout.chat-collapsed .chat-header {
+  justify-content: center;
+  padding: var(--space-md) 0;
+  border-bottom: none;
+}
+
+/* ===== 右侧工具栏 ===== */
+.right-toolbar {
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-md) 0;
+  gap: var(--space-md);
+  z-index: 100;
+}
+
+.toolbar-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-lg);
+  transition: var(--transition);
+  opacity: 0.6;
+  border-left: 3px solid transparent;
+}
+
+.toolbar-btn:hover {
+  background: var(--color-surface-hover);
+  opacity: 0.9;
+}
+
+.toolbar-btn.active {
+  background: var(--color-bg-alt);
+  color: var(--color-primary);
+  opacity: 1;
+  border-left-color: var(--color-accent);
+}
+
 .chat-header {
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--color-border);
@@ -1182,6 +1253,7 @@ p {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  white-space: nowrap;
 }
 
 .chat-header .chat-title .dot {
@@ -1194,6 +1266,19 @@ p {
 .chat-header .chat-actions {
   display: flex;
   gap: var(--space-xs);
+}
+
+.chat-context-badge {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  font-size: 11px;
+  padding: 4px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-layout.chat-collapsed .chat-context-badge {
+  display: none !important;
 }
 
 .chat-header .chat-action-btn {
@@ -1264,6 +1349,36 @@ p {
 }
 
 /* 对话消息区 */
+.chat-quick-prompts {
+  display: flex;
+  gap: 8px;
+  padding: 8px var(--space-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--color-border);
+}
+.chat-quick-prompts::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-prompt {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.quick-prompt:hover {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;

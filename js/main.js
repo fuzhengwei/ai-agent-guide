@@ -14,32 +14,33 @@ const App = {
     // 序章
     { id: 'ch00', num: 0, title: 'Agent 能力全景展示', section: '🎬 序章', file: 'chapters/ch00-fundamentals.html' },
 
-    // 第一篇：Agent 基础（4章）
-    { id: 'ch01', num: 1, title: '什么是 AI Agent？', section: '📖 第一篇：Agent 基础', file: 'chapters/ch01-what-is-agent.html' },
-    { id: 'ch02', num: 2, title: '你的第一个 Agent：天气查询', section: '📖 第一篇：Agent 基础', file: 'chapters/ch02-weather-agent.html' },
-    { id: 'ch03', num: 3, title: 'ReAct：让 Agent 学会思考', section: '📖 第一篇：Agent 基础', file: 'chapters/ch03-react-pattern.html' },
-    { id: 'ch04', num: 4, title: 'Agent 的记忆系统', section: '📖 第一篇：Agent 基础', file: 'chapters/ch04-memory.html' },
+    // 第一篇：Agent 基础
+    { id: 'ch01', num: 1, title: '大模型与 Agent 基础概念', section: '📖 第一篇：Agent 基础', file: 'chapters/ch01-llm-basics.html' },
+    { id: 'ch02', num: 2, title: '什么是 AI Agent？', section: '📖 第一篇：Agent 基础', file: 'chapters/ch02-what-is-agent.html' },
+    { id: 'ch03', num: 3, title: '你的第一个 Agent：天气查询', section: '📖 第一篇：Agent 基础', file: 'chapters/ch03-weather-agent.html' },
+    { id: 'ch04', num: 4, title: 'ReAct：让 Agent 学会思考', section: '📖 第一篇：Agent 基础', file: 'chapters/ch04-react-pattern.html' },
+    { id: 'ch05', num: 5, title: 'Agent 的记忆系统', section: '📖 第一篇：Agent 基础', file: 'chapters/ch05-memory.html' },
 
-    // 第二篇：Agent 的手脚（3章）
-    { id: 'ch05', num: 5, title: 'Function Calling 与工具设计', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch05-tools.html' },
-    { id: 'ch06', num: 6, title: 'MCP：工具的标准化接口', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch06-mcp.html' },
-    { id: 'ch07', num: 7, title: 'Skills：工具的组合与复用', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch07-skills.html' },
+    // 第二篇：Agent 的手脚
+    { id: 'ch06', num: 6, title: 'Function Calling 与工具设计', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch06-tools.html' },
+    { id: 'ch07', num: 7, title: 'MCP：工具的标准化接口', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch07-mcp.html' },
+    { id: 'ch08', num: 8, title: 'Skills：工具的组合与复用', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch08-skills.html' },
 
-    // 第三篇：多 Agent 协作（2章）
-    { id: 'ch08', num: 8, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch08-multi-agent.html' },
-    { id: 'ch09', num: 9, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch09-langgraph.html' },
+    // 第三篇：多 Agent 协作
+    { id: 'ch09', num: 9, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch09-multi-agent.html' },
+    { id: 'ch10', num: 10, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch10-langgraph.html' },
 
-    // 第四篇：框架与平台（3章）
-    { id: 'ch10', num: 10, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch10-framework-comparison.html' },
-    { id: 'ch11', num: 11, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch11-dify-coze.html' },
-    { id: 'ch12', num: 12, title: 'Agent 评估与可观测性', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-evaluation.html' },
+    // 第四篇：框架与平台
+    { id: 'ch11', num: 11, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch11-framework-comparison.html' },
+    { id: 'ch12', num: 12, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-dify-coze.html' },
+    { id: 'ch13', num: 13, title: 'Agent 评估与可观测性', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch13-evaluation.html' },
 
-    // 第五篇：综合实战（2章）
-    { id: 'ch13', num: 13, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch13-cli-agent.html' },
-    { id: 'ch14', num: 14, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-gui-agent.html' },
+    // 第五篇：综合实战
+    { id: 'ch14', num: 14, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
+    { id: 'ch15', num: 15, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
 
     // 终章
-    { id: 'ch15', num: 15, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch15-future-summary.html' }
+    { id: 'ch16', num: 16, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
   ],
 
   /**
@@ -126,9 +127,15 @@ const App = {
     }
     
     // TOC 折叠按钮
-    const tocToggleBtn = document.getElementById('tocToggleBtn');
+    const tocToggleBtn = document.getElementById('toolbarTocBtn');
     if (tocToggleBtn) {
       tocToggleBtn.addEventListener('click', () => this.toggleTOC());
+    }
+
+    // AI助手展开/收起
+    const chatToggleBtn = document.getElementById('toolbarChatBtn');
+    if (chatToggleBtn) {
+      chatToggleBtn.addEventListener('click', () => this.toggleChat());
     }
   },
   
@@ -139,9 +146,23 @@ const App = {
     const layout = document.querySelector('.app-layout');
     if (layout) {
       layout.classList.toggle('toc-collapsed');
-      const btn = document.getElementById('tocToggleBtn');
+      const btn = document.getElementById('toolbarTocBtn');
       if (btn) {
-        btn.textContent = layout.classList.contains('toc-collapsed') ? '▶' : '◀';
+        btn.classList.toggle('active', !layout.classList.contains('toc-collapsed'));
+      }
+    }
+  },
+
+  /**
+   * 切换 AI 助手对话栏 显示/隐藏
+   */
+  toggleChat() {
+    const layout = document.querySelector('.app-layout');
+    if (layout) {
+      layout.classList.toggle('chat-collapsed');
+      const btn = document.getElementById('toolbarChatBtn');
+      if (btn) {
+        btn.classList.toggle('active', !layout.classList.contains('chat-collapsed'));
       }
     }
   },
@@ -290,6 +311,14 @@ const App = {
     const breadcrumb = document.getElementById('breadcrumb');
     if (breadcrumb) {
       breadcrumb.innerHTML = `<span>${chapter.section}</span> → <span>第${chapter.num}章 ${chapter.title}</span>`;
+    }
+
+    // 更新 AI 助手上下文
+    const chatContextTitle = document.getElementById('chatContextTitle');
+    const chatContextBadge = document.getElementById('chatContextBadge');
+    if (chatContextTitle && chatContextBadge) {
+      chatContextTitle.textContent = `第${chapter.num}章 ${chapter.title}`;
+      chatContextBadge.style.display = 'block';
     }
 
     const contentArea = document.getElementById('contentBody');

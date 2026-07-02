@@ -1,0 +1,2107 @@
+<!-- 第6章：RAG检索增强生成 & 规划系统 -->
+<h1 class="chapter-title">第6章 RAG 检索增强与规划系统</h1>
+<p class="chapter-subtitle">让 Agent 既拥有知识，又懂得规划</p>
+
+<!-- ===== 6.1 为什么需要 RAG ===== -->
+<h2 class="section-heading">6.1 LLM 的知识盲区</h2>
+
+<p>LLM 的知识来自训练数据，有三个硬伤：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">📅 时效性</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        知识截止到训练日期。问它"今天的新闻"只会瞎编。<br><br>
+        <span style="color: var(--color-text-tertiary);">如：GPT-4 知识截止 2023.4</span>
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">🔒 私有性</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        不知道你公司的内部文档、产品手册、业务数据。<br><br>
+        <span style="color: var(--color-text-tertiary);">如：公司报销流程、API文档</span>
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">🎭 幻觉</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        不知道就说不知道很难，LLM 倾向于"编造"看起来合理的答案。<br><br>
+        <span style="color: var(--color-text-tertiary);">如：虚构论文、伪造API</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<p><strong>RAG（Retrieval-Augmented Generation）</strong> 就是为了解决这三个问题：</p>
+
+<div class="quote">
+  先检索相关知识 → 把知识塞进 prompt → LLM 基于知识生成回答。<br>
+  相当于开卷考试：不靠记忆，靠查资料。
+</div>
+
+<!-- ===== 6.2 RAG vs 微调 ===== -->
+<h2 class="section-heading">6.2 RAG vs Fine-tuning：什么时候用哪个？</h2>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">RAG（检索增强）</div>
+    <div class="side-content">
+      <div class="highlight-line">✓ 知识实时更新</div>
+      <div class="highlight-line">✓ 可溯源（引用来源）</div>
+      <div class="highlight-line">✓ 无需训练，成本低</div>
+      <div class="highlight-line">✗ 检索质量影响回答</div>
+      <div class="highlight-line">✗ 增加 prompt 度</div>
+      <div class="highlight-line" style="color: var(--color-info);">适合：知识频繁变化、需要引用来源</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Fine-tuning（微调）</div>
+    <div class="side-content">
+      <div class="highlight-line">✓ 改变模型行为风格</div>
+      <div class="highlight-line">✓ 推理时不需检索</div>
+      <div class="highlight-line">✓ 响应速度快</div>
+      <div class="highlight-line">✗ 训练成本高</div>
+      <div class="highlight-line">✗ 知识更新需重新训练</div>
+      <div class="highlight-line" style="color: var(--color-accent);">适合：固定风格/格式、稳定知识</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <strong>决策原则：</strong>知识更新用 RAG，行为改变用微调。两者可以叠加使用——先微调让模型更擅长你的领域，再用 RAG 注入实时知识。
+</div>
+
+<!-- ===== 6.3 RAG 完整流程 ===== -->
+<h2 class="section-heading">6.3 RAG 完整流程</h2>
+
+<p>RAG 分为<strong>离线构建</strong>和<strong>在线检索</strong>两个阶段：</p>
+
+<div class="flowchart-container" id="ragFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('ragFlow', {
+    nodes: [
+      { id: 'docs', label: '原始文档\n(PDF/HTML/Word)', type: 'start' },
+      { id: 'chunk', label: '文档分块\n(Chunking)', type: 'process' },
+      { id: 'embed', label: '向量化\n(Embedding)', type: 'process' },
+      { id: 'store', label: '存入向量库', type: 'tool' },
+      { id: 'query', label: '用户查询', type: 'start' },
+      { id: 'qembed', label: '查询向量化', type: 'process' },
+      { id: 'search', label: '相似度搜索\nTop-K 检索', type: 'decision' },
+      { id: 'prompt', label: '构建增强 Prompt\n(知识+问题)', type: 'process' },
+      { id: 'llm', label: 'LLM 生成回答', type: 'end' }
+    ],
+    edges: [
+      { from: 'docs', to: 'chunk' },
+      { from: 'chunk', to: 'embed' },
+      { from: 'embed', to: 'store', label: '离线构建' },
+      { from: 'query', to: 'qembed' },
+      { from: 'qembed', to: 'search' },
+      { from: 'store', to: 'search', label: '在线检索', dashed: true },
+      { from: 'search', to: 'prompt', label: 'Top-K 文档块' },
+      { from: 'prompt', to: 'llm' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">离线构建阶段</h3>
+
+<div class="step-animation" id="ragBuildSteps">
+  <div class="step-canvas">
+    <div class="step-content" id="ragBuildContent">
+      <div class="step-number">1</div>
+      <div class="step-title">文档加载</div>
+      <div class="step-desc">读取 PDF、Word、HTML、Markdown 等格式的原始文档，提取纯文本。</div>
+    </div>
+  </div>
+  <div class="step-controls">
+    <button class="step-btn" id="ragBuildPrev" disabled>←</button>
+    <span class="step-indicator" id="ragBuildIndicator">1 / 4</span>
+    <button class="step-btn" id="ragBuildNext">→</button>
+    <button class="step-replay" onclick="RagBuild.reset()">重播</button>
+  </div>
+</div>
+
+<script>
+const RagBuild = {
+  current: 0,
+  steps: [
+    { num: 1, title: '文档加载（Document Loading）', desc: '读取 PDF、Word、HTML、Markdown 等格式的原始文档，提取纯文本。常用工具：PyPDF、Unstructured、LangChain Document Loader。' },
+    { num: 2, title: '文档分块（Chunking）', desc: '把长文档切成小段（通常 256~1024 token）。分块策略很重要：太小→语义不完整，太大→检索不精准。常用方法：固定长度分块、按段落分块、递归分块、语义分块。' },
+    { num: 3, title: '向量化（Embedding）', desc: '用 Embedding 模型把每个文本块转为向量。常用模型：text-embedding-3-small（OpenAI）、bge-large-zh（开源中文最优）、Cohere embed。向量维度通常 768~1536。' },
+    { num: 4, title: '存入向量库', desc: '将向量+原始文本+元数据存入向量数据库（Chroma/Pinecone/Milvus）。元数据包含来源、页码、时间等，方便后续过滤和溯源。' }
+  ],
+  render() {
+    const s = this.steps[this.current];
+    const c = document.getElementById('ragBuildContent');
+    c.innerHTML = `<div class="step-number">${s.num}</div><div class="step-title">${s.title}</div><div class="step-desc">${s.desc}</div>`;
+    c.classList.remove('fade-in'); void c.offsetWidth; c.classList.add('fade-in');
+    document.getElementById('ragBuildIndicator').textContent = `${this.current+1} / ${this.steps.length}`;
+    document.getElementById('ragBuildPrev').disabled = this.current === 0;
+    document.getElementById('ragBuildNext').disabled = this.current === this.steps.length - 1;
+  },
+  next() { if (this.current < this.steps.length-1) { this.current++; this.render(); } },
+  prev() { if (this.current > 0) { this.current--; this.render(); } },
+  reset() { this.current = 0; this.render(); }
+};
+document.getElementById('ragBuildNext').addEventListener('click', () => RagBuild.next());
+document.getElementById('ragBuildPrev').addEventListener('click', () => RagBuild.prev());
+window.RagBuild = RagBuild;
+</script>
+
+<h3 class="sub-heading">在线检索阶段</h3>
+
+<div class="code-block">
+  <span class="code-label">在线检索流程伪代码</span>
+<pre>def rag_answer(question, top_k=5):
+    # 1. 查询向量化
+    query_vector = embedding_model.encode(question)
+    
+    # 2. 向量库相似度搜索
+    results = vector_db.search(
+        vector=query_vector,
+        top_k=top_k,
+        filter={"source": "company_docs"}  # 可选过滤
+    )
+    
+    # 3. 构建增强 prompt
+    context = "\n\n".join([r.text for r in results])
+    prompt = f"""
+    请基于以下参考信息回答问题。如果参考信息中没有答案，
+    请明确说明"根据现有资料无法回答"。
+    
+    参考信息：
+    {context}
+    
+    问题：{question}
+    
+    回答：
+    """
+    
+    # 4. LLM 生成回答
+    answer = llm.generate(prompt)
+    
+    # 5. 附带来源引用
+    sources = [r.metadata for r in results]
+    return answer, sources</pre>
+</div>
+
+<!-- ===== 6.4 分块策略详解 ===== -->
+<h2 class="section-heading">6.4 分块策略：RAG 效果的关键</h2>
+
+<p>分块是 RAG 中对效果影响最大的环节。分得好，检索精准；分得差，答非所问。</p>
+
+<div class="card">
+  <div class="card-title">🔪 四种分块策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">策略</th>
+        <th style="text-align: left; padding: 10px 8px;">原理</th>
+        <th style="text-align: left; padding: 10px 8px;">优点</th>
+        <th style="text-align: left; padding: 10px 8px;">缺点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">固定长度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按固定 token 数切割</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实现简单</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可能切断句子</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">按段落</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按自然段落/标题分</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">语义完整</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">长度不均匀</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">递归分块</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">先按段落，超长再按句子</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">兼顾语义和长度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实现稍复杂</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">语义分块</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用 embedding 检测语义边界</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">效果最好</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">计算成本高</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent); margin-top: 16px;">
+  <strong>实用建议：</strong>chunk_size 通常设 256~512 token，overlap 设 50~100 token（相邻块重叠一部分，避免边界信息丢失）。先用固定长度快速验证，再逐步优化。
+</div>
+
+<!-- ============================================================ -->
+<!-- ===== 新增章节：规划系统 ===== -->
+<!-- ============================================================ -->
+
+<div class="card" style="border-left: 3px solid var(--color-success); margin-top: 32px; margin-bottom: 24px;">
+  <div class="card-title">🧭 从 RAG 到规划：Agent 的两大核心能力</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-top: 8px;">
+    前4节解决了 Agent <strong>"获取知识"</strong>的问题（RAG）。接下来解决另一个核心问题：<strong>"如何行动"</strong>。<br>
+    复杂任务不是一步能完成的——Agent 需要先<strong>规划</strong>，再<strong>执行</strong>，再根据结果<strong>调整</strong>。<br>
+    这就是规划系统（Planning System）的价值。
+  </p>
+</div>
+
+<!-- ===== 6.5 Plan-and-Execute模式详解 ===== -->
+<h2 class="section-heading">6.5 Plan-and-Execute 模式详解</h2>
+
+<p>第3章介绍了 ReAct——Agent <strong>边想边做</strong>，每一步 Thought 后立刻 Action。ReAct 灵活，但对于复杂的多步任务，一步一反应的策略容易<strong>迷失方向</strong>：Agent 缺乏全局视野，可能走弯路甚至死循环。</p>
+
+<p>Plan-and-Execute 提出了另一种思路：<strong>先规划后执行</strong>。</p>
+
+<div class="quote">
+  <strong>Plan-and-Execute = 先想清楚全局策略，再按计划逐步执行。</strong><br>
+  2023 年由 Google 等研究者在论文 <em>"Plan-and-Solve Prompting"</em> 中提出，后被 LangGraph 团队实现为标准模式。核心思想：将<strong>规划</strong>和<strong>执行</strong>解耦为两个独立模块，让规划器从全局视角分解任务，执行器专注完成每个子任务。
+</div>
+
+<h3 class="sub-heading">三大核心模块</h3>
+
+<div class="flowchart-container" id="planExecuteFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('planExecuteFlow', {
+    nodes: [
+      { id: 'input', label: '用户任务', type: 'start' },
+      { id: 'planner', label: 'Planner\n(规划器)', type: 'process' },
+      { id: 'plan', label: '任务计划\n[步骤1, 步骤2, ...]', type: 'process' },
+      { id: 'executor', label: 'Executor\n(执行器)', type: 'tool' },
+      { id: 'result', label: '执行结果', type: 'process' },
+      { id: 'replanner', label: 'Replanner\n(重规划器)', type: 'decision' },
+      { id: 'done', label: '最终答案', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'planner', label: '接收任务' },
+      { from: 'planner', to: 'plan', label: '生成计划' },
+      { from: 'plan', to: 'executor', label: '逐步执行' },
+      { from: 'executor', to: 'result', label: '当前步骤结果' },
+      { from: 'result', to: 'replanner', label: '评估+调整' },
+      { from: 'replanner', to: 'executor', label: '继续/调整计划', dashed: true },
+      { from: 'replanner', to: 'done', label: '任务完成' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔍 三模块详解</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div>
+      <strong style="color: var(--color-info);">Planner（规划器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        LLM 接收用户任务，从全局视角<strong>分解为子任务序列</strong>。规划器不执行任何工具，只负责"想清楚怎么做"。输出是有序的步骤列表，每个步骤描述要做什么、用什么工具、期望什么结果。
+      </p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">Executor（执行器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        <strong>按计划逐步执行</strong>每个子任务。执行器可以是另一个 Agent（如 ReAct Agent），也可以是简单的工具调用。它专注于当前步骤，不需要关心全局策略——全局策略是规划器的事。
+      </p>
+    </div>
+    <div>
+      <strong style="color: var(--color-success);">Replanner（重规划器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        每步执行后，<strong>评估结果并调整后续计划</strong>。如果步骤执行失败或发现了新信息，重规划器会修改剩余步骤。这是 Plan-Execute 的关键创新——不是死板地执行计划，而是动态调整。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">与 ReAct 模式对比</h3>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">ReAct：边想边做</div>
+    <div class="side-content">
+      <div class="highlight-line">每一步：Thought → Action → Observation</div>
+      <div class="highlight-line">✓ 灵活，可随时调整方向</div>
+      <div class="highlight-line">✗ 缺乏全局视野，容易走弯路</div>
+      <div class="highlight-line">✗ 复杂任务中可能反复试错</div>
+      <div class="highlight-line" style="color: var(--color-info);">适合：简单快速反应任务</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">如："今天北京天气？" → 一步搞定</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Plan-Execute：先规划后执行</div>
+    <div class="side-content">
+      <div class="highlight-line">先全局规划 → 再逐步执行 → 动态调整</div>
+      <div class="highlight-line">✓ 全局视野，方向明确</div>
+      <div class="highlight-line">✓ 复杂任务效率更高</div>
+      <div class="highlight-line">✗ 规划可能不够准确需重规划</div>
+      <div class="highlight-line" style="color: var(--color-success);">适合：复杂多步骤任务</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">如："写一份市场调研报告" → 多步骤协同</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 选择建议</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary);">不要盲目选 Plan-Execute。如果你的任务<strong>一步就能完成</strong>（如查询天气、简单问答），ReAct 更快更简单。只有当任务<strong>需要3步以上、且步骤之间有复杂依赖</strong>时，Plan-Execute 的全局规划才有价值。</p>
+</div>
+
+<h3 class="sub-heading">LangGraph Plan-Execute 代码示例</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: LangGraph Plan-Execute 实现</span>
+<pre>from langgraph.graph import StateGraph, END
+from typing import TypedDict, List, Annotated
+import operator
+
+# ===== 定义状态 =====
+class PlanExecuteState(TypedDict):
+    input: str               # 用户原始任务
+    plan: List[str]           # 规划的步骤列表
+    past_steps: Annotated[list, operator.add]  # 已完成的步骤及结果
+    response: str             # 最终回答
+
+# ===== Planner: 生成全局计划 =====
+PLAN_PROMPT = """你是一个任务规划专家。
+将用户的复杂任务分解为有序的子任务步骤。
+每个步骤应该是一个明确、可执行的操作。
+
+输出格式（JSON数组）:
+["步骤1描述", "步骤2描述", "步骤3描述", ...]
+
+用户任务: {task}"""
+
+def plan_step(state: PlanExecuteState):
+    """规划器：分解任务为步骤列表"""
+    task = state["input"]
+    plan = llm.invoke(PLAN_PROMPT.format(task=task))
+    # 解析为步骤列表
+    steps = json.loads(plan)
+    return {"plan": steps}
+
+# ===== Executor: 执行单个步骤 =====
+EXECUTE_PROMPT = """根据以下任务步骤，执行当前步骤并返回结果。
+
+当前步骤: {step}
+之前的步骤结果: {past_steps}
+
+请执行当前步骤，返回结果。"""
+
+def execute_step(state: PlanExecuteState):
+    """执行器：执行计划中的下一个步骤"""
+    plan = state["plan"]
+    step = plan[0]  # 取第一个未完成的步骤
+    past = state.get("past_steps", [])
+    
+    result = llm.invoke(EXECUTE_PROMPT.format(
+        step=step, past_steps=past
+    ))
+    
+    return {
+        "past_steps": [(step, result)],  # 记录完成的步骤
+        "plan": plan[1:]  # 移除已完成的步骤
+    }
+
+# ===== Replanner: 评估并调整计划 =====
+REPLAN_PROMPT = """你是重规划器。根据执行结果决定下一步：
+
+1. 如果所有步骤已完成 → 输出最终答案
+2. 如果需要调整后续计划 → 输出新的步骤列表
+3. 如果当前步骤失败 → 调整或重试
+
+原始任务: {input}
+已完成步骤及结果: {past_steps}
+剩余计划: {plan}
+
+输出格式:
+- 如果完成: {"response": "最终答案"}
+- 如果需要调整: {"plan": ["新步骤1", "新步骤2", ...]}
+- 如果继续执行: {"plan": 原剩余计划}"""
+
+def replan_step(state: PlanExecuteState):
+    """重规划器：评估结果并调整后续计划"""
+    output = llm.invoke(REPLAN_PROMPT.format(
+        input=state["input"],
+        past_steps=state.get("past_steps", []),
+        plan=state.get("plan", [])
+    ))
+    result = json.loads(output)
+    
+    if "response" in result:
+        return {"response": result["response"], "plan": []}
+    else:
+        return {"plan": result["plan"]}
+
+# ===== 路由函数：决定下一步走向 =====
+def should_end(state: PlanExecuteState):
+    """路由：计划为空则结束，否则继续执行"""
+    if not state.get("plan") or len(state["plan"]) == 0:
+        return "end"
+    return "execute"
+
+# ===== 构建 LangGraph =====
+workflow = StateGraph(PlanExecuteState)
+
+# 添加节点
+workflow.add_node("planner", plan_step)
+workflow.add_node("executor", execute_step)
+workflow.add_node("replanner", replan_step)
+
+# 设置入口
+workflow.set_entry_point("planner")
+
+# 添加边
+workflow.add_edge("planner", "executor")
+workflow.add_edge("executor", "replanner")
+
+# 条件路由：重规划后决定继续还是结束
+workflow.add_conditional_edges(
+    "replanner",
+    should_end,
+    {"execute": "executor", "end": END}
+)
+
+# 编译
+app = workflow.compile()
+
+# ===== 使用 =====
+result = app.invoke({"input": "写一份关于2024年中国AI市场的调研报告"})
+print(result["response"])</pre>
+</div>
+
+<!-- ===== 6.6 任务分解策略 ===== -->
+<h2 class="section-heading">6.6 任务分解策略</h2>
+
+<p>规划系统的核心能力是<strong>任务分解</strong>——把一个大目标拆成可执行的小步骤。但分解不是随意切分，它需要方法论。</p>
+
+<h3 class="sub-heading">WBS（Work Breakdown Structure）方法论</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📋 WBS：从项目管理到 Agent 规划</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-top: 8px;">
+    WBS（工作分解结构）是项目管理的经典方法论，核心原则：<strong>自顶向下逐层分解</strong>，直到每个工作包都可以被独立执行和验证。<br><br>
+    在 Agent 规划中，WBS 的三层结构：
+  </p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-alt);">
+      <strong style="color: var(--color-info);">L1：目标层</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        用户原始任务，如"写一份市场调研报告"。这是不可直接执行的宏观目标。
+      </p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-alt);">
+      <strong style="color: var(--color-accent);">L2：阶段层</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        分解为关键阶段：①数据收集→②数据分析→③报告撰写→④审核修订。每个阶段是一个逻辑单元。
+      </p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-alt);">
+      <strong style="color: var(--color-success);">L3：步骤层</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        每个阶段细化为可执行步骤：①搜索行业数据→②抓取财报→③计算增长率→④生成图表。每个步骤对应一个工具调用。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">依赖图(DAG)分析：识别可并行步骤</h3>
+
+<p>分解出步骤后，还需要分析它们之间的<strong>依赖关系</strong>。没有依赖的步骤可以并行执行，有依赖的必须串行。</p>
+
+<div class="flowchart-container" id="dagDemo"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('dagDemo', {
+    nodes: [
+      { id: 'goal', label: '写市场\n调研报告', type: 'start' },
+      { id: 's1', label: '搜索行业\n数据', type: 'tool' },
+      { id: 's2', label: '抓取公司\n财报', type: 'tool' },
+      { id: 's3', label: '获取政策\n文件', type: 'tool' },
+      { id: 's4', label: '数据分析\n+增长计算', type: 'process' },
+      { id: 's5', label: '生成图表', type: 'process' },
+      { id: 's6', label: '撰写报告', type: 'end' }
+    ],
+    edges: [
+      { from: 'goal', to: 's1', label: '' },
+      { from: 'goal', to: 's2', label: '' },
+      { from: 'goal', to: 's3', label: '' },
+      { from: 's1', to: 's4', label: '依赖' },
+      { from: 's2', to: 's4', label: '依赖' },
+      { from: 's3', to: 's4', label: '依赖' },
+      { from: 's4', to: 's5', label: '串行' },
+      { from: 's5', to: 's6', label: '串行' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">⚡ DAG 分析的关键洞察</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div>
+      <strong style="color: var(--color-info);">可并行步骤</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        搜索行业数据、抓取公司财报、获取政策文件——三个步骤<strong>互不依赖</strong>，可以同时执行。总耗时 = max(三个步骤)，而非三者之和。
+      </p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">串行步骤</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        数据分析依赖三个数据源，生成图表依赖分析结果，撰写报告依赖图表。这些步骤<strong>有数据依赖</strong>，必须按序执行。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">分解粒度权衡</h3>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">太粗：步骤太少</div>
+    <div class="side-content">
+      <div class="highlight-line">计划只有 2-3 个大步骤</div>
+      <div class="highlight-line">✗ 每个步骤仍然太复杂</div>
+      <div class="highlight-line">✗ 执行器无法一步完成</div>
+      <div class="highlight-line">✗ 容易执行失败</div>
+      <div class="highlight-line" style="color: var(--color-error);">→ 执行困难，需反复重规划</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">太细：步骤太多</div>
+    <div class="side-content">
+      <div class="highlight-line">计划有 20+ 个微小步骤</div>
+      <div class="highlight-line">✗ 规划 token 消耗大</div>
+      <div class="highlight-line">✗ 重规划成本高</div>
+      <div class="highlight-line">✗ 过度工程化</div>
+      <div class="highlight-line" style="color: var(--color-error);">→ 计划膨胀，维护困难</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>最佳实践：</strong>每个步骤应该<strong>对应一个明确的工具调用或LLM推理步骤</strong>，且<strong>结果可验证</strong>。通常 5-10 步是最合适的范围——足以覆盖复杂任务，又不至于过度膨胀。
+</div>
+
+<h3 class="sub-heading">代码示例：构建任务依赖图</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: 任务依赖图（DAG）构建与分析</span>
+<pre>from collections import defaultdict, deque
+
+class TaskDAG:
+    """任务依赖图：识别可并行步骤"""
+    
+    def __init__(self):
+        self.tasks = {}        # task_id → 任务描述
+        self.dependencies = defaultdict(set)  # task_id → 依赖的任务ID集合
+        self.reverse_deps = defaultdict(set)  # task_id → 被哪些任务依赖
+    
+    def add_task(self, task_id, description, depends_on=None):
+        """添加任务及其依赖关系"""
+        self.tasks[task_id] = description
+        if depends_on:
+            for dep_id in depends_on:
+                self.dependencies[task_id].add(dep_id)
+                self.reverse_deps[dep_id].add(task_id)
+    
+    def get_parallel_groups(self):
+        """拓扑排序：识别可并行执行的步骤组"""
+        # 计算入度
+        in_degree = {tid: len(self.dependencies[tid]) for tid in self.tasks}
+        
+        groups = []
+        remaining = set(self.tasks.keys())
+        
+        while remaining:
+            # 找出所有入度为0的任务（无未完成依赖）
+            ready = [tid for tid in remaining if in_degree[tid] == 0]
+            
+            if not ready:
+                raise ValueError("存在循环依赖！无法构建DAG")
+            
+            groups.append(ready)  # 这一组的任务可以并行执行
+            
+            # 执行后更新依赖
+            for tid in ready:
+                remaining.remove(tid)
+                for dependent in self.reverse_deps[tid]:
+                    in_degree[dependent] -= 1
+        
+        return groups  # 返回按层级组织的并行组列表
+    
+    def to_mermaid(self):
+        """生成 Mermaid 流程图描述"""
+        lines = ["graph TD"]
+        for tid, desc in self.tasks.items():
+            lines.append(f"    {tid}[{desc}]")
+        for tid, deps in self.dependencies.items():
+            for dep_id in deps:
+                lines.append(f"    {dep_id} --> {tid}")
+        return "\n".join(lines)
+
+# ===== 使用示例 =====
+dag = TaskDAG()
+dag.add_task("search", "搜索行业数据")
+dag.add_task("finance", "抓取公司财报")
+dag.add_task("policy", "获取政策文件")
+dag.add_task("analyze", "数据分析", depends_on=["search", "finance", "policy"])
+dag.add_task("chart", "生成图表", depends_on=["analyze"])
+dag.add_task("write", "撰写报告", depends_on=["chart"])
+
+# 获取并行执行计划
+groups = dag.get_parallel_groups()
+for i, group in enumerate(groups):
+    print(f"阶段{i+1}（并行）: {[dag.tasks[tid] for tid in group]}")
+
+# 输出:
+# 阶段1（并行）: ['搜索行业数据', '抓取公司财报', '获取政策文件']
+# 阶段2（并行）: ['数据分析']
+# 阶段3（并行）: ['生成图表']
+# 阶段4（并行）: ['撰写报告']
+
+# 生成 Mermaid 流程图
+print(dag.to_mermaid())</pre>
+</div>
+
+<!-- ===== 6.7 动态重规划 ===== -->
+<h2 class="section-heading">6.7 动态重规划</h2>
+
+<p>Plan-and-Execute 不是"定好计划就死板执行"。现实世界充满不确定性——执行可能失败、可能发现新信息、甚至目标本身会变化。<strong>动态重规划</strong>是 Plan-Execute 模式的灵魂。</p>
+
+<h3 class="sub-heading">为什么需要重规划？</h3>
+
+<div class="card">
+  <div class="card-title">🔄 三种重规划触发条件</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">❌ 执行失败</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        工具调用出错、API 返回异常、数据源不可用。<br><br>
+        <strong>应对：</strong>换工具、换数据源、调整步骤参数。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">💡 发现新信息</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        执行中发现了规划时不知道的信息，比如市场数据比预期复杂、需要额外的分析维度。<br><br>
+        <strong>应对：</strong>插入新步骤、调整后续步骤。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">🎯 目标变更</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        用户中途改需求："先不要写了，帮我分析一下竞争对手。"<br><br>
+        <strong>应对：</strong>全局重规划，生成全新计划。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">部分重规划 vs 全局重规划</h3>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">部分重规划（Local Replan）</div>
+    <div class="side-content">
+      <div class="highlight-line">只调整受影响的后续步骤</div>
+      <div class="highlight-line">✓ 成本低，速度快</div>
+      <div class="highlight-line">✓ 已完成步骤的结果保留</div>
+      <div class="highlight-line">✗ 可能遗漏全局影响</div>
+      <div class="highlight-line" style="color: var(--color-info);">适合：单步失败或发现小范围新信息</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">全局重规划（Global Replan）</div>
+    <div class="side-content">
+      <div class="highlight-line">从当前状态重新规划所有后续步骤</div>
+      <div class="highlight-line">✓ 全局视角更准确</div>
+      <div class="highlight-line">✓ 适应目标变更</div>
+      <div class="highlight-line">✗ 成本高（需要完整LLM调用）</div>
+      <div class="highlight-line" style="color: var(--color-accent);">适合：目标变更或发现重大新信息</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 重规划策略建议</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary);">默认使用<strong>部分重规划</strong>（只修改受影响步骤），只有以下情况才触发全局重规划：</p>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+    <li>目标明确变更（用户改需求）</li>
+    <li>已完成步骤中超过 40% 需要重做</li>
+    <li>连续 3 次部分重规划仍无法推进</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">代码示例：重规划器实现</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: 动态重规划器</span>
+<pre>from enum import Enum
+from typing import List, Tuple
+
+class ReplanType(Enum):
+    CONTINUE = "continue"      # 继续执行原计划
+    LOCAL = "local_replan"     # 部分重规划：调整后续步骤
+    GLOBAL = "global_replan"   # 全局重规划：重新生成全部计划
+    COMPLETE = "complete"      # 任务完成
+
+class Replanner:
+    """动态重规划器：根据执行结果决定下一步策略"""
+    
+    def __init__(self, llm, max_local_replans=3):
+        self.llm = llm
+        self.local_replan_count = 0
+        self.max_local_replans = max_local_replans
+    
+    def assess(self, task: str, completed: List[Tuple[str, str]], 
+               remaining: List[str], step_result: str) -> dict:
+        """评估当前执行状态，决定重规划策略"""
+        
+        # 判断步骤是否执行成功
+        success = not any(
+            keyword in step_result.lower()
+            for keyword in ["error", "失败", "无法", "not found"]
+        )
+        
+        if success and not remaining:
+            # 所有步骤完成，返回最终结果
+            return {
+                "type": ReplanType.COMPLETE,
+                "response": self._compile_final_answer(completed)
+            }
+        
+        if success and remaining:
+            # 当前步骤成功，继续执行下一个
+            self.local_replan_count = 0  # 重置计数器
+            return {"type": ReplanType.CONTINUE}
+        
+        if not success:
+            self.local_replan_count += 1
+            
+            if self.local_replan_count >= self.max_local_replans:
+                # 连续失败太多，触发全局重规划
+                new_plan = self._global_replan(task, completed)
+                self.local_replan_count = 0
+                return {
+                    "type": ReplanType.GLOBAL,
+                    "plan": new_plan
+                }
+            else:
+                # 局部调整：修改当前步骤的替代方案
+                adjusted = self._local_replan(
+                    task, completed, remaining, step_result
+                )
+                return {
+                    "type": ReplanType.LOCAL,
+                    "plan": adjusted
+                }
+    
+    def _local_replan(self, task, completed, remaining, failed_result):
+        """部分重规划：只调整当前失败步骤及直接后续步骤"""
+        prompt = f"""当前步骤执行失败，请调整该步骤及直接后续步骤。
+
+原任务: {task}
+已完成: {completed}
+失败结果: {failed_result}
+原剩余计划: {remaining}
+
+请输出调整后的剩余计划（JSON数组）:
+只调整必要的步骤，保留原计划中不受影响的部分。"""
+        
+        result = self.llm.invoke(prompt)
+        return json.loads(result)
+    
+    def _global_replan(self, task, completed):
+        """全局重规划：从当前状态重新规划所有后续步骤"""
+        prompt = f"""任务进展不如预期，需要从当前状态重新规划。
+
+原任务: {task}
+已完成的步骤及结果: {completed}
+
+请输出全新的后续计划（JSON数组）:
+基于已完成的结果，重新规划剩余所有步骤。"""
+        
+        result = self.llm.invoke(prompt)
+        return json.loads(result)
+    
+    def _compile_final_answer(self, completed):
+        """汇总所有步骤结果，生成最终回答"""
+        steps_text = "\n".join(
+            [f"步骤: {step}\n结果: {result}" 
+             for step, result in completed]
+        )
+        return f"任务完成。\n\n执行记录:\n{steps_text}"
+
+# ===== 使用示例 =====
+replanner = Replanner(llm=my_llm)
+
+# 模拟执行过程
+task = "写一份中国AI市场调研报告"
+plan = ["搜索行业数据", "抓取公司财报", "数据分析", "生成图表", "撰写报告"]
+completed = []
+
+# 执行第1步成功
+decision = replanner.assess(task, completed, plan[1:], "成功获取行业数据")
+# → CONTINUE: 继续执行第2步
+
+# 执行第2步失败
+completed.append(("搜索行业数据", "成功获取行业数据"))
+decision = replanner.assess(task, completed, plan[2:], "Error: API不可用")
+# → LOCAL: 调整第2步为"使用备用数据源"
+
+# 连续3次局部重规划仍失败 → GLOBAL重规划
+decision = replanner.assess(task, completed, plan[2:], "Error: 再次失败")
+# → GLOBAL: 从当前状态重新规划所有后续步骤</pre>
+</div>
+
+<!-- ===== 6.8 规划系统的生产实践 ===== -->
+<h2 class="section-heading">6.8 规划系统的生产实践</h2>
+
+<p>理论到实践，规划系统在生产环境中有几个关键设计要点。</p>
+
+<h3 class="sub-heading">规划与执行的分离设计</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🏗️ 架构原则：规划器与执行器解耦</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-top: 8px;">
+    规划器和执行器应该是<strong>独立的模块</strong>，通过共享的"计划对象"通信。这样做的好处：
+  </p>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+    <li><strong>可替换</strong>：规划器可以用不同的LLM或策略，执行器也可以用不同Agent</li>
+    <li><strong>可调试</strong>：计划对象可以被人类审查、修改、批准后再执行</li>
+    <li><strong>可持久化</strong>：计划可以保存到数据库，任务中断后可恢复</li>
+    <li><strong>可观测</strong>：执行过程可以与计划对照，发现偏差时触发重规划</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">规划结果的可视化</h3>
+
+<p>在生产系统中，规划结果应该<strong>可视化</strong>，方便人类审查和监控。最实用的方式是用 <strong>Mermaid</strong> 流程图描述计划：</p>
+
+<div class="code-block">
+  <span class="code-label">规划结果 → Mermaid 流程图</span>
+<pre># 规划器输出的计划对象
+plan = {
+    "task": "写一份中国AI市场调研报告",
+    "steps": [
+        {"id": "s1", "name": "搜索行业数据", "tool": "search",
+         "depends_on": []},
+        {"id": "s2", "name": "抓取公司财报", "tool": "web_scraper",
+         "depends_on": []},
+        {"id": "s3", "name": "获取政策文件", "tool": "search",
+         "depends_on": []},
+        {"id": "s4", "name": "数据分析", "tool": "python_executor",
+         "depends_on": ["s1", "s2", "s3"]},
+        {"id": "s5", "name": "生成图表", "tool": "chart_generator",
+         "depends_on": ["s4"]},
+        {"id": "s6", "name": "撰写报告", "tool": "llm_writer",
+         "depends_on": ["s5"]}
+    ]
+}
+
+# 转换为 Mermaid 流程图
+def plan_to_mermaid(plan):
+    lines = ["graph TD"]
+    for step in plan["steps"]:
+        lines.append(f'    {step["id"]}["{step["name"]}<br>({step["tool"]})"]')
+    for step in plan["steps"]:
+        for dep in step["depends_on"]:
+            lines.append(f'    {dep} --> {step["id"]}')
+    return "\n".join(lines)
+
+mermaid_text = plan_to_mermaid(plan)
+print(mermaid_text)
+# 输出:
+# graph TD
+#     s1["搜索行业数据<br>(search)"]
+#     s2["抓取公司财报<br>(web_scraper)"]
+#     s3["获取政策文件<br>(search)"]
+#     s4["数据分析<br>(python_executor)"]
+#     s5["生成图表<br>(chart_generator)"]
+#     s6["撰写报告<br>(llm_writer)"]
+#     s1 --> s4
+#     s2 --> s4
+#     s3 --> s4
+#     s4 --> s5
+#     s5 --> s6</pre>
+</div>
+
+<p>这个 Mermaid 图可以在前端页面、监控仪表盘、甚至飞书/钉钉消息中直接渲染，让团队实时看到 Agent 的规划进度。</p>
+
+<h3 class="sub-heading">规划缓存：相似任务复用已有计划</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💾 规划缓存：避免重复规划</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin-top: 8px;">
+    很多任务<strong>结构相似</strong>——"写一份XX市场调研报告"的规划结构基本一致，只是参数不同。规划缓存的核心思路：
+  </p>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+    <li><strong>模板化计划</strong>：将常见任务类型的规划抽象为模板，如"调研报告"模板、"竞品分析"模板</li>
+    <li><strong>语义匹配</strong>：用 Embedding 向量化任务描述，相似任务直接匹配已有计划模板</li>
+    <li><strong>参数化填充</strong>：模板中的具体参数（行业名、公司名、时间范围）由执行时动态填充</li>
+    <li><strong>效果</strong>：相似任务规划 LLM 调用从 1 次降为 0 次，直接从缓存加载计划模板</li>
+  </ul>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python: 规划缓存实现</span>
+<pre>import hashlib
+from typing import Dict, Optional
+
+class PlanCache:
+    """规划缓存：相似任务复用已有计划模板"""
+    
+    def __init__(self, embedding_model, similarity_threshold=0.85):
+        self.templates = {}          # template_id → 计划模板
+        self.embeddings = {}         # template_id → 任务描述向量
+        self.embedding_model = embedding_model
+        self.threshold = similarity_threshold
+    
+    def add_template(self, task_type: str, plan_template: dict):
+        """注册一个计划模板"""
+        vector = self.embedding_model.encode(task_type)
+        template_id = hashlib.md5(task_type.encode()).hexdigest()
+        self.templates[template_id] = plan_template
+        self.embeddings[template_id] = vector
+    
+    def find_similar(self, task_description: str) -> Optional[dict]:
+        """查找与当前任务相似的计划模板"""
+        query_vector = self.embedding_model.encode(task_description)
+        
+        best_score = 0
+        best_template_id = None
+        
+        for tid, vector in self.embeddings.items():
+            score = cosine_similarity(query_vector, vector)
+            if score > best_score:
+                best_score = score
+                best_template_id = tid
+        
+        if best_score >= self.threshold:
+            return self.templates[best_template_id]
+        return None  # 无相似模板，需要重新规划
+    
+    def fill_template(self, template: dict, params: dict) -> list:
+        """参数化填充模板：将模板中的占位符替换为实际值"""
+        filled_steps = []
+        for step in template["steps"]:
+            desc = step["description"]
+            for key, value in params.items():
+                desc = desc.replace(f"{{{{{key}}}}}", value)
+            filled_steps.append({
+                "id": step["id"],
+                "name": desc,
+                "tool": step["tool"],
+                "depends_on": step["depends_on"]
+            })
+        return filled_steps
+
+# ===== 注册模板 =====
+cache = PlanCache(embedding_model)
+
+# "市场调研报告"模板
+cache.add_template("写一份市场调研报告", {
+    "steps": [
+        {"id": "s1", "description": "搜索{{industry}}行业数据",
+         "tool": "search", "depends_on": []},
+        {"id": "s2", "description": "抓取{{company}}财报数据",
+         "tool": "web_scraper", "depends_on": []},
+        {"id": "s3", "description": "数据分析与增长计算",
+         "tool": "python_executor", "depends_on": ["s1", "s2"]},
+        {"id": "s4", "description": "生成可视化图表",
+         "tool": "chart_generator", "depends_on": ["s3"]},
+        {"id": "s5", "description": "撰写{{industry}}市场调研报告",
+         "tool": "llm_writer", "depends_on": ["s4"]}
+    ]
+})
+
+# ===== 使用缓存 =====
+task = "写一份新能源汽车市场调研报告"
+template = cache.find_similar(task)
+if template:
+    # 直接从缓存加载，无需LLM规划
+    plan = cache.fill_template(template, {
+        "industry": "新能源汽车",
+        "company": "比亚迪、特斯拉"
+    })
+    print(f"从缓存加载计划！相似度: 0.92")
+else:
+    # 无相似模板，需要LLM重新规划
+    plan = planner.generate_plan(task)</pre>
+</div>
+
+<h3 class="sub-heading">规划质量评估指标</h3>
+
+<div class="card">
+  <div class="card-title">📊 如何评估规划的好坏？</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">指标</th>
+        <th style="text-align: left; padding: 10px 8px;">含义</th>
+        <th style="text-align: left; padding: 10px 8px;">计算方式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">完成率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">计划中成功执行的步骤比例</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">成功步骤数 / 总步骤数</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">重规划率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">执行过程中需要重规划的频率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">重规划次数 / 总步骤数（越低越好）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">步骤覆盖率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">计划是否覆盖了完成任务所需的所有关键步骤</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">专家标注的关键步骤数 / 计划包含的关键步骤数</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">并行效率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">DAG分析后可并行步骤的利用程度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">串行执行耗时 / 并行执行耗时（越低越好）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">代码示例：完整规划系统架构</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: 完整规划系统架构</span>
+<pre>class PlanningSystem:
+    """生产级规划系统：Planner + Executor + Replanner + Cache"""
+    
+    def __init__(self, llm, tools, embedding_model):
+        self.planner = Planner(llm)
+        self.executor = Executor(llm, tools)
+        self.replanner = Replanner(llm)
+        self.cache = PlanCache(embedding_model)
+        self.mermaid_renderer = MermaidRenderer()
+        self.metrics = PlanningMetrics()
+    
+    def run(self, task: str) -> dict:
+        """执行完整规划流程"""
+        
+        # 1. 尝试从缓存加载计划模板
+        cached_template = self.cache.find_similar(task)
+        if cached_template:
+            plan = self.cache.fill_template(cached_template, 
+                                            self._extract_params(task))
+            self.metrics.record("cache_hit", True)
+        else:
+            plan = self.planner.generate_plan(task)
+            self.metrics.record("cache_hit", False)
+        
+        # 2. 生成可视化流程图
+        mermaid = self.mermaid_renderer.render(plan)
+        self._notify_plan(mermaid)  # 推送到监控
+        
+        # 3. 按DAG并行执行
+        dag = TaskDAG.from_plan(plan)
+        parallel_groups = dag.get_parallel_groups()
+        
+        completed = []
+        for group in parallel_groups:
+            # 并行执行当前组
+            group_results = self.executor.execute_parallel(
+                group, completed, plan
+            )
+            
+            # 评估每个步骤结果
+            for step_id, result in group_results.items():
+                decision = self.replanner.assess(
+                    task, completed, 
+                    plan.remaining_steps(), result
+                )
+                
+                if decision["type"] == ReplanType.COMPLETE:
+                    return self._compile_result(completed, mermaid)
+                
+                elif decision["type"] == ReplanType.LOCAL:
+                    plan = plan.merge_adjustment(decision["plan"])
+                
+                elif decision["type"] == ReplanType.GLOBAL:
+                    plan = self.planner.replan_from_state(
+                        task, completed
+                    )
+                    mermaid = self.mermaid_renderer.render(plan)
+                    self._notify_plan(mermaid)
+                
+                completed.append((step_id, result))
+        
+        # 4. 记录指标
+        self.metrics.record("completion_rate", plan.success_rate())
+        self.metrics.record("replan_count", plan.replan_count)
+        
+        # 5. 缓存成功的计划模板
+        if plan.success_rate() >= 0.8:
+            self.cache.add_template(task, plan.to_template())
+        
+        return {
+            "response": self._compile_result(completed, mermaid),
+            "plan_mermaid": mermaid,
+            "metrics": self.metrics.summary()
+        }
+    
+    def _extract_params(self, task: str) -> dict:
+        """从任务描述中提取参数"""
+        # 用LLM提取关键参数
+        prompt = f"从以下任务中提取关键参数（JSON格式）:\n{task}"
+        return json.loads(self.planner.llm.invoke(prompt))
+    
+    def _notify_plan(self, mermaid: str):
+        """推送计划可视化到监控"""
+        # 发送到飞书/钉钉/仪表盘
+        notify_channel.send(
+            title="Agent 规划更新",
+            content=f"```mermaid\n{mermaid}\n```"
+        )
+
+# ===== 使用 =====
+system = PlanningSystem(llm=my_llm, tools=my_tools, embedding_model=my_embed)
+result = system.run("写一份2024年中国AI芯片市场调研报告")
+
+print(result["response"])           # 最终结果
+print(result["plan_mermaid"])       # 规划流程图
+print(result["metrics"])            # 完成率、重规划率等</pre>
+</div>
+
+<!-- ===== 6.11 执行过程的成功判断与失败处理 ===== -->
+<h2 class="section-heading">6.11 执行过程的成功判断与失败处理</h2>
+
+<p>Agent 执行计划时，每一步都可能失败。<strong>面试高频问题</strong>：Agent 在执行任务过程中如何判断当前步骤是否成功？失败后如何重试、回滚或重新规划？</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🎯 为什么这个问题很重要？</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
+    规划系统只负责"想清楚怎么做"，但执行中会遇到各种意外：网络超时、API 限流、数据格式不符、甚至发现前提假设错误。如果 Agent 只会一味重试，会陷入死循环；如果只会放弃，用户体验极差。<strong>合理的失败处理策略</strong>是 Agent 从"玩具"走向"生产"的关键能力。
+  </p>
+</div>
+
+<h3 class="sub-heading">成功判断机制：如何知道步骤执行成功了？</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ 输出验证</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        检查输出是否满足<strong>预期格式和内容要求</strong>。比如：要求返回 JSON，结果是不是合法 JSON？要求提取 3 条数据，结果是不是恰好 3 条？
+      </p>
+      <pre style="font-size: 12px; color: var(--color-text-tertiary); margin: 8px 0 0; background: var(--color-bg-secondary); padding: 8px; border-radius: 4px;"># 输出验证示例
+result = agent.execute("查询用户列表")
+if isinstance(result, list) and len(result) > 0:
+    # 格式正确 + 内容非空 → 成功
+    status = "success"</pre>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">📡 工具返回码</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        API 调用的状态码是最直接的成功/失败信号：<br>
+        <strong>200</strong> = 成功<br>
+        <strong>4xx</strong> = 参数错误（不该重试）<br>
+        <strong>5xx</strong> = 服务故障（可以重试）<br>
+        <strong>429</strong> = 限流（稍后重试）
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">🧠 自我评估</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        让 LLM 评估自己的输出质量。执行完一步后，追问："这个答案是否完整？是否遗漏了关键信息？"<br>
+        <span style="color: var(--color-text-tertiary);">优点：能捕获语义层面的缺陷；缺点：额外 LLM 调用有成本。</span>
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">🔬 外部验证</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        调用<strong>测试工具</strong>验证结果。比如：写了代码→运行看是否编译通过；修改了配置→检查服务是否正常响应。<br>
+        <span style="color: var(--color-text-tertiary);">最可靠的验证方式，但需要额外工具支持。</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <strong>💡 实践建议</strong>：四种机制组合使用。优先用<strong>工具返回码</strong>（最快最客观），其次<strong>输出验证</strong>（格式检查成本低），关键步骤用<strong>外部验证</strong>（最可靠），复杂语义判断用<strong>自我评估</strong>（灵活但有成本）。
+</div>
+
+<h3 class="sub-heading">三种失败处理策略</h3>
+
+<div class="card">
+  <div class="card-title">⚡ 失败处理不是"一刀切"——不同失败类型需要不同策略</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 20px; border: 2px solid var(--color-info); border-radius: 8px; background: rgba(var(--color-info-rgb), 0.05);">
+      <div style="font-size: 20px; font-weight: 700; color: var(--color-info); margin-bottom: 8px;">① 重试（Retry）</div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 12px;">同一步骤重新执行</p>
+      <div style="font-size: 13px; color: var(--color-text-secondary);">
+        <strong style="color: var(--color-text-primary);">适用场景：</strong><br>
+        • 网络超时、API 临时故障<br>
+        • 概率性失败（如 LLM 生成不稳定）<br>
+        • 服务限流（429 Too Many Requests）
+      </div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 12px;">
+        <strong style="color: var(--color-error);">限制：</strong><br>
+        • 最多重试 <strong>3 次</strong><br>
+        • 每次间隔递增（指数退避）<br>
+        • 4xx 参数错误<strong>不该重试</strong>
+      </div>
+    </div>
+    <div style="padding: 20px; border: 2px solid var(--color-accent); border-radius: 8px; background: rgba(var(--color-accent-rgb), 0.05);">
+      <div style="font-size: 20px; font-weight: 700; color: var(--color-accent); margin-bottom: 8px;">② 回滚（Rollback）</div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 12px;">撤销已执行的步骤，恢复到安全状态</p>
+      <div style="font-size: 13px; color: var(--color-text-secondary);">
+        <strong style="color: var(--color-text-primary);">适用场景：</strong><br>
+        • 修改了文件但改错了<br>
+        • 执行了不可逆操作的一半<br>
+        • 数据库写入错误数据
+      </div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 12px;">
+        <strong style="color: var(--color-success);">实现方式：</strong><br>
+        • 操作前保存 snapshot<br>
+        • 失败时从 snapshot 恢复<br>
+        • 事务模式（all-or-nothing）
+      </div>
+    </div>
+    <div style="padding: 20px; border: 2px solid var(--color-warning); border-radius: 8px; background: rgba(var(--color-warning-rgb), 0.05);">
+      <div style="font-size: 20px; font-weight: 700; color: var(--color-warning); margin-bottom: 8px;">③ 重规划（Replan）</div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 12px;">放弃当前计划，重新生成新计划</p>
+      <div style="font-size: 13px; color: var(--color-text-secondary);">
+        <strong style="color: var(--color-text-primary);">适用场景：</strong><br>
+        • 发现前提假设错误<br>
+        • 任务依赖关系变化<br>
+        • 连续 3 次重试仍失败
+      </div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 12px;">
+        <strong style="color: var(--color-info);">与 6.7 动态重规划的关联：</strong><br>
+        6.7 讲<strong>概念和触发条件</strong><br>
+        这里讲<strong>实战中的失败处理决策</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">代码示例：指数退避重试</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: retry_with_backoff — 指数退避重试</span>
+<pre>import time
+import random
+from functools import wraps
+
+def retry_with_backoff(max_retries=3, base_delay=1.0, max_delay=30.0):
+    """指数退避重试装饰器
+    
+    Args:
+        max_retries: 最大重试次数（默认3次）
+        base_delay: 基础等待时间（秒）
+        max_delay: 最大等待时间（秒），防止等待过长
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries + 1):
+                try:
+                    result = func(*args, **kwargs)
+                    # 成功判断：输出验证
+                    if result is None or result == {}:
+                        raise ValueError("返回结果为空，视为失败")
+                    return result
+                except Exception as e:
+                    if attempt == max_retries:
+                        # 重试次数用尽，抛出异常
+                        raise RetryExhaustedError(
+                            f"重试{max_retries}次后仍失败: {e}"
+                        )
+                    # 指数退避：1s → 2s → 4s → 8s → ...
+                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    # 加入随机抖动，避免所有请求同时重试
+                    jitter = random.uniform(0, delay * 0.1)
+                    wait_time = delay + jitter
+                    print(f"第{attempt+1}次重试，等待{wait_time:.1f}s")
+                    time.sleep(wait_time)
+        return wrapper
+    return decorator
+
+class RetryExhaustedError(Exception):
+    """重试次数用尽异常"""
+    pass
+
+# ===== 使用示例 =====
+@retry_with_backoff(max_retries=3, base_delay=1.0)
+def call_api(url: str, params: dict) -> dict:
+    """调用外部API，自动重试"""
+    response = requests.post(url, json=params)
+    if response.status_code == 429:
+        raise RateLimitError("API限流")
+    if response.status_code >= 500:
+        raise ServerError(f"服务故障: {response.status_code}")
+    if response.status_code >= 400:
+        # 4xx错误不该重试，直接抛出
+        raise ParamError(f"参数错误: {response.status_code}")
+    return response.json()</pre>
+</div>
+
+<h3 class="sub-heading">代码示例：回滚管理器</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: RollbackManager — 操作前快照 + 失败时恢复</span>
+<pre>import json
+import copy
+from datetime import datetime
+
+class RollbackManager:
+    """回滚管理器：操作前保存快照，失败时从快照恢复"""
+    
+    def __init__(self):
+        self.snapshots = []  # 快照栈
+        self.operations_log = []  # 操作日志
+    
+    def save_snapshot(self, state: dict, step_desc: str) -> str:
+        """保存当前状态快照
+        
+        Args:
+            state: 当前系统状态（如文件内容、数据库记录等）
+            step_desc: 步骤描述，用于日志
+        Returns:
+            snapshot_id: 快照ID，用于后续恢复
+        """
+        snapshot_id = f"snap_{datetime.now().strftime('%H%M%S')}_{len(self.snapshots)}"
+        snapshot = {
+            "id": snapshot_id,
+            "state": copy.deepcopy(state),  # 深拷贝，防止引用污染
+            "step": step_desc,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.snapshots.append(snapshot)
+        self.operations_log.append(
+            f"[{snapshot_id}] 保存快照: {step_desc}"
+        )
+        return snapshot_id
+    
+    def rollback_to(self, snapshot_id: str) -> dict:
+        """回滚到指定快照
+        
+        Args:
+            snapshot_id: 要恢复到的快照ID
+        Returns:
+            恢复后的状态
+        """
+        # 找到目标快照
+        target = None
+        rollback_count = 0
+        for snap in reversed(self.snapshots):
+            rollback_count += 1
+            if snap["id"] == snapshot_id:
+                target = snap
+                break
+        
+        if target is None:
+            raise ValueError(f"快照不存在: {snapshot_id}")
+        
+        # 移除目标之后的所有快照（它们代表的操作已被回滚）
+        self.snapshots = self.snapshots[:len(self.snapshots) - rollback_count]
+        
+        self.operations_log.append(
+            f"[{datetime.now().isoformat()}] " +
+            f"回滚到 {snapshot_id}: {target['step']} " +
+            f"(撤销了 {rollback_count} 个操作)"
+        )
+        
+        return copy.deepcopy(target["state"])
+    
+    def rollback_last(self) -> dict:
+        """回滚到上一个快照（撤销最近一次操作）"""
+        if len(self.snapshots) < 2:
+            raise ValueError("没有可回滚的快照")
+        # 保留最初始的状态快照，回滚到倒数第二个
+        self.snapshots.pop()  # 移除最近的快照
+        last_valid = self.snapshots[-1]
+        self.operations_log.append(
+            f"[{datetime.now().isoformat()}] " +
+            f"回滚最近操作: {last_valid['id']}"
+        )
+        return copy.deepcopy(last_valid["state"])
+    
+    def get_log(self) -> list:
+        """获取操作日志"""
+        return self.operations_log
+
+# ===== 使用示例 =====
+rollback_mgr = RollbackManager()
+
+# 步骤1：修改配置文件（先保存快照）
+config = {"max_connections": 100, "timeout": 30}
+snap_id = rollback_mgr.save_snapshot(config, "修改前配置")
+
+# 执行修改
+config["max_connections"] = 500  # 修改了，但发现改错了
+
+# 步骤失败 → 回滚到修改前的状态
+config = rollback_mgr.rollback_to(snap_id)
+print(config)  # {"max_connections": 100, "timeout": 30} — 恢复了！</pre>
+</div>
+
+<h3 class="sub-heading">失败处理决策流程</h3>
+
+<div class="flowchart-container" id="failureDecisionFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('failureDecisionFlow', {
+    nodes: [
+      { id: 'fail', label: '步骤执行失败', type: 'start' },
+      { id: 'check_type', label: '失败类型判断', type: 'decision' },
+      { id: 'is_temp', label: '是临时故障？\n(超时/限流/5xx)', type: 'decision' },
+      { id: 'retry', label: '重试（Retry）\n最多3次，指数退避', type: 'process' },
+      { id: 'retry_ok', label: '重试成功？', type: 'decision' },
+      { id: 'is_reversible', label: '是可回滚操作？\n(有snapshot)', type: 'decision' },
+      { id: 'rollback', label: '回滚（Rollback）\n恢复到安全状态', type: 'process' },
+      { id: 'replan', label: '重规划（Replan）\n放弃当前计划\n重新生成', type: 'process' },
+      { id: 'success', label: '继续执行', type: 'end' }
+    ],
+    edges: [
+      { from: 'fail', to: 'check_type' },
+      { from: 'check_type', to: 'is_temp' },
+      { from: 'is_temp', to: 'retry', label: '是' },
+      { from: 'is_temp', to: 'is_reversible', label: '否' },
+      { from: 'retry', to: 'retry_ok' },
+      { from: 'retry_ok', to: 'success', label: '是' },
+      { from: 'retry_ok', to: 'is_reversible', label: '否(3次用尽)' },
+      { from: 'is_reversible', to: 'rollback', label: '是' },
+      { from: 'is_reversible', to: 'replan', label: '否' },
+      { from: 'rollback', to: 'replan', label: '回滚后仍需新计划' },
+      { from: 'replan', to: 'success', label: '生成新计划', dashed: true }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">失败分类矩阵</h3>
+
+<div class="card">
+  <div class="card-title">📊 失败类型 → 处理策略映射</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; width: 25%;">失败类型</th>
+        <th style="text-align: left; padding: 10px 8px; width: 30%;">典型场景</th>
+        <th style="text-align: left; padding: 10px 8px; width: 20%;">处理策略</th>
+        <th style="text-align: left; padding: 10px 8px; width: 25%;">关键限制</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">临时故障</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">网络超时、API 5xx、限流 429、LLM 输出不稳定</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong style="color: var(--color-info);">重试</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">最多 3 次，指数退避，4xx 参数错误不重试</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">操作错误</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">修改了文件但改错了、数据库写入错误数据、执行了不可逆操作的一半</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong style="color: var(--color-accent);">回滚</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">必须有 snapshot 才能回滚，不可逆操作无法回滚</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">计划错误</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">前提假设错误、依赖关系变化、连续重试 3 次仍失败</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong style="color: var(--color-warning);">重规划</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">全局重规划成本高，优先部分重规划</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">组合策略：阶梯式升级</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🪜 重试 → 回滚 → 重规划的阶梯式升级</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
+    生产级 Agent 不应只依赖单一策略。三种策略构成<strong>阶梯式升级链</strong>：
+  </p>
+  <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-info); border-radius: 8px; text-align: center;">
+      <div style="font-size: 24px; font-weight: 700; color: var(--color-info);">第一级</div>
+      <div style="font-weight: 600; color: var(--color-text-primary); margin-top: 4px;">重试</div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">成本最低，速度最快<br><span style="color: var(--color-info);">触发：临时故障</span><br><span style="color: var(--color-text-tertiary);">失败3次→升级</span></div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-accent); border-radius: 8px; text-align: center;">
+      <div style="font-size: 24px; font-weight: 700; color: var(--color-accent);">第二级</div>
+      <div style="font-weight: 600; color: var(--color-text-primary); margin-top: 4px;">回滚</div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">撤销错误操作，恢复安全状态<br><span style="color: var(--color-accent);">触发：操作错误/重试升级</span><br><span style="color: var(--color-text-tertiary);">无法回滚→升级</span></div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-warning); border-radius: 8px; text-align: center;">
+      <div style="font-size: 24px; font-weight: 700; color: var(--color-warning);">第三级</div>
+      <div style="font-weight: 600; color: var(--color-text-primary); margin-top: 4px;">重规划</div>
+      <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">放弃当前计划，重新全局规划<br><span style="color: var(--color-warning);">触发：计划错误/回滚升级</span><br><span style="color: var(--color-text-tertiary);">成本最高，但最彻底</span></div>
+    </div>
+  </div>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 12px; border-top: 1px solid var(--color-border-light); padding-top: 12px;">
+    💡 阶梯式升级的核心思想：<strong>先尝试成本最低的策略，失败后再升级到成本更高的策略</strong>。这和人类处理问题的直觉一致——先简单试试，不行再想办法补救，实在不行就重新规划。
+  </p>
+</div>
+
+<h3 class="sub-heading">代码示例：FailureHandler 完整实现</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: FailureHandler — 阶梯式失败处理完整实现</span>
+<pre>from enum import Enum
+from typing import Optional, Callable
+
+class FailureType(Enum):
+    """失败类型分类"""
+    TRANSIENT = "transient"    # 临时故障：网络超时、API 5xx、限流
+    OPERATIONAL = "operational"  # 操作错误：修改了不该改的东西
+    PLANNING = "planning"    # 计划错误：前提假设错误、依赖变化
+
+class FailureAction(Enum):
+    """失败处理动作"""
+    RETRY = "retry"          # 重试当前步骤
+    ROLLBACK = "rollback"    # 回滚到安全状态
+    REPLAN = "replan"        # 重新规划
+    ABORT = "abort"         # 放弃任务（所有策略都失败）
+
+class StepResult:
+    """步骤执行结果"""
+    def __init__(self, success: bool, output: any = None,
+                 error: Optional[Exception] = None,
+                 status_code: Optional[int] = None):
+        self.success = success
+        self.output = output
+        self.error = error
+        self.status_code = status_code
+
+class FailureHandler:
+    """阶梯式失败处理器：重试→回滚→重规划"""
+    
+    def __init__(self, rollback_manager=None, replanner=None):
+        self.rollback_mgr = rollback_manager or RollbackManager()
+        self.replanner = replanner
+        self.retry_counts = {}  # 每个步骤的重试计数
+        self.failure_log = []   # 失败日志
+    
+    def classify_failure(self, result: StepResult) -> FailureType:
+        """分类失败类型"""
+        # 1. 基于状态码判断
+        if result.status_code:
+            if result.status_code >= 500 or result.status_code == 429:
+                return FailureType.TRANSIENT  # 服务故障/限流 → 临时
+            if result.status_code >= 400:
+                return FailureType.OPERATIONAL  # 参数错误 → 操作问题
+        
+        # 2. 基于异常类型判断
+        if isinstance(result.error, (TimeoutError, ConnectionError)):
+            return FailureType.TRANSIENT  # 网络问题 → 临时
+        
+        # 3. 基于输出验证判断
+        if result.output is None or result.output == {}:
+            return FailureType.TRANSIENT  # 空输出可能是概率性失败
+        
+        # 4. 默认：计划层面的问题
+        return FailureType.PLANNING
+    
+    def handle_failure(self, step_id: str, result: StepResult,
+                       current_state: dict, plan: 'Plan') -> FailureAction:
+        """阶梯式失败处理：重试→回滚→重规划"""
+        failure_type = self.classify_failure(result)
+        self.failure_log.append({
+            "step_id": step_id,
+            "failure_type": failure_type.value,
+            "error": str(result.error),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # ===== 第一级：重试（成本最低） =====
+        if failure_type == FailureType.TRANSIENT:
+            retry_count = self.retry_counts.get(step_id, 0)
+            if retry_count < 3:
+                self.retry_counts[step_id] = retry_count + 1
+                delay = min(1.0 * (2 ** retry_count), 30.0)  # 指数退避
+                print(f"[Retry] 步骤{step_id}第{retry_count+1}次重试，"
+                      f"等待{delay}s")
+                time.sleep(delay)
+                return FailureAction.RETRY
+            # 重试3次仍失败 → 升级到下一级
+            print(f"[Upgrade] 步骤{step_id}重试3次仍失败，"
+                  f"升级处理策略")
+        
+        # ===== 第二级：回滚（撤销错误操作） =====
+        # 如果有可回滚的快照，先回滚
+        if self.rollback_mgr.has_snapshot(step_id):
+            state = self.rollback_mgr.rollback_to_step(step_id)
+            print(f"[Rollback] 回滚步骤{step_id}，"
+                  f"恢复到安全状态")
+            # 回滚后仍需新计划，升级到重规划
+            return FailureAction.ROLLBACK  # 外部会先回滚再重规划
+        
+        # ===== 第三级：重规划（成本最高，最彻底） =====
+        if self.replanner:
+            print(f"[Replan] 放弃当前计划，重新规划")
+            return FailureAction.REPLAN
+        
+        # ===== 所有策略都失败：放弃任务 =====
+        print(f"[Abort] 所有失败处理策略都已用尽")
+        return FailureAction.ABORT
+    
+    def validate_step(self, result: StepResult, 
+                      expected_format: Optional[str] = None) -> bool:
+        """成功判断：验证步骤执行结果"""
+        # 1. 工具返回码检查
+        if result.status_code and result.status_code != 200:
+            return False
+        
+        # 2. 输出非空检查
+        if result.output is None:
+            return False
+        
+        # 3. 格式验证（可选）
+        if expected_format == "json":
+            try:
+                json.loads(str(result.output))
+            except:
+                return False
+        
+        # 4. 内容完整性检查
+        if isinstance(result.output, dict):
+            if "error" in result.output:
+                return False
+        
+        return True
+
+# ===== 集成到规划系统 =====
+class EnhancedPlanningSystem(PlanningSystem):
+    """增强版规划系统：集成 FailureHandler"""
+    
+    def __init__(self, llm, tools, embedding_model):
+        super().__init__(llm, tools, embedding_model)
+        self.failure_handler = FailureHandler(
+            rollback_manager=RollbackManager(),
+            replanner=self.replanner
+        )
+    
+    def run(self, task: str) -> dict:
+        """执行规划流程，带失败处理"""
+        plan = self._get_plan(task)
+        state = {}  # 系统当前状态
+        
+        for step in plan.steps:
+            # 执行前：保存快照（为回滚做准备）
+            self.failure_handler.rollback_mgr.save_snapshot(
+                state, f"步骤{step.id}: {step.description}"
+            )
+            
+            # 执行步骤
+            result = self.executor.execute(step, state)
+            
+            # 成功判断
+            if self.failure_handler.validate_step(result, step.expected_format):
+                state = self._update_state(state, result)
+                continue  # 成功，继续下一步
+            
+            # 失败处理：阶梯式升级
+            action = self.failure_handler.handle_failure(
+                step.id, result, state, plan
+            )
+            
+            if action == FailureAction.RETRY:
+                result = self.executor.execute(step, state)  # 重新执行
+                if not self.failure_handler.validate_step(result):
+                    # 重试后仍失败，继续升级
+                    action = self.failure_handler.handle_failure(
+                        step.id, result, state, plan
+                    )
+            
+            if action == FailureAction.ROLLBACK:
+                state = self.failure_handler.rollback_mgr.rollback_last()
+                # 回滚后重规划
+                action = FailureAction.REPLAN
+            
+            if action == FailureAction.REPLAN:
+                plan = self.replanner.replan_from_state(task, state)
+                # 用新计划继续执行
+                continue
+            
+            if action == FailureAction.ABORT:
+                return {
+                    "response": "任务执行失败，所有处理策略已用尽",
+                    "failure_log": self.failure_handler.failure_log,
+                    "metrics": self.metrics.summary()
+                }
+        
+        return {
+            "response": self._compile_result(state),
+            "failure_log": self.failure_handler.failure_log,
+            "metrics": self.metrics.summary()
+        }</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>面试答题要点</strong>：① 成功判断 = 输出验证 + 返回码 + 自我评估 + 外部验证（四种组合）；② 失败处理不是"一刀切"，要分类：临时故障→重试，操作错误→回滚，计划错误→重规划；③ 阶梯式升级：先低成本策略（重试），失败后升级到高成本策略（回滚→重规划）；④ 重试有上限（3次+指数退避），回滚需要 snapshot 支持，重规划优先部分重规划。面试关联：Q19 Q20
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: 什么是 RAG？它解决了 LLM 的什么问题？</div>
+    <div class="qa-answer">
+      RAG = Retrieval-Augmented Generation（检索增强生成）。先从知识库检索相关文档，再将其注入 prompt，让 LLM 基于检索到的知识生成回答。<br><br>
+      解决三个问题：① <strong>时效性</strong>——知识可实时更新，不受训练截止限制；② <strong>私有性</strong>——可接入企业内部文档；③ <strong>幻觉</strong>——基于检索到的真实文档回答，减少编造。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: RAG 和 Fine-tuning 各自的适用场景？</div>
+    <div class="qa-answer">
+      <strong>RAG 适合</strong>：知识频繁更新、需要引用来源、多知识库切换、成本低。<br>
+      <strong>Fine-tuning 适合</strong>：改变模型行为风格、固定输出格式、稳定领域知识、追求推理速度。<br><br>
+      <strong>决策原则</strong>：知识更新用 RAG，行为改变用微调。两者可叠加——先微调让模型擅长领域，再 RAG 注入实时知识。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: RAG 的完整流程是什么？分为哪些阶段？</div>
+    <div class="qa-answer">
+      <strong>离线构建阶段</strong>：①文档加载→②分块（Chunking）→③向量化（Embedding）→④存入向量库<br>
+      <strong>在线检索阶段</strong>：⑤用户查询向量化→⑥向量库相似度搜索 Top-K→⑦构建增强 prompt（知识+问题）→⑧LLM 生成回答→⑨附带来源引用<br><br>
+      分块是效果影响最大的环节。chunk_size 通常 256~512 token，overlap 50~100 token。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: RAG 中有哪些高级优化技术？</div>
+    <div class="qa-answer">
+      <strong>检索前优化</strong>：① <strong>Query 改写</strong>——让模糊查询变精确；② <strong>HyDE</strong>——先生成假设答案，用假设答案向量检索。<br>
+      <strong>检索后优化</strong>：③ <strong>Rerank</strong>——先用向量检索 Top-20，再用 Cross-Encoder 精排取 Top-5；④ <strong>上下文压缩</strong>——用 LLM 提取相关部分减少 token。<br><br>
+      <strong>第三代 Agentic RAG</strong>：引入 Agent 自主决策检索策略，支持多轮检索、跨库检索。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: RAGAS 评估框架的四个维度是什么？</div>
+    <div class="qa-answer">
+      <strong>Faithfulness（忠实度）</strong>：回答是否基于检索文档，没有幻觉。<br>
+      <strong>Answer Relevancy（答案相关性）</strong>：回答是否切题。<br>
+      <strong>Context Precision（检索精确度）</strong>：检索到的文档中有多少真正有用。<br>
+      <strong>Context Recall（检索召回率）</strong>：需要的知识是否都被检索到。<br><br>
+      四个维度分别评估检索和生成两个环节的质量。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Plan-and-Execute 模式的三个核心模块是什么？与 ReAct 有何区别？</div>
+    <div class="qa-answer">
+      <strong>Planner</strong>（规划器）：将复杂任务分解为子任务序列，从全局视角制定执行计划。<br>
+      <strong>Executor</strong>（执行器）：按计划逐步执行每个子任务，专注于当前步骤。<br>
+      <strong>Replanner</strong>（重规划器）：根据执行结果动态调整后续计划。<br><br>
+      <strong>与 ReAct 的区别</strong>：ReAct 是"边想边做"，每步独立决策，缺乏全局视野，适合简单快速反应；Plan-Execute 是"先想后做"，有全局规划，适合复杂多步任务。任务需3步以上且有复杂依赖时，Plan-Execute 更优。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 任务分解中的 DAG 分析有什么作用？粒度如何权衡？</div>
+    <div class="qa-answer">
+      <strong>DAG（有向无环图）分析</strong>的作用是识别步骤间的依赖关系，找出<strong>可并行执行的步骤</strong>。无依赖的步骤可以同时执行，有依赖的必须串行。<br><br>
+      <strong>粒度权衡</strong>：太粗（步骤少）→每个步骤仍然复杂，执行困难；太细（步骤多）→规划 token 消耗大，重规划成本高。最佳实践是每个步骤对应一个明确的工具调用，5-10步最合适。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 动态重规划有哪三种触发条件？部分重规划与全局重规划的区别？</div>
+    <div class="qa-answer">
+      <strong>三种触发条件</strong>：① <strong>执行失败</strong>——工具调用出错或返回异常；② <strong>发现新信息</strong>——执行中发现了规划时不知道的重要信息；③ <strong>目标变更</strong>——用户中途改变需求。<br><br>
+      <strong>部分重规划</strong>：只调整受影响的后续步骤，成本低速度快，适合单步失败或小范围新信息。<br>
+      <strong>全局重规划</strong>：从当前状态重新规划所有后续步骤，成本高但全局视角更准确，适合目标变更或连续部分重规划3次仍失败。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 规划系统生产实践中的关键设计要点？</div>
+    <div class="qa-answer">
+      <strong>① 规划与执行分离</strong>：Planner 和 Executor 解耦，通过共享计划对象通信。好处：可替换、可调试、可持久化、可观测。<br>
+      <strong>② 规划可视化</strong>：用 Mermaid 流程图描述计划，方便人类审查监控，可推送到飞书/钉钉/仪表盘。<br>
+      <strong>③ 规划缓存</strong>：相似任务复用已有计划模板，用 Embedding 语义匹配，参数化填充，避免重复 LLM 规划调用。<br>
+      <strong>④ 质量评估</strong>：完成率（成功步骤/总步骤）、重规划率（越低越好）、步骤覆盖率、并行效率。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: Agent 执行步骤失败后，为什么不能总是选择重试？什么情况下应该回滚？什么情况下应该重规划？</div>
+    <div class="qa-answer">
+      <strong>不能总是重试</strong>的原因：① <strong>4xx 参数错误</strong>重试不会改变结果，浪费时间和资源；② <strong>无限重试</strong>会导致 Agent 进入死循环，用户体验极差；③ <strong>有些失败是结构性问题</strong>（如前提假设错误），重试无法解决根本原因。<br><br>
+      <strong>应该回滚的情况</strong>：① 执行了修改操作但改错了（如修改配置文件导致服务崩溃）；② 执行了不可逆操作的一半（如数据库写入一半失败）；③ 需要恢复到已知安全状态后再做决策。<br>
+      <strong>回滚的前提</strong>：操作前必须保存 snapshot，否则无法回滚。<br><br>
+      <strong>应该重规划的情况</strong>：① 发现前提假设错误（如以为 API 存在但实际已废弃）；② 任务依赖关系变化（如前置步骤的输出与预期不同）；③ 连续重试 3 次仍失败，说明当前计划本身有问题；④ 用户中途改变需求。重规划成本最高但最彻底，优先部分重规划。<br><br>
+      <strong>核心思想</strong>：阶梯式升级——先低成本策略（重试），失败后升级（回滚→重规划），避免在错误方向上浪费资源。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: 设计一个阶梯式失败处理策略（重试→回滚→重规划），说明每种策略的触发条件和限制。</div>
+    <div class="qa-answer">
+      <strong>阶梯式策略设计：重试 → 回滚 → 重规划</strong><br><br>
+      <strong>第一级：重试（Retry）</strong><br>
+      • 触发条件：临时故障——网络超时、API 5xx/429 限流、LLM 输出不稳定等概率性失败<br>
+      • 实现方式：指数退避重试（delay = base × 2^attempt），加入随机抖动防雪崩<br>
+      • 限制：最多重试 3 次；4xx 参数错误不重试；重试用尽后升级到下一级<br><br>
+      <strong>第二级：回滚（Rollback）</strong><br>
+      • 触发条件：操作错误——修改了不该改的文件、数据库写入错误、执行了不可逆操作的一半；或重试 3 次仍失败且有 snapshot 可恢复<br>
+      • 实现方式：操作前保存状态 snapshot（深拷贝），失败时从 snapshot 恢复到安全状态<br>
+      • 限制：必须有 snapshot 才能回滚；不可逆操作（如发送邮件）无法回滚；回滚后仍需新计划继续执行<br><br>
+      <strong>第三级：重规划（Replan）</strong><br>
+      • 触发条件：计划错误——前提假设错误、依赖关系变化；或重试+回滚都无法解决；或连续部分重规划 3 次仍失败<br>
+      • 实现方式：调用 Replanner 从当前状态重新生成计划（部分重规划优先，必要时全局重规划）<br>
+      • 限制：全局重规划成本高（LLM 调用 + token 消耗）；极端情况所有策略失败 → ABORT<br><br>
+      <strong>关键设计原则</strong>：① 成功判断先行——输出验证+返回码+外部验证，确定真的失败了再处理；② 分类是关键——临时故障/操作错误/计划错误各走不同路径；③ 升级而非跳跃——先低成本策略，不行再升级；④ 可观测性——记录每次失败的类型、处理动作和结果，方便排查。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch06Questions = [
+  {
+    type: 'single',
+    question: 'RAG 的主要目的是解决 LLM 的什么问题？',
+    options: [
+      '提升 LLM 的推理速度',
+      '减少 LLM 的参数量',
+      '让 LLM 能基于外部知识回答，减少幻觉',
+      '替代 LLM 的训练过程'
+    ],
+    answer: [2],
+    explanation: 'RAG 通过检索外部知识并注入 prompt，让 LLM 基于真实文档回答，解决时效性、私有性和幻觉三个问题。'
+  },
+  {
+    type: 'single',
+    question: 'RAG 离线构建阶段的正确顺序是？',
+    options: [
+      '向量化 → 分块 → 存入向量库 → 文档加载',
+      '文档加载 → 分块 → 向量化 → 存入向量库',
+      '分块 → 文档加载 → 存入向量库 → 向量化',
+      '存入向量库 → 向量化 → 分块 → 文档加载'
+    ],
+    answer: [1],
+    explanation: '正确顺序：文档加载 → 分块（Chunking）→ 向量化（Embedding）→ 存入向量库。'
+  },
+  {
+    type: 'single',
+    question: 'RAG 中对效果影响最大的环节是？',
+    options: ['文档加载', '分块策略（Chunking）', '存入向量库', 'LLM 模型选择'],
+    answer: [1],
+    explanation: '分块策略对 RAG 效果影响最大。分块太小导致语义不完整，太大导致检索不精准。chunk_size 通常 256~512 token。'
+  },
+  {
+    type: 'single',
+    question: 'HyDE 技术的核心思想是？',
+    options: [
+      '直接用用户查询检索',
+      '先让 LLM 生成假设答案，用假设答案的向量去检索',
+      '用多个查询并行检索',
+      '不用检索，直接让 LLM 回答'
+    ],
+    answer: [1],
+    explanation: 'HyDE（Hypothetical Document Embedding）先让 LLM 生成假设答案，用假设答案的向量去检索。因为假设答案比原查询更接近目标文档的语义空间。'
+  },
+  {
+    type: 'single',
+    question: 'Rerank（重排序）技术的作用是？',
+    options: [
+      '将检索结果按时间排序',
+      '先用向量检索 Top-20，再用 Cross-Encoder 精排取 Top-5',
+      '删除重复的检索结果',
+      '将结果按文档长度排序'
+    ],
+    answer: [1],
+    explanation: 'Rerank 是两阶段策略：先用向量检索快速召回 Top-20，再用 Cross-Encoder 逐对精排取 Top-5。Cross-Encoder 度高但速度慢，所以只对小数量做精排。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 RAG 相比 Fine-tuning 的优势？（多选）',
+    options: [
+      '知识可实时更新，无需重新训练',
+      '回答可溯源到具体文档',
+      '无需 GPU 训练成本',
+      '能改变 LLM 的输出风格'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'RAG 的优势：知识实时更新、可溯源、无需训练成本。改变 LLM 输出风格是 Fine-tuning 的优势，不是 RAG 的。'
+  },
+  {
+    type: 'multiple',
+    question: 'RAGAS 评估框架包含哪些维度？（多选）',
+    options: ['Faithfulness（忠实度）', 'Answer Relevancy（答案相关性）', 'Context Precision（检索精确度）', 'Model Latency（模型延迟）'],
+    answer: [0, 1, 2],
+    explanation: 'RAGAS 四维度：Faithfulness、Answer Relevancy、Context Precision、Context Recall。模型延迟不在 RAGAS 框架内。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Agentic RAG，以下说法正确的是？（多选）',
+    options: [
+      'Agent 自主决定是否需要检索',
+      '支持多轮检索和换关键词重搜',
+      '完全替代了朴素 RAG，不需要向量检索',
+      '可跨多个知识库检索'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Agentic RAG 不是替代向量检索，而是在向量检索基础上加入 Agent 决策。Agent 自主决定检索策略，支持多轮检索和跨库检索。'
+  },
+  {
+    type: 'single',
+    question: 'Plan-and-Execute 模式中，Replanner（重规划器）的核心职责是？',
+    options: [
+      '生成初始任务计划',
+      '按计划执行每个子任务',
+      '根据执行结果动态调整后续计划',
+      '将任务分解为子任务序列'
+    ],
+    answer: [2],
+    explanation: 'Replanner 的核心职责是评估执行结果并动态调整后续计划。Planner 负责生成初始计划，Executor 负责执行子任务，Replanner 负责在执行后评估并调整。'
+  },
+  {
+    type: 'single',
+    question: '关于任务分解粒度，以下哪种说法最正确？',
+    options: [
+      '步骤越少越好，减少执行开销',
+      '步骤越多越好，越细越精确',
+      '每个步骤对应一个明确的工具调用，5-10步最合适',
+      '粒度无所谓，执行器会自动调整'
+    ],
+    answer: [2],
+    explanation: '分解粒度需要权衡：太粗→执行困难，太细→计划膨胀。最佳实践是每个步骤对应一个明确的工具调用，5-10步是最合适的范围。'
+  },
+  {
+    type: 'multiple',
+    question: '动态重规划的触发条件包括哪些？（多选）',
+    options: [
+      '执行失败：工具调用出错或返回异常',
+      '发现新信息：执行中发现了规划时不知道的重要信息',
+      '目标变更：用户中途改变了任务需求',
+      '计划步骤全部成功执行'
+    ],
+    answer: [0, 1, 2],
+    explanation: '重规划的三种触发条件：执行失败、发现新信息、目标变更。计划全部成功执行时不需要重规划，直接输出最终结果。'
+  },
+  {
+    type: 'multiple',
+    question: '关于规划系统的生产实践，以下说法正确的是？（多选）',
+    options: [
+      '规划器与执行器应该解耦，通过共享计划对象通信',
+      '规划结果可以用 Mermaid 流程图可视化，方便人类审查',
+      '相似任务的计划模板可以缓存复用，减少LLM规划调用',
+      '规划缓存不需要语义匹配，直接用关键词匹配就行'
+    ],
+    answer: [0, 1, 2],
+    explanation: '生产实践关键点：规划与执行分离设计、Mermaid可视化、计划模板缓存复用。缓存需要语义匹配（用Embedding），不是简单关键词匹配，因为相似任务可能表述不同。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch06Questions); }, 500);
+</script>
+<!-- ===== 6.5 高级 RAG 技术 ===== -->
+<h2 class="section-heading">6.9 高级 RAG：从朴素到 Agentic</h2>
+
+<div class="card">
+  <div class="card-title">🚀 RAG 的三代演进</div>
+  
+  <div style="margin-top: 16px;">
+    <strong style="color: var(--color-info);">第一代：朴素 RAG（Naive RAG）</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      文档 → 分块 → 向量化 → 检索 → 塞进 prompt。流程固定，检索一次，回答一次。简单但效果有限——检索不到就答不好。
+    </p>
+    
+    <strong style="color: var(--color-accent);">第二代：高级 RAG（Advanced RAG）</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      加入检索前优化（query 改写、HyDE）和检索后优化（重排序 Rerank、压缩）。检索质量大幅提升。
+    </p>
+    
+    <strong style="color: var(--color-success);">第三代：Agentic RAG</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0;">
+      把 Agent 引入 RAG。Agent 自主决定：是否需要检索？检索几次？是否需要换个关键词再搜？是否需要跨多个知识库检索？<strong>第17章会专门讲解 Agentic RAG。</strong>
+    </p>
+  </div>
+</div>
+
+<h3 class="sub-heading">高级 RAG 的关键优化技术</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">Query 改写</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        用户问"那个怎么用？"→改写为"XX产品使用手册"。让模糊查询变精确。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">HyDE（假设文档）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        先让 LLM 生成一个"假设答案"，用假设答案的向量去检索，效果往往比原查询好。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">Rerank（重排序）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        先用向量检索 Top-20，再用 Cross-Encoder 模型精排，取 Top-5。精度大幅提升。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">上下文压缩</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        检索到的文档块可能很长，用 LLM 提取与问题相关的部分，减少 token 消耗。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6.6 RAG 效果评估 ===== -->
+<h2 class="section-heading">6.10 RAG 效果评估</h2>
+
+<p>RAG 系统怎么评估好不好？业界常用 <strong>RAGAS</strong> 框架，从四个维度打分：</p>
+
+<div class="card">
+  <div class="card-title">📊 RAGAS 评估框架</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">维度</th>
+        <th style="text-align: left; padding: 10px 8px;">含义</th>
+        <th style="text-align: left; padding: 10px 8px;">评估什么</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Faithfulness</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">忠实度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">回答是否基于检索到的文档，没有幻觉</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Answer Relevancy</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">答案相关性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">回答是否切题，没有答非所问</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Context Precision</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">检索精确度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">检索到的文档中有多少是真正有用的</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Context Recall</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">检索召回率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要的知识是否都被检索到了</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+

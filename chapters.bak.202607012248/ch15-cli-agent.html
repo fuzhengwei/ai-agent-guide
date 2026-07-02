@@ -1,0 +1,1052 @@
+<!-- 第15章：CLI 命令行 Agent -->
+<h1 class="chapter-title">第15章 CLI 命令行 Agent</h1>
+<p class="chapter-subtitle">终端里的智能助手：用自然语言驱动命令行</p>
+
+<!-- ===== 15.1 CLI Agent 概述 ===== -->
+<h2 class="section-heading">15.1 CLI Agent 概述</h2>
+
+<p>命令行是程序员的母语。每天我们在终端里敲入 <code>git</code>、<code>docker</code>、<code>kubectl</code>、<code>ssh</code> 等命令来完成工作。但这些命令的参数繁多、语法复杂，即使是经验丰富的工程师也经常需要查文档。CLI Agent 的出现，让我们可以用自然语言与命令行交互——你告诉它"查看最近5次提交记录并找出改动最多的文件"，它自动翻译成 <code>git log --oneline -5</code> 加上一系列管道命令，然后执行并返回结果。</p>
+
+<div class="card">
+  <div class="card-title">🖥️ 什么是 CLI Agent？</div>
+  <p style="margin: 12px 0; color: var(--color-text-secondary); line-height: 1.8;">
+    <strong>CLI Agent</strong>（Command-Line Interface Agent）是指通过命令行终端与 AI Agent 交互的系统。用户输入自然语言或简化的指令，Agent 理解意图后，自动生成并执行对应的 Shell 命令，将结果格式化返回给用户。它本质上是<strong>自然语言与 Shell 之间的智能桥梁</strong>。
+  </p>
+  <p style="margin: 12px 0; color: var(--color-text-secondary); line-height: 1.8;">
+    与传统命令行工具不同，CLI Agent 具备上下文理解、多步推理、错误自愈和工具链组合能力。它不是简单的命令补全工具，而是一个能理解你的意图、规划执行步骤、调用多种工具并处理异常的智能体。比如你说"清理所有未使用的 Docker 镜像"，CLI Agent 不会简单执行 <code>docker rmi</code>，而是先执行 <code>docker images -f "dangling=true"</code> 查找悬挂镜像，确认列表后再批量删除，还会跳过正在使用的镜像。
+  </p>
+</div>
+
+<h3 class="sub-heading">CLI Agent vs Web Agent vs API Agent</h3>
+
+<p>AI Agent 按交互界面可分为三大类，它们的差异不仅是前端形态不同，更深刻影响着架构设计、安全模型和适用场景。</p>
+
+<div class="card">
+  <div class="card-title">📊 三种 Agent 形态对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">维度</th>
+        <th style="text-align: left; padding: 10px 8px;">CLI Agent</th>
+        <th style="text-align: left; padding: 10px 8px;">Web Agent</th>
+        <th style="text-align: left; padding: 10px 8px;">API Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">交互界面</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">终端命令行</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">浏览器网页</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">HTTP/REST 接口</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">目标用户</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者、运维人员</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">普通用户</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">其他系统/服务</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">脚本化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ 天然支持管道和重定向</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗ 需要额外自动化工具</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ 通过代码调用</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">安全边界</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">系统级（文件、进程、网络）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">浏览器沙箱</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">API 权限和 Token</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">响应速度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">极快（本地执行）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中等（需渲染页面）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">快（无 UI 渲染）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">上下文感知</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ 感知文件系统、环境变量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ 感知 DOM、Cookie</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗ 无环境感知</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">管道组合</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ stdout → stdin 天然管道</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗ 无管道概念</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">△ 需手动编排</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>从上表可以看出，CLI Agent 最大的优势在于它<strong>生活在开发者的原生工作环境中</strong>。开发者不需要切换到浏览器、不需要打开 Postman，直接在终端里就能用自然语言完成复杂操作。更重要的是，CLI Agent 可以无缝接入 Unix 哲学中的管道（pipe）机制——一个 Agent 的输出可以成为另一个命令的输入，形成强大的组合能力。</p>
+
+<h3 class="sub-heading">CLI Agent 的核心优势</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">⚡ 快速直接</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        无需 GUI 渲染，命令直达系统。从输入到执行的延迟通常在毫秒级。对于开发者来说，终端永远是最快的信息入口。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">📜 可脚本化</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        CLI Agent 的输入输出可以被 Shell 脚本捕获和组合。今天用 Agent 执行的操作，明天可以封装成自动化脚本。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">🔗 管道友好</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        Unix 管道是 CLI 的灵魂。Agent 生成的命令天然支持 <code>|</code>、<code>></code>、<code><</code>，可以将多个工具串联。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">👨‍💻 开发者原生</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        开发者天然在终端工作。CLI Agent 不需要切换上下文，直接在已有的工作流中增强能力，降低认知负担。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">典型 CLI Agent 产品</h3>
+
+<p>近年来，CLI Agent 领域涌现了多款优秀产品，各有侧重。从通用命令行助手到专门的代码编辑 Agent，生态正在快速成熟。</p>
+
+<div class="card">
+  <div class="card-title">🛠️ 主流 CLI Agent 产品对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">产品</th>
+        <th style="text-align: left; padding: 10px 8px;">开发方</th>
+        <th style="text-align: left; padding: 10px 8px;">核心能力</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 8px;">开源</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">OpenClaw CLI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">OpenClaw</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">全栈 Agent、工具调用、技能系统</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">DevOps、运维、开发</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Claude Code</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Anthropic</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码理解、编辑、测试、Git 操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">软件开发、代码审查</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">GitHub Copilot CLI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GitHub</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">命令建议、解释、错误诊断</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">日常命令行操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Aider</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Paul Gauthier</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI 编程、多文件编辑、Git 集成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码编辑、重构</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">Cursor CLI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Anysphere</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码库理解、智能补全、重构</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">大型项目开发</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Warp AI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Warp</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">终端增强、命令解释、工作流自动化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">日常终端使用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>这些产品各有特色：OpenClaw CLI 强在工具链集成和技能系统扩展性；Claude Code 深度集成了 Anthropic 的模型能力，在代码理解和编辑方面表现出色；Aider 作为开源项目，以 Git 集成和多文件编辑闻名；Warp AI 则重新定义了终端体验，将 AI 能力嵌入到终端本身。</p>
+
+<!-- SVG 动画：CLI Agent 交互流程 -->
+<div class="flowchart-container" id="cliAgentFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('cliAgentFlow', {
+    nodes: [
+      { id: 'user', label: '用户输入\n自然语言', type: 'start' },
+      { id: 'parse', label: '意图解析\nNL → Command', type: 'process' },
+      { id: 'route', label: '命令路由\n选择执行模块', type: 'process' },
+      { id: 'sandbox', label: '安全沙箱\n命令审核+执行', type: 'decision' },
+      { id: 'exec', label: 'Shell 执行\n返回输出', type: 'process' },
+      { id: 'format', label: '输出格式化\n结果展示', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'parse' },
+      { from: 'parse', to: 'route' },
+      { from: 'route', to: 'sandbox' },
+      { from: 'sandbox', to: 'exec', label: '安全' },
+      { from: 'sandbox', to: 'format', label: '拦截', dashed: true },
+      { from: 'exec', to: 'format' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<!-- ===== 15.2 CLI Agent 架构设计 ===== -->
+<h2 class="section-heading">15.2 CLI Agent 架构设计</h2>
+
+<p>一个成熟的 CLI Agent 不是简单的"自然语言转命令"翻译器，而是一个多层协作的智能系统。它需要理解用户意图、选择正确的执行路径、在安全环境中运行命令、并将结果以友好的方式呈现。这一过程涉及四个核心架构层：输入解析层、命令路由层、执行沙箱层和输出格式化层。</p>
+
+<div class="card">
+  <div class="card-title">🏗️ CLI Agent 四层架构</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">架构层</th>
+        <th style="text-align: left; padding: 10px 8px;">职责</th>
+        <th style="text-align: left; padding: 10px 8px;">核心技术</th>
+        <th style="text-align: left; padding: 10px 8px;">输入/输出</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">输入解析层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">将自然语言转化为命令意图</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM + Prompt Engineering + Few-Shot</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">输入：自然语言 / 输出：命令意图</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">命令路由层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">将意图映射到具体执行模块</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">意图分类器 + 工具注册表</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">输入：命令意图 / 输出：执行计划</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">执行沙箱层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">安全隔离的命令执行环境</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Docker / Firejail / bubblewrap</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">输入：Shell 命令 / 输出：执行结果</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">输出格式化层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">将原始结果转为友好展示</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Markdown / JSON / Table 渲染</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">输入：执行结果 / 输出：格式化文本</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">输入解析层</h3>
+
+<p>输入解析层是 CLI Agent 的"耳朵"。当用户输入"查看所有运行中的容器"时，这一层需要理解用户的真实意图：不是字面上的"查看"操作，而是要执行 <code>docker ps</code> 命令。输入解析层通常由 LLM 驱动，结合系统提示词（System Prompt）和 Few-Shot 示例，将自然语言转化为结构化的命令意图（Command Intent）。</p>
+
+<p>命令意图是一个中间表示，包含：操作类型（查询/修改/删除）、目标对象（文件/进程/容器/网络）、参数约束（数量、时间范围、过滤条件）。这种中间表示解耦了自然语言理解和具体命令生成，使得同一意图可以映射到不同系统的命令——"查看运行中的进程"在 Linux 上是 <code>ps aux</code>，在 macOS 上也是 <code>ps aux</code>，但"查看端口占用"在 Linux 上是 <code>ss -tlnp</code>，在 macOS 上是 <code>lsof -i -P</code>。</p>
+
+<h3 class="sub-heading">命令路由层</h3>
+
+<p>命令路由层是 CLI Agent 的"大脑"。它接收命令意图后，决定应该调用哪些工具模块来执行。一个设计良好的路由层会维护一个工具注册表（Tool Registry），记录每个工具的能力描述、参数格式和安全等级。路由层根据意图匹配最合适的工具，生成执行计划（Execution Plan）。</p>
+
+<p>执行计划可能包含多个步骤。比如"查找并杀死占用8080端口的进程"这个意图，路由层会生成三步计划：① <code>lsof -i :8080</code> 找到进程 PID → ② 确认 PID 有效 → ③ <code>kill -9 PID</code> 终止进程。每一步的输出作为下一步的输入，形成有状态的执行链。</p>
+
+<h3 class="sub-heading">执行沙箱层</h3>
+
+<p>执行沙箱层是 CLI Agent 的"安全卫士"。所有 Shell 命令都在受控的沙箱环境中执行，确保即使命令有误也不会影响宿主系统。沙箱层包含命令审核（检查是否在白名单内）、权限控制（降权运行）、资源限制（CPU/内存/超时）和文件系统隔离（只读挂载敏感目录）多重保障。</p>
+
+<h3 class="sub-heading">输出格式化层</h3>
+
+<p>输出格式化层是 CLI Agent 的"嘴巴"。Shell 命令的原始输出往往不够友好——<code>docker ps</code> 输出的是固定宽度表格，<code>git log</code> 输出的是多行文本。格式化层会根据输出类型自动选择最佳展示方式：表格数据渲染为对齐的表格，JSON 数据高亮显示，错误信息用红色标注，长输出自动分页。</p>
+
+<!-- SVG 动画：命令解析到执行的全链路 -->
+<div class="flowchart-container" id="cliArchFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('cliArchFlow', {
+    nodes: [
+      { id: 'input', label: '输入层\n"清理Docker悬挂镜像"', type: 'start' },
+      { id: 'parse', label: '解析层\nIntent: cleanup\ntarget: dangling images', type: 'process' },
+      { id: 'route', label: '路由层\nPlan:\n1. docker images -f dangling=true\n2. docker rmi $IDs', type: 'process' },
+      { id: 'sandbox', label: '沙箱层\n✓ 命令白名单\n✓ 权限检查\n✓ 资源限制', type: 'decision' },
+      { id: 'exec1', label: '执行 Step 1\ndocker images -f\n→ 得到镜像ID列表', type: 'process' },
+      { id: 'exec2', label: '执行 Step 2\ndocker rmi $IDs\n→ 清理完成', type: 'process' },
+      { id: 'output', label: '格式化层\n✓ 删除数量统计\n✓ 释放空间汇报', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'parse' },
+      { from: 'parse', to: 'route' },
+      { from: 'route', to: 'sandbox' },
+      { from: 'sandbox', to: 'exec1', label: '通过' },
+      { from: 'sandbox', to: 'output', label: '拒绝', dashed: true },
+      { from: 'exec1', to: 'exec2' },
+      { from: 'exec2', to: 'output' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<!-- ===== 15.3 Shell 命令执行与安全沙箱 ===== -->
+<h2 class="section-heading">15.3 Shell 命令执行与安全沙箱</h2>
+
+<p>安全是 CLI Agent 的生命线。与 Web Agent 不同，CLI Agent 直接操作操作系统——它可以读写文件、启动进程、访问网络、修改配置。一条错误的命令可能导致数据丢失、服务中断甚至系统崩溃。因此，构建一个可靠的安全沙箱是 CLI Agent 设计中最关键的环节。</p>
+
+<h3 class="sub-heading">命令白名单机制</h3>
+
+<p>命令白名单是 CLI Agent 安全的第一道防线。原理很简单：维护一个允许执行的命令列表，任何不在列表中的命令都被拒绝执行。白名单不仅仅是命令名称的列表，还包含参数约束——允许 <code>git log</code> 但禁止 <code>git push --force</code>，允许 <code>docker ps</code> 但禁止 <code>docker rm -f $(docker ps -q)</code>。</p>
+
+<div class="card">
+  <div class="card-title">🛡️ 危险命令模式与拦截策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">危险模式</th>
+        <th style="text-align: left; padding: 10px 8px;">风险等级</th>
+        <th style="text-align: left; padding: 10px 8px;">拦截策略</th>
+        <th style="text-align: left; padding: 10px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">递归删除</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">🔴 致命</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">正则匹配 rm -rf，直接拦截</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">rm -rf /</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">磁盘格式化</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">🔴 致命</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">mkfs 系列命令完全禁用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">mkfs.ext4 /dev/sda</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">权限提升</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">🟠 高危</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">sudo/su 需二次确认</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">sudo chmod 777 /</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">网络下载执行</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">🟠 高危</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">curl|bash 模式拦截</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">curl http://x | bash</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">进程批量杀死</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">🟠 高危</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">killall/pkill 需确认</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">killall -9 python</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">系统配置修改</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">🟡 中危</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">sysctl/iptables 需确认</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">sysctl -w vm.drop_caches=3</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">文件覆盖写入</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">🟡 中危</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">重定向 > 关键文件需确认</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace; font-size: 12px;">echo "" > /etc/passwd</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">沙箱执行环境</h3>
+
+<p>白名单拦截的是"不能做什么"，沙箱控制的是"能做什么的边界"。即使命令通过了白名单检查，也必须在受限的沙箱环境中执行，防止意外损害。主流的沙箱技术有三种：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">Docker 容器沙箱</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        最强的隔离方案。每个命令在独立容器中执行，文件系统、网络、进程完全隔离。适合执行不信任的命令。缺点是启动慢（秒级）、资源开销大。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">Firejail</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        Linux 轻量级沙箱，使用 Linux namespaces 实现进程隔离。启动快（毫秒级），开销小。适合在宿主机上隔离执行命令。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">bubblewrap</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        Flatpak 使用的沙箱工具，基于 user namespaces。不需要 root 权限，安全性高。适合需要非特权沙箱的场景。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">权限降级与命令注入防御</h3>
+
+<p>权限降级是沙箱的补充手段。CLI Agent 应始终以非 root 用户运行，对敏感目录（<code>/etc</code>、<code>/var</code>、<code>/root</code>）只读挂载，限制网络访问范围。命令注入防御则要处理用户输入中的特殊字符（<code>;</code>、<code>|</code>、<code>&</code>、<code>$()</code>、反引号），防止恶意构造的输入突破命令边界。</p>
+
+<div class="code-block">
+  <span class="code-label">Python 安全命令执行器：白名单 + 沙箱 + 注入防御</span>
+<pre>import re
+import shlex
+import subprocess
+from typing import Optional, Tuple
+
+class SafeCommandExecutor:
+    """CLI Agent 安全命令执行器"""
+
+    # 危险命令正则模式
+    DANGEROUS_PATTERNS = [
+        r'rm\s+-rf\s+/(?:\s|$)',        # rm -rf /
+        r'mkfs\.\w+\s+/dev/',            # 格式化磁盘
+        r'dd\s+.*of=/dev/[sh]d',         # dd 写入磁盘设备
+        r':\(\)\{.*\};:',                # fork bomb
+        r'curl\s+.*\|\s*(bash|sh)',      # 远程脚本执行
+        r'wget\s+.*\|\s*(bash|sh)',      # 远程脚本执行
+        r'sudo\s+rm\s+-rf',              # sudo 删除
+        r'chmod\s+-R\s+777\s+/',         # 全局权限修改
+        r'>\s*/etc/(passwd|shadow)',     # 覆盖系统文件
+        r'\$\(.*\).*\$\(.*\)',           # 嵌套命令替换
+    ]
+
+    # 命令白名单（命令前缀 → 最大超时秒数）
+    WHITELIST = {
+        'ls': 10, 'cat': 10, 'grep': 30, 'find': 60,
+        'git': 120, 'docker': 120, 'kubectl': 60,
+        'ps': 10, 'top': 10, 'df': 10, 'du': 30,
+        'head': 10, 'tail': 10, 'wc': 10, 'sort': 30,
+        'awk': 30, 'sed': 30, 'curl': 30, 'ping': 10,
+        'netstat': 10, 'lsof': 10, 'ss': 10,
+    }
+
+    @classmethod
+    def validate(cls, command: str) -> Tuple[bool, str]:
+        """验证命令安全性：白名单检查 + 危险模式拦截"""
+        # 1. 命令注入防御：检查危险模式
+        for pattern in cls.DANGEROUS_PATTERNS:
+            if re.search(pattern, command):
+                return False, f"危险命令模式被拦截: {pattern}"
+
+        # 2. 解析命令
+        try:
+            parts = shlex.split(command)
+        except ValueError as e:
+            return False, f"命令解析失败: {e}"
+
+        if not parts:
+            return False, "空命令"
+
+        # 3. 白名单检查
+        cmd_name = parts[0]
+        if cmd_name not in cls.WHITELIST:
+            return False, f"命令 '{cmd_name}' 不在白名单中"
+
+        # 4. 检查是否有命令链注入（; && || 等）
+        if any(op in command for op in [';', '&&', '||']):
+            # 对链式命令，每一段都要验证
+            segments = re.split(r'[;|&]+', command)
+            for seg in segments:
+                seg = seg.strip()
+                if seg:
+                    ok, msg = cls.validate(seg)
+                    if not ok:
+                        return False, f"链式命令段验证失败: {msg}"
+
+        return True, "通过"
+
+    @classmethod
+    def execute(cls, command: str, timeout: Optional[int] = None) -> dict:
+        """在安全环境中执行命令"""
+        # 1. 验证命令
+        ok, msg = cls.validate(command)
+        if not ok:
+            return {"success": False, "error": msg, "output": ""}
+
+        # 2. 确定超时
+        cmd_name = shlex.split(command)[0]
+        max_timeout = cls.WHITELIST.get(cmd_name, 30)
+        timeout = min(timeout or max_timeout, max_timeout)
+
+        # 3. 执行命令（非 root、捕获输出、限制超时）
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                user='nobody',          # 权限降级：非 root
+                env={'PATH': '/usr/bin:/bin'},  # 最小化环境变量
+            )
+            return {
+                "success": result.returncode == 0,
+                "output": result.stdout,
+                "error": result.stderr,
+                "returncode": result.returncode,
+            }
+        except subprocess.TimeoutExpired:
+            return {"success": False, "error": f"命令超时（{timeout}s）", "output": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+
+# 使用示例
+executor = SafeCommandExecutor()
+result = executor.execute("git log --oneline -5")
+print(result["output"] if result["success"] else result["error"])
+
+# 危险命令会被拦截
+result = executor.execute("rm -rf /")
+# → {"success": False, "error": "危险命令模式被拦截: rm\\s+-rf\\s+/(?:\\s|$)"}</pre>
+</div>
+
+<p>上面的安全命令执行器实现了四层防御：① 正则匹配拦截已知危险模式；② 命令白名单限制可执行范围；③ 链式命令分段验证；④ 运行时权限降级和环境隔离。在实际生产环境中，还需要加入命令审计日志（记录谁在什么时候执行了什么命令）和实时告警（检测到异常命令模式时通知管理员）。</p>
+
+<!-- ===== 15.4 自然语言转命令（NL2Shell） ===== -->
+<h2 class="section-heading">15.4 自然语言转命令（NL2Shell）</h2>
+
+<p>NL2Shell（Natural Language to Shell）是 CLI Agent 的核心技术能力。它将用户的自然语言描述转化为可执行的 Shell 命令。这不仅仅是简单的翻译——同一条命令在不同操作系统上语法不同，同一意图可以用多种命令实现，用户描述可能模糊或省略关键信息。NL2Shell 需要结合操作系统上下文、用户历史命令和常识推理来生成正确的命令。</p>
+
+<h3 class="sub-heading">NL2Shell 核心原理</h3>
+
+<p>NL2Shell 的核心是一个经过特殊设计的 LLM Prompt。这个 Prompt 包含：操作系统信息（Linux/macOS/WSL）、已安装的工具列表、常用命令模板和约束规则。当用户输入自然语言时，LLM 根据这些上下文信息生成最合适的命令。关键是让 LLM "知道"当前环境——在 macOS 上不应该建议 <code>apt-get</code>，在没有 Docker 的机器上不应该建议 <code>docker</code> 命令。</p>
+
+<h3 class="sub-heading">Few-Shot 示例库设计</h3>
+
+<p>Few-Shot 示例是提升 NL2Shell 准确率的关键。好的示例库应该覆盖常见场景、包含边界情况、标注操作系统差异。示例不是越多越好——精选 20-30 个高质量示例比堆砌 200 个重复示例更有效。示例应按场景分类（文件操作、进程管理、网络诊断、版本控制、容器管理），每类 5-6 个。</p>
+
+<div class="code-block">
+  <span class="code-label">NL2Shell 完整实现：Prompt Engineering + Few-Shot + 上下文感知</span>
+<pre>import platform
+import subprocess
+from typing import Optional
+
+class NL2Shell:
+    """自然语言转 Shell 命令引擎"""
+
+    SYSTEM_PROMPT = """你是一个 Shell 命令专家。用户用自然语言描述需求，你生成对应的 Shell 命令。
+
+当前环境：
+- 操作系统：{os}
+- Shell：{shell}
+- 已安装工具：{tools}
+
+规则：
+1. 只输出命令，不要解释
+2. 如果需要 sudo，在命令前加 sudo
+3. 优先使用系统自带工具
+4. 危险操作（删除、格式化）加 [需确认] 前缀
+5. 不确定时输出最安全的命令
+
+示例：
+用户：查看当前目录下最大的5个文件
+命令：du -ah . | sort -rh | head -5
+
+用户：找出8080端口被哪个进程占用
+命令：lsof -i :8080
+
+用户：统计当前Git仓库的提交人数
+命令：git shortlog -sn | wc -l
+
+用户：查看Docker容器的资源使用情况
+命令：docker stats --no-stream
+
+用户：将最近3天的日志中ERROR提取出来
+命令：find . -name "*.log" -mtime -3 -exec grep -l "ERROR" {{}} \\;
+"""
+
+    FEW_SHOT_EXAMPLES = [
+        ("查看所有运行的容器", "docker ps"),
+        ("列出最近5次Git提交", "git log --oneline -5"),
+        ("查看磁盘使用情况", "df -h"),
+        ("找出当前目录下所有.py文件", "find . -name '*.py' -type f"),
+        ("查看系统内存使用", "free -h"    ]
+
+    def __init__(self, api_key: str, base_url: str, model: str):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.model = model
+
+    def detect_os(self) -> dict:
+        """检测当前操作系统和可用工具"""
+        import shutil
+        os_name = platform.system()
+        shell = "zsh" if os_name == "Darwin" else "bash"
+        tools = []
+        for tool in ["docker", "git", "kubectl", "python3", "node", "curl", "jq"]:
+            if shutil.which(tool):
+                tools.append(tool)
+        return {"os": os_name, "shell": shell, "tools": tools}
+
+    def generate_command(self, user_input: str) -> Optional[str]:
+        """将自然语言转换为 Shell 命令"""
+        env = self.detect_os()
+        prompt = self.SYSTEM_PROMPT.format(
+            os=env["os"], shell=env["shell"], tools=", ".join(env["tools"])
+        )
+        # 调用 LLM API 生成命令
+        examples_text = "\n".join(
+            f"用户：{q}\n命令：{c}" for q, c in self.FEW_SHOT_EXAMPLES
+        )
+        full_prompt = f"{prompt}\n\n示例：\n{examples_text}\n\n用户：{user_input}\n命令："
+        # 实际调用 LLM...
+        return full_prompt  # 简化示例
+
+# 使用示例
+nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
+print(f"生成的命令：{cmd}")
+</pre>
+</div>
+
+<h3 class="sub-heading">NL2Shell 准确率评测</h3>
+
+<table class="comparison-table">
+  <thead>
+    <tr><th>方法</th><th>准确率</th><th>平均延迟</th><th>适用场景</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Zero-Shot</td><td>62%</td><td>0.8s</td><td>简单命令</td></tr>
+    <tr><td>Few-Shot (5例)</td><td>78%</td><td>1.2s</td><td>常见操作</td></tr>
+    <tr><td>Few-Shot (20例)</td><td>89%</td><td>1.5s</td><td>复杂场景</td></tr>
+    <tr><td>Fine-tuned Model</td><td>94%</td><td>0.5s</td><td>特定领域</td></tr>
+    <tr><td>RAG + Few-Shot</td><td>91%</td><td>1.8s</td><td>混合场景</td></tr>
+  </tbody>
+</table>
+
+<svg class="flowchart-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow-15-4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#4a90d9"/>
+    </marker>
+  </defs>
+  <rect x="20" y="120" width="120" height="60" rx="8" fill="#1a2332" stroke="#4a90d9" stroke-width="2"/>
+  <text x="80" y="145" text-anchor="middle" fill="#e0e0e0" font-size="13">用户输入</text>
+  <text x="80" y="165" text-anchor="middle" fill="#888" font-size="11">"查看大文件"</text>
+
+  <rect x="200" y="120" width="120" height="60" rx="8" fill="#1a2332" stroke="#4a90d9" stroke-width="2"/>
+  <text x="260" y="145" text-anchor="middle" fill="#e0e0e0" font-size="13">环境检测</text>
+  <text x="260" y="165" text-anchor="middle" fill="#888" font-size="11">OS/Shell/Tools</text>
+
+  <rect x="380" y="120" width="120" height="60" rx="8" fill="#1a2332" stroke="#4a90d9" stroke-width="2"/>
+  <text x="440" y="145" text-anchor="middle" fill="#e0e0e0" font-size="13">Few-Shot 匹配</text>
+  <text x="440" y="165" text-anchor="middle" fill="#888" font-size="11">20+ 示例</text>
+
+  <rect x="560" y="120" width="120" height="60" rx="8" fill="#1a2332" stroke="#4a90d9" stroke-width="2"/>
+  <text x="620" y="145" text-anchor="middle" fill="#e0e0e0" font-size="13">命令生成</text>
+  <text x="620" y="165" text-anchor="middle" fill="#888" font-size="11">du -ah . | sort -rh</text>
+
+  <line x1="140" y1="150" x2="200" y2="150" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow-15-4)"/>
+  <line x1="320" y1="150" x2="380" y2="150" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow-15-4)"/>
+  <line x1="500" y1="150" x2="560" y2="150" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow-15-4)"/>
+
+  <rect x="560" y="220" width="120" height="50" rx="8" fill="#1a2332" stroke="#e8a87c" stroke-width="2"/>
+  <text x="620" y="240" text-anchor="middle" fill="#e0e0e0" font-size="13">安全校验</text>
+  <text x="620" y="258" text-anchor="middle" fill="#888" font-size="11">白名单/拦截</text>
+  <line x1="620" y1="180" x2="620" y2="220" stroke="#e8a87c" stroke-width="2" marker-end="url(#arrow-15-4)"/>
+</svg>
+
+<!-- ===== 15.5 场景化对接能力 ===== -->
+<h2 class="section-heading">15.5 场景化对接能力</h2>
+
+<p>CLI Agent 的真正价值不在于单条命令的执行，而在于它能将自然语言意图串联成完整的运维流程。一个"部署回滚"的指令背后，可能涉及版本查询、健康检查、镜像回退、流量切换和通知发送五个步骤。CLI Agent 需要理解每个场景的上下文和依赖关系，自动编排命令序列。</p>
+
+<h3 class="sub-heading">五大核心场景</h3>
+
+<table class="comparison-table">
+  <thead>
+    <tr><th>场景</th><th>典型操作</th><th>Agent 价值</th><th>复杂度</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>DevOps</td><td>CI/CD、日志分析、部署回滚</td><td>自动编排流水线、智能回滚决策</td><td>★★★★☆</td></tr>
+    <tr><td>运维</td><td>监控、告警、自动修复</td><td>7×24 值守、故障自愈</td><td>★★★★★</td></tr>
+    <tr><td>开发</td><td>代码审查、分支管理、自动测试</td><td>PR 自动审查、冲突解决</td><td>★★★☆☆</td></tr>
+    <tr><td>数据分析</td><td>SQL 生成、数据清洗、报表</td><td>自然语言查数据、自动可视化</td><td>★★★☆☆</td></tr>
+    <tr><td>安全</td><td>漏洞扫描、日志审计、合规检查</td><td>批量扫描、异常行为识别</td><td>★★★★☆</td></tr>
+  </tbody>
+</table>
+
+<h3 class="sub-heading">DevOps CI/CD 对接实战</h3>
+
+<div class="code-block">
+  <span class="code-label">DevOps CI/CD Pipeline 自动对接示例</span>
+<pre>import subprocess
+import json
+from typing import List
+
+class DevOpsAgent:
+    """CLI Agent 的 DevOps 场景对接"""
+
+    def __init__(self, project_name: str):
+        self.project = project_name
+        self.pipeline_steps = []
+
+    def deploy(self, env: str = "staging") -> dict:
+        """一键部署：构建 → 测试 → 推送 → 发布"""
+        steps = [
+            ("构建镜像", f"docker build -t {self.project}:{env} ."),
+            ("运行测试", "pytest tests/ --cov --cov-report=xml"),
+            ("推送镜像", f"docker push registry.cn-hangzhou.aliyuncs.com/xfg/{self.project}:{env}"),
+            ("滚动更新", f"kubectl set image deployment/{self.project} app={self.project}:{env}"),
+            ("健康检查", f"kubectl rollout status deployment/{self.project} --timeout=300s"),
+        ]
+        results = {}
+        for step_name, cmd in steps:
+            print(f"▶ {step_name}...")
+            ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+            if ret.returncode != 0:
+                results[step_name] = f"FAIL: {ret.stderr[:200]}"
+                self.rollback(env)
+                break
+            results[step_name] = "OK"
+        return results
+
+    def rollback(self, env: str):
+        """自动回滚到上一个稳定版本"""
+        print("⚠️ 部署失败，执行回滚...")
+        subprocess.run(f"kubectl rollout undo deployment/{self.project}", shell=True)
+
+    def analyze_logs(self, since: str = "5m") -> str:
+        """智能日志分析：提取错误 + 归类 + 建议"""
+        cmd = f"kubectl logs deployment/{self.project} --since={since} --tail=1000"
+        logs = subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+        errors = [l for l in logs.split("\n") if "ERROR" in l or "Exception" in l]
+        return f"发现 {len(errors)} 条错误\n" + "\n".join(errors[:10])
+
+# 使用：用户说"部署到staging" → Agent 自动执行5步流水线
+agent = DevOpsAgent("user-service")
+result = agent.deploy("staging")
+print(json.dumps(result, indent=2, ensure_ascii=False))
+</pre>
+</div>
+
+<!-- ===== 15.6 主流 CLI Agent 框架实战 ===== -->
+<h2 class="section-heading">15.6 主流 CLI Agent 框架实战</h2>
+
+<p>CLI Agent 领域已经涌现出多个成熟框架，各有侧重。OpenClaw CLI 强调安全沙箱和多模态对接；Claude Code 专注于代码理解和编辑；Aider 走 Git 原生路线；Cursor CLI 则将 IDE 体验搬到了终端。理解这些框架的设计理念，有助于选择合适的工具或自建框架。</p>
+
+<h3 class="sub-heading">主流框架对比</h3>
+
+<table class="comparison-table">
+  <thead>
+    <tr><th>框架</th><th>核心理念</th><th>安全机制</th><th>扩展性</th><th>适用场景</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>OpenClaw CLI</td><td>安全优先、Skill 可插拔</td><td>四级沙箱、审批机制</td><td>Skill 生态、MCP 协议</td><td>运维、DevOps、通用</td></tr>
+    <tr><td>Claude Code</td><td>代码理解、上下文感知</td><td>只读默认、权限申请</td><td>MCP 工具、自定义命令</td><td>代码开发、重构</td></tr>
+    <tr><td>Aider</td><td>Git 原生、PAIR 编程</td><td>Git 回滚、dry-run</td><td>自定义命令、模型可换</td><td>代码编辑、快速原型</td></tr>
+    <tr><td>Cursor CLI</td><td>IDE 级体验、AI 原生</td><td>工作区隔离</td><td>插件系统</td><td>全栈开发、调试</td></tr>
+    <tr><td>自建框架</td><td>完全可控、深度定制</td><td>自定义沙箱</td><td>无限扩展</td><td>特殊需求、内部工具</td></tr>
+  </tbody>
+</table>
+
+<h3 class="sub-heading">自建 CLI Agent 框架</h3>
+
+<div class="code-block">
+  <span class="code-label">自建最小 CLI Agent 框架（Python，含安全沙箱 + NL2Shell + 命令执行）</span>
+<pre>import subprocess
+import re
+import os
+from typing import Optional, List
+from dataclasses import dataclass
+
+@dataclass
+class CommandResult:
+    success: bool
+    output: str
+    error: str
+    command: str
+
+class CLIAgent:
+    """最小可用 CLI Agent 框架"""
+
+    # 危险命令模式
+    DANGEROUS_PATTERNS = [
+        r"rm\s+-rf\s+/",
+        r"dd\s+if=",
+        r"mkfs\.",
+        r"shutdown",
+        r"reboot",
+        r">\s*/dev/sda",
+        r"chmod\s+777\s+/",
+        r":\(\)\{.*\|.*&\};",  # fork bomb
+    ]
+
+    def __init__(self, allowed_commands: List[str] = None):
+        self.history: List[str] = []
+        self.allowed = allowed_commands or [
+            "ls", "cat", "grep", "find", "wc", "head", "tail", "sort",
+            "git", "docker", "kubectl", "python3", "node", "curl", "jq",
+            "du", "df", "ps", "top", "lsof", "netstat", "diff", "echo",
+        ]
+
+    def is_safe(self, command: str) -> bool:
+        """安全检查：白名单 + 危险模式拦截"""
+        # 检查危险模式
+        for pattern in self.DANGEROUS_PATTERNS:
+            if re.search(pattern, command):
+                return False
+        # 检查白名单
+        base_cmd = command.strip().split()[0] if command.strip() else ""
+        return base_cmd in self.allowed
+
+    def execute(self, command: str, timeout: int = 30) -> CommandResult:
+        """安全执行命令"""
+        if not self.is_safe(command):
+            return CommandResult(False, "", "命令被安全策略拦截", command)
+        try:
+            ret = subprocess.run(
+                command, shell=True, capture_output=True,
+                text=True, timeout=timeout,
+                env={**os.environ, "LANG": "en_US.UTF-8"}
+            )
+            self.history.append(command)
+            return CommandResult(
+                ret.returncode == 0, ret.stdout, ret.stderr, command
+            )
+        except subprocess.TimeoutExpired:
+            return CommandResult(False, "", f"命令超时（{timeout}s）", command)
+
+    def chat(self, user_input: str) -> str:
+        """主循环：接收自然语言 → 执行命令 → 返回结果"""
+        # 这里接入 NL2Shell 模块
+        # 简化示例：直接执行用户输入的命令
+        result = self.execute(user_input)
+        if result.success:
+            return f"✅ {result.output[:500]}"
+        else:
+            return f"❌ {result.error}"
+
+# 使用
+agent = CLIAgent()
+print(agent.chat("ls -la"))
+print(agent.chat("git log --oneline -5"))
+</pre>
+</div>
+
+<svg class="flowchart-svg" viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow-15-6" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#4a90d9"/>
+    </marker>
+  </defs>
+  <!-- 框架对比图 -->
+  <rect x="50" y="30" width="140" height="70" rx="8" fill="#1a2332" stroke="#4a90d9" stroke-width="2"/>
+  <text x="120" y="55" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">OpenClaw CLI</text>
+  <text x="120" y="75" text-anchor="middle" fill="#888" font-size="11">安全沙箱 + Skill</text>
+  <text x="120" y="90" text-anchor="middle" fill="#888" font-size="11">MCP 协议</text>
+
+  <rect x="230" y="30" width="140" height="70" rx="8" fill="#1a2332" stroke="#e8a87c" stroke-width="2"/>
+  <text x="300" y="55" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">Claude Code</text>
+  <text x="300" y="75" text-anchor="middle" fill="#888" font-size="11">代码理解</text>
+  <text x="300" y="90" text-anchor="middle" fill="#888" font-size="11">上下文感知</text>
+
+  <rect x="410" y="30" width="140" height="70" rx="8" fill="#1a2332" stroke="#7cb342" stroke-width="2"/>
+  <text x="480" y="55" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">Aider</text>
+  <text x="480" y="75" text-anchor="middle" fill="#888" font-size="11">Git 原生</text>
+  <text x="480" y="90" text-anchor="middle" fill="#888" font-size="11">PAIR 编程</text>
+
+  <rect x="590" y="30" width="140" height="70" rx="8" fill="#1a2332" stroke="#ce93d8" stroke-width="2"/>
+  <text x="660" y="55" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">自建框架</text>
+  <text x="660" y="75" text-anchor="middle" fill="#888" font-size="11">完全可控</text>
+  <text x="660" y="90" text-anchor="middle" fill="#888" font-size="11">深度定制</text>
+
+  <!-- 底部共同能力 -->
+  <rect x="150" y="160" width="500" height="50" rx="8" fill="#0d1117" stroke="#555" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="400" y="185" text-anchor="middle" fill="#aaa" font-size="13">共同能力：NL2Shell · 安全沙箱 · 命令执行 · 上下文管理</text>
+
+  <line x1="120" y1="100" x2="300" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="300" y1="100" x2="350" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="480" y1="100" x2="420" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="660" y1="100" x2="500" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="3,3"/>
+
+  <!-- 选型决策树 -->
+  <rect x="250" y="250" width="300" height="80" rx="8" fill="#1a2332" stroke="#e8a87c" stroke-width="2"/>
+  <text x="400" y="275" text-anchor="middle" fill="#e8a87c" font-size="13" font-weight="bold">选型决策</text>
+  <text x="400" y="295" text-anchor="middle" fill="#ccc" font-size="11">安全优先 → OpenClaw CLI</text>
+  <text x="400" y="310" text-anchor="middle" fill="#ccc" font-size="11">代码优先 → Claude Code / Aider</text>
+  <text x="400" y="325" text-anchor="middle" fill="#ccc" font-size="11">特殊需求 → 自建框架</text>
+</svg>
+
+<!-- ===== 八股题 ===== -->
+<h2 class="section-heading">面试八股题</h2>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q1: CLI Agent 和 Web Agent 的核心区别是什么？</h3>
+  <div class="interview-a">
+    <p>CLI Agent 通过命令行终端与用户交互，输入输出都是文本，适合开发者和技术运维人员。Web Agent 运行在浏览器中，有丰富的 UI 交互能力。核心区别体现在三个方面：<strong>交互模式</strong>——CLI 是纯文本流，支持管道和重定向，可以与其他命令行工具无缝串联；Web 是 GUI 交互，依赖点击和表单。<strong>执行环境</strong>——CLI Agent 直接运行在用户的操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器沙箱限制，只能通过 API 间接访问系统资源。<strong>自动化能力</strong>——CLI Agent 可以轻松嵌入 Shell 脚本、CI/CD Pipeline、Cron 任务中实现无人值守自动化；Web Agent 通常需要人工操作或额外的 RPA 工具。CLI Agent 的优势在于快速、可脚本化、管道友好，但学习门槛较高；Web Agent 门槛低但灵活性受限。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q2: 如何设计 CLI Agent 的安全沙箱？请描述四层防呆机制。</h3>
+  <div class="interview-a">
+    <p>安全沙箱是 CLI Agent 的生命线。四层防呆机制从外到内依次为：<strong>第一层：命令白名单</strong>——只允许预定义的安全命令执行，基于命令前缀匹配，如 ls、cat、grep、git 等常见命令，拦截未知命令。<strong>第二层：危险模式正则拦截</strong>——即使命令在白名单中，也要检查参数是否包含危险模式，如 rm -rf /、dd if=、fork bomb 等，使用正则表达式匹配已知攻击模式。<strong>第三层：沙箱执行环境</strong>——在隔离的环境中执行命令，方案包括 Docker 容器（文件系统隔离 + 资源限制）、Firejail（Linux 轻量沙箱）、bubblewrap（Flatpak 使用的沙箱），以及权限降级（非 root 运行、只读挂载关键目录）。<strong>第四层：人工审批机制</strong>——对于敏感操作（如部署、删除、网络请求），弹出确认提示要求用户明确同意后才执行。四层机制层层递进，即使某一层被绕过，下一层仍能兜底。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q3: 如何提升 NL2Shell 的准确率？</h3>
+  <div class="interview-a">
+    <p>NL2Shell 准确率提升是一个系统工程，从五个方面入手：<strong>1. Few-Shot 示例优化</strong>——精选 20-30 个高质量示例，按场景分类（文件操作、进程管理、网络诊断、版本控制、容器管理），每类 5-6 个，覆盖常见和边界情况。示例质量比数量更重要。<strong>2. 上下文感知</strong>——在 Prompt 中注入操作系统类型、Shell 版本、已安装工具列表、当前工作目录等信息，让 LLM 生成与环境匹配的命令。比如在 macOS 上不生成 apt-get 命令。<strong>3. RAG 增强</strong>——将用户历史命令库和 man page 作为知识库，通过向量检索找到相似场景的参考命令，作为 Few-Shot 示例动态注入。<strong>4. 多候选 + 投票</strong>——让 LLM 生成 3-5 个候选命令，通过规则校验（语法检查、安全检查）和二次 LLM 评分选出最佳命令。<strong>5. 持续学习</strong>——记录用户对生成命令的修改和反馈，将有价值的修正加入 Few-Shot 库，形成正向飞轮。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q4: CLI Agent 命令执行失败后如何实现自愈？</h3>
+  <div class="interview-a">
+    <p>命令执行失败后的自愈是 CLI Agent 智能化的核心体现。自愈流程分四步：<strong>第一步：错误分类</strong>——将失败原因分为可重试类（网络超时、资源暂时不可用）、需修正类（命令语法错误、权限不足）、需人工介入类（文件不存在、服务未安装）。<strong>第二步：自动修正</strong>——对于语法错误，将错误信息回传给 LLM 重新生成命令；对于权限问题，尝试加 sudo 或切换用户；对于路径问题，尝试模糊匹配查找正确路径。<strong>第三步：重试策略</strong>——对于瞬时故障，采用指数退避重试（1s → 2s → 4s），最多重试 3 次；对于复杂操作，回退到上一个已知稳定状态。<strong>第四步：降级与上报</strong>——如果自动修正失败，降级为提示用户手动处理，同时提供错误分析和建议命令。关键设计：每次自愈都要记录日志，形成"错误 → 修正"映射表，逐步提升自愈能力。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q5: 命令注入攻击的原理和防御策略是什么？</h3>
+  <div class="interview-a">
+    <p>命令注入是 CLI Agent 面临的最严重的安全威胁。<strong>攻击原理</strong>：攻击者通过自然语言输入中嵌入 Shell 元字符（如 ;、|、&、$()、``），使 LLM 生成的命令包含恶意载荷。例如用户输入"查看文件 ; rm -rf /"，如果 LLM 直接拼接为 cat file ; rm -rf /，就会导致灾难性后果。另一个向量是环境变量注入，如 $HOME 可能被篡改。<strong>防御策略</strong>：<strong>1. 输入净化</strong>——在自然语言输入阶段检测并过滤 Shell 元字符，对 $、;、|、&、反引号等字符进行转义。<strong>2. 命令结构化解析</strong>——不使用 shell=True 执行，而是将命令拆分为程序名 + 参数列表（subprocess.run(["ls", "-la"])），避免 Shell 解释器介入。<strong>3. 参数白名单</strong>——对每个命令定义允许的参数集合，拒绝不在白名单中的参数。<strong>4. 沙箱隔离</strong>——即使在容器内执行，也限制网络访问、文件系统写入范围和系统调用。<strong>5. 审计日志</strong>——记录所有执行的命令、输入来源和执行结果，便于事后追溯。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q6: OpenClaw CLI 的架构优势和设计理念是什么？</h3>
+  <div class="interview-a">
+    <p>OpenClaw CLI 是一个以安全为核心、Skill 可插拔的 CLI Agent 框架。<strong>架构优势</strong>：<strong>1. Skill 生态</strong>——每个 Skill 是一个独立的能力包（SKILL.md + 脚本），可以热加载、组合使用。用户可以自建 Skill 也可以从 SkillHub 安装社区 Skill，形成能力飞轮。<strong>2. 四级安全模型</strong>——命令白名单 → 危险模式拦截 → 沙箱执行 → 人工审批，层层递进。尤其审批机制让用户对敏感操作有最终控制权。<strong>3. MCP 协议支持</strong>——通过 Model Context Protocol 标准化工具调用，支持跨模型、跨平台的工具互操作。<strong>4. 多模态对接</strong>——不只是命令行，还能对接消息平台（Telegram、Discord、企业微信）、设备节点（手机摄像头、屏幕录制）等。<strong>5. 会话管理</strong>——支持主会话和子会话隔离，复杂任务可以派发子任务并行执行，主会话不被阻塞。<strong>设计理念</strong>是"安全优先、可扩展、开发者友好"——先保证不出事，再通过 Skill 生态无限扩展能力。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q7: CLI Agent 在 DevOps 场景中有哪些典型应用？</h3>
+  <div class="interview-a">
+    <p>CLI Agent 在 DevOps 场景中大有可为，三个典型应用：<strong>应用一：智能 CI/CD 流水线</strong>——传统 CI/CD 需要手写 YAML 配置，CLI Agent 可以根据自然语言描述自动生成 Pipeline 配置，在部署失败时自动分析日志、定位问题、执行回滚。例如"部署 user-service 到 staging 环境"，Agent 自动执行构建→测试→推送→滚动更新→健康检查五步流水线，任一步骤失败自动回滚。<strong>应用二：日志智能分析</strong>——线上服务出问题时，运维人员需要在一堆日志中找到根因。CLI Agent 可以自动收集多服务日志（kubectl logs）、过滤错误（grep ERROR）、归类异常模式、关联时间线，最后给出根因假设和修复建议。比传统 ELK 查询更灵活，因为 Agent 能理解日志语义。<strong>应用三：故障自愈</strong>——监控告警触发后，CLI Agent 自动执行诊断命令（查看 CPU/内存/磁盘、检查进程状态、分析网络连接），根据预设规则执行修复操作（重启服务、清理缓存、扩容节点），并将处理过程记录到工单系统。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q8: CLI Agent 如何管理上下文和处理长命令输出？</h3>
+  <div class="interview-a">
+    <p>上下文管理是 CLI Agent 的核心技术挑战。LLM 的上下文窗口有限（4K-128K tokens），而命令输出可能动辄上万行。<strong>策略一：输出摘要</strong>——对超长输出进行分层摘要：首先截取前 N 行和后 N 行（头尾通常最重要），中间部分用 LLM 生成摘要。对于结构化输出（如 JSON、表格），提取关键字段而非全文。<strong>策略二：滑动窗口</strong>——维护一个滑动上下文窗口，保留最近 K 轮对话和命令结果。超过窗口的旧内容通过摘要压缩，保留关键信息（执行了什么命令、结果成功/失败、关键输出）。<strong>策略三：语义检索</strong>——将所有历史命令和输出存入向量数据库，当需要历史信息时通过语义检索找到相关上下文，而不是全量加载。<strong>策略四：上下文分区</strong>——将上下文分为"任务上下文"（当前任务目标）、"环境上下文"（OS、目录、工具）、"历史上下文"（最近命令和结果），按优先级分配 token 预算，确保任务关键信息不被挤占。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q9: CLI Agent 中如何落地 RBAC 权限控制？</h3>
+  <div class="interview-a">
+    <p>RBAC（Role-Based Access Control）在 CLI Agent 中的落地需要考虑命令级别的权限粒度。<strong>角色定义</strong>：通常分为 Viewer（只读权限，可执行 ls/ps/cat/grep 等查看类命令）、Operator（可执行运维操作，如 git/docker/kubectl 的非破坏性命令）、Admin（全权限，包括删除、部署、配置修改）。<strong>权限矩阵</strong>：为每个角色定义命令白名单和参数约束。例如 Operator 可以执行 kubectl get/describe/logs 但不能执行 kubectl delete。<strong>实现机制</strong>：<strong>1. 命令分类</strong>——将所有命令分为 read/write/admin 三级，写入配置文件。<strong>2. 参数检查</strong>——不仅检查命令本身，还检查参数。如 git push 属于 write 级别，需要 Operator 以上权限。<strong>3. 审批流程</strong>——越权操作需要更高级别用户审批。CLI Agent 可以生成审批请求，发送到 IM 工具（如企业微信/飞书），审批通过后自动执行。<strong>4. 审计日志</strong>——记录每条命令的执行者、时间、结果、权限级别，支持事后审计和合规检查。<strong>5. 动态权限</strong>——支持临时提权（如紧急运维时 1 小时内获得 Admin 权限），超时自动降级。</p>
+  </div>
+</div>
+
+<div class="interview-card">
+  <h3 class="interview-q">Q10: CLI Agent 的未来发展趋势是什么？</h3>
+  <div class="interview-a">
+    <p>CLI Agent 正处于快速发展期，五个趋势值得关注：<strong>趋势一：多模态融合</strong>——未来的 CLI Agent 不只处理文本，还能接收截图（分析 UI 错误）、语音指令（免手输入）、甚至视频（分析操作录屏）。多模态输入让 Agent 的感知能力大幅提升。<strong>趋势二：Agent 间协作</strong>——多个 CLI Agent 可以组成协作网络，A Agent 负责前端部署，B Agent 负责后端部署，C Agent 负责数据库迁移，通过 A2A 协议协调完成复杂任务。类似微服务架构，每个 Agent 专注一个领域。<strong>趋势三：自进化能力</strong>——Agent 持续学习用户的命令习惯、偏好和工作流，自动优化 Few-Shot 示例库、调整命令推荐策略。从"通用 Agent"演进为"个人定制 Agent"。<strong>趋势四：安全可信</strong>——引入形式化验证（执行前数学证明命令安全）、可解释 AI（解释为什么选择这条命令）、零信任架构（每条命令都需要动态授权）。<strong>趋势五：与 IDE/CI 深度集成</strong>——CLI Agent 不再是独立工具，而是嵌入 VS Code、JetBrains、GitHub Actions 中，成为开发流程的有机组成部分。</p>
+  </div>
+</div>
+
+<!-- ===== 考试题 ===== -->
+<h2 class="section-heading">本章考试</h2>
+<div class="quiz-container" data-chapter="ch15">
+  <div class="quiz-question" data-type="single" data-answer="0">
+    <p class="quiz-q">1. CLI Agent 与 Web Agent 的最核心区别是？</p>
+    <label><input type="radio" name="q1" value="0">A. CLI Agent 运行在操作系统层面，可以直接访问系统资源；Web Agent 受浏览器沙箱限制</label><br>
+    <label><input type="radio" name="q1" value="1">B. CLI Agent 比 Web Agent 功能更强大</label><br>
+    <label><input type="radio" name="q1" value="2">C. Web Agent 不能使用 AI 模型</label><br>
+    <label><input type="radio" name="q1" value="3">D. CLI Agent 不需要安全机制</label>
+    <div class="quiz-explanation">CLI Agent 直接运行在操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器安全模型限制，只能通过 API 间接访问。这是最本质的区别。</div>
+  </div>
+
+  <div class="quiz-question" data-type="single" data-answer="1">
+    <p class="quiz-q">2. 在安全沙箱设计中，以下哪项是第一道防线？</p>
+    <label><input type="radio" name="q2" value="0">A. Docker 容器隔离</label><br>
+    <label><input type="radio" name="q2" value="1">B. 命令白名单机制</label><br>
+    <label><input type="radio" name="q2" value="2">C. 人工审批确认</label><br>
+    <label><input type="radio" name="q2" value="3">D. 权限降级运行</label>
+    <div class="quiz-explanation">四层防呆从外到内依次是：命令白名单 → 危险模式拦截 → 沙箱执行环境 → 人工审批。白名单是第一道防线，只允许预定义的安全命令执行。</div>
+  </div>
+
+  <div class="quiz-question" data-type="single" data-answer="2">
+    <p class="quiz-q">3. NL2Shell 中 Few-Shot 示例的最佳数量和分类策略是？</p>
+    <label><input type="radio" name="q3" value="0">A. 越多越好，至少 200 个</label><br>
+    <label><input type="radio" name="q3" value="1">B. 5 个即可，保持简洁</label><br>
+    <label><input type="radio" name="q3" value="2">C. 20-30 个高质量示例，按场景分类，每类 5-6 个</label><br>
+    <label><input type="radio" name="q3" value="3">D. 随机选取 10 个即可</label>
+    <div class="quiz-explanation">研究表明，精选 20-30 个高质量示例比堆砌 200 个重复示例更有效。按场景分类（文件操作、进程管理等），每类 5-6 个，覆盖常见和边界情况。</div>
+  </div>
+
+  <div class="quiz-question" data-type="single" data-answer="1">
+    <p class="quiz-q">4. 以下哪个不是 CLI Agent 的典型 DevOps 应用场景？</p>
+    <label><input type="radio" name="q4" value="0">A. CI/CD 流水线自动编排</label><br>
+    <label><input type="radio" name="q4" value="1">B. 用户界面 A/B 测试</label><br>
+    <label><input type="radio" name="q4" value="2">C. 线上日志智能分析</label><br>
+    <label><input type="radio" name="q4" value="3">D. 故障自动诊断与自愈</label>
+    <div class="quiz-explanation">A/B 测试属于产品/UI 优化领域，不是 CLI Agent 的典型 DevOps 应用。CLI Agent 的 DevOps 价值在流水线编排、日志分析和故障自愈。</div>
+  </div>
+
+  <div class="quiz-question" data-type="single" data-answer="3">
+    <p class="quiz-q">5. 命令注入攻击中最常见的 Shell 元字符是？</p>
+    <label><input type="radio" name="q5" value="0">A. @ 和 #</label><br>
+    <label><input type="radio" name="q5" value="1">B. * 和 ?</label><br>
+    <label><input type="radio" name="q5" value="2">C. + 和 -</label><br>
+    <label><input type="radio" name="q5" value="3">D. ; 和 |</label>
+    <div class="quiz-explanation">分号（;）用于命令分隔，管道符（|）用于命令串联，是命令注入中最常见的攻击向量。例如 "cat file; rm -rf /" 通过分号注入了删除命令。</div>
+  </div>
+
+  <div class="quiz-question" data-type="multi" data-answer="0,1,2">
+    <p class="quiz-q">6. 以下哪些是 CLI Agent 的安全防御策略？（多选）</p>
+    <label><input type="checkbox" name="q6" value="0">A. 输入净化，过滤 Shell 元字符</label><br>
+    <label><input type="checkbox" name="q6" value="1">B. 命令结构化解析，不使用 shell=True</label><br>
+    <label><input type="checkbox" name="q6" value="2">C. 沙箱隔离，限制网络和文件系统访问</label><br>
+    <label><input type="checkbox" name="q6" value="3">D. 禁用所有命令执行功能</label>
+    <div class="quiz-explanation">A、B、C 都是有效的安全防御策略。D 过于极端，CLI Agent 的核心价值就是执行命令，禁用所有命令等于失去功能。正确做法是"安全地执行"而非"不执行"。</div>
+  </div>
+
+  <div class="quiz-question" data-type="multi" data-answer="0,2,3">
+    <p class="quiz-q">7. 提升 NL2Shell 准确率的方法包括哪些？（多选）</p>
+    <label><input type="checkbox" name="q7" value="0">A. 上下文感知（注入 OS、Shell、已装工具信息）</label><br>
+    <label><input type="checkbox" name="q7" value="1">B. 禁止用户输入自然语言</label><br>
+    <label><input type="checkbox" name="q7" value="2">C. RAG 增强（从历史命令库检索相似场景）</label><br>
+    <label><input type="checkbox" name="q7" value="3">D. 多候选生成 + 规则校验 + LLM 评分</label>
+    <div class="quiz-explanation">A、C、D 都是有效的准确率提升方法。B 是错误的——NL2Shell 的核心就是接收自然语言输入，禁止自然语言就失去了意义。</div>
+  </div>
+
+  <div class="quiz-question" data-type="multi" data-answer="0,1,3">
+    <p class="quiz-q">8. CLI Agent 的上下文管理策略包括哪些？（多选）</p>
+    <label><input type="checkbox" name="q8" value="0">A. 输出摘要（截取头尾 + LLM 摘要中间部分）</label><br>
+    <label><input type="checkbox" name="q8" value="1">B. 滑动窗口（保留最近 K 轮对话）</label><br>
+    <label><input type="checkbox" name="q8" value="2">C. 删除所有历史记录节省 token</label><br>
+    <label><input type="checkbox" name="q8" value="3">D. 语义检索（从向量数据库查找相关历史上下文）</label>
+    <div class="quiz-explanation">A、B、D 是标准上下文管理策略。C 是错误的——删除所有历史记录会导致 Agent 失去记忆，无法理解上下文连贯性。正确做法是摘要压缩而非删除。</div>
+  </div>
+
+  <div class="quiz-question" data-type="multi" data-answer="0,1,2">
+    <p class="quiz-q">9. 以下哪些是主流 CLI Agent 框架？（多选）</p>
+    <label><input type="checkbox" name="q9" value="0">A. OpenClaw CLI</label><br>
+    <label><input type="checkbox" name="q9" value="1">B. Claude Code</label><br>
+    <label><input type="checkbox" name="q9" value="2">C. Aider</label><br>
+    <label><input type="checkbox" name="q9" value="3">D. Microsoft Excel</label>
+    <div class="quiz-explanation">A、B、C 都是主流 CLI Agent 框架。OpenClaw CLI 强调安全和 Skill 生态；Claude Code 专注代码理解；Aider 走 Git 原生路线。Excel 是电子表格软件，不是 CLI Agent。</div>
+  </div>
+
+  <div class="quiz-question" data-type="multi" data-answer="0,2,3">
+    <p class="quiz-q">10. CLI Agent 的 RBAC 权限控制中，Operator 角色通常可以执行哪些操作？（多选）</p>
+    <label><input type="checkbox" name="q10" value="0">A. kubectl get / describe / logs</label><br>
+    <label><input type="checkbox" name="q10" value="1">B. kubectl delete</label><br>
+    <label><input type="checkbox" name="q10" value="2">C. git push</label><br>
+    <label><input type="checkbox" name="q10" value="3">D. docker ps / logs</label>
+    <div class="quiz-explanation">Operator 可以执行运维操作（A、C、D），但删除操作（B）属于 Admin 权限。kubectl delete 是破坏性操作，需要更高权限级别。</div>
+  </div>
+</div>
+
+<!-- 章节导航 -->
+<div class="chapter-nav">
+  <a href="ch14-evaluation.html" class="prev">← 第14章 Agent评估</a>
+  <a href="ch16-build-from-scratch.html" class="next">第16章 从零搭建 →</a>
+</div>

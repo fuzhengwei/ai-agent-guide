@@ -1,0 +1,1066 @@
+<!-- 第10章：Dify 与 Coze 平台 -->
+<h1 class="chapter-title">第10章 Dify 与 Coze 平台</h1>
+<p class="chapter-subtitle">低代码 Agent 构建平台的两种路线</p>
+
+<!-- ===== 10.1 为什么需要平台 ===== -->
+<h2 class="section-heading">10.1 代码框架 vs 低代码平台</h2>
+
+<p>前面几章学的 LangGraph、AutoGen、CrewAI 都是<strong>代码框架</strong>——灵活但门槛高。不是所有团队都有工程师来写代码。低代码平台让非技术人员也能搭建 Agent：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">代码框架</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>LangGraph / AutoGen / CrewAI</li>
+        <li>完全灵活，可定制一切</li>
+        <li>需要 Python 工程能力</li>
+        <li>适合：复杂定制、生产级</li>
+        <li>部署：自己搭服务</li>
+      </ul>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">低代码平台</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>Dify / Coze / FastGPT</li>
+        <li>拖拽搭建，可视化配置</li>
+        <li>无需写代码</li>
+        <li>适合：快速原型、中小团队</li>
+        <li>部署：平台托管或自部署</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 10.2 Dify ===== -->
+<h2 class="section-heading">10.2 Dify：开源 LLMOps 平台</h2>
+
+<p><strong>Dify</strong> 是国内最火的开源 LLMOps 平台。它不仅是一个 Agent 构建工具，更是一个完整的 LLM 应用生命周期管理平台。</p>
+
+<div class="card">
+  <div class="card-title">🔧 Dify 的核心能力</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">Prompt 工程</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        可视化 Prompt 编辑器，支持变量模板、版本管理、A/B 测试。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">RAG 管道</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        内置完整的 RAG 流程：文档上传→分块→向量化→检索→生成。零配置可用。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">Agent 构建</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        可视化编排 Agent 工作流，支持 ReAct、Function Calling、自定义工具。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">模型管理</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        统一管理多个 LLM（OpenAI/Claude/通义千问等），一键切换。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-error);">监控分析</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        日志追踪、Token 统计、用户反馈收集、性能监控。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">API 发布</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        一键发布为 API，支持 WebApp、API、Webhook 多种接入方式。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Dify 的应用类型</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">类型</th>
+        <th style="text-align: left; padding: 10px 8px;">说明</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Chatbot</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">对话型应用，多轮对话</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">客服、助手</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Text Generator</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">单次生成，输入→输出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">翻译、摘要、改写</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Agent</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自主 Agent，可调用工具</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">复杂任务、多步推理</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Workflow</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可视化工作流编排</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">固定流程自动化</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 10.3 Coze ===== -->
+<h2 class="section-heading">10.3 Coze：字节跳动的 Bot 工厂</h2>
+
+<p><strong>Coze（扣子）</strong> 是字节跳动推出的 AI Bot 构建平台。与 Dify 的"开发者工具"定位不同，Coze 更偏向"人人可用"：</p>
+
+<div class="card">
+  <div class="card-title">🎨 Coze 的特色</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">零门槛</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        完全无代码，对话式配置 Bot。选模型、写 Prompt、加插件即可发布。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">插件生态</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        内置 100+ 插件（搜索、画图、新闻等），也支持自定义插件。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">多端发布</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        一键发布到飞书、微信公众号、抖音等平台。自带 Web 和 API。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">工作流编排</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        可视化工作流，拖拽节点编排复杂逻辑。支持条件分支、循环。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Coze 的 Bot 结构</h3>
+
+<div class="code-block">
+  <span class="code-label">Coze Bot 配置结构</span>
+<pre>{
+  "bot": {
+    "name": "旅游规划助手",
+    "description": "帮用户规划旅行行程",
+    "model": "doubao-pro",          // 选择模型
+    "prompt": "你是一个旅游规划专家...",
+    "plugins": [                     // 插件
+      "search",           // 搜索
+      "weather",          // 天气
+      "map"               // 地图
+    ],
+    "knowledge": [                   // 知识库
+      { "type": "file", "file_id": "xxx" },
+      { "type": "url", "url": "https://..." }
+    ],
+    "variables": [                   // 变量
+      { "name": "budget", "type": "number" }
+    ],
+    "workflow": "workflow_id_xxx",   // 工作流
+    "channels": [                    // 发布渠道
+      "web", "feishu", "wechat"
+    ]
+  }
+}</pre>
+</div>
+
+<!-- ===== 10.4 对比 ===== -->
+<h2 class="section-heading">10.4 Dify vs Coze vs 代码框架</h2>
+
+<div class="card">
+  <div class="card-title">📊 三种路线全面对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">对比项</th>
+        <th style="text-align: left; padding: 10px 8px;">代码框架<br>(LangGraph等)</th>
+        <th style="text-align: left; padding: 10px 8px;">Dify</th>
+        <th style="text-align: left; padding: 10px 8px;">Coze</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">技术门槛</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高（需Python）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中（了解概念）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低（零代码）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">灵活性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">最高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">部署方式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自己部署</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自部署/云服务</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">云服务（SaaS）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">数据安全</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">完全自控</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自部署可控</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">平台托管</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">开发速度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">慢（天/周）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中（小时）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">快（分钟）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">成本</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发成本高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源免费</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">免费+增值</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">适用团队</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工程团队</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);技术团队</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);业务团队</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent); margin-top: 16px;">
+  <strong>选型建议：</strong><br>
+  • 要完全定制、数据敏感 → <strong>代码框架</strong><br>
+  • 要快速搭建、可自部署 → <strong>Dify</strong><br>
+  • 要最快上线、面向消费者 → <strong>Coze</strong>
+</div>
+
+<!-- ===== 10.5 Dify 实战：工作流编排 ===== -->
+<h2 class="section-heading">10.5 Dify 实战：工作流编排全流程</h2>
+
+<p>前面几节介绍了 Dify 和 Coze 的核心概念与对比，但真正上手搭建一个完整的 Agent 应用时，需要理解具体的操作步骤和配置细节。本节将以一个<strong>智能客服 Bot</strong> 为例，从知识库创建到 Chatflow 编排，再到 API 集成，完整走通 Dify 的开发全流程。</p>
+
+<h3 class="sub-heading">步骤一：创建知识库</h3>
+<p>在 Dify 控制台中，首先需要创建一个知识库（Knowledge Base），上传企业的 FAQ 文档、产品手册、服务条款等资料。Dify 会自动完成文档分块（Chunking）、向量化（Embedding）和索引构建。你可以选择不同的分块策略：按段落分块、按固定长度分块、或按自定义分隔符分块。对于客服场景，建议按段落分块，并设置 200-500 Token 的重叠区域，确保上下文完整性。</p>
+
+<h3 class="sub-heading">步骤二：编排 Chatflow</h3>
+<p>创建一个 Chatflow 类型的应用，进入可视化编排画布。一个典型的客服 Chatflow 包含以下节点：Start 节点接收用户输入 → Knowledge Retrieval 节点检索知识库 → LLM 节点结合检索结果生成回答 → Answer 节点输出响应。你还可以在中间插入条件分支节点，根据用户问题的类别路由到不同的处理流程。</p>
+
+<!-- SVG: Dify 工作流编排图 -->
+<div class="card">
+  <div class="card-title">🔀 Dify Chatflow 工作流编排示意图</div>
+  <div style="text-align: center; padding: 20px 0;">
+    <svg width="780" height="320" viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
+      <defs>
+        <linearGradient id="nodeGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#bbdefb;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="nodeGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e8f5e9;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#c8e6c9;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="nodeGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#fff3e0;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#ffe0b2;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="nodeGrad4" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#f3e5f5;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#e1bee7;stop-opacity:1" />
+        </linearGradient>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+        </marker>
+        <style>
+          @keyframes dashFlow {
+            to { stroke-dashoffset: -20; }
+          }
+          .flow-line {
+            stroke-dasharray: 6 4;
+            animation: dashFlow 1s linear infinite;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+          }
+          .pulse-node { animation: pulse 2s ease-in-out infinite; }
+        </style>
+      </defs>
+      <!-- Start Node -->
+      <rect x="20" y="120" width="120" height="60" rx="10" fill="url(#nodeGrad1)" stroke="#2196f3" stroke-width="2" class="pulse-node" />
+      <text x="80" y="148" text-anchor="middle" font-size="13" font-weight="bold" fill="#1565c0">Start</text>
+      <text x="80" y="165" text-anchor="middle" font-size="11" fill="#546e7a">用户输入</text>
+      <!-- Arrow 1 -->
+      <line x1="140" y1="150" x2="200" y2="150" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <!-- Knowledge Retrieval Node -->
+      <rect x="200" y="110" width="140" height="80" rx="10" fill="url(#nodeGrad2)" stroke="#4caf50" stroke-width="2" class="pulse-node" />
+      <text x="270" y="138" text-anchor="middle" font-size="13" font-weight="bold" fill="#2e7d32">知识库检索</text>
+      <text x="270" y="155" text-anchor="middle" font-size="11" fill="#546e7a">Knowledge</text>
+      <text x="270" y="170" text-anchor="middle" font-size="11" fill="#546e7a">Retrieval</text>
+      <!-- Arrow 2 -->
+      <line x1="340" y1="150" x2="400" y2="150" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <!-- Condition Branch Node -->
+      <polygon points="460,100 520,150 460,200 400,150" fill="url(#nodeGrad3)" stroke="#ff9800" stroke-width="2" class="pulse-node" />
+      <text x="460" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">条件</text>
+      <text x="460" y="162" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">分支</text>
+      <!-- Arrow 3a - to LLM -->
+      <line x1="520" y1="140" x2="580" y2="100" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <text x="545" y="112" font-size="10" fill="#888">命中</text>
+      <!-- Arrow 3b - to fallback -->
+      <line x1="520" y1="160" x2="580" y2="210" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <text x="545" y="195" font-size="10" fill="#888">未命中</text>
+      <!-- LLM Node -->
+      <rect x="580" y="65" width="130" height="70" rx="10" fill="url(#nodeGrad4)" stroke="#9c27b0" stroke-width="2" class="pulse-node" />
+      <text x="645" y="93" text-anchor="middle" font-size="13" font-weight="bold" fill="#6a1b9a">LLM</text>
+      <text x="645" y="110" text-anchor="middle" font-size="11" fill="#546e7a">结合上下文</text>
+      <text x="645" y="124" text-anchor="middle" font-size="11" fill="#546e7a">生成回答</text>
+      <!-- Fallback LLM Node -->
+      <rect x="580" y="190" width="130" height="60" rx="10" fill="#ffebee" stroke="#f44336" stroke-width="2" />
+      <text x="645" y="215" text-anchor="middle" font-size="13" font-weight="bold" fill="#c62828">兜底回复</text>
+      <text x="645" y="232" text-anchor="middle" font-size="11" fill="#546e7a">转人工</text>
+      <!-- Arrow to Answer -->
+      <line x1="710" y1="100" x2="740" y2="145" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <line x1="710" y1="220" x2="740" y2="160" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line" />
+      <!-- Answer Node -->
+      <rect x="740" y="130" width="30" height="40" rx="8" fill="#e0e0e0" stroke="#9e9e9e" stroke-width="2" />
+      <text x="755" y="155" text-anchor="middle" font-size="10" font-weight="bold" fill="#424242">输出</text>
+      <!-- Labels -->
+      <text x="390" y="40" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f">Dify Chatflow 编排流程：知识库 + 条件分支 + LLM 生成</text>
+      <text x="390" y="280" text-anchor="middle" font-size="11" fill="#78909c">虚线动画表示数据流向 — Start → 知识检索 → 条件路由 → LLM 生成 → 输出</text>
+    </svg>
+  </div>
+</div>
+
+<h3 class="sub-heading">步骤三：DSL 文件配置</h3>
+<p>Dify 支持将应用配置导出为 DSL（Domain Specific Language）文件，这是一种 YAML 格式的配置文件，描述了整个工作流的节点、边、变量和功能设置。DSL 文件可以用于版本管理、团队协作和迁移部署。以下是一个客服 Bot 的完整 DSL 配置示例：</p>
+
+<div class="code-block">
+  <span class="code-label">Dify DSL 配置文件（YAML 格式）</span>
+<pre>app:
+  description: 客服问答 Bot
+  icon: 🤖
+  mode: advanced-chat
+  name: customer-service-bot
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions: [.pdf, .txt, .md]
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+    opening_statement: 你好，我是智能客服。
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: true
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - data:
+          sourceType: start
+          targetType: knowledge-retrieval
+        id: edge-001
+        source: start
+        target: knowledge_001
+        type: custom
+      - data:
+          sourceType: knowledge-retrieval
+          targetType: llm
+        id: edge-002
+        source: knowledge_001
+        target: llm_001
+        type: custom
+    nodes:
+      - data:
+          type: start
+          variables: []
+        id: start
+        type: custom
+      - data:
+          dataset_ids: ["dataset-xxx"]
+          retrieval_mode: semantic
+          top_k: 3
+          type: knowledge-retrieval
+        id: knowledge_001
+        type: custom
+      - data:
+          prompt_template:
+            - role: system
+              text: 你是专业客服，基于以下知识库内容回答用户问题。如果知识库中没有相关信息，请如实告知。
+          model:
+            provider: openai
+            name: gpt-4o-mini
+            mode: chat
+          type: llm
+        id: llm_001
+        type: custom</pre>
+</div>
+
+<h3 class="sub-heading">步骤四：API 集成</h3>
+<p>配置完成后，点击「发布」按钮即可将应用发布为 API。Dify 提供 RESTful API 接口，支持流式（SSE）和阻塞式两种响应模式。以下是使用 Python 调用 Dify API 的完整代码示例，包含流式响应处理和错误处理逻辑：</p>
+
+<div class="code-block">
+  <span class="code-label">Dify API 调用（Python 流式响应）</span>
+<pre>import requests
+import json
+
+DIFY_API = "https://api.dify.ai/v1"
+API_KEY = "app-xxx"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+def chat(query, conversation_id="", user="user-001"):
+    """调用 Dify Chatflow API，流式返回"""
+    response = requests.post(
+        f"{DIFY_API}/chat-messages",
+        headers=headers,
+        json={
+            "inputs": {},
+            "query": query,
+            "response_mode": "streaming",
+            "conversation_id": conversation_id,
+            "user": user
+        },
+        stream=True,
+        timeout=60
+    )
+    if response.status_code != 200:
+        raise Exception(f"API 错误: {response.status_code} - {response.text}")
+    full_answer = ""
+    for line in response.iter_lines():
+        if not line:
+            continue
+        data = line.decode("utf-8").lstrip("data: ")
+        if data and data != "[DONE]":
+            event = json.loads(data)
+            if event.get("event") == "message":
+                chunk = event.get("answer", "")
+                full_answer += chunk
+                print(chunk, end="", flush=True)
+    return full_answer
+
+if __name__ == "__main__":
+    result = chat("如何使用 Dify 搭建客服机器人?")
+    print(f"\n\n完整回复: {result}")</pre>
+</div>
+
+<!-- ===== 10.6 Coze 实战：Bot 开发 ===== -->
+<h2 class="section-heading">10.6 Coze 实战：Bot 开发与多 Agent 编排</h2>
+
+<p>Coze 作为字节跳动的 Bot 工厂，在多端发布和插件生态方面有独特优势。本节将详细介绍如何在 Coze 上创建一个功能完整的 Bot，包括插件配置、工作流编排，以及使用 Coze 的多 Agent 模式实现复杂的协作场景。</p>
+
+<h3 class="sub-heading">Bot 创建与插件配置</h3>
+<p>在 Coze 平台上创建 Bot 只需要四个步骤：第一步，点击「创建 Bot」，填写名称和描述；第二步，选择底层模型（如豆包 Pro、GPT-4o 等）；第三步，编写 System Prompt 定义 Bot 的人设和能力边界；第四步，添加插件和知识库。Coze 的插件市场提供了搜索、天气、新闻、画图、代码执行等 100+ 开箱即用的插件，勾选即可启用，无需编写任何代码。</p>
+
+<h3 class="sub-heading">Coze 的三层架构</h3>
+<p>理解 Coze Bot 的运行机制，需要把握其三层架构设计。触发层负责接收用户消息、定时任务和 Webhook 回调；决策层由 LLM 节点承担意图识别和路由选择的职责；执行层则包含插件调用、工作流执行、知识库检索和多 Agent 协作。这种分层设计使得每个层级可以独立配置和扩展。</p>
+
+<div class="code-block">
+  <span class="code-label">Coze Bot 三层架构示意</span>
+<pre>Coze Bot 三层架构:
+┌─────────────────────────────────────┐
+│  触发层 (Trigger)                    │  用户消息、定时任务、Webhook
+├─────────────────────────────────────┤
+│  决策层 (Decision - LLM 节点)        │  意图识别 + 路由选择
+│  ┌─────────┐  ┌──────────┐          │
+│  │ 意图分类 │→│ 路由策略   │          │
+│  └─────────┘  └──────────┘          │
+├─────────────────────────────────────┤
+│  执行层 (Execution)                  │
+│  ┌──────┐ ┌────────┐ ┌───────────┐  │
+│  │ 插件  │ │ 工作流  │ │ 知识库检索 │  │
+│  └──────┘ └────────┘ └───────────┘  │
+│  ┌──────────────────────────────┐   │
+│  │  多 Agent 协作 (Multi-Agent)  │   │
+│  └──────────────────────────────┘   │
+└─────────────────────────────────────┘
+
+# 路由示例: 根据意图分发到不同 Agent
+routes:
+  - intent: "技术问题"
+    agent: "tech-support-agent"
+    plugins: ["search", "code_runner"]
+  - intent: "售后投诉"
+    agent: "service-agent"
+    plugins: ["ticket_system", "crm"]
+  - intent: "产品咨询"
+    agent: "sales-agent"
+    plugins: ["product_catalog", "price_calculator"]</pre>
+</div>
+
+<!-- SVG: Coze 插件调用链路图 -->
+<div class="card">
+  <div class="card-title">🔗 Coze 插件调用链路图</div>
+  <div style="text-align: center; padding: 20px 0;">
+    <svg width="760" height="300" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
+      <defs>
+        <linearGradient id="cozeGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#90caf9;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="cozeGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#fce4ec;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#f8bbd0;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="cozeGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e0f7fa;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#80deea;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="cozeGrad4" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#f1f8e9;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#dcedc8;stop-opacity:1" />
+        </linearGradient>
+        <marker id="cozeArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#555" />
+        </marker>
+        <style>
+          @keyframes dashMove {
+            to { stroke-dashoffset: -16; }
+          }
+          .coze-flow {
+            stroke-dasharray: 5 3;
+            animation: dashMove 0.8s linear infinite;
+          }
+          @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(33,150,243,0.3)); }
+            50% { filter: drop-shadow(0 0 8px rgba(33,150,243,0.7)); }
+          }
+          .glow-node { animation: glow 2.5s ease-in-out infinite; }
+        </style>
+      </defs>
+      <!-- User Input -->
+      <circle cx="50" cy="150" r="28" fill="url(#cozeGrad1)" stroke="#1976d2" stroke-width="2" class="glow-node" />
+      <text x="50" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#0d47a1">用户</text>
+      <text x="50" y="162" text-anchor="middle" font-size="10" fill="#1565c0">消息</text>
+      <!-- Arrow to Coze Core -->
+      <line x1="80" y1="150" x2="155" y2="150" stroke="#555" stroke-width="2" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <!-- Coze Decision Core -->
+      <rect x="155" y="110" width="120" height="80" rx="12" fill="url(#cozeGrad2)" stroke="#c2185b" stroke-width="2" class="glow-node" />
+      <text x="215" y="140" text-anchor="middle" font-size="13" font-weight="bold" fill="#880e4f">Coze LLM</text>
+      <text x="215" y="158" text-anchor="middle" font-size="11" fill="#560027">意图识别</text>
+      <text x="215" y="172" text-anchor="middle" font-size="11" fill="#560027">+ 路由</text>
+      <!-- Arrows to 4 plugins -->
+      <line x1="275" y1="125" x2="360" y2="60" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="275" y1="140" x2="360" y2="120" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="275" y1="160" x2="360" y2="185" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="275" y1="175" x2="360" y2="245" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <!-- Plugin 1: Search -->
+      <rect x="360" y="35" width="110" height="50" rx="8" fill="url(#cozeGrad3)" stroke="#00838f" stroke-width="2" />
+      <text x="415" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#006064">🔍 搜索插件</text>
+      <text x="415" y="72" text-anchor="middle" font-size="10" fill="#00838f">Bing/Google</text>
+      <!-- Plugin 2: Weather -->
+      <rect x="360" y="100" width="110" height="50" rx="8" fill="url(#cozeGrad3)" stroke="#00838f" stroke-width="2" />
+      <text x="415" y="120" text-anchor="middle" font-size="12" font-weight="bold" fill="#006064">🌤️ 天气插件</text>
+      <text x="415" y="137" text-anchor="middle" font-size="10" fill="#00838f">实时天气</text>
+      <!-- Plugin 3: Knowledge -->
+      <rect x="360" y="165" width="110" height="50" rx="8" fill="url(#cozeGrad4)" stroke="#558b2f" stroke-width="2" />
+      <text x="415" y="185" text-anchor="middle" font-size="12" font-weight="bold" fill="#33691e">📚 知识库</text>
+      <text x="415" y="202" text-anchor="middle" font-size="10" fill="#558b2f">文档检索</text>
+      <!-- Plugin 4: Workflow -->
+      <rect x="360" y="225" width="110" height="50" rx="8" fill="url(#cozeGrad2)" stroke="#c2185b" stroke-width="2" />
+      <text x="415" y="245" text-anchor="middle" font-size="12" font-weight="bold" fill="#880e4f">⚙️ 工作流</text>
+      <text x="415" y="262" text-anchor="middle" font-size="10" fill="#560027">多步执行</text>
+      <!-- Arrows converging to Output -->
+      <line x1="470" y1="60" x2="560" y2="135" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="470" y1="125" x2="560" y2="145" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="470" y1="190" x2="560" y2="155" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <line x1="470" y1="250" x2="560" y2="165" stroke="#555" stroke-width="1.5" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <!-- Output Aggregation -->
+      <rect x="560" y="115" width="100" height="70" rx="12" fill="url(#cozeGrad1)" stroke="#1976d2" stroke-width="2" class="glow-node" />
+      <text x="610" y="142" text-anchor="middle" font-size="13" font-weight="bold" fill="#0d47a1">结果聚合</text>
+      <text x="610" y="160" text-anchor="middle" font-size="11" fill="#1565c0">生成回复</text>
+      <!-- Arrow to Output channels -->
+      <line x1="660" y1="150" x2="710" y2="150" stroke="#555" stroke-width="2" marker-end="url(#cozeArrow)" class="coze-flow" />
+      <!-- Output channels -->
+      <circle cx="730" cy="130" r="16" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5" />
+      <text x="730" y="134" text-anchor="middle" font-size="9" fill="#2e7d32">Web</text>
+      <circle cx="730" cy="155" r="16" fill="#e3f2fd" stroke="#2196f3" stroke-width="1.5" />
+      <text x="730" y="159" text-anchor="middle" font-size="8" fill="#1565c0">飞书</text>
+      <circle cx="730" cy="180" r="16" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5" />
+      <text x="730" y="184" text-anchor="middle" font-size="8" fill="#880e4f">微信</text>
+      <!-- Title -->
+      <text x="380" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f">Coze 插件调用链路：用户消息 → LLM 决策 → 插件并行执行 → 结果聚合 → 多端输出</text>
+    </svg>
+  </div>
+</div>
+
+<h3 class="sub-heading">多 Agent 编排（Multi-Agent 模式）</h3>
+<p>Coze 的多 Agent 模式允许在一个 Bot 内部编排多个子 Agent，每个子 Agent 负责特定领域的任务。主 Agent 充当路由器角色，根据用户意图将请求分发给最合适的子 Agent。例如，一个企业级客服 Bot 可以包含技术支持 Agent、售后服务 Agent 和产品咨询 Agent，各子 Agent 拥有独立的 Prompt、插件和知识库，协同提供全方位服务。这种模式比单一 Agent 更精准，因为每个子 Agent 只需要关注自己的专业领域，Prompt 更聚焦，检索范围更小，回答质量更高。</p>
+
+<div class="code-block">
+  <span class="code-label">Coze 多 Agent 路由配置（伪代码）</span>
+<pre># Coze Multi-Agent 路由配置
+multi_agent:
+  mode: "router"           # 路由模式
+  router_model: "doubao-pro"  # 路由决策用的模型
+  agents:
+    - name: "tech-support"
+      description: "处理技术问题、Bug 反馈、使用指导"
+      model: "doubao-pro"
+      prompt: "你是技术支持专家，擅长排查和解决技术问题..."
+      plugins: ["search", "code_runner", "doc_search"]
+      knowledge: ["tech-faq", "api-docs"]
+
+    - name: "after-sales"
+      description: "处理退换货、投诉、物流查询"
+      model: "doubao-pro"
+      prompt: "你是售后客服专家，耐心处理用户售后问题..."
+      plugins: ["order_query", "logistics_track", "ticket_create"]
+      knowledge: ["return-policy", "shipping-guide"]
+
+    - name: "sales"
+      description: "产品咨询、价格报价、优惠推荐"
+      model: "doubao-pro"
+      prompt: "你是销售顾问，热情介绍产品特点和优势..."
+      plugins: ["product_catalog", "price_calc", "coupon_check"]
+      knowledge: ["product-info", "promotion"]
+
+  fallback: "通用回复: 抱歉，我无法处理此类问题，已为您转接人工客服。"</pre>
+</div>
+
+<!-- ===== 10.7 Dify vs Coze vs n8n 三方对比 ===== -->
+<h2 class="section-heading">10.7 Dify vs Coze vs n8n 三方对比</h2>
+
+<p>在低代码自动化平台领域，除了 Dify 和 Coze 之外，<strong>n8n</strong> 也是一个经常被提及的工具。n8n 是一个开源的工作流自动化平台，虽然不是专门为 AI Agent 设计，但通过集成 LLM 节点也可以实现 Agent 工作流。三者各有定位和优势，理解它们的差异对于技术选型至关重要。</p>
+
+<div class="card">
+  <div class="card-title">📊 Dify vs Coze vs n8n 全面对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px;">对比维度</th>
+      <th style="text-align: left; padding: 10px 8px;">Dify</th>
+      <th style="text-align: left; padding: 10px 8px;">Coze</th>
+      <th style="text-align: left; padding: 10px 8px;">n8n</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">开源/闭源</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">开源 (Apache 2.0)</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">闭源 SaaS</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">开源 (Fair-code)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">部署方式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Docker / 云服务</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅云服务</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Docker / npm / 云服务</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">核心定位</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLMOps 平台</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Bot 工厂</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通用自动化平台</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">计费模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源免费 + 云服务按量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">免费 + 增值功能</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自部署免费 + 云服务按工作流</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">扩展性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自定义工具 + 插件</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自定义插件 + API</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自定义节点 + Webhook</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">学习曲线</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中等（需理解 LLM 概念）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低（零代码）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中高（需理解自动化概念）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">AI 原生支持</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 原生 AI 平台</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 原生 AI 平台</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⚠️ 通过集成节点支持</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">适用企业类型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">技术型中小团队</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">业务型任何团队</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">运维/集成团队</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SVG: 选型决策图 -->
+<div class="card">
+  <div class="card-title">🧭 平台选型决策图</div>
+  <div style="text-align: center; padding: 20px 0;">
+    <svg width="700" height="380" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
+      <defs>
+        <linearGradient id="decGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#fff8e1;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#ffecb3;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="decGradDify" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#90caf9;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="decGradCoze" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#fce4ec;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#f8bbd0;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="decGradN8n" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#e0f7fa;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#80deea;stop-opacity:1" />
+        </linearGradient>
+        <marker id="decArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+        </marker>
+        <style>
+          @keyframes decPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+          }
+          .dec-pulse { animation: decPulse 3s ease-in-out infinite; transform-origin: center; }
+        </style>
+      </defs>
+      <!-- Root: 需要搭建 AI Agent? -->
+      <rect x="270" y="15" width="160" height="50" rx="12" fill="url(#decGrad1)" stroke="#f57c00" stroke-width="2" class="dec-pulse" />
+      <text x="350" y="38" text-anchor="middle" font-size="13" font-weight="bold" fill="#e65100">需要搭建 AI Agent？</text>
+      <text x="350" y="54" text-anchor="middle" font-size="11" fill="#5d4037">开始选型</text>
+      <!-- Arrow down -->
+      <line x1="350" y1="65" x2="350" y2="90" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <!-- Q1: 是否需要自部署? -->
+      <polygon points="350,95 470,145 350,195 230,145" fill="url(#decGrad1)" stroke="#f57c00" stroke-width="2" />
+      <text x="350" y="135" text-anchor="middle" font-size="12" font-weight="bold" fill="#e65100">数据需要</text>
+      <text x="350" y="150" text-anchor="middle" font-size="12" font-weight="bold" fill="#e65100">自部署？</text>
+      <!-- Yes branch (left) -->
+      <line x1="230" y1="145" x2="170" y2="145" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="200" y="138" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="bold">是</text>
+      <!-- No branch (right) -->
+      <line x1="470" y1="145" x2="530" y2="145" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="500" y="138" text-anchor="middle" font-size="11" fill="#c62828" font-weight="bold">否</text>
+      <!-- Q2 left: 团队有工程师? -->
+      <polygon points="100,145 200,180 100,215 0,180" fill="url(#decGrad1)" stroke="#f57c00" stroke-width="2" />
+      <text x="100" y="175" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">团队有</text>
+      <text x="100" y="190" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">工程师？</text>
+      <!-- Q2 right: 是否需要多端发布? -->
+      <polygon points="600,145 700,180 600,215 500,180" fill="url(#decGrad1)" stroke="#f57c00" stroke-width="2" />
+      <text x="600" y="175" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">需要多端</text>
+      <text x="600" y="190" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">发布？</text>
+      <!-- Left-Yes: Dify -->
+      <line x1="100" y1="215" x2="100" y2="250" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="115" y="235" font-size="11" fill="#2e7d32" font-weight="bold">是</text>
+      <rect x="40" y="255" width="120" height="50" rx="10" fill="url(#decGradDify)" stroke="#1976d2" stroke-width="2" class="dec-pulse" />
+      <text x="100" y="278" text-anchor="middle" font-size="14" font-weight="bold" fill="#0d47a1">→ Dify</text>
+      <text x="100" y="295" text-anchor="middle" font-size="10" fill="#1565c0">自部署 + AI 原生</text>
+      <!-- Left-No: n8n -->
+      <line x1="0" y1="180" x2="-20" y2="180" stroke="#666" stroke-width="2" />
+      <line x1="-20" y1="180" x2="-20" y2="280" stroke="#666" stroke-width="2" />
+      <line x1="-20" y1="280" x2="20" y2="280" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="-5" y="200" font-size="11" fill="#c62828" font-weight="bold">否</text>
+      <rect x="-40" y="255" width="100" height="50" rx="10" fill="url(#decGradN8n)" stroke="#00838f" stroke-width="2" />
+      <text x="10" y="278" text-anchor="middle" font-size="13" font-weight="bold" fill="#006064">→ n8n</text>
+      <text x="10" y="295" text-anchor="middle" font-size="10" fill="#00838f">通用自动化</text>
+      <!-- Right-Yes: Coze -->
+      <line x1="600" y1="215" x2="600" y2="250" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="615" y="235" font-size="11" fill="#2e7d32" font-weight="bold">是</text>
+      <rect x="540" y="255" width="120" height="50" rx="10" fill="url(#decGradCoze)" stroke="#c2185b" stroke-width="2" class="dec-pulse" />
+      <text x="600" y="278" text-anchor="middle" font-size="14" font-weight="bold" fill="#880e4f">→ Coze</text>
+      <text x="600" y="295" text-anchor="middle" font-size="10" fill="#560027">零代码 + 多端</text>
+      <!-- Right-No: Dify Cloud -->
+      <line x1="700" y1="180" x2="720" y2="180" stroke="#666" stroke-width="2" />
+      <line x1="720" y1="180" x2="720" y2="280" stroke="#666" stroke-width="2" />
+      <line x1="720" y1="280" x2="680" y2="280" stroke="#666" stroke-width="2" marker-end="url(#decArrow)" />
+      <text x="725" y="200" font-size="11" fill="#c62828" font-weight="bold">否</text>
+      <rect x="660" y="255" width="80" height="50" rx="10" fill="url(#decGradDify)" stroke="#1976d2" stroke-width="2" />
+      <text x="700" y="278" text-anchor="middle" font-size="12" font-weight="bold" fill="#0d47a1">→ Dify云</text>
+      <text x="700" y="295" text-anchor="middle" font-size="10" fill="#1565c0">快速上手</text>
+      <!-- Summary text -->
+      <text x="350" y="350" text-anchor="middle" font-size="12" fill="#546e7a">决策路径：数据自控需求 → 团队技术能力 → 多端发布需求 → 最终选型</text>
+    </svg>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent); margin-top: 16px;">
+  <strong>适用企业类型分析：</strong><br>
+  • <strong>Dify</strong>：适合有技术背景的中小团队，尤其是对数据安全有要求的金融、医疗、政务等行业的自建 AI 应用场景。<br>
+  • <strong>Coze</strong>：适合业务驱动的团队和面向 C 端用户的产品，特别是需要快速在飞书、微信、抖音等社交平台发布 Bot 的运营和客服场景。<br>
+  • <strong>n8n</strong>：适合有自动化需求的运维和集成团队，尤其是需要在 AI 之外还要对接 CRM、ERP、数据库等传统系统的复杂集成场景。n8n 的优势在于通用性，但 AI 能力不如前两者原生。
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: 低代码 Agent 平台和代码框架各自的优势和劣势？</div>
+    <div class="qa-answer">
+      <strong>代码框架</strong>（LangGraph/AutoGen）：优势=完全灵活、可定制一切、数据自控。劣势=门槛高、开发慢。<br>
+      <strong>低代码平台</strong>（Dify/Coze）：优势=快速搭建、零代码/低代码、非技术人员可用。劣势=灵活性受限、平台依赖。<br><br>
+      <strong>决策原则</strong>：复杂定制选代码框架，快速验证选低代码平台。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: Dify 的四种应用类型分别是什么？</div>
+    <div class="qa-answer">
+      <strong>① Chatbot</strong>：对话型应用，多轮对话。适合客服、助手。<br>
+      <strong>② Text Generator</strong>：单次生成，输入→输出。适合翻译、摘要。<br>
+      <strong>③ Agent</strong>：自主 Agent，可调用工具，多步推理。适合复杂任务。<br>
+      <strong>④ Workflow</strong>：可视化工作流编排，固定流程自动化。适合自动化管道。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Dify 和 Coze 的核心区别？</div>
+    <div class="qa-answer">
+      <strong>Dify</strong>：开源、可自部署、面向技术团队。定位是 LLMOps 平台，覆盖从开发到部署到监控的全生命周期。数据安全可控。<br>
+      <strong>Coze</strong>：字节跳动 SaaS 平台、零代码、面向业务团队。定位是 Bot 工厂，一键发布到多端（飞书/微信/抖音）。开发最快但数据在平台。<br><br>
+      要自部署和数据可控选 Dify，要最快上线选 Coze。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: 什么场景适合用 Dify 而不是代码框架？</div>
+    <div class="qa-answer">
+      适合 Dify 的场景：<br>
+      ① 快速原型验证（小时级上线 vs 天级开发）<br>
+      ② 团队没有专职 Python 工程师<br>
+      ③ 需要完整的 LLMOps（监控、日志、版本管理）<br>
+      ④ 需要非技术人员参与 Agent 配置<br>
+      ⑤ 需要快速切换不同 LLM 模型<br><br>
+      不适合 Dify 的场景：需要深度定制 Agent 行为、需要人工干预机制、需要复杂的图结构流程控制。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: Coze 的插件机制和传统 Function Calling 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Function Calling</strong>：开发者定义 JSON Schema，LLM 输出调用，框架执行。需要写代码。<br>
+      <strong>Coze 插件</strong>：平台预置 100+ 插件（搜索、天气、画图等），在界面上勾选即可。也支持自定义插件（通过 API 描述自动生成）。<br><br>
+      本质上都是 LLM 决定调用什么、框架执行。区别在于 Coze 把工具的创建和使用都可视化了，降低了门槛。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Dify 和 Coze 的核心区别是什么？如何选型？</div>
+    <div class="qa-answer">
+      <strong>Dify</strong> 是开源 LLMOps 平台，支持 Docker 自部署，数据完全可控，面向有技术背景的团队。它覆盖了从 Prompt 工程到模型管理、从 RAG 管道到监控分析的完整生命周期。<br>
+      <strong>Coze</strong> 是字节跳动的闭源 SaaS Bot 工厂，零代码配置，内置 100+ 插件，一键发布到飞书/微信/抖音等多端，面向业务团队。<br><br>
+      <strong>选型原则</strong>：需要数据自控和自部署选 Dify；需要最快上线和多端发布选 Coze。如果是金融、医疗等合规要求高的行业，Dify 自部署是唯一选择。如果是运营活动、C 端客服等快速验证场景，Coze 更合适。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Dify 的 Chatflow 和 Workflow 模式有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Chatflow</strong>（高级对话模式）：支持多轮对话，维护会话上下文，适合需要交互式对话的场景如客服 Bot、助手。每个节点可以访问对话历史，支持在对话中动态调整流程。拥有开场白、推荐问题、语音转文字等对话增强功能。<br>
+      <strong>Workflow</strong>（工作流模式）：单次执行，输入→处理→输出，不维护对话状态。适合固定流程的自动化任务如文档处理、数据抽取、批量翻译。每个请求独立执行，不依赖历史交互。<br><br>
+      <strong>决策依据</strong>：需要多轮交互和上下文记忆选 Chatflow；一次性处理任务选 Workflow。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Coze 的插件机制是怎么工作的？</div>
+    <div class="qa-answer">
+      Coze 的插件机制分为三个层次：<br>
+      <strong>① 预置插件</strong>：平台内置 100+ 插件（搜索、天气、新闻、画图、代码执行等），在 Bot 编辑界面勾选即可启用，无需任何配置。<br>
+      <strong>② 自定义插件</strong>：通过上传 OpenAPI Schema 或手动填写 API 描述来创建自定义插件。Coze 会自动解析 API 接口定义，生成可被 LLM 调用的工具描述。<br>
+      <strong>③ 插件调用流程</strong>：用户消息 → LLM 意图识别 → 判断需要调用哪些插件 → 并行或串行执行插件 → 获取插件返回结果 → LLM 结合结果生成最终回复。<br><br>
+      本质上是 Function Calling 的可视化封装，但大大降低了工具创建和管理的门槛。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: Dify 的知识库检索用的是什么技术？</div>
+    <div class="qa-answer">
+      Dify 的 RAG 管道包含完整的技术链路：<br>
+      <strong>① 文档处理</strong>：支持 PDF、Word、TXT、Markdown 等格式，自动进行文本清洗和分块（Chunking）。分块策略支持按段落、按固定长度、按自定义分隔符，可设置重叠区域保持上下文完整。<br>
+      <strong>② 向量化</strong>：使用 Embedding 模型（如 OpenAI text-embedding-3-small、bge-large-zh 等）将文本块转换为向量。<br>
+      <strong>③ 向量存储</strong>：内置向量数据库支持（Weaviate、Qdrant、Milvus、PGVector 等），也可选择 Dify 托管的内建向量库。<br>
+      <strong>④ 检索策略</strong>：支持语义检索（Semantic Search）、全文检索（Full-text Search）和混合检索（Hybrid Search）。Top-K 可配置，默认返回最相关的 3-5 个文档块。<br>
+      <strong>⑤ Rerank</strong>：可选的二次排序模型对检索结果重排，提升精度。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: 企业选型 Dify 还是 Coze？关键考量因素有哪些？</div>
+    <div class="qa-answer">
+      企业选型需要从五个维度综合评估：<br>
+      <strong>① 数据安全</strong>：金融、医疗、政务等合规要求高的行业必须选 Dify 自部署，数据不能出内网。Coze 数据在字节跳动云端，不适合敏感场景。<br>
+      <strong>② 团队能力</strong>：有技术团队的选 Dify（需要理解 Docker 部署和 LLM 概念），纯业务团队选 Coze（零代码）。<br>
+      <strong>③ 发布渠道</strong>：需要飞书/微信/抖音多端发布的选 Coze，需要 API/Webhook 集成的选 Dify。<br>
+      <strong>④ 定制深度</strong>：需要自定义工具、复杂工作流、多模型切换的选 Dify，标准化场景选 Coze。<br>
+      <strong>⑤ 预算</strong>：Dify 自部署免费（仅服务器成本），Coze 免费版有调用量限制，企业版需付费。长期大量调用时 Dify 自部署更经济。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch10Questions = [
+  {
+    type: 'single',
+    question: 'Dify 和 Coze 的核心定位区别是？',
+    options: [
+      'Dify面向消费者，Coze面向开发者',
+      'Dify是开源可自部署的LLMOps平台，Coze是SaaS Bot工厂',
+      'Dify只支持中文，Coze只支持英文',
+      '两者完全一样'
+    ],
+    answer: [1],
+    explanation: 'Dify 是开源 LLMOps 平台，可自部署，面向技术团队。Coze 是字节跳动的 SaaS Bot 工厂，零代码，面向业务团队。'
+  },
+  {
+    type: 'single',
+    question: 'Dify 的 Workflow 应用类型适合什么场景？',
+    options: ['多轮对话客服', '单次翻译生成', '可视化固定流程自动化', '自主探索性任务'],
+    answer: [2],
+    explanation: 'Workflow 是可视化工作流编排，适合固定流程自动化。多轮对话用 Chatbot，单次生成用 Text Generator，自主任务用 Agent。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 Coze 的特色？',
+    options: ['零代码配置', '100+内置插件', '一键发布多端', '完全自部署开源'],
+    answer: [3],
+    explanation: 'Coze 是 SaaS 平台，不支持自部署。Dify 才是开源可自部署的。'
+  },
+  {
+    type: 'single',
+    question: '需要数据完全自控的企业应该选择？',
+    options: ['Coze', 'Dify 云服务版', '代码框架 + 自部署 Dify', '以上都不行'],
+    answer: [2],
+    explanation: '数据完全自控需要代码框架（完全自主）或自部署 Dify（开源可控）。Coze 和 Dify 云服务版数据都在平台。'
+  },
+  {
+    type: 'single',
+    question: '一个业务团队（无工程师）想快速搭建一个客服 Bot，最适合选择？',
+    options: ['LangGraph 写代码', 'AutoGen 写代码', 'Coze 零代码搭建', '自己从零开发'],
+    answer: [2],
+    explanation: '无工程师的业务团队最适合 Coze——零代码、拖拽配置、一键发布。分钟级上线。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 Dify 的核心能力？（多选）',
+    options: ['可视化 Prompt 工程', '内置 RAG 管道', 'Agent 工作流编排', 'GPU 训练集群管理'],
+    answer: [0, 1, 2],
+    explanation: 'Dify 核心能力包括 Prompt 工程、RAG 管道、Agent 编排、模型管理、监控分析。不提供 GPU 训练集群管理。'
+  },
+  {
+    type: 'multiple',
+    question: '选择 Agent 构建方案时，以下匹配正确的是？（多选）',
+    options: [
+      '要完全定制 → 代码框架（LangGraph等）',
+      '要快速搭建且可自部署 → Dify',
+      '要最快上线且面向消费者 → Coze',
+      '所有团队都应该用代码框架'
+    ],
+    answer: [0, 1, 2],
+    explanation: '没有万能方案。要定制选代码框架，要快速自部署选 Dify，要最快上线选 Coze。根据团队和需求选择。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Coze 的插件机制，以下说法正确的是？（多选）',
+    options: [
+      '平台预置 100+ 插件',
+      '支持自定义插件',
+      '插件本质上就是 Function Calling 的可视化封装',
+      '插件只能用字节跳动的模型'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Coze 插件本质上是 Function Calling 的可视化封装。支持预置和自定义插件，不限制模型选择。'
+  },
+  {
+    type: 'single',
+    question: 'Dify 的 DSL 文件使用什么格式？其主要用途是什么？',
+    options: [
+      'JSON 格式，用于模型配置',
+      'YAML 格式，用于描述工作流配置并支持版本管理和迁移部署',
+      'XML 格式，用于 UI 布局定义',
+      'CSV 格式，用于数据导入导出'
+    ],
+    answer: [1],
+    explanation: 'Dify DSL 是 YAML 格式的工作流配置文件，描述节点、边、变量和功能设置，可用于版本管理、团队协作和迁移部署。'
+  },
+  {
+    type: 'single',
+    question: '在 Dify API 调用中，response_mode 设为 “streaming” 表示什么？',
+    options: [
+      '阻塞式响应，等待完整结果后返回',
+      '流式响应（SSE），逐块返回生成内容',
+      '同步响应，返回 JSON 对象',
+      '批量响应，一次返回多条消息'
+    ],
+    answer: [1],
+    explanation: 'streaming 模式使用 Server-Sent Events (SSE) 逐块返回生成内容，用户体验更好。blocking 模式则等待完整结果后一次性返回。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Dify 的部署方式，以下说法正确的是？（多选）',
+    options: [
+      'Dify 支持 Docker Compose 自部署',
+      'Dify 提供官方云服务（dify.ai）',
+      'Dify 只能部署在 AWS 上',
+      'Dify 自部署版本支持自定义向量数据库（如 Milvus、Qdrant）'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Dify 支持 Docker Compose 自部署和官方云服务。自部署版本支持多种向量数据库后端（Weaviate、Qdrant、Milvus、PGVector 等），不限于特定云平台。'
+  },
+  {
+    type: 'multiple',
+    question: '在 Coze 中配置多 Agent 模式时，以下哪些是正确的做法？（多选）',
+    options: [
+      '主 Agent 负责意图识别和路由分发',
+      '每个子 Agent 可以拥有独立的 Prompt 和插件',
+      '子 Agent 必须使用相同的模型',
+      '可以设置 fallback 兜底回复处理无法识别的意图'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Coze 多 Agent 模式中，主 Agent 充当路由器，子 Agent 拥有独立配置（Prompt、插件、知识库、模型），支持 fallback 兜底。子 Agent 可以使用不同模型。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Dify、Coze、n8n 三者的计费模式，以下说法正确的是？（多选）',
+    options: [
+      'Dify 自部署开源免费，云服务按量计费',
+      'Coze 提供免费版和增值功能',
+      'n8n 自部署免费，云服务按工作流执行量计费',
+      '三者都必须付费才能使用'
+    ],
+    answer: [0, 1, 2],
+    explanation: '三者都提供免费使用途径：Dify 开源自部署免费 + 云服务按量；Coze 免费 + 增值；n8n 自部署免费 + 云服务按工作流量。并非必须付费。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch10Questions); }, 500);
+</script>

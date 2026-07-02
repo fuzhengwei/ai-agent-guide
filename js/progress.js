@@ -108,7 +108,7 @@ const Progress = {
     if (textEl) {
       const data = this.getAll();
       const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
-      textEl.innerHTML = `<span>学习进度</span><span>${completed}/20 章</span>`;
+      textEl.innerHTML = `<span>学习进度</span><span>${completed}/${App.chapters.length} 章</span>`;
     }
     
     // 更新导航项状态

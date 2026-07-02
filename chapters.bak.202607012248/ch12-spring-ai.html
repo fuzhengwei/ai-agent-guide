@@ -1,0 +1,421 @@
+<!-- 第12章：Spring AI -->
+<h1 class="chapter-title">第12章 Spring AI / Spring AI Alibaba</h1>
+<p class="chapter-subtitle">Java 生态的 Agent 框架</p>
+
+<!-- ===== 12.1 为什么需要 Spring AI ===== -->
+<h2 class="section-heading">12.1 Java 生态的 Agent 之路</h2>
+
+<p>Agent 框架大多集中在 Python 生态（LangChain、LangGraph、AutoGen...）。但企业级 Java 项目怎么办？<strong>Spring AI</strong> 填补了这个空白。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 Spring AI 的定位</div>
+  <p>Spring AI 是 Spring 生态的 AI 集成框架。它不是 reinvent the wheel，而是把 Spring 的成熟工程实践（依赖注入、配置管理、声明式编程）带入 AI 开发。让 Java 开发者用熟悉的方式构建 Agent。</p>
+</div>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">Python 生态</div>
+    <div class="side-content">
+      <div class="highlight-line">LangChain / LangGraph</div>
+      <div class="highlight-line">AutoGen / CrewAI</div>
+      <div class="highlight-line">Dify / Coze</div>
+      <div class="highlight-line">灵活、原型快</div>
+      <div class="highlight-line" style="color: var(--color-info);">适合：研究、原型、创业</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Java 生态</div>
+    <div class="side-content">
+      <div class="highlight-line">Spring AI</div>
+      <div class="highlight-line">Spring AI Alibaba</div>
+      <div class="highlight-line">LangChain4j</div>
+      <div class="highlight-line">工程化、企业级</div>
+      <div class="highlight-line" style="color: var(--color-accent);">适合：企业生产、大型系统</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 12.2 三层架构 ===== -->
+<h2 class="section-heading">12.2 Spring AI 的三层架构</h2>
+
+<div class="flowchart-container" id="springAILayers"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('springAILayers', {
+    nodes: [
+      { id: 'app', label: '应用层\n(Application)', type: 'start' },
+      { id: 'framework', label: 'Agent Framework\n(ReactAgent等)', type: 'process' },
+      { id: 'graph', label: 'Graph Runtime\n(State/Node/Edge)', type: 'decision' },
+      { id: 'aml', label: 'Augmented LLM\n(ChatClient+Tools)', type: 'tool' },
+      { id: 'model', label: 'LLM Provider\n(OpenAI/通义/Claude)', type: 'end' }
+    ],
+    edges: [
+      { from: 'app', to: 'framework' },
+      { from: 'framework', to: 'graph', label: '编排' },
+      { from: 'graph', to: 'aml', label: '调用' },
+      { from: 'aml', to: 'model', label: '推理' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">📐 三层架构详解</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">层</th>
+        <th style="text-align: left; padding: 10px 8px;">职责</th>
+        <th style="text-align: left; padding: 10px 8px;">核心组件</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Augmented LLM</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM + 工具 + 记忆的增强层</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ChatClient, ToolCallback, Memory</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Graph Runtime</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工作流编排引擎</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">StateGraph, Node, Edge, Checkpoint</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Agent Framework</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高级 Agent 模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ReactAgent, MultiAgent, A2A</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 12.3 代码实战 ===== -->
+<h2 class="section-heading">12.3 Spring AI 代码实战</h2>
+
+<div class="code-block">
+  <span class="code-label">Java: Spring AI 构建 ReactAgent</span>
+<pre>// ===== 1. 配置 ChatClient =====
+@Configuration
+public class AIConfig {
+    
+    @Bean
+    public ChatClient chatClient(ChatClient.Builder builder) {
+        return builder
+            .defaultSystem("你是一个智能助手")
+            .defaultTools(weatherTool(), searchTool())
+            .build();
+    }
+}
+
+// ===== 2. 定义工具 =====
+@Component
+public class WeatherTool {
+    
+    @Tool(description = "获取指定城市的天气")
+    public String getWeather(String city) {
+        return weatherService.query(city);
+    }
+}
+
+@Component  
+public class SearchTool {
+    
+    @Tool(description = "搜索互联网获取信息")
+    public String search(String query) {
+        return webSearchService.search(query);
+    }
+}
+
+// ===== 3. 构建 ReactAgent =====
+@Service
+public class AgentService {
+    
+    @Autowired
+    private ChatClient chatClient;
+    
+    public String ask(String question) {
+        // ReactAgent = LLM + 工具 + 循环
+        return chatClient.prompt()
+            .user(question)
+            .call()
+            .content();
+    }
+}
+
+// ===== 4. Graph 工作流（类似 LangGraph）=====
+@Bean
+public StateGraph<AgentState> researchWorkflow() {
+    return new StateGraph<>(AgentState.class)
+        .addNode("planner", plannerNode())
+        .addNode("searcher", searcherNode())
+        .addNode("writer", writerNode())
+        .addEdge(START, "planner")
+        .addConditionalEdge("planner", routeByPlan())  // 条件边
+        .addEdge("searcher", "writer")
+        .addEdge("writer", END)
+        .compile();
+}</pre>
+</div>
+
+<h3 class="sub-heading">Spring AI Alibaba 扩展</h3>
+
+<p><strong>Spring AI Alibaba</strong> 是阿里巴巴在 Spring AI 基础上的扩展，增加了通义千问模型集成、企业级特性：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">通义千问集成</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        原生集成 DashScope（通义千问 API），支持 qwen-max/turbo/plus 等模型。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">检查点恢复</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Graph Runtime 支持检查点持久化，故障后可从断点恢复执行。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">A2A 协议支持</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        支持 Agent-to-Agent 通信协议，跨框架 Agent 协作。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">MCP 集成</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        1.1/2.0 版本原生集成 MCP 协议，直接使用 MCP Server 工具。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 12.4 多Agent编排 ===== -->
+<h2 class="section-heading">12.4 Spring AI 的多 Agent 编排</h2>
+
+<div class="code-block">
+  <span class="code-label">Java: 多 Agent 编排示例</span>
+<pre>// 定义多个专业 Agent
+@Bean
+public Agent researcherAgent(ChatClient chatClient) {
+    return ReactAgent.builder()
+        .name("researcher")
+        .instruction("你是研究员，负责信息搜集")
+        .tools(searchTool())
+        .chatClient(chatClient)
+        .build();
+}
+
+@Bean
+public Agent writerAgent(ChatClient chatClient) {
+    return ReactAgent.builder()
+        .name("writer")
+        .instruction("你是技术写手，负责撰写报告")
+        .chatClient(chatClient)
+        .build();
+}
+
+// 编排多 Agent 协作
+@Bean
+public StateGraph<AgentState> multiAgentWorkflow(
+        Agent researcherAgent, 
+        Agent writerAgent) {
+    
+    return new StateGraph<>(AgentState.class)
+        .addNode("research", researcherAgent)
+        .addNode("write", writerAgent)
+        .addNode("review", reviewNode())
+        .addEdge(START, "research")
+        .addEdge("research", "write")
+        .addEdge("write", "review")
+        .addConditionalEdge("review", needRevise())  // 需要修改？
+        .compile(checkpointer);  // 带检查点
+}</pre>
+</div>
+
+<!-- ===== 12.5 企业级特性 ===== -->
+<h2 class="section-heading">12.5 Spring AI 的企业级特性</h2>
+
+<div class="card">
+  <div class="card-title">🏭 为什么企业选择 Spring AI</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">Spring 生态融合</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        无缝集成 Spring Boot、Spring Cloud、Spring Security。已有 Spring 项目可直接加入 AI 能力。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">声明式编程</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        @Tool 注解定义工具，@Bean 注入 Agent。和写 Spring Controller 一样简单。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">可观测性</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        集成 Micrometer、Spring Boot Actuator。Agent 调用链路可监控、可追踪。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">配置管理</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        application.yml 统一配置模型、工具、知识库。支持 Profile 环境隔离。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Spring AI 的三层架构是什么？各自职责？</div>
+    <div class="qa-answer">
+      <strong>① Augmented LLM（增强LLM层）</strong>：LLM + 工具 + 记忆。核心组件：ChatClient、ToolCallback、Memory。<br>
+      <strong>② Graph Runtime（图运行时）</strong>：工作流编排引擎。核心组件：StateGraph、Node、Edge、Checkpoint。类似 LangGraph。<br>
+      <strong>③ Agent Framework（Agent框架层）</strong>：高级 Agent 模式。核心组件：ReactAgent、MultiAgent、A2A 协议。<br><br>
+      从下到上：模型能力 → 流程编排 → 高级模式。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: Spring AI 和 LangGraph 的 Graph Runtime 有什么相似和不同？</div>
+    <div class="qa-answer">
+      <strong>相似</strong>：都用图结构定义工作流——StateGraph + Node + Edge + Conditional Edge + Checkpoint。概念几乎一一对应。<br>
+      <strong>不同</strong>：<br>
+      ① 语言：Spring AI 是 Java，LangGraph 是 Python<br>
+      ② 生态：Spring AI 融合 Spring 生态（DI、配置、安全），LangGraph 融合 Python AI 生态<br>
+      ③ 编程范式：Spring AI 声明式（注解+Bean），LangGraph 命令式（函数式API）
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Spring AI Alibaba 相比 Spring AI 增加了什么？</div>
+    <div class="qa-answer">
+      ① <strong>通义千问集成</strong>：原生支持 DashScope API（qwen-max/turbo/plus）<br>
+      ② <strong>检查点恢复</strong>：Graph Runtime 支持持久化检查点，故障后从断点恢复<br>
+      ③ <strong>A2A 协议</strong>：Agent-to-Agent 跨框架通信<br>
+      ④ <strong>MCP 集成</strong>：1.1/2.0 版本原生支持 MCP 协议<br>
+      ⑤ <strong>企业级特性</strong>：适配阿里云生态（OSS、RDS、SLS等）
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: 什么场景下应该选择 Spring AI 而不是 LangGraph？</div>
+    <div class="qa-answer">
+      适合 Spring AI 的场景：<br>
+      ① 已有 Spring Boot 项目，想加入 AI 能力<br>
+      ② 团队是 Java 技术栈，没有 Python 工程师<br>
+      ③ 需要企业级可观测性（Micrometer/Actuator）<br>
+      ④ 需要和现有 Spring Security/Cloud 集成<br>
+      ⑤ 对类型安全和编译期检查有要求<br><br>
+      适合 LangGraph 的场景：Python 生态、需要最新 AI 特性、研究性项目。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: Spring AI 的 @Tool 注解和 Python 的 Function Calling 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>本质相同</strong>：都是定义工具让 LLM 调用。<br><br>
+      <strong>区别</strong>：<br>
+      ① Spring AI 用 @Tool 注解标记方法，自动生成 JSON Schema。Python 需要手动写 Schema 字典。<br>
+      ② Spring AI 的工具是 Spring Bean，可以注入任何依赖（数据库连接、HTTP客户端等）。Python 工具是普通函数。<br>
+      ③ Spring AI 工具有 Spring 的 AOP/事务/安全等能力。Python 没有这些。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch12Questions = [
+  {
+    type: 'single',
+    question: 'Spring AI 的三层架构从上到下是？',
+    options: [
+      'Agent Framework → Graph Runtime → Augmented LLM',
+      'Augmented LLM → Graph Runtime → Agent Framework',
+      'Graph Runtime → Agent Framework → Augmented LLM',
+      'Agent Framework → Augmented LLM → Graph Runtime'
+    ],
+    answer: [0],
+    explanation: '从上到下：Agent Framework（高级模式）→ Graph Runtime（工作流编排）→ Augmented LLM（LLM+工具+记忆）。'
+  },
+  {
+    type: 'single',
+    question: 'Spring AI Alibaba 原生集成的 LLM 是？',
+    options: ['OpenAI GPT-4', '通义千问（DashScope）', 'Claude', 'Gemini'],
+    answer: [1],
+    explanation: 'Spring AI Alibaba 原生集成 DashScope（通义千问 API），支持 qwen-max/turbo/plus 等模型。'
+  },
+  {
+    type: 'single',
+    question: 'Spring AI 定义工具使用的注解是？',
+    options: ['@Bean', '@Tool', '@Function', '@ToolCallback'],
+    answer: [1],
+    explanation: '@Tool 注解标记方法为工具，自动生成 JSON Schema 描述。方法签名就是工具参数。'
+  },
+  {
+    type: 'single',
+    question: 'Spring AI 的 Graph Runtime 概念与以下哪个框架最相似？',
+    options: ['AutoGen', 'LangGraph', 'CrewAI', 'Coze'],
+    answer: [1],
+    explanation: 'Spring AI 的 Graph Runtime（StateGraph/Node/Edge/Checkpoint）概念与 LangGraph 几乎一一对应，都是图结构工作流。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是选择 Spring AI 的合理理由？',
+    options: [
+      '团队是 Java 技术栈',
+      '已有 Spring Boot 项目想加 AI 能力',
+      '需要 Spring 生态的企业级特性',
+      '需要最快的原型验证速度'
+    ],
+    answer: [3],
+    explanation: '需要最快原型验证速度应该选 Python 框架或低代码平台（Dify/Coze）。Spring AI 的优势是企业级和生态融合，不是速度。'
+  },
+  {
+    type: 'multiple',
+    question: 'Spring AI Alibaba 相比 Spring AI 增加了哪些特性？（多选）',
+    options: [
+      '通义千问（DashScope）原生集成',
+      '检查点持久化和故障恢复',
+      'A2A 协议支持',
+      '自动生成前端界面'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Spring AI Alibaba 增加了通义千问集成、检查点恢复、A2A 协议、MCP 集成。不提供自动生成前端界面的功能。'
+  },
+  {
+    type: 'multiple',
+    question: 'Spring AI 的企业级特性包括哪些？（多选）',
+    options: [
+      '与 Spring Boot/Cloud/Security 无缝集成',
+      '声明式编程（注解+Bean）',
+      'Micrometer 可观测性',
+      '自动模型训练和微调'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Spring AI 企业级特性：Spring 生态融合、声明式编程、可观测性（Micrometer）、配置管理。不包含自动模型训练。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Spring AI 和 LangGraph 的对比，以下说法正确的是？（多选）',
+    options: [
+      'Graph Runtime 概念几乎一一对应',
+      'Spring AI 是 Java，LangGraph 是 Python',
+      'Spring AI 用注解定义工具，LangGraph 用 Schema 字典',
+      'Spring AI 不支持条件边'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Spring AI 的 Graph Runtime 支持条件边（addConditionalEdge），和 LangGraph 一样。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch12Questions); }, 500);
+</script>
