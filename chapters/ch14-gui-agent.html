@@ -1,0 +1,1568 @@
+<!-- 第18章：GUI Agent -->
+<h1 class="chapter-title">第14章 GUI Agent：浏览器自动化</h1>
+<p class="chapter-subtitle">能操作图形界面的 AI Agent</p>
+
+<!-- ===== 17.1 什么是GUI Agent ===== -->
+<h2 class="section-heading">14.1 从 API Agent 到 GUI Agent</h2>
+
+<p>前面学的 Agent 都通过 API/命令行操作工具。但人类大部分工作在图形界面（GUI）上——浏览器、Office、设计软件。<strong>GUI Agent</strong> 能像人一样操作图形界面：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 GUI Agent 的核心能力</div>
+  <p>看屏幕截图 → 理解界面元素 → 决定点击/输入/滚动 → 执行操作 → 看结果 → 继续下一步。和人用电脑的方式完全一样。</p>
+</div>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">API Agent</div>
+    <div class="side-content">
+      <div class="highlight-line">通过 API 调用工具</div>
+      <div class="highlight-line">需要目标系统提供 API</div>
+      <div class="highlight-line">精确、快速</div>
+      <div class="highlight-line">受限于 API 能力</div>
+      <div class="highlight-line" style="color: var(--color-info);">适合：有API的系统</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">GUI Agent</div>
+    <div class="side-content">
+      <div class="highlight-line">通过截图+点击操作界面</div>
+      <div class="highlight-line">只要有图形界面就行</div>
+      <div class="highlight-line">灵活但可能出错</div>
+      <div class="highlight-line">能操作任何软件</div>
+      <div class="highlight-line" style="color: var(--color-accent);">适合：无API的系统</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 17.2 工作原理 ===== -->
+<h2 class="section-heading">14.2 GUI Agent 的工作原理</h2>
+
+<div class="flowchart-container" id="guiAgentFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('guiAgentFlow', {
+    nodes: [
+      { id: 'goal', label: '用户目标\n"帮我订一张机票"', type: 'start' },
+      { id: 'screen', label: '截取屏幕截图', type: 'tool' },
+      { id: 'understand', label: '理解界面\n(Vision模型)', type: 'process' },
+      { id: 'decide', label: '决定下一步操作\n(点击/输入/滚动)', type: 'decision' },
+      { id: 'execute', label: '执行操作\n(鼠标/键盘)', type: 'process' },
+      { id: 'verify', label: '检查结果\n(新的截图)', type: 'decision' },
+      { id: 'done', label: '任务完成', type: 'end' }
+    ],
+    edges: [
+      { from: 'goal', to: 'screen' },
+      { from: 'screen', to: 'understand' },
+      { from: 'understand', to: 'decide' },
+      { from: 'decide', to: 'execute' },
+      { from: 'execute', to: 'verify' },
+      { from: 'verify', to: 'done', label: '完成' },
+      { from: 'verify', to: 'screen', label: '未完成', dashed: true }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">🔧 技术实现要素</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">要素</th>
+        <th style="text-align: left; padding: 10px 8px;">说明</th>
+        <th style="text-align: left; padding: 10px 8px;">技术</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">视觉理解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">看懂屏幕截图，识别按钮、输入框、文字</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4o Vision / Claude Vision</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">操作执行</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模拟鼠标点击、键盘输入、滚动</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Playwright / PyAutoGUI / RDP</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">决策推理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">根据界面状态决定下一步操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ReAct / 规划 + 执行</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">结果验证</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">操作后检查是否达到预期</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">截图对比 / DOM 分析</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 17.3 代表产品 ===== -->
+<h2 class="section-heading">14.3 GUI Agent 代表产品</h2>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">Claude Computer Use</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Anthropic 推出的电脑操作能力。Claude 可以看屏幕截图、移动鼠标、点击按钮、输入文字。直接操作桌面应用。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">OpenAI Operator</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        OpenAI 的浏览器操作 Agent。能浏览网页、填表单、下单购物。专注于 Web 操作场景。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">Google Project Mariner</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Google 的浏览器 Agent 实验。使用 Gemini 的多模态能力理解和操作网页。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">AutoGLM / 智谱清言</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        国产 GUI Agent。能操作手机 App 和网页，支持微信、淘宝、美团等常见应用。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 17.4 挑战与局限 ===== -->
+<h2 class="section-heading">14.4 GUI Agent 的挑战与局限</h2>
+
+<div class="card">
+  <div class="card-title">⚠️ 当前面临的主要挑战</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">1. 准确率不够高</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        视觉理解有误差，可能点错按钮、读错文字。复杂界面容易迷路。当前准确率约 50-70%。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">2. 速度慢</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        每步都要截图→上传→推理→执行。一个简单操作可能需要 5-10 秒。比 API 调用慢得多。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">3. 安全风险</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Agent 能操作任意界面 = 能做任意事情。误操作可能删除文件、发送错误消息、泄露信息。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">4. 环境依赖</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        依赖屏幕分辨率、窗口位置、网络状态。环境微小变化可能导致操作失败。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success); margin-top: 16px;">
+  <strong>未来方向</strong>：随着多模态模型能力提升（GPT-5/Claude 4），GUI Agent 准确率将显著提高。结合 API Agent（有API的用API，没API的用GUI），将成为通用自动化的终极方案。
+</div>
+
+<!-- ===== 17.5 GUI Agent 技术栈详解 ===== -->
+<h2 class="section-heading">14.5 GUI Agent 技术栈详解</h2>
+
+<p>GUI Agent 的技术栈可以按功能层级分为三大模块：视觉理解层、操作执行层和决策推理层。每一层都有多种技术选型，不同选型组合出不同的 Agent 架构。理解各层技术的优缺点，是设计和选型 GUI Agent 系统的前提条件。</p>
+
+<div class="card">
+  <div class="card-title">👁️ 视觉理解层 — 多模态模型对比</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">视觉理解层负责将屏幕截图转化为结构化的界面语义信息。不同 Vision 模型在分辨率、价格、延迟和准确率上差异显著，需要根据任务复杂度和成本预算做权衡。</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">模型</th>
+        <th style="text-align: left; padding: 10px 8px;">最大分辨率</th>
+        <th style="text-align: left; padding: 10px 8px;">输入价格</th>
+        <th style="text-align: left; padding: 10px 8px;">平均延迟</th>
+        <th style="text-align: left; padding: 10px 8px;">UI元素识别准确率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">GPT-4o Vision</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2048×2048</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$2.50 / 1M tokens</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-4 秒</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~72%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Claude 3.5 Sonnet</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1568×1568</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$3.00 / 1M tokens</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1-3 秒</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~78%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Gemini 1.5 Pro Vision</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">3072×3072</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$1.25 / 1M tokens</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">3-6 秒</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~68%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Qwen-VL-Max</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1280×1280</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">¥0.02 / 1K tokens</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-5 秒</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~65%</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">GLM-4V</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1344×1344</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">¥0.05 / 1K tokens</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-4 秒</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~63%</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">注：价格和准确率为 2025 年公开数据估算，实际以官方定价为准。准确率基于 OSWorld 等标准 GUI Agent benchmark。</p>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🖱️ 操作执行层 — 自动化工具对比</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">操作执行层负责将 LLM 的决策转化为实际的鼠标和键盘操作。不同工具覆盖不同平台，选型时需要考虑目标环境是 Web、桌面还是移动端。</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">工具</th>
+        <th style="text-align: left; padding: 10px 8px;">平台</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 8px;">优点</th>
+        <th style="text-align: left; padding: 10px 8px;">缺点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Playwright</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Web (Chromium/Firefox/WebKit)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">网页自动化、表单填写、数据抓取</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">跨浏览器、可获取 DOM、无头模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅限 Web，无法操作桌面应用</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">PyAutoGUI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Windows / macOS / Linux</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">桌面应用操作、跨平台 GUI 自动化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">纯 Python、安装简单、支持截屏识别</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">依赖屏幕分辨率、无 DOM 信息</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">ADB (Android Debug Bridge)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Android</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">手机 App 操作、移动端测试</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">官方支持、可获取 UI 树、tap/swipe/input</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅 Android、需开启调试模式</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">xdotool</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Linux (X11)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Linux 桌面自动化、服务器 GUI 操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">轻量级、命令行调用、X11 窗口管理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅 X11、不支持 Wayland、功能有限</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">AppleScript / Accessibility API</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">macOS</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Mac 原生应用操作、辅助功能集成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">原生支持、可获取 UI 元素树</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅 macOS、语法特殊、权限要求高</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🧠 决策推理层 — 三种主流范式</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">决策推理层是 GUI Agent 的"大脑"，负责根据当前界面状态和用户目标，规划下一步操作。目前主流的推理范式有三种，各有优劣。</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">ReAct 模式</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Reasoning + Acting 交替执行。每一步先推理（Thought）再行动（Action），根据观察结果（Observation）决定下一步。适合探索性任务，但步数多时容易累积误差。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">规划+执行模式</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        先一次性生成完整操作计划（Plan），再逐步执行（Execute）。执行中如遇异常可重新规划。适合流程明确的任务，减少反复推理的 Token 消耗。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">Chain-of-Thought (CoT)</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        链式思考，要求模型逐步推理出结论。在 GUI Agent 中常与 ReAct 结合使用——CoT 负责"想清楚"，ReAct 负责"做出来"。提升推理质量但增加 Token 开销。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 17.6 Playwright + LLM 实战代码 ===== -->
+<h2 class="section-heading">14.6 Playwright + LLM 实战代码</h2>
+
+<p>下面展示一个完整的 Playwright + OpenAI Vision 浏览器自动化 Agent。它实现了截图→识别→操作的循环：先用 Playwright 截取网页画面，将截图发送给 GPT-4o Vision 模型分析界面，模型返回要执行的操作指令，Agent 解析指令并用 Playwright 执行，循环直到任务完成或达到最大步数限制。</p>
+
+<div class="card">
+  <div class="card-title">📦 完整示例：Playwright + GPT-4o Vision 自动填表</div>
+<pre><code class="language-python">import base64, json, openai
+from playwright.sync_api import sync_playwright
+
+client = openai.OpenAI(api_key="sk-xxx")
+
+def screenshot_to_base64(page):
+    """截取页面截图并转为 base64 编码"""
+    screenshot_bytes = page.screenshot(full_page=False)
+    return base64.b64encode(screenshot_bytes).decode("utf-8")
+
+def ask_gpt4o_for_action(screenshot_b64, user_goal, history):
+    """将截图和目标发给 GPT-4o Vision，获取下一步操作"""
+    messages = [
+        {"role": "system", "content": (
+            "你是一个浏览器自动化 Agent。根据截图决定下一步操作。"
+            "返回 JSON 格式：{\"action\": \"click|fill|scroll|done\", "
+            "\"selector\": \"CSS选择器\", \"value\": \"输入内容\", "
+            "\"reason\": \"操作原因\"}"
+        )},
+        {"role": "user", "content": [
+            {"type": "text", "text": f"用户目标：{user_goal}\n操作历史：{history}"},
+            {"type": "image_url", "image_url": {
+                "url": f"data:image/png;base64,{screenshot_b64}",
+                "detail": "high"
+            }}
+        ]}
+    ]
+    resp = client.chat.completions.create(
+        model="gpt-4o", messages=messages, max_tokens=300
+    )
+    return json.loads(resp.choices[0].message.content)
+
+def execute_action(page, action_data):
+    """根据 GPT 返回的指令执行 Playwright 操作"""
+    action = action_data["action"]
+    selector = action_data.get("selector", "")
+    if action == "click":
+        page.click(selector, timeout=5000)
+    elif action == "fill":
+        page.fill(selector, action_data.get("value", ""), timeout=5000)
+    elif action == "scroll":
+        page.mouse.wheel(0, 500)
+    elif action == "done":
+        return True  # 任务完成
+    return False
+
+def run_gui_agent(url, goal, max_steps=10):
+    """主循环：截图→识别→操作→验证"""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        page.goto(url)
+        history = []
+        for step in range(max_steps):
+            screenshot_b64 = screenshot_to_base64(page)
+            action_data = ask_gpt4o_for_action(screenshot_b64, goal, history)
+            history.append(f"Step {step+1}: {action_data}")
+            print(f"Step {step+1}: {action_data['action']} → {action_data.get('reason','')}")
+            if execute_action(page, action_data):
+                print("✅ 任务完成！")
+                break
+            page.wait_for_timeout(1500)  # 等待页面响应
+        browser.close()
+
+# 使用示例：自动打开百度搜索"AI Agent"
+run_gui_agent("https://www.baidu.com", "在搜索框输入'AI Agent'并点击搜索按钮")
+</code></pre>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">这段代码展示了 GUI Agent 的核心循环：截取页面截图 → 发送给 GPT-4o Vision 分析 → 解析返回的 JSON 指令 → 用 Playwright 执行操作 → 等待页面更新 → 进入下一轮。实际生产中还需要加入错误处理、重试逻辑、操作白名单校验等安全机制。</p>
+</div>
+
+<!-- ===== 17.7 Claude Computer Use API 实战 ===== -->
+<h2 class="section-heading">14.7 Claude Computer Use API 实战</h2>
+
+<p>Anthropic 在 Claude 3.5 Sonnet 中引入了 Computer Use 能力——模型可以直接返回 computer_use 类型的工具调用，包括 screenshot、mouse_move、click、type、scroll 等操作。下面展示如何调用 Anthropic API 实现 Claude Computer Use 的完整工具调用循环，包括多模态消息构造和工具执行逻辑。</p>
+
+<div class="flowchart-container" id="computerUseFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('computerUseFlow', {
+    nodes: [
+      { id: 'start', label: '用户指令\n"帮我打开备忘录\n写一条待办"', type: 'start' },
+      { id: 'call', label: '调用 Claude API\n(带 computer_use 工具)', type: 'tool' },
+      { id: 'parse', label: '解析返回\n工具调用类型', type: 'decision' },
+      { id: 'screenshot', label: 'computer: screenshot\n截取屏幕', type: 'process' },
+      { id: 'action', label: 'computer: click/type\n执行鼠标/键盘', type: 'process' },
+      { id: 'result', label: '收集工具结果\n截图 + 执行反馈', type: 'process' },
+      { id: 'continue', label: '继续调用\nClaude API', type: 'decision' },
+      { id: 'end', label: 'Claude 返回\nstop_reason=end_turn\n任务完成', type: 'end' }
+    ],
+    edges: [
+      { from: 'start', to: 'call' },
+      { from: 'call', to: 'parse' },
+      { from: 'parse', to: 'screenshot', label: 'screenshot' },
+      { from: 'parse', to: 'action', label: 'click/type' },
+      { from: 'screenshot', to: 'result' },
+      { from: 'action', to: 'result' },
+      { from: 'result', to: 'continue' },
+      { from: 'continue', to: 'call', label: 'tool_use', dashed: true },
+      { from: 'continue', to: 'end', label: 'end_turn' }
+    ],
+    animate: true
+  });
+}, 400);
+</script>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📦 完整示例：Claude Computer Use API 调用</div>
+<pre><code class="language-python">import anthropic, base64, json
+
+client = anthropic.Anthropic(api_key="sk-ant-xxx")
+
+# 定义 Computer Use 工具
+computer_tool = {
+    "type": "computer_20241022",
+    "name": "computer",
+    "display_width_px": 1280,
+    "display_height_px": 800,
+    "display_number": 0,
+}
+
+def execute_computer_action(action_input):
+    """执行 Claude 返回的 computer_use 操作，返回结果截图"""
+    action = action_input["action"]
+    if action == "screenshot":
+        # 实际实现中调用 PyAutoGUI 或系统 API 截屏
+        screenshot_b64 = take_screenshot_base64()
+        return {"type": "image", "source": {"type": "base64",
+                "media_type": "image/png", "data": screenshot_b64}}
+    elif action == "mouse_move":
+        move_mouse(action_input["coordinate"])
+    elif action == "left_click":
+        click_mouse(action_input["coordinate"])
+    elif action == "type":
+        type_text(action_input["text"])
+    elif action == "scroll":
+        scroll(action_input.get("coordinate", [0,0]),
+               action_input.get("scroll_direction", "down"))
+    # 执行后截取新屏幕状态返回给 Claude
+    screenshot_b64 = take_screenshot_base64()
+    return {"type": "image", "source": {"type": "base64",
+            "media_type": "image/png", "data": screenshot_b64}}
+
+def run_claude_computer_use(user_task, max_turns=15):
+    """Claude Computer Use 主循环"""
+    messages = [{"role": "user", "content": user_task}]
+    for turn in range(max_turns):
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4096,
+            tools=[computer_tool],
+            messages=messages,
+        )
+        if response.stop_reason == "end_turn":
+            print("✅ Claude 表示任务完成")
+            break
+        # 解析工具调用并执行
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                result = execute_computer_action(block.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": result
+                })
+        messages.append({"role": "assistant", "content": response.content})
+        messages.append({"role": "user", "content": tool_results})
+
+run_claude_computer_use("打开记事本，输入'明天开会'，保存到桌面")
+</code></pre>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">Claude Computer Use 的关键在于工具调用循环：每次 Claude 返回 tool_use 块时，Agent 需要执行对应的 computer 操作（截屏、点击、输入等），然后将结果（通常是新截图）作为 tool_result 返回给 Claude，Claude 根据新截图决定下一步操作，直到 stop_reason 为 end_turn 表示任务完成。注意 computer_tool 的 display_width_px 和 display_height_px 必须与实际屏幕分辨率匹配，否则坐标会偏差。</p>
+</div>
+
+<!-- ===== 17.8 GUI Agent 工程化挑战 ===== -->
+<h2 class="section-heading">14.8 GUI Agent 工程化挑战</h2>
+
+<p>从 demo 到生产环境，GUI Agent 面临大量工程化挑战。一个能在演示中成功订机票的 Agent，放到生产环境可能因为网络波动、页面改版、弹窗广告等原因频繁失败。下面从错误恢复、成本控制、安全沙箱和评测方法四个维度，深入分析 GUI Agent 工程化的关键问题。</p>
+
+<div class="card">
+  <div class="card-title">🔄 1. 错误恢复策略</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">GUI Agent 在执行过程中会遇到各种异常：点击了不存在的元素、页面加载超时、弹窗遮挡目标区域等。健全的错误恢复机制是生产级 Agent 的必备能力。</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">自动重试</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        单步操作失败时，重新截取截图并让 LLM 重新决策。设置最大重试次数（如 3 次），避免死循环。重试时可以附加错误信息帮助模型修正判断。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">回退机制</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        维护操作历史栈，当连续重试失败后，回退到前 N 步的页面状态重新尝试。类似浏览器的"后退"按钮，但由 Agent 自动决策回退深度。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">人工接管</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        当自动恢复失败时，暂停执行并通知人工介入。提供操作回放和当前状态截图，让人工决定是否继续、修正或终止任务。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">💰 2. 成本控制策略</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">GUI Agent 的最大成本来自 Vision 模型调用——每次截图都要上传图片并调用多模态模型，一次复杂任务可能产生数十次调用。以下是生产环境中常用的成本优化手段。</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">优化策略</th>
+        <th style="text-align: left; padding: 10px 8px;">原理</th>
+        <th style="text-align: left; padding: 10px 8px;">节省比例</th>
+        <th style="text-align: left; padding: 10px 8px;">代价</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">截图压缩</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">将 1920×1080 截图压缩到 640×360，减少 Token 数</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~60%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">小文字可能识别不清</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">区域裁剪</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">只截取界面变化区域，而非全屏</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~40%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要变化检测算法</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">DOM 辅助</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Web 场景优先用 DOM 提取元素，减少截图频率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~50%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">仅适用 Web 环境</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">操作缓存</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">相同界面状态直接复用上次决策结果</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~30%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">界面动态变化时缓存失效</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">模型分级</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单步骤用小模型，复杂步骤用大模型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~45%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要准确的任务分级逻辑</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🔒 3. 安全沙箱设计</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">GUI Agent 能操作任意界面意味着它能做任意事情——删除文件、发送邮件、修改系统配置。生产环境必须通过安全沙箱限制 Agent 的操作范围，防止误操作造成不可逆的损失。</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">权限隔离</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        在虚拟机或容器中运行 Agent，与宿主系统隔离。Agent 只能操作虚拟机内的应用，无法访问宿主文件系统和网络。通过虚拟机快照实现一键恢复，确保误操作不影响真实环境。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">操作白名单</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        预定义允许操作的应用列表和操作类型。如只允许操作浏览器、禁止操作系统设置和文件管理。每次执行前校验操作目标是否在白名单内，不在则拒绝并记录日志。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">敏感操作确认</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        对删除、发送、支付等不可逆操作，暂停执行并等待用户确认。通过规则引擎或 LLM 判断操作风险等级，高风险操作必须人工审批后才执行。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">操作审计日志</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        记录 Agent 的每一步操作：时间、目标、参数、结果。支持事后回溯和复盘。日志同步到独立存储，防止 Agent 修改或删除审计记录。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📊 4. 多模态评测方法</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">GUI Agent 的评测比传统 Agent 复杂得多——不仅要评估推理质量，还要评估视觉理解准确性和操作执行正确性。目前业界主流的评测方法包括以下几种。</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">评测方法</th>
+        <th style="text-align: left; padding: 10px 8px;">评测内容</th>
+        <th style="text-align: left; padding: 10px 8px;">代表 Benchmark</th>
+        <th style="text-align: left; padding: 10px 8px;">优缺点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">端到端任务完成率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">给定任务，评估 Agent 是否完整完成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">OSWorld, WebArena</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">直观但粒度粗，难以定位失败原因</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">步骤级准确率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">逐步评估每个操作是否正确</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Mind2Web, GUI-Odyssey</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">细粒度但需要人工标注标准操作</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">视觉元素定位</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">评估模型能否准确定位界面元素位置</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ScreenSpot, VisualWebBench</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">专注视觉能力，不涉及推理和执行</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">人工评分</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">人类评审员主观评估操作质量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">内部评测</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">最贴近真实体验但成本高、不可复现</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 18.7 Coding Agent的代码上下文检索系统 ===== -->
+<h2 class="section-heading">14.9 Coding Agent 的代码上下文检索系统</h2>
+
+<p>前面讨论的是 GUI Agent——能操作图形界面的 AI。但在开发场景中，还有一类更专业的 Agent：<strong>Coding Agent</strong>（编码助手 Agent）。它的核心挑战之一是——企业项目可能有几十万行代码，当用户说"帮我修复这个 Bug"或"重构这个模块"时，Coding Agent 如何快速定位和理解相关代码上下文？</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 为什么代码上下文检索是 Coding Agent 的核心难题？</div>
+  <p>一个 50 万行的 Java 项目，当 Coding Agent 需要修复一个 NullPointerException 时，它面临的问题不是"能不能读懂这段代码"，而是"如何在 50 万行中找到该看哪些代码"。LLM 的上下文窗口有限（即使 200K Token 也只能装约 3000 行代码），不可能把整个项目塞进去。因此，<strong>精准检索 + 聪明组合</strong>才是关键。</p>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🔍 四种检索策略详解</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">Coding Agent 的代码检索不是单一手段，而是四种策略的组合。每种策略擅长不同的场景，单独使用都有明显短板，组合起来才能覆盖绝大多数检索需求。</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">1️⃣ 向量检索（Embedding Search）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">将代码片段用 Embedding 模型编码为向量，根据语义相似度搜索"概念相关"的代码。例如搜索"数据库连接池"，即使代码中没有这些关键词，也能找到 DataSource、ConnectionManager 等相关类。</p>
+      <div style="font-size: 12px; color: var(--color-info); margin-top: 8px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 4px;">✅ 擅长：模糊概念匹配、跨模块语义关联<br>❌ 短板：可能返回语义相近但逻辑无关的代码，不够精确</div>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">2️⃣ 关键词检索（Keyword Search）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">精确匹配类名、方法名、变量名、错误信息字符串。例如搜索 NullPointerException 中的 "getUserId"，能精确定位到包含该方法的所有文件。</p>
+      <div style="font-size: 12px; color: var(--color-accent); margin-top: 8px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 4px;">✅ 擅长：精确定位、速度快、确定性高<br>❌ 短板：不知道关键词就搜不到，缺乏语义理解</div>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">3️⃣ AST 分析（语法树分析）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">将代码解析为抽象语法树（AST），理解代码结构：类继承关系、方法调用链、import 依赖图。例如知道 UserService extends BaseService，就能顺藤摸瓜找到父类的通用逻辑。</p>
+      <div style="font-size: 12px; color: var(--color-success); margin-top: 8px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 4px;">✅ 擅长：结构理解、继承/依赖追踪、类型安全<br>❌ 短板：需要解析时间，大型项目 AST 索引构建成本高</div>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">4️⃣ 调用链追踪（Call Graph）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">从入口函数追踪执行路径，理解完整调用链。例如从 HTTP 入口 controller.handleRequest() → service.process() → dao.query()，追踪出一条完整的请求处理链路。</p>
+      <div style="font-size: 12px; color: var(--color-warning); margin-top: 8px; padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 4px;">✅ 擅长：执行路径追踪、运行时行为理解<br>❌ 短板：需要运行时信息或静态分析工具支持，动态调用难以追踪</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🎯 四种策略的互补性</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">单独使用任何一种策略都有明显的盲区。真正的工程实践是<strong>组合检索</strong>——让四种策略互相补台：</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">策略</th>
+        <th style="text-align: left; padding: 10px 8px;">擅长什么</th>
+        <th style="text-align: left; padding: 10px 8px;">短板是什么</th>
+        <th style="text-align: left; padding: 10px 8px;">谁来补台</th>
+        <th style="text-align: left; padding: 10px 8px;">典型适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">向量检索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模糊概念匹配，跨模块语义关联</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可能返回语义相近但逻辑无关的代码</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词检索精确定位，AST 验证结构关系</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"找到所有跟缓存相关的代码"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">关键词检索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">精确定位，速度快</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不知道关键词就搜不到，缺乏语义理解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量检索扩展语义范围，AST 追踪关联类</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"找到 getUserId 方法的所有定义和调用"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">AST 分析</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">结构理解，继承/依赖追踪</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">解析耗时，大型项目索引成本高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词检索快速定位入口，调用链补充运行时信息</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"UserService 继承了谁？依赖了哪些类？"</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">调用链追踪</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">执行路径追踪，运行时行为理解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要运行时信息，动态调用难以追踪</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词检索定位入口函数，AST 补充静态调用关系</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"这个 HTTP 请求的完整处理链路是什么？"</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="flowchart-container" id="codeRetrievalFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('codeRetrievalFlow', {
+    nodes: [
+      { id: 'query', label: '用户查询\n"修复 getUserId的空指针异常"', type: 'start' },
+      { id: 'keyword', label: '关键词检索\n精确匹配 getUserId\n定位相关文件', type: 'tool' },
+      { id: 'embedding', label: '向量检索\n语义扩展\n找到概念相关代码', type: 'process' },
+      { id: 'ast', label: 'AST 分析\n理解类继承\n方法调用关系', type: 'process' },
+      { id: 'callgraph', label: '调用链追踪\n追踪执行路径\n理解完整链路', type: 'process' },
+      { id: 'merge', label: '合并去重\n结果排序', type: 'decision' },
+      { id: 'context', label: '构建代码上下文\n送入 LLM', type: 'end' }
+    ],
+    edges: [
+      { from: 'query', to: 'keyword' },
+      { from: 'keyword', to: 'embedding', label: '扩展语义范围' },
+      { from: 'embedding', to: 'ast', label: '补充结构理解' },
+      { from: 'ast', to: 'callgraph', label: '深度追踪路径' },
+      { from: 'callgraph', to: 'merge' },
+      { from: 'merge', to: 'context' }
+    ],
+    animate: true
+  });
+}, 500);
+</script>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">⚙️ 检索结果去重与排序策略</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">四种策略各自返回一批结果，大量代码片段会重叠。如何去重和排序，直接影响 Coding Agent 的理解质量：</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">去重策略</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">① <strong>文件级去重</strong>：同一文件只保留最相关的方法/类，避免冗余<br>② <strong>片段级去重</strong>：重叠代码段取交集或合并范围<br>③ <strong>策略权重投票</strong>：被多种策略命中的代码片段，可信度更高，优先保留</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">排序策略</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">① <strong>相关性评分</strong>：综合多种策略的匹配分数加权排序<br>② <strong>距离衰减</strong>：与目标代码的调用距离越近，排名越高<br>③ <strong>Token 预算裁剪</strong>：按排序顺序填充上下文，超出 Token 预算时截断低排名片段</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📊 四种检索策略对比总结</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">维度</th>
+        <th style="text-align: left; padding: 10px 8px;">向量检索</th>
+        <th style="text-align: left; padding: 10px 8px;">关键词检索</th>
+        <th style="text-align: left; padding: 10px 8px;">AST 分析</th>
+        <th style="text-align: left; padding: 10px 8px;">调用链追踪</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">精确度</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中（语义匹配可能偏）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">高（精确命中关键词）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">高（结构关系确定性）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中（动态调用不确定）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">召回率</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">高（语义扩展范围广）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中（依赖关键词命中）</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">中（依赖结构关系）</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">中（依赖入口函数）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">性能开销</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">中（Embedding 计算）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">低（文本匹配速度快）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">高（需解析构建索引）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">高（需静态/动态分析）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">适用场景</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模糊概念查找、跨模块关联</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">精确定位已知名称的代码</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">理解类继承、依赖关系</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">追踪请求/函数执行链路</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">最佳搭档</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词 + AST</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量 + AST</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词 + 调用链</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词 + AST</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📦 代码示例：组合检索引擎实现</div>
+<pre><code class="language-python">class CodeRetrievalEngine:
+    """组合检索引擎：关键词→向量→AST→调用链"""
+
+    def __init__(self, project_path, token_budget=8000):
+        self.keyword_searcher = KeywordSearcher(project_path)
+        self.embedding_searcher = EmbeddingSearcher(project_path)
+        self.ast_analyzer = ASTAnalyzer(project_path)
+        self.call_graph = CallGraphAnalyzer(project_path)
+        self.token_budget = token_budget  # 上下文 Token 预算
+
+    def search(self, query: str, max_results: int = 20) -> list:
+        """组合检索流程：关键词定位→向量扩展→AST结构→调用链深度"""
+        # Step 1: 关键词检索 — 精确定位入口
+        keyword_hits = self.keyword_searcher.search(query, top_k=5)
+        key_files = {hit.file_path for hit in keyword_hits}
+
+        # Step 2: 向量检索 — 语义扩展范围
+        embedding_hits = self.embedding_searcher.search(query, top_k=10)
+        # 过滤掉与关键词结果无关的语义匹配（降低噪音）
+        embedding_hits = self._filter_by_relevance(embedding_hits, key_files)
+
+        # Step 3: AST 分析 — 理解类继承和依赖关系
+        ast_context = self.ast_analyzer.analyze_context(list(key_files))
+        # 从关键词定位的文件出发，扩展其父类、子类、关联类
+        related_classes = ast_context.get_related_classes(depth=2)
+
+        # Step 4: 调用链追踪 — 追踪执行路径
+        entry_points = keyword_hits[:3]  # 取前3个关键词命中作为入口
+        call_paths = self.call_graph.trace(entry_points, max_depth=5)
+
+        # 合合去重与排序
+        all_results = self._merge_and_deduplicate(
+            keyword_hits, embedding_hits, related_classes, call_paths
+        )
+        ranked_results = self._rank_and_budget(all_results)
+        return ranked_results
+
+    def _merge_and_deduplicate(self, *result_sets) -> list:
+        """去重：同一文件只保留最相关片段，多策略命中提升权重"""
+        file_scores = {}  # {file_path: {snippet: weighted_score}}
+        for results in result_sets:
+            for item in results:
+                key = (item.file_path, item.start_line, item.end_line)
+                if key not in file_scores:
+                    file_scores[key] = {
+                        'snippet': item, 'score': 0.0, 'hit_count': 0
+                    }
+                file_scores[key]['score'] += item.relevance_score
+                file_scores[key]['hit_count'] += 1  # 多策略命中加权
+
+        # 多策略命中的片段获得额外权重
+        for key in file_scores:
+            hits = file_scores[key]['hit_count']
+            file_scores[key]['score'] *= (1 + 0.2 * hits)
+        return sorted(file_scores.values(),
+                       key=lambda x: x['score'], reverse=True)
+
+    def _rank_and_budget(self, merged_results) -> list:
+        """排序 + Token预算裁剪：按分数排序填充，超预算截断"""
+        budget_results = []
+        used_tokens = 0
+        for item in merged_results:
+            snippet = item['snippet']
+            token_count = estimate_tokens(snippet.code_text)
+            if used_tokens + token_count <= self.token_budget:
+                budget_results.append(snippet)
+                used_tokens += token_count
+            else:
+                break  # 超出预算，截断低排名片段
+        return budget_results
+
+    def _filter_by_relevance(self, hits, key_files):
+        """向量检索结果过滤：与关键词命中的文件有间接关联才保留"""
+        filtered = []
+        for hit in hits:
+            # 直接命中关键词文件 → 保留
+            if hit.file_path in key_files:
+                filtered.append(hit)
+            # 与关键词文件有 import/调用关联 → 保留
+            elif self.ast_analyzer.has_dependency(hit.file_path, key_files):
+                filtered.append(hit)
+        return filtered
+
+# 使用示例
+engine = CodeRetrievalEngine("/path/to/project", token_budget=8000)
+results = engine.search("修复 getUserId 方法的空指针异常")
+for r in results:
+    print(f"[{r.file_path}:{r.start_line}] (score={r.relevance_score:.2f})")
+    print(r.code_text[:200])</code></pre>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">组合检索的关键在于<strong>流程编排</strong>：先用关键词快速锁定入口，再用向量扩展语义范围，然后用 AST 理解代码结构关系，最后用调用链追踪完整执行路径。每一步的结果都为下一步提供线索，形成层层递进的检索链条。去重时采用"多策略投票加权"——被越多策略命中的代码片段可信度越高，排名越靠前。</p>
+</div>
+
+<!-- ===== 18.8 Coding Agent的权限设计 ===== -->
+<h2 class="section-heading">14.10 Coding Agent 的权限设计</h2>
+
+<p>Coding Agent 能读文件、改代码、执行命令、提交代码、甚至部署发布——这些操作的风险等级天差地别。读一行日志几乎零风险，但一条 <code>rm -rf /</code> 或一次误部署可能让整个系统崩溃。<strong>权限设计</strong>是 Coding Agent 安全运行的基础，也是面试中的高频考点。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 为什么需要权限分级？</div>
+  <p>如果所有操作都不加限制，Coding Agent 可能：</p>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); margin-top: 8px;">
+    <li><strong>误删生产代码</strong>：AI 理解错误，把关键配置文件当临时文件删除</li>
+    <li><strong>泄露敏感信息</strong>：把密钥文件内容写入日志或输出到不安全的渠道</li>
+    <li><strong>执行危险命令</strong>：运行 <code>sudo rm -rf</code>、<code>DROP TABLE</code> 等不可逆操作</li>
+    <li><strong>误提交/误部署</strong>：把未测试的代码推到生产环境，导致服务中断</li>
+  </ul>
+  <p style="margin-top: 8px; color: var(--color-error);">权限分级的本质是<strong>最小权限原则</strong>——Agent 只应该拥有完成当前任务所需的最小权限，而不是"能做什么就做什么"。</p>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🔐 四级权限模型</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">根据操作的风险等级，将权限分为四级——从低风险到极高风险，每级需要不同的审批策略：</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div style="padding: 16px; border: 2px solid var(--color-success); border-radius: 8px; background: rgba(0,0,0,0.02);">
+      <div style="font-size: 16px; font-weight: 600; color: var(--color-success);">L0 读取权限 <span style="font-size: 12px; color: var(--color-text-secondary);">（低风险）</span></div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">读文件、搜索代码、查看日志、获取 Git 状态</p>
+      <div style="padding: 8px 12px; background: rgba(0,0,0,0.03); border-radius: 6px; font-size: 12px; margin-top: 8px;">
+        <strong style="color: var(--color-success);">审批策略：</strong>默认允许，无需确认<br>
+        <strong>理由：</strong>读取操作不改变系统状态，零风险
+      </div>
+    </div>
+    <div style="padding: 16px; border: 2px solid var(--color-warning); border-radius: 8px; background: rgba(0,0,0,0.02);">
+      <div style="font-size: 16px; font-weight: 600; color: var(--color-warning);">L1 修改权限 <span style="font-size: 12px; color: var(--color-text-secondary);">（中风险）</span></div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">改代码、写配置、创建文件、编辑文档</p>
+      <div style="padding: 8px 12px; background: rgba(0,0,0,0.03); border-radius: 6px; font-size: 12px; margin-top: 8px;">
+        <strong style="color: var(--color-warning);">审批策略：</strong>需确认（用户点击同意即可）<br>
+        <strong>理由：</strong>修改操作有影响但可回退（Git 可 revert）
+      </div>
+    </div>
+    <div style="padding: 16px; border: 2px solid var(--color-error); border-radius: 8px; background: rgba(0,0,0,0.02);">
+      <div style="font-size: 16px; font-weight: 600; color: var(--color-error);">L2 执行权限 <span style="font-size: 12px; color: var(--color-text-secondary);">（高风险）</span></div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">运行命令、执行脚本、启动服务、安装依赖</p>
+      <div style="padding: 8px 12px; background: rgba(0,0,0,0.03); border-radius: 6px; font-size: 12px; margin-top: 8px;">
+        <strong style="color: var(--color-error);">审批策略：</strong>需审批（用户明确授权 + 操作内容审核）<br>
+        <strong>理由：</strong>执行命令有副作用，可能影响系统状态
+      </div>
+    </div>
+    <div style="padding: 16px; border: 2px solid #8B0000; border-radius: 8px; background: rgba(0,0,0,0.02);">
+      <div style="font-size: 16px; font-weight: 600; color: #8B0000;">L3 发布权限 <span style="font-size: 12px; color: var(--color-text-secondary);">（极高风险）</span></div>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">提交代码、部署发布、操作数据库、删除数据</p>
+      <div style="padding: 8px 12px; background: rgba(0,0,0,0.03); border-radius: 6px; font-size: 12px; margin-top: 8px;">
+        <strong style="color: #8B0000;">审批策略：</strong>需双人审批（至少两人确认 + 操作截图留证）<br>
+        <strong>理由：</strong>发布操作影响生产环境，不可逆或恢复成本极高
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flowchart-container" id="permissionFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('permissionFlow', {
+    nodes: [
+      { id: 'op', label: 'Agent 发起操作\n"git push origin main"', type: 'start' },
+      { id: 'classify', label: '权限分级判断\n操作属于哪级权限？', type: 'decision' },
+      { id: 'l0', label: 'L0 读取\n默认允许\n直接执行', type: 'process' },
+      { id: 'l1', label: 'L1 修改\n需用户确认\n等待点击同意', type: 'process' },
+      { id: 'l2', label: 'L2 执行\n需审批\n审核操作内容', type: 'process' },
+      { id: 'l3', label: 'L3 发布\n双人审批\n两人确认+留证', type: 'process' },
+      { id: 'blacklist', label: '黑名单检查\n是否包含敏感路径/命令？', type: 'decision' },
+      { id: 'reject', label: '拒绝执行\n记录审计日志', type: 'end' },
+      { id: 'execute', label: '执行操作\n记录审计日志', type: 'end' }
+    ],
+    edges: [
+      { from: 'op', to: 'classify' },
+      { from: 'classify', to: 'l0', label: 'L0' },
+      { from: 'classify', to: 'l1', label: 'L1' },
+      { from: 'classify', to: 'l2', label: 'L2' },
+      { from: 'classify', to: 'l3', label: 'L3' },
+      { from: 'l0', to: 'blacklist' },
+      { from: 'l1', to: 'blacklist' },
+      { from: 'l2', to: 'blacklist' },
+      { from: 'l3', to: 'blacklist' },
+      { from: 'blacklist', to: 'reject', label: '命中黑名单' },
+      { from: 'blacklist', to: 'execute', label: '通过检查' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">🚫 AI 如何识别不能操作的内容</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">权限分级只是第一步。真正的问题是——AI 如何知道某个操作"不该做"？这需要四种识别机制协同工作：</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">黑名单机制</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">禁止操作的路径、文件、命令。例如：</p>
+      <ul style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0; padding-left: 16px;">
+        <li>路径黑名单：<code>/etc/</code>、<code>/var/www/prod/</code>、<code>.env</code> 文件</li>
+        <li>命令黑名单：<code>rm -rf</code>、<code>DROP TABLE</code>、<code>sudo</code>、<code>chmod 777</code></li>
+        <li>文件黑名单：<code>secret.key</code>、<code>credentials.json</code>、<code>id_rsa</code></li>
+      </ul>
+      <p style="font-size: 12px; color: var(--color-error); margin-top: 6px;">特点：确定性高、零容忍——命中即拒绝，无需判断意图</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">白名单机制</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">明确允许的操作范围。例如：</p>
+      <ul style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0; padding-left: 16px;">
+        <li>目录白名单：只允许操作 <code>src/</code>、<code>tests/</code> 目录下的文件</li>
+        <li>命令白名单：只允许 <code>pytest</code>、<code>npm test</code>、<code>git diff</code></li>
+        <li>分支白名单：只允许向 <code>feature/*</code> 分支提交，禁止 <code>main</code></li>
+      </ul>
+      <p style="font-size: 12px; color: var(--color-success); margin-top: 6px;">特点：最安全但最限制——超出范围一律拒绝</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">上下文感知</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">根据项目阶段自动调整权限阈值：</p>
+      <ul style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0; padding-left: 16px;">
+        <li>开发阶段：L1/L2 权限宽松，允许快速迭代实验</li>
+        <li>测试阶段：L2 权限收紧，只允许运行测试命令</li>
+        <li>发布阶段：L3 权限严格，任何修改必须双人审批</li>
+        <li>维护阶段：恢复部分 L2 权限，但 L3 保持严格</li>
+      </ul>
+      <p style="font-size: 12px; color: var(--color-info); margin-top: 6px;">特点：动态灵活——权限随场景变化，而非一刀切</p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">模式识别</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0;">识别危险操作的语义模式，即使它不在黑名单里：</p>
+      <ul style="font-size: 12px; color: var(--color-text-secondary); margin: 4px 0; padding-left: 16px;">
+        <li>删除模式：<code>rm</code>、<code>delete</code>、<code>remove</code>、<code>truncate</code>、<code>DROP</code></li>
+        <li>权限模式：<code>sudo</code>、<code>chmod 777</code>、<code>chown</code>、<code>root</code></li>
+        <li>泄露模式：读取密钥文件后写入公开日志/输出</li>
+        <li>重写模式：<code>git push --force</code>、<code>overwrite</code>、<code>replace all</code></li>
+      </ul>
+      <p style="font-size: 12px; color: var(--color-warning); margin-top: 6px;">特点：智能识别——能捕获黑名单未覆盖的新型危险操作</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📝 权限审计日志</div>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">所有操作（包括被拒绝的操作）都必须记录审计日志，支持事后追溯。日志结构如下：</p>
+<pre><code class="language-python">class PermissionAuditLog:
+    """权限审计日志 — 记录所有操作，支持事后追溯"""
+
+    def record(self, operation: dict) -> dict:
+        """记录一次操作的完整信息"""
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "agent_id": operation.get("agent_id", "unknown"),
+            "operation_type": operation["type"],     # read/write/execute/deploy
+            "permission_level": operation["level"],   # L0/L1/L2/L3
+            "target": operation["target"],             # 目标文件/命令/服务
+            "parameters": operation.get("params", {}), # 操作参数
+            "result": operation["result"],             # allowed/denied/pending
+            "reason": operation.get("reason", ""),     # 允许/拒绝的原因
+            "approver": operation.get("approver", None),# 审批人（L2/L3必填）
+            "screenshot": operation.get("screenshot", None), # L3操作截图留证
+        }
+        # 写入独立存储，防止 Agent 修改或删除审计记录
+        self._write_to_immutable_storage(log_entry)
+        return log_entry</code></pre>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">审计日志的关键设计原则：① <strong>不可篡改</strong>——写入独立存储（如只追加的日志文件或外部审计系统），Agent 无法修改或删除；② <strong>完整记录</strong>——包括被拒绝的操作也要记录，便于分析 Agent 的行为模式；③ <strong>双人审批留证</strong>——L3 操作需记录两位审批人的确认截图和时间戳。</p>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">📦 代码示例：权限配置与检查引擎</div>
+<pre><code class="language-python">class PermissionEngine:
+    """Coding Agent 权限检查引擎：分级审批 + 黑名单/白名单 + 模式识别"""
+
+    # 权限分级配置
+    PERMISSION_LEVELS = {
+        "L0": {"name": "读取", "risk": "low",    "approval": "auto",       "desc": "读文件/搜索/看日志"},
+        "L1": {"name": "修改", "risk": "medium", "approval": "confirm",    "desc": "改代码/写配置/创建文件"},
+        "L2": {"name": "执行", "risk": "high",   "approval": "approve",    "desc": "运行命令/执行脚本/启动服务"},
+        "L3": {"name": "发布", "risk": "critical","approval": "dual_approve","desc": "提交代码/部署/操作数据库"},
+    }
+
+    # 黑名单：禁止操作的路径/命令/文件（零容忍）
+    BLACKLIST = {
+        "paths":    ["/etc/", "/var/www/prod/", "/opt/deploy/"],
+        "commands": ["rm -rf", "DROP TABLE", "sudo", "chmod 777",
+                     "git push --force", "shutdown", "reboot"],
+        "files":    [".env", "secret.key", "credentials.json",
+                     "id_rsa", "id_ed25519", "*.pem"],
+    }
+
+    # 白名单：明确允许的范围（超出拒绝）
+    WHITELIST = {
+        "directories": ["src/", "tests/", "docs/", "config/dev/"],
+        "commands":    ["pytest", "npm test", "git diff", "git log",
+                      "grep", "cat", "ls", "head", "tail"],
+        "branches":    ["feature/*", "bugfix/*", "dev"],
+    }
+
+    # 危险操作模式（语义识别，不在黑名单也能捕获）
+    DANGER_PATTERNS = [
+        r"\brm\b.*-rf",                    # 删除模式
+        r"\b(sudo|root|chmod\s+777)\b",    # 权限提升模式
+        r"\b(DROP|TRUNCATE|DELETE)\s+",    # 数据库破坏模式
+        r"\bgit\s+push\s+--force\b",       # 强制推送模式
+        r"\b(overwrite|replace\s+all)\b",  # 重写模式
+        r"\bpassword|secret|token\b.*\bprint|log|write\b",  # 密钥泄露模式
+    ]
+
+    # 项目阶段权限配置（上下文感知）
+    STAGE_PERMISSIONS = {
+        "development": {"L1": "auto", "L2": "confirm", "L3": "approve"},
+        "testing":     {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+        "release":     {"L1": "approve", "L2": "dual_approve", "L3": "dual_approve"},
+        "maintenance": {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+    }
+
+    def __init__(self, current_stage="development"):
+        self.current_stage = current_stage
+        self.audit_log = PermissionAuditLog()
+
+    def check_permission(self, operation: dict) -> dict:
+        """检查操作权限：分级 → 黑名单 → 白名单 → 模式识别 → 审批"""
+        op_type = operation["type"]
+        target = operation["target"]
+
+        # Step 1: 确定权限等级
+        level = self._classify_level(op_type, target)
+
+        # Step 2: 黑名单检查（零容忍，命中即拒绝）
+        if self._check_blacklist(target, op_type):
+            result = {"allowed": False, "level": level,
+                      "reason": "命中黑名单规则", "need_approval": False}
+            self.audit_log.record({**operation, "result": "denied",
+                                   "level": level, "reason": result["reason"]})
+            return result
+
+        # Step 3: 白名单检查（超出范围拒绝）
+        if not self._check_whitelist(target, op_type):
+            result = {"allowed": False, "level": level,
+                      "reason": "超出白名单范围", "need_approval": False}
+            self.audit_log.record({**operation, "result": "denied",
+                                   "level": level, "reason": result["reason"]})
+            return result
+
+        # Step 4: 危险模式识别（语义检测）
+        danger_match = self._check_danger_patterns(target, op_type)
+        if danger_match:
+            level = "L3"  # 识别到危险模式，自动升级到最高级审批
+
+        # Step 5: 根据项目阶段确定审批策略
+        approval = self._get_approval_strategy(level)
+        result = {
+            "allowed": approval == "auto",
+            "level": level,
+            "need_approval": approval != "auto",
+            "approval_type": approval,
+            "reason": danger_match or "正常操作"
+        }
+        self.audit_log.record({**operation, "result": "allowed" if result["allowed"] else "pending",
+                               "level": level, "reason": result["reason"]})
+        return result
+
+    def _classify_level(self, op_type, target):
+        """根据操作类型和目标判断权限等级"""
+        if op_type in ["read", "search", "grep", "log"]:
+            return "L0"
+        elif op_type in ["write", "edit", "create", "config"]:
+            return "L1"
+        elif op_type in ["execute", "run", "install", "start"]:
+            return "L2"
+        elif op_type in ["deploy", "push", "release", "database"]:
+            return "L3"
+        return "L2"  # 未知操作默认最高非发布级
+
+    def _check_blacklist(self, target, op_type):
+        """黑名单检查：路径/命令/文件命中即拒绝"""
+        for path in self.BLACKLIST["paths"]:
+            if target.startswith(path):
+                return True
+        for cmd in self.BLACKLIST["commands"]:
+            if cmd in target:
+                return True
+        for file in self.BLACKLIST["files"]:
+            if file in target:
+                return True
+        return False
+
+    def _check_whitelist(self, target, op_type):
+        """白名单检查：只在允许范围内才通过"""
+        if op_type == "read":
+            return True  # 读取操作不受白名单限制
+        for dir in self.WHITELIST["directories"]:
+            if target.startswith(dir):
+                return True
+        return False
+
+    def _check_danger_patterns(self, target, op_type):
+        """危险模式识别：语义检测危险操作"""
+        import re
+        for pattern in self.DANGER_PATTERNS:
+            if re.search(pattern, target, re.IGNORECASE):
+                return f"匹配危险模式: {pattern}"
+        return None
+
+    def _get_approval_strategy(self, level):
+        """根据项目阶段和权限等级确定审批策略"""
+        stage_config = self.STAGE_PERMISSIONS.get(self.current_stage,
+                                                   self.STAGE_PERMISSIONS["development"])
+        return stage_config.get(level, "dual_approve")
+
+# 使用示例
+engine = PermissionEngine(current_stage="release")
+
+# 测试不同操作的权限检查
+ops = [
+    {"type": "read",   "target": "src/main.py",    "agent_id": "agent-1"},
+    {"type": "write",  "target": "src/main.py",    "agent_id": "agent-1"},
+    {"type": "execute", "target": "pytest tests/",  "agent_id": "agent-1"},
+    {"type": "deploy", "target": "git push origin main", "agent_id": "agent-1"},
+    {"type": "execute", "target": "rm -rf /var/log", "agent_id": "agent-1"},
+]
+
+for op in ops:
+    result = engine.check_permission(op)
+    print(f"{op['type']:8s} | {op['target']:30s} → {result}")</code></pre>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">权限引擎的核心设计思路：① <strong>分级优先</strong>——先判断操作属于哪个权限等级；② <strong>黑名单兜底</strong>——危险路径/命令/文件零容忍，命中即拒绝；③ <strong>白名单限定范围</strong>——只在允许的目录/命令范围内操作；④ <strong>模式识别升级</strong>——语义检测危险操作模式，命中自动升级到最高审批级别；⑤ <strong>上下文感知</strong>——根据项目阶段动态调整审批严格度。这五层检查构成一个<strong>纵深防御体系</strong>。</p>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: GUI Agent 和 API Agent 的区别？各自适用场景？</div>
+    <div class="qa-answer">
+      <strong>API Agent</strong>：通过 API 调用工具。精确、快速，但需要目标系统提供 API。适合有 API 的系统。<br>
+      <strong>GUI Agent</strong>：通过截图+点击操作图形界面。灵活但可能出错，能操作任何有界面的软件。适合无 API 的系统。<br><br>
+      <strong>最佳实践</strong>：有 API 优先用 API，没 API 才用 GUI。两者结合覆盖最全场景。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: GUI Agent 的工作流程是什么？</div>
+    <div class="qa-answer">
+      ① <strong>截取屏幕</strong>：获取当前界面截图<br>
+      ② <strong>视觉理解</strong>：用 Vision 模型识别界面元素（按钮、输入框、文字）<br>
+      ③ <strong>决策推理</strong>：根据目标决定下一步操作（点击哪里、输入什么）<br>
+      ④ <strong>执行操作</strong>：模拟鼠标点击/键盘输入/滚动<br>
+      ⑤ <strong>结果验证</strong>：截图检查操作效果，决定继续还是修正<br>
+      循环直到任务完成。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: GUI Agent 当前面临的主要挑战有哪些？</div>
+    <div class="qa-answer">
+      ① <strong>准确率</strong>：视觉理解有误差，当前约 50-70%<br>
+      ② <strong>速度</strong>：每步需截图+推理，5-10秒/步<br>
+      ③ <strong>安全风险</strong>：能操作任意界面，误操作危险大<br>
+      ④ <strong>环境依赖</strong>：分辨率、窗口位置变化可能导致失败<br>
+      ⑤ <strong>成本高</strong>：Vision 模型调用成本远高于文本
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: GUI Agent 的核心技术栈是什么？</div>
+    <div class="qa-answer">
+      ① <strong>视觉理解</strong>：GPT-4o Vision / Claude Vision / Gemini Vision<br>
+      ② <strong>操作执行</strong>：Playwright（Web）/ PyAutoGUI（桌面）/ ADB（手机）<br>
+      ③ <strong>决策推理</strong>：ReAct 模式 + 规划<br>
+      ④ <strong>结果验证</strong>：截图对比 + DOM 分析<br>
+      ⑤ <strong>状态管理</strong>：维护操作历史和当前界面状态
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: GUI Agent 的代表产品有哪些？</div>
+    <div class="qa-answer">
+      ① <strong>Claude Computer Use</strong>：Anthropic 推出，可操作桌面应用<br>
+      ② <strong>OpenAI Operator</strong>：专注于浏览器操作<br>
+      ③ <strong>Google Project Mariner</strong>：基于 Gemini 的浏览器 Agent<br>
+      ④ <strong>AutoGLM</strong>：智谱出品，支持手机 App 和网页操作<br>
+      ⑤ <strong>Microsoft Copilot Actions</strong>：集成 Office 应用的操作能力
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: GUI Agent 怎么控制成本？Token 优化策略有哪些？</div>
+    <div class="qa-answer">
+      GUI Agent 成本主要来自 Vision 模型的图片 Token 消耗，优化策略包括：<br>
+      ① <strong>截图压缩</strong>：降低分辨率（如 1920→640），减少图片 Token，可节省约 60% 成本<br>
+      ② <strong>区域裁剪</strong>：只截取界面变化区域，减少不必要的信息传输<br>
+      ③ <strong>DOM 辅助</strong>：Web 场景优先用 DOM 提取元素信息，减少截图频率<br>
+      ④ <strong>操作缓存</strong>：相同界面状态复用上次决策，避免重复推理<br>
+      ⑤ <strong>模型分级</strong>：简单步骤用小模型（如 Haiku），复杂步骤才用大模型（如 Sonnet/Opus）<br>
+      ⑥ <strong>规划+执行</strong>：先一次性生成计划再逐步执行，减少反复推理的调用次数
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Claude Computer Use API 怎么调用？需要哪些参数？</div>
+    <div class="qa-answer">
+      Claude Computer Use 通过 Anthropic Messages API 的 tools 参数调用：<br>
+      ① <strong>工具定义</strong>：type="computer_20241022", name="computer", 需指定 display_width_px 和 display_height_px（屏幕分辨率）<br>
+      ② <strong>调用方式</strong>：在 messages.create 中传入 tools=[computer_tool]，Claude 返回 content 中的 tool_use 块<br>
+      ③ <strong>工具类型</strong>：screenshot（截屏）、mouse_move（移动鼠标）、left_click/right_click（点击）、type（输入文字）、scroll（滚动）<br>
+      ④ <strong>结果返回</strong>：执行操作后截取新屏幕截图，作为 tool_result 返回给 Claude（base64 编码的 image 类型）<br>
+      ⑤ <strong>终止条件</strong>：当 response.stop_reason == "end_turn" 时表示 Claude 认为任务完成<br>
+      注意：坐标基于 display_width_px/display_height_px 定义的虚拟屏幕，必须与实际屏幕匹配。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Playwright 在 GUI Agent 中起什么作用？</div>
+    <div class="qa-answer">
+      Playwright 是 Web 场景 GUI Agent 的核心执行层工具：<br>
+      ① <strong>页面截图</strong>：page.screenshot() 截取网页画面，作为 Vision 模型的输入<br>
+      ② <strong>元素操作</strong>：page.click(selector) 点击、page.fill(selector, value) 输入文字、page.mouse.wheel() 滚动<br>
+      ③ <strong>DOM 提取</strong>：可获取页面 DOM 结构，辅助 LLM 理解界面（减少纯视觉识别的误差）<br>
+      ④ <strong>多浏览器支持</strong>：Chromium/Firefox/WebKit 统一 API，跨浏览器兼容<br>
+      ⑤ <strong>无头模式</strong>：headless=True 时无需显示界面，适合服务器端批量运行<br>
+      Playwright 的优势是既能截图（视觉输入）又能操作（执行输出），且可获取 DOM（结构化辅助），是 Web GUI Agent 的首选执行工具。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: GUI Agent 怎么保证安全性？</div>
+    <div class="qa-answer">
+      GUI Agent 安全防护需要多层防御：<br>
+      ① <strong>权限隔离</strong>：在虚拟机/容器中运行，与宿主系统隔离，通过快照实现一键恢复<br>
+      ② <strong>操作白名单</strong>：预定义允许操作的应用列表，非白名单操作直接拒绝<br>
+      ③ <strong>敏感操作确认</strong>：删除、发送、支付等高风险操作暂停等待人工确认<br>
+      ④ <strong>操作审计日志</strong>：记录每一步操作的时间、目标、参数、结果，日志存独立存储<br>
+      ⑤ <strong>网络隔离</strong>：限制 Agent 可访问的网络范围，防止数据外泄<br>
+      ⑥ <strong>速率限制</strong>：限制 Agent 的操作频率，防止误操作快速扩散
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: GUI Agent 错误恢复策略有哪些？</div>
+    <div class="qa-answer">
+      ① <strong>自动重试</strong>：单步操作失败后重新截图并让 LLM 重新决策，设置最大重试次数（通常 3 次）避免死循环<br>
+      ② <strong>回退机制</strong>：维护操作历史栈，连续失败后回退到前 N 步状态重新尝试，类似浏览器的后退功能<br>
+      ③ <strong>人工接管</strong>：自动恢复失败时暂停执行，通知人工介入，提供操作回放和当前截图<br>
+      ④ <strong>异常分类处理</strong>：超时重试、元素不存在则重新截图分析、弹窗干扰则先关闭弹窗<br>
+      ⑤ <strong>状态检查点</strong>：定期保存任务状态快照，失败后可从最近检查点恢复而非从头开始
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q20: 企业项目几十万行代码，Coding Agent 如何快速定位相关代码上下文？</div>
+    <div class="qa-answer">
+      Coding Agent 采用<strong>组合检索策略</strong>，四种手段层层递进：<br>
+      ① <strong>关键词检索</strong>→精确匹配类名、方法名、变量名，快速锁定入口（如搜索 getUserId）<br>
+      ② <strong>向量检索</strong>→语义扩展，找到概念相关的代码（如搜索“数据库连接池”能命中 DataSource）<br>
+      ③ <strong>AST 分析</strong>→理解代码结构，追踪类继承、import 依赖、方法调用关系<br>
+      ④ <strong>调用链追踪</strong>→从入口函数追踪完整执行路径（controller → service → dao）<br><br>
+      <strong>组合流程</strong>：关键词定位→向量扩展→AST 结构理解→调用链深度追踪。去重采用多策略投票加权（被更多策略命中的代码片段可信度更高），排序用相关性评分+距离衰减，最终按 Token 预算裁剪填充上下文。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q21: 四种代码检索策略各自的优缺点和适用场景是什么？</div>
+    <div class="qa-answer">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;">
+        <tr style="border-bottom:1px solid var(--color-border-light);">
+          <td style="padding:6px;font-weight:500;color:var(--color-info);">向量检索</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">✅ 模糊概念匹配、跨模块语义关联</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">❌ 可能命中语义相近但逻辑无关的代码</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">"找到所有跟缓存相关的代码"</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--color-border-light);">
+          <td style="padding:6px;font-weight:500;color:var(--color-accent);">关键词检索</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">✅ 精确定位、速度快、确定性高</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">❌ 不知道关键词就搜不到，缺乏语义理解</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">"找到 getUserId 的所有定义和调用"</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--color-border-light);">
+          <td style="padding:6px;font-weight:500;color:var(--color-success);">AST 分析</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">✅ 结构理解、继承/依赖追踪</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">❌ 需要解析时间，大型项目索引成本高</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">"UserService 继承了谁？依赖了哪些类？"</td>
+        </tr>
+        <tr>
+          <td style="padding:6px;font-weight:500;color:var(--color-warning);">调用链追踪</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">✅ 执行路径追踪、运行时行为理解</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">❌ 需要运行时信息，动态调用难以追踪</td>
+          <td style="padding:6px;color:var(--color-text-secondary);">"这个 HTTP 请求的完整处理链路是什么？"</td>
+        </tr>
+      </table>
+      <strong>互补关系</strong>：向量擅长模糊但可能不精确→关键词补精确定位；关键词缺乏语义→向量补语义范围；AST 需要入口→关键词定位入口；调用链需要静态关系→AST 补结构信息。组合使用才能覆盖所有检索需求。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q22: Coding Agent 为什么需要权限分级？如果所有操作都不加限制会怎样？</div>
+    <div class="qa-answer">
+      <strong>不加限制的后果</strong>：<br>
+      ① AI 理解错误，把关键配置文件当临时文件<strong>误删</strong><br>
+      ② AI 把密钥文件内容写入日志，<strong>泄露敏感信息</strong><br>
+      ③ AI 运行 <code>sudo rm -rf</code>、<code>DROP TABLE</code> 等<strong>不可逆操作</strong><br>
+      ④ AI 把未测试的代码推到生产环境，<strong>导致服务中断</strong><br><br>
+      <strong>四级权限模型</strong>：<br>
+      ① <strong>L0 读取</strong>（低风险）→ 默认允许，无需确认<br>
+      ② <strong>L1 修改</strong>（中风险）→ 需用户点击确认（Git 可 revert）<br>
+      ③ <strong>L2 执行</strong>（高风险）→ 需审批 + 操作内容审核<br>
+      ④ <strong>L3 发布</strong>（极高风险）→ 双人审批 + 操作截图留证<br><br>
+      <strong>敏感操作识别</strong>：黑名单（零容忍）+ 白名单（限定范围）+ 上下文感知（随项目阶段调整）+ 模式识别（语义检测危险操作如 rm -rf、sudo、DROP TABLE）。核心原则是<strong>最小权限</strong>——Agent 只应拥有完成当前任务所需的最小权限。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch17Questions = [
+  {
+    type: 'single',
+    question: 'GUI Agent 和 API Agent 的核心区别是？',
+    options: [
+      'GUI Agent 更快',
+      'GUI Agent 通过截图+点击操作界面，API Agent 通过API调用',
+      'GUI Agent 不需要AI',
+      'API Agent 只能操作网页'
+    ],
+    answer: [1],
+    explanation: 'GUI Agent 通过截图+点击操作图形界面，能操作任何有界面的软件。API Agent 通过 API 调用，精确快速但需要 API。'
+  },
+  {
+    type: 'single',
+    question: 'GUI Agent 工作流程的正确顺序是？',
+    options: [
+      '截图→理解→决策→执行→验证',
+      '执行→截图→理解→决策→验证',
+      '理解→截图→执行→决策→验证',
+      '决策→执行→截图→理解→验证'
+    ],
+    answer: [0],
+    explanation: '正确流程：截取屏幕→视觉理解→决策推理→执行操作→结果验证，然后循环。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 GUI Agent 面临的挑战？',
+    options: ['视觉理解准确率不够高', '操作速度慢', '安全风险大', '需要目标系统提供API'],
+    answer: [3],
+    explanation: 'GUI Agent 的优势正是不需要 API。它的挑战是准确率、速度、安全风险和环境依赖。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Computer Use 属于哪种类型的 Agent？',
+    options: ['API Agent', 'GUI Agent', '多Agent系统', 'RAG Agent'],
+    answer: [1],
+    explanation: 'Claude Computer Use 是 GUI Agent——通过看屏幕截图、移动鼠标、点击按钮来操作桌面应用。'
+  },
+  {
+    type: 'single',
+    question: 'GUI Agent 最适合操作以下哪类系统？',
+    options: [
+      '有完善API的云服务',
+      '只有图形界面、没有API的老旧软件',
+      '命令行工具',
+      '数据库'
+    ],
+    answer: [1],
+    explanation: 'GUI Agent 适合操作只有图形界面、没有 API 的系统。有 API 的系统应该优先用 API Agent。'
+  },
+  {
+    type: 'multiple',
+    question: 'GUI Agent 的核心技术栈包括哪些？（多选）',
+    options: ['Vision 模型（视觉理解）', '操作执行工具（Playwright等）', '决策推理（ReAct）', '模型训练框架（PyTorch）'],
+    answer: [0, 1, 2],
+    explanation: 'GUI Agent 技术栈：Vision 模型、操作执行工具、决策推理、结果验证。PyTorch 是模型训练框架，不是 Agent 运行所需。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 GUI Agent 的代表产品？（多选）',
+    options: ['Claude Computer Use', 'OpenAI Operator', 'AutoGLM', 'MySQL'],
+    answer: [0, 1, 2],
+    explanation: 'Claude Computer Use、OpenAI Operator、AutoGLM 都是 GUI Agent。MySQL 是数据库。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 GUI Agent 和 API Agent 的结合，以下说法正确的是？（多选）',
+    options: [
+      '有API的系统优先用API Agent',
+      '没API的系统用GUI Agent',
+      '两者结合可以覆盖最全场景',
+      '所有场景都应该只用GUI Agent'
+    ],
+    answer: [0, 1, 2],
+    explanation: '最佳实践：有 API 用 API（快、准），没 API 用 GUI（灵活）。两者结合覆盖最全。不是所有场景都用 GUI。'
+  },
+  {
+    type: 'single',
+    question: 'Playwright 在 GUI Agent 中的主要作用是什么？',
+    options: [
+      '训练视觉理解模型',
+      '提供网页截图、DOM提取和元素操作能力',
+      '替代 LLM 进行决策推理',
+      '提供安全沙箱隔离'
+    ],
+    answer: [1],
+    explanation: 'Playwright 是 Web GUI Agent 的执行层工具，提供截图（page.screenshot）、DOM 提取和元素操作（click/fill/scroll）能力，不负责决策推理或安全隔离。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Computer Use API 中，以下哪个不是支持的工具操作类型？',
+    options: ['screenshot（截屏）', 'left_click（左键点击）', 'type（输入文字）', 'drag_and_drop_file（拖拽文件）'],
+    answer: [3],
+    explanation: 'Claude Computer Use 支持 screenshot、mouse_move、left_click/right_click、type、scroll 等操作，但不直接支持 drag_and_drop_file 文件拖拽操作。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 GUI Agent 的有效 Token 成本优化策略？（多选）',
+    options: ['截图压缩：降低截图分辨率减少图片 Token', '操作缓存：相同界面状态复用上次决策', 'DOM 辅助：Web 场景用 DOM 替代部分截图', '增加 LLM 温度参数到 2.0'],
+    answer: [0, 1, 2],
+    explanation: '截图压缩、操作缓存、DOM 辅助都是有效的成本优化策略。增加 temperature 到 2.0 不会减少 Token，反而会导致输出更随机、质量更差。'
+  },
+  {
+    type: 'multiple',
+    question: 'GUI Agent 的错误恢复策略包括哪些？（多选）',
+    options: ['自动重试：失败后重新截图让 LLM 重新决策', '回退机制：回退到前 N 步状态重新尝试', '人工接管：自动恢复失败后通知人工介入', '直接放弃：遇到任何错误立即终止任务'],
+    answer: [0, 1, 2],
+    explanation: '自动重试、回退机制和人工接管是三种主要的错误恢复策略。直接放弃不是恢复策略，生产环境需要有梯度的恢复机制。'
+  },
+  {
+    type: 'multiple',
+    question: 'GUI Agent 安全沙箱设计中，以下哪些措施是必要的？（多选）',
+    options: ['在虚拟机/容器中运行实现权限隔离', '操作白名单限制可操作的应用范围', '敏感操作（删除/支付）需人工确认', '允许 Agent 自由访问所有系统文件以提升灵活性'],
+    answer: [0, 1, 2],
+    explanation: '权限隔离、操作白名单、敏感操作确认都是安全沙箱的必要措施。允许自由访问所有系统文件是严重的安全隐患，必须禁止。'
+  },
+  {
+    type: 'open',
+    level: 'L3',
+    question: '企业项目几十万行代码，Coding Agent如何快速定位相关代码上下文？请描述你的检索策略组合方案。',
+    reference: '关键词检索精确锁定入口→向量检索语义扩展范围→AST分析理解类继承/依赖结构→调用链追踪完整执行路径。去重用多策略投票加权，排序用相关性评分+距离衰减，按Token预算裁剪。四种策略互补：向量擅长模糊但可能不精确→关键词补精确；关键词缺乏语义→向量补范围；AST需要入口→关键词定位；调用链需要静态关系→AST补结构。组合流程层层递进，每步结果为下步提供线索。',
+    scoring_points: ['提到四种检索策略及其各自优势', '说明组合流程（关键词→向量→AST→调用链）', '分析互补关系', '提到去重/排序策略（投票加权、Token预算裁剪）']
+  },
+  {
+    type: 'open',
+    level: 'L3',
+    question: '为什么Coding Agent需要权限分级？如果所有操作都不加限制会怎样？',
+    reference: '不加限制的后果：AI理解错误误删生产代码、泄露密钥等敏感信息、执行sudo rm -rf等不可逆操作、把未测试代码误推到生产导致服务中断。四级权限模型：L0读取（默认允许）→L1修改（需确认）→L2执行（需审批）→L3发布（双人审批）。核心原则是最小权限——Agent只应拥有完成当前任务所需的最小权限。敏感操作识别：黑名单零容忍+白名单限定范围+上下文感知随项目阶段调整+模式识别语义检测危险操作。',
+    scoring_points: ['分析不加限制的具体后果（误删、泄露、执行危险命令、误部署）', '说明四级权限模型及审批策略', '提到最小权限原则', '提到敏感操作识别机制（黑名单/白名单/上下文感知/模式识别）']
+  },
+  {
+    type: 'open',
+    level: 'L4',
+    question: '设计一个Coding Agent权限系统，支持读取→修改→执行→发布四级权限，包含敏感操作识别和审批流程。',
+    reference: '核心设计：PermissionEngine包含五层检查——分级判断（根据操作类型确定L0/L1/L2/L3）→黑名单检查（零容忍命中即拒绝：/etc/、rm -rf、sudo、.env）→白名单检查（超出允许范围拒绝：只允许src/tests目录）→危险模式识别（语义检测rm -rf/sudo/DROP TABLE/git push --force等）→根据项目阶段确定审批策略（开发阶段宽松、发布阶段严格）。审计日志不可篡改，L3操作双人审批留证。关键设计原则：纵深防御、最小权限、动态调整。',
+    scoring_points: ['四级权限模型设计及审批策略', '黑名单机制（路径/命令/文件）', '白名单机制（目录/命令/分支）', '危险模式识别（语义检测）', '上下文感知（根据项目阶段调整）', '审计日志不可篡改', '纵深防御和最小权限原则']
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch17Questions); }, 500);
+</script>
+
+</body>
+</html>

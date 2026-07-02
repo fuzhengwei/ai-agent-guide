@@ -1,0 +1,1512 @@
+<h1 class="chapter-title">第7章 Skills：工具的组合与复用</h1>
+<p class="chapter-subtitle">第二篇：Agent 的手脚</p>
+
+<div class="info-banner">
+<div class="banner-title">📌 本章目标</div>
+<p>第5章讲了单个工具的调用，第6章讲了工具的标准化协议（MCP）。本章讲工具的<strong>组合</strong>——把多个工具打包成一个"技能"，让 Agent 拥有更高层次的能力。</p>
+</div>
+
+<!-- ===== 7.1 从工具到技能 ===== -->
+<h2 class="section-heading">7.1 从工具到技能</h2>
+
+<p>打个比方：工具是一把锤子，技能是"钉钉子"——锤子只是一个工具，但"钉钉子"需要锤子 + 钉子 + 判断角度 + 控制力度。技能是工具的<strong>组合 + 使用知识</strong>。</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>Tool（工具）</th><th>Skill（技能）</th></tr>
+</thead>
+<tbody>
+<tr><td>粒度</td><td>单一操作（get_weather）</td><td>复合能力（天气查询+行程规划+穿衣建议）</td></tr>
+<tr><td>工具数量</td><td>1 个</td><td>1~N 个</td></tr>
+<tr><td>包含知识</td><td>无</td><td>使用策略、调用顺序、参数约束</td></tr>
+<tr><td>可复用性</td><td>低（每个项目重新定义）</td><td>高（打包成包，跨项目共享）</td></tr>
+<tr><td>类比</td><td>函数</td><td>类/模块</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ===== 7.2 Skills 的三层结构 ===== -->
+<h2 class="section-heading">7.2 Skills 的三层结构</h2>
+
+<p>一个完整的 Skill 包含三层：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"meta","label":"元数据层\nname / description / version\n触发条件 / 权限","type":"start"},{"id":"tools","label":"工具层\n工具列表 + Schema\n工具间的依赖关系","type":"process"},{"id":"knowledge","label":"知识层\n使用策略\n调用顺序\n参数约束\n异常处理","type":"end"}],"edges":[{"from":"meta","to":"tools"},{"from":"tools","to":"knowledge"}]}'></div>
+
+<div class="code-block"><pre># 一个 Skill 的 YAML 定义示例
+name: weather-advisor
+version: 1.0.0
+description: 天气顾问技能，查询天气并提供穿衣/出行建议
+triggers:
+  - "天气"
+  - "下雨"
+  - "穿什么"
+  - "带伞"
+permissions:
+  - network: true    # 需要网络访问
+  - location: false  # 不需要定位
+
+tools:
+  - name: get_weather
+    description: 查询天气
+    parameters:
+      city: { type: string, required: true }
+      date: { type: string, default: today }
+
+  - name: get_clothing_advice
+    description: 根据天气获取穿衣建议
+    parameters:
+      temperature: { type: number, required: true }
+      weather: { type: string, required: true }
+
+knowledge: |
+  ## 使用策略
+  1. 先调用 get_weather 获取天气信息
+  2. 如果用户问穿衣建议，再调用 get_clothing_advice
+  3. 如果是雨天，主动提醒带伞
+  4. 温度低于 10°C 提醒保暖，高于 30°C 提醒防暑
+
+  ## 参数约束
+  - city 必须是中文城市名
+  - date 支持 today/tomorrow/YYYY-MM-DD</pre></div>
+
+<!-- ===== 7.3 Skills 的发现与加载 ===== -->
+<h2 class="section-heading">7.3 Skills 的发现与加载</h2>
+
+<p>Agent 怎么知道有哪些 Skills 可用？和 CLI 工具类似，Skills 也需要<strong>自动发现</strong>机制：</p>
+
+<h3 class="sub-heading">7.3.1 文件系统发现</h3>
+
+<p>Skill 以文件形式存储在 <code>skills/</code> 目录下，Agent 启动时扫描目录：</p>
+
+<div class="code-block"><pre>import os
+import yaml
+
+class SkillLoader:
+    def __init__(self, skills_dir: str = "skills"):
+        self.skills_dir = skills_dir
+        self.registry: dict = {}  # name -> skill_definition
+
+    def scan(self):
+        """扫描 skills 目录，加载所有技能"""
+        if not os.path.exists(self.skills_dir):
+            return
+
+        for entry in os.scandir(self.skills_dir):
+            if not entry.is_dir():
+                continue
+
+            skill_file = os.path.join(entry.path, "skill.yml")
+            if not os.path.exists(skill_file):
+                continue
+
+            with open(skill_file, "r") as f:
+                skill_def = yaml.safe_load(f)
+                skill_def["path"] = entry.path
+                self.registry[skill_def["name"]] = skill_def
+
+        print(f"加载了 {len(self.registry)} 个技能: {list(self.registry.keys())}")
+
+    def get_skill_prompt(self) -> str:
+        """生成技能描述，注入到 system prompt"""
+        if not self.registry:
+            return ""
+
+        lines = ["你可以使用以下技能："]
+        for name, skill in self.registry.items():
+            triggers = ", ".join(skill.get("triggers", []))
+            lines.append(f"- {name}: {skill['description']} (触发词: {triggers})")
+
+        return "\n".join(lines)</pre></div>
+
+<h3 class="sub-heading">7.3.2 热重载</h3>
+
+<p>生产环境需要<strong>热重载</strong>——修改 Skill 文件后无需重启 Agent：</p>
+
+<div class="code-block"><pre>from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+class SkillHotReloader(FileSystemEventHandler):
+    def __init__(self, loader: SkillLoader):
+        self.loader = loader
+
+    def on_modified(self, event):
+        if event.src_path.endswith("skill.yml"):
+            print(f"检测到 Skill 变更，重新加载...")
+            self.loader.scan()
+
+# 启动热重载监控
+observer = Observer()
+observer.schedule(
+    SkillHotReloader(loader),
+    path="skills/",
+    recursive=True
+)
+observer.start()</pre></div>
+
+<!-- ===== 7.4 Skills 的懒加载 ===== -->
+<h2 class="section-heading">7.4 Skills 的懒加载</h2>
+
+<p>和 CLI 工具一样，Skills 太多会导致 Prompt 过长。解决方案是<strong>三层懒加载</strong>：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>层级</th><th>策略</th><th>注入到 Prompt</th><th>示例</th></tr>
+</thead>
+<tbody>
+<tr><td>第一层</td><td>始终加载</td><td>Skill 名称 + 描述</td><td>weather-advisor, file-reader</td></tr>
+<tr><td>第二层</td><td>触发词匹配时加载</td><td>完整 Schema + 使用知识</td><td>用户提到"天气"时加载 weather-advisor 的完整定义</td></tr>
+<tr><td>第三层</td><td>AI 主动搜索</td><td>按需</td><td>罕见 Skill，靠 AI 用 ToolSearch 查找</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code-block"><pre>class LazySkillManager:
+    def __init__(self, loader: SkillLoader):
+        self.loader = loader
+        self.activated: set = set()  # 已激活的 Skill
+
+    def get_prompt(self, user_message: str = "") -> str:
+        """根据用户消息生成 Prompt"""
+        lines = []
+
+        # 第一层：始终列出所有 Skill 名称（简短）
+        for name, skill in self.loader.registry.items():
+            triggers = skill.get("triggers", [])
+            # 第二层：触发词匹配 → 激活完整定义
+            if any(t in user_message for t in triggers):
+                self.activated.add(name)
+                lines.append(self._format_full_skill(skill))
+            else:
+                # 第一层：只注入名称和描述
+                lines.append(f"- {name}: {skill['description']}")
+
+        # 第三层：已激活但用户消息不匹配的，保持激活
+        for name in self.activated:
+            if name not in [l.split(":")[0].strip("- ") for l in lines]:
+                skill = self.loader.registry.get(name)
+                if skill:
+                    lines.append(self._format_full_skill(skill))
+
+        return "\n你可以使用以下技能：\n" + "\n".join(lines)
+
+    def _format_full_skill(self, skill: dict) -> str:
+        """格式化完整 Skill 定义"""
+        tools_desc = "\n".join(
+            f"  - {t['name']}: {t['description']}"
+            for t in skill.get("tools", [])
+        )
+        return f"- {skill['name']} (已激活)\n  工具:\n{tools_desc}\n  策略:\n{skill.get('knowledge', '')}"</pre></div>
+
+<!-- ===== 7.5 Skill 匹配与调度 ===== -->
+<h2 class="section-heading">7.5 Skill 匹配与调度</h2>
+
+<p>当用户说"北京明天天气怎么样，穿什么合适？"，Agent 需要：</p>
+<ol>
+<li>匹配到 <code>weather-advisor</code> Skill（触发词"天气"）</li>
+<li>激活该 Skill 的完整定义</li>
+<li>按知识层策略执行：先调 get_weather，再调 get_clothing_advice</li>
+<li>综合两个工具的结果，生成自然语言回答</li>
+</ol>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气\n穿什么合适?","type":"start"},{"id":"match","label":"Skill 匹配\n触发词「天气」→ weather-advisor","type":"process"},{"id":"activate","label":"激活 Skill\n加载完整 Schema + 知识","type":"process"},{"id":"plan","label":"AI 规划\n1. 调 get_weather\n2. 调 get_clothing_advice","type":"process"},{"id":"exec1","label":"执行 get_weather\n→ 晴 25°C","type":"process"},{"id":"exec2","label":"执行 get_clothing_advice\n→ 薄外套+长裤","type":"process"},{"id":"respond","label":"综合回答\n北京明天晴 25°C\n建议穿薄外套+长裤","type":"end"}],"edges":[{"from":"user","to":"match"},{"from":"match","to":"activate"},{"from":"activate","to":"plan"},{"from":"plan","to":"exec1"},{"from":"exec1","to":"exec2"},{"from":"exec2","to":"respond"}]}'></div>
+
+<!-- ===== 7.6 Skills vs MCP vs Function Calling ===== -->
+<h2 class="section-heading">7.6 Skills vs MCP vs Function Calling</h2>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>Function Calling</th><th>MCP</th><th>Skills</th></tr>
+</thead>
+<tbody>
+<tr><td>本质</td><td>单个工具调用</td><td>工具的标准协议</td><td>工具的组合 + 知识</td></tr>
+<tr><td>粒度</td><td>函数级</td><td>Server 级</td><td>能力级</td></tr>
+<tr><td>包含知识</td><td>❌</td><td>❌</td><td>✅ 使用策略、调用顺序</td></tr>
+<tr><td>跨项目复用</td><td>❌ 需重新定义</td><td>✅ Server 共享</td><td>✅ Skill 包共享</td></tr>
+<tr><td>关系</td><td>底层机制</td><td>传输层</td><td>上层组织</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>三者的关系是<strong>层级递进</strong>的：</p>
+<ul>
+<li><strong>Function Calling</strong> 是底层机制——AI 调用函数的能力</li>
+<li><strong>MCP</strong> 是传输层——标准化工具的发现和调用协议</li>
+<li><strong>Skills</strong> 是上层组织——把多个工具（无论 Function Calling 还是 MCP）打包成可复用的能力单元</li>
+</ul>
+
+<div class="tip-banner">
+<div class="banner-title">💡 一个 Skill 可以包含 MCP 工具</div>
+<p>Skills 不排斥 MCP。一个 <code>database-advisor</code> Skill 可以包含一个 MCP database server 提供的查询工具，加上自定义的 SQL 优化建议工具，以及"先分析表结构再优化查询"的使用策略。</p>
+</div>
+
+<!-- ===== 7.7 实战：构建一个 Skill ===== -->
+<h2 class="section-heading">7.7 实战：构建一个 Skill</h2>
+
+<p>把第2章的天气查询升级为一个完整的 Skill：</p>
+
+<div class="code-block"><pre># skills/weather-advisor/skill.yml
+name: weather-advisor
+version: 1.0.0
+description: 天气顾问，查询天气并提供穿衣和出行建议
+triggers:
+  - "天气"
+  - "下雨"
+  - "穿什么"
+  - "带伞"
+  - "气温"
+
+tools:
+  - name: get_weather
+    description: 查询指定城市指定日期的天气
+    parameters:
+      city: { type: string, required: true, description: "城市名" }
+      date: { type: string, default: "today", description: "日期" }
+
+  - name: get_clothing_advice
+    description: 根据天气获取穿衣建议
+    parameters:
+      temperature: { type: number, required: true, description: "温度(°C)" }
+      weather: { type: string, required: true, description: "天气状况" }
+
+knowledge: |
+  ## 使用策略
+  1. 总是先调用 get_weather 获取天气
+  2. 如果用户问穿衣/出行建议，调用 get_clothing_advice
+  3. 主动建议：
+     - 雨天 → 带伞
+     - &lt;10°C → 保暖
+     - &gt;30°C → 防暑
+     - 雾霾 → 口罩
+  4. 如果查多天天气，逐天调用 get_weather</pre></div>
+
+<p>对应的 Python 实现：</p>
+
+<div class="code-block"><pre># skills/weather-advisor/main.py
+def get_weather(city: str, date: str = "today") -> dict:
+    # ... 同第2章实现 ...
+
+def get_clothing_advice(temperature: float, weather: str) -> dict:
+    advice = []
+    if temperature &lt; 10:
+        advice.append("厚外套、围巾、手套")
+    elif temperature &lt; 20:
+        advice.append("薄外套或毛衣")
+    elif temperature &lt; 28:
+        advice.append("长袖衬衫")
+    else:
+        advice.append("短袖、短裤")
+
+    if "雨" in weather:
+        advice.append("带伞")
+    if "雷" in weather:
+        advice.append("避免户外活动")
+
+    return {"advice": "、".join(advice)}</pre></div>
+
+<!-- ===== 7.8 Skill 市场：未来的应用商店 ===== -->
+<h2 class="section-heading">7.8 Skill 市场：未来的应用商店</h2>
+
+<p>Skills 的终极目标是形成<strong>市场</strong>——开发者像发布 App 一样发布 Skill 包，用户像装 App 一样安装 Skill：</p>
+
+<div class="code-block"><pre># 安装 Skill（类似 npm install）
+skill install weather-advisor
+skill install code-reviewer
+skill install data-analyst
+
+# 查看已安装的 Skills
+skill list
+# weather-advisor    1.0.0  天气顾问
+# code-reviewer      2.1.0  代码审查
+# data-analyst       0.9.0  数据分析
+
+# 卸载
+skill remove weather-advisor</pre></div>
+
+<p>这和 MCP 的愿景类似，但层次不同：MCP 是工具级的市场，Skills 是能力级的市场。未来可能两者融合——MCP Server 提供工具，Skill 包提供组合策略。</p>
+
+<!-- ===== 7.9 Skill 的分层体系 ===== -->
+<h2 class="section-heading">7.9 Skill 的分层体系</h2>
+
+<p>就像企业架构有基础设施层、业务逻辑层、应用层一样，Skill 也存在<strong>三层金字塔</strong>——从底层的基础 Skill 到顶层的领域 Skill，每一层封装不同复杂度的能力：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"base","label":"基础 Skill（Layer 1）\n单工具封装\nget_weather / read_file / send_email\n类比：函数","type":"start"},{"id":"compound","label":"复合 Skill（Layer 2）\n多工具组合 + 调用策略\nweather-advisor / code-reviewer / data-analyst\n类比：类/模块","type":"process"},{"id":"domain","label":"领域 Skill（Layer 3）\n行业知识包 + 多复合 Skill\nfinance-advisor / legal-assistant / medical-consult\n类比：框架/SDK","type":"end"}],"edges":[{"from":"base","to":"compound"},{"from":"compound","to":"domain"}]}'></div>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>基础 Skill</th><th>复合 Skill</th><th>领域 Skill</th></tr>
+</thead>
+<tbody>
+<tr><td>工具数量</td><td>1</td><td>2~5</td><td>5~20+（含子 Skill）</td></tr>
+<tr><td>知识含量</td><td>无（纯工具映射）</td><td>中等（调用策略）</td><td>高（行业规则 + 合规约束）</td></tr>
+<tr><td>触发方式</td><td>AI 自主调用</td><td>触发词匹配</td><td>领域关键词 + 上下文推理</td></tr>
+<tr><td>复用范围</td><td>跨项目通用</td><td>跨团队复用</td><td>跨行业复用（需定制）</td></tr>
+<tr><td>类比 WaLiCode</td><td>ToolDefinition 单工具</td><td>WorkflowChain 多步骤编排</td><td>DomainPackage 行业配置包</td></tr>
+<tr><td>验证方式</td><td>单元测试</td><td>集成测试 + Prompt 测试</td><td>端到端场景测试 + 合规审计</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="sub-heading">7.9.1 基础 Skill：单工具的标准化封装</h3>
+
+<p>基础 Skill 就是把一个原始工具加上元数据、Schema 校验、异常处理，变成一个<strong>标准化</strong>的工具单元。它不包含调用策略，但包含<strong>防御性编程</strong>：</p>
+
+<div class="code-block"><pre># skills/base/read_file/skill.yml — 基础 Skill 示例
+name: read_file
+version: 1.0.0
+description: 读取文件内容，支持文本和图片
+layer: base
+
+tools:
+  - name: read_file
+    description: 读取指定路径的文件
+    parameters:
+      path: { type: string, required: true, description: "文件路径" }
+      offset: { type: number, default: null, description: "起始行号" }
+      limit: { type: number, default: null, description: "最大行数" }
+
+guards:
+  - path_traversal: true    # 防止路径穿越攻击
+  - max_file_size: 10MB      # 限制读取大小
+  - allowed_extensions: [.txt, .md, .py, .json, .yaml, .yml, .csv, .jpg, .png]
+
+error_handling:
+  file_not_found: "文件不存在，请检查路径是否正确"
+  permission_denied: "无权限读取该文件，请确认访问权限"
+  file_too_large: "文件超过 10MB 限制，请使用 offset/limit 分段读取"</pre></div>
+
+<div class="code-block"><pre># skills/base/read_file/main.py
+import os
+import pathlib
+
+class ReadFileSkill:
+    """基础 Skill：单工具封装，侧重防御性编程"""
+
+    ALLOWED_EXTENSIONS = {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.csv', '.jpg', '.png'}
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+    def execute(self, path: str, offset: int = None, limit: int = None) -> dict:
+        # 1. 路径穿越防御（WaLiCode 的 permissionGuard 模式）
+        resolved = pathlib.Path(path).resolve()
+        if ".." in str(resolved) or not str(resolved).startswith(os.getcwd()):
+            return {"error": "路径穿越攻击被拦截，禁止访问"}
+
+        # 2. 扩展名白名单
+        if resolved.suffix not in self.ALLOWED_EXTENSIONS:
+            return {"error": f"不支持的文件类型: {resolved.suffix}"}
+
+        # 3. 文件大小限制
+        if resolved.stat().st_size > self.MAX_FILE_SIZE:
+            return {"error": f"文件超过 {self.MAX_FILE_SIZE//1024//1024}MB 限制"}
+
+        # 4. 执行核心逻辑
+        if resolved.suffix in {'.jpg', '.png'}:
+            return {"type": "image", "path": str(resolved)}
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            if offset:
+                lines = lines[offset-1:]  # 1-indexed
+            if limit:
+                lines = lines[:limit]
+            return {"type": "text", "content": "".join(lines), "lines": len(lines)}</pre></div>
+
+<h3 class="sub-heading">7.9.2 复合 Skill：多工具组合 + 调用策略</h3>
+
+<p>复合 Skill 是基础 Skill 的组合，核心价值是<strong>调用策略</strong>——告诉 AI "先做什么、后做什么、什么条件下做什么"：</p>
+
+<div class="code-block"><pre># skills/compound/code-reviewer/skill.yml — 复合 Skill 示例
+name: code-reviewer
+version: 2.1.0
+description: 代码审查技能，自动检查代码质量、安全漏洞和最佳实践
+layer: compound
+triggers: ["代码审查", "review", "检查代码", "code review", "PR"]
+
+tools:
+  - name: read_file           # 基础 Skill
+    description: 读取代码文件
+  - name: lint_check          # 基础 Skill
+    description: 运行 lint 工具检查代码风格
+    parameters:
+      file_path: { type: string, required: true }
+      linter: { type: string, default: "auto" }
+  - name: security_scan       # 基础 Skill
+    description: 安全漏洞扫描
+    parameters:
+      file_path: { type: string, required: true }
+      severity: { type: string, default: "medium" }
+  - name: generate_report     # 基础 Skill
+    description: 生成审查报告
+    parameters:
+      findings: { type: array, required: true }
+      format: { type: string, default: "markdown" }
+
+knowledge: |
+  ## 调用策略
+  1. 先 read_file 读取目标代码
+  2. 并行调用 lint_check + security_scan
+  3. 汇总结果 → generate_report
+  4. 严重安全问题 → 优先报告（severity=high）
+  5. 如果是 Python 文件，优先用 pylint；JS 用 eslint
+
+  ## WaLiCode 对应
+  - WorkflowChain 模式：read → [lint + security] → report
+  - ParallelGateway 模式：lint 和 security 可并行</pre></div>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"start","label":"用户：审查这个 PR","type":"start"},{"id":"read","label":"read_file\n读取代码文件","type":"process"},{"id":"parallel","label":"并行执行（ParallelGateway）","type":"decision"},{"id":"lint","label":"lint_check\n代码风格检查","type":"process"},{"id":"security","label":"security_scan\n安全漏洞扫描","type":"process"},{"id":"merge","label":"汇总结果\n合并 findings","type":"process"},{"id":"report","label":"generate_report\n生成审查报告","type":"end"}],"edges":[{"from":"start","to":"read"},{"from":"read","to":"parallel"},{"from":"parallel","to":"lint"},{"from":"parallel","to":"security"},{"from":"lint","to":"merge"},{"from":"security","to":"merge"},{"from":"merge","to":"report"}]}'></div>
+
+<h3 class="sub-heading">7.9.3 领域 Skill：行业知识包</h3>
+
+<p>领域 Skill 是金字塔顶端——它不是几个工具的组合，而是<strong>一个行业的完整知识框架</strong>。一个金融领域 Skill 可能包含合规检查、风控计算、报表生成等 10+ 个复合 Skill，以及金融法规的领域知识：</p>
+
+<div class="code-block"><pre># skills/domain/finance-advisor/skill.yml — 领域 Skill 示例
+name: finance-advisor
+version: 1.0.0
+description: 金融顾问技能包，包含合规检查、风控分析和报表生成
+layer: domain
+triggers: ["投资", "风险评估", "合规", "财报", "K线", "理财"]
+
+sub_skills:
+  - compliance_checker     # 合规检查（复合 Skill）
+  - risk_analyzer          # 风控分析（复合 Skill）
+  - report_generator       # 报表生成（复合 Skill）
+
+domain_knowledge: |
+  ## 金融合规规则
+  - 所有投资建议必须附带风险提示
+  - 不得推荐具体个股（合规红线）
+  - 用户资产配置需遵循"适当性原则"
+  - 引用数据需标注来源和时效性
+
+  ## 风控计算规则
+  - 夏普比率 > 1.0 才算优质策略
+  - 最大回撤 > 30% 需特别警示
+  - 杠杆倍数 > 3x 需风险提示
+
+  ## WaLiCode 对应模式
+  - DomainPackage：行业配置包
+  - ComplianceGuard：合规红线拦截
+  - RiskThresholdGuard：风控阈值告警
+
+permissions:
+  - requires_approval: true    # 领域 Skill 需审批才能启用
+  - audit_log: true            # 所有调用需审计日志
+  - data_classification: financial_confidential</pre></div>
+
+<div class="tip-banner">
+<div class="banner-title">💡 金字塔原则</div>
+<p>底层越通用越好（read_file 跨所有项目可用），顶层越专业越好（finance-advisor 只在金融场景有用）。企业 Agent 应<strong>自下而上构建</strong>——先把基础 Skill 打磨好，再组装复合 Skill，最后才封装领域 Skill。不要跳层——没有稳固的基础 Skill，复合 Skill 就是空中楼阁。</p>
+</div>
+
+<!-- ===== 7.10 Skill 的沉淀与演进 ===== -->
+<h2 class="section-heading">7.10 Skill 的沉淀与演进</h2>
+
+<p>Skill 不是一次设计就完成的，它像代码一样有<strong>版本迭代</strong>的生命周期。好的 Skill 来自项目实践的<strong>反复提炼</strong>——从临时脚本 → 内部最佳实践 → 可复用 Skill 包。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"project","label":"项目实践\n发现重复模式","type":"start"},{"id":"extract","label":"提取模式\n抽象共性逻辑","type":"process"},{"id":"v1","label":"Skill v0.1\n内部验证版","type":"process"},{"id":"feedback","label":"项目反馈\nBug / 缺失功能 / 新需求","type":"decision"},{"id":"iterate","label":"版本迭代\nv0.2 → v1.0 → v2.0","type":"process"},{"id":"stable","label":"稳定版 Skill\n跨项目复用","type":"end"}],"edges":[{"from":"project","to":"extract"},{"from":"extract","to":"v1"},{"from":"v1","to":"feedback"},{"from":"feedback","to":"iterate"},{"from":"iterate","to":"feedback"},{"from":"feedback","to":"stable"}]}'></div>
+
+<h3 class="sub-heading">7.10.1 从项目中提炼 Skill 的四步流程</h3>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>步骤</th><th>动作</th><th>产出</th><th>WaLiCode 对应</th></tr>
+</thead>
+<tbody>
+<tr><td>1. 模式识别</td><td>发现项目中重复出现的工具组合模式</td><td>模式列表（如：每次都先读文件再 lint）</td><td>PatternMining</td></tr>
+<tr><td>2. 抽象提炼</td><td>把模式抽象为通用 Skill，去除项目特有逻辑</td><td>Skill YAML + 知识层</td><td>AbstractionLayer</td></tr>
+<tr><td>3. 验证打磨</td><td>在 2~3 个项目中试用，收集反馈</td><td>反馈清单 + Bug 修复</td><td>IterativeRefinement</td></tr>
+<tr><td>4. 发布复用</td><td>稳定后发布到 Skill 市场 / 内部仓库</td><td>版本号 + Changelog</td><td>ReleasePipeline</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code-block"><pre># 步骤 1：模式识别 — 从项目日志中提取重复模式
+import re
+from collections import Counter
+
+def extract_patterns(execution_logs: list[str]) -> list[dict]:
+    """从 Agent 执行日志中识别重复的工具调用模式"""
+    # 解析工具调用序列
+    sequences = []
+    current_seq = []
+    for log in execution_logs:
+        if "tool_call:" in log:
+            tool_name = re.search(r"tool_call: (\w+)", log).group(1)
+            current_seq.append(tool_name)
+        elif "response:" in log:
+            if current_seq:
+                sequences.append(tuple(current_seq))
+                current_seq = []
+
+    # 统计高频模式（长度 >= 2）
+    pattern_counter = Counter(
+        seq for seq in sequences if len(seq) >= 2
+    )
+    return [
+        {"pattern": list(p), "count": c}
+        for p, c in pattern_counter.most_common(5)
+    ]
+
+# 示例输出
+patterns = extract_patterns(logs)
+# [
+#   {"pattern": ["read_file", "lint_check", "security_scan"], "count": 23},
+#   {"pattern": ["read_file", "generate_report"], "count": 15},
+#   {"pattern": ["get_weather", "get_clothing_advice"], "count": 12},
+# ]</pre></div>
+
+<div class="code-block"><pre># 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
+def pattern_to_skill_yaml(pattern: list[str], count: int) -> str:
+    """将高频工具调用模式转化为 Skill 定义模板"""
+    skill_name = f"{pattern[0]}-workflow"
+    tools_yaml = []
+    for i, tool in enumerate(pattern):
+        tools_yaml.append(f"""  - name: {tool}
+    description: 第{i+1}步：{tool}
+    parameters:
+      input_from_previous: {{ type: string, default: null }}""")
+
+    knowledge = "## 调用策略\n" + "\n".join(
+        f"{i+1}. 调用 {tool}" for i, tool in enumerate(pattern)
+    )
+
+    return f"""name: {skill_name}
+version: 0.1.0
+description: 从 {count} 次项目实践中提炼的工具编排模式
+layer: compound
+triggers: ["{pattern[0]}"]
+
+tools:
+{chr(10).join(tools_yaml)}
+
+knowledge: |
+{knowledge}"""
+
+# 输出：code-reviewer 的初始 YAML 定义</pre></div>
+
+<h3 class="sub-heading">7.10.2 Skill 的版本迭代策略</h3>
+
+<p>Skill 版本号遵循<strong>语义化版本</strong>（SemVer）：<code>MAJOR.MINOR.PATCH</code></p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>版本变化</th><th>含义</th><th>示例</th><th>兼容性</th></tr>
+</thead>
+<tbody>
+<tr><td>PATCH (x.x.Z)</td><td>Bug 修复、文档更新</td><td>1.0.0 → 1.0.1</td><td>完全兼容，用户无感</td></tr>
+<tr><td>MINOR (x.Y.z)</td><td>新增工具/功能，不破坏现有调用</td><td>1.0.1 → 1.1.0</td><td>向后兼容，新功能可选</td></tr>
+<tr><td>MAJOR (X.y.z)</td><td>重构调用策略、删除工具、改变行为</td><td>1.1.0 → 2.0.0</td><td>不兼容，需迁移</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code-block"><pre># skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
+versions:
+  - version: 2.0.0
+    date: 2025-03-15
+    changes:
+      - "MAJOR: 重构调用策略，支持多天天气批量查询"
+      - "MAJOR: 新增 get_travel_advice 工具"
+      - "MINOR: 穿衣建议增加雾霾场景"
+    migration_note: "多天查询需要传 date_list 参数，旧 date 参数仍兼容"
+
+  - version: 1.1.0
+    date: 2025-01-20
+    changes:
+      - "MINOR: 新增紫外线指数提醒"
+      - "PATCH: 修复 date='tomorrow' 解析错误"
+
+  - version: 1.0.0
+    date: 2024-11-01
+    changes:
+      - "初始稳定版本发布"
+      - "包含 get_weather + get_clothing_advice"
+
+# 版本管理器：自动处理兼容性
+class SkillVersionManager:
+    def __init__(self):
+        self.installed: dict = {}  # skill_name -> version
+
+    def check_compatibility(self, skill_name: str, required_version: str) -> bool:
+        """检查已安装版本是否满足需求"""
+        installed = self.installed.get(skill_name)
+        if not installed:
+            return False
+        # SemVer 兼容性检查
+        req_major, req_minor, req_patch = map(int, required_version.split("."))
+        inst_major, inst_minor, inst_patch = map(int, installed.split("."))
+        # MAJOR 必须一致，MINOR >= 要求
+        return inst_major == req_major and inst_minor >= req_minor
+
+    def upgrade(self, skill_name: str, target_version: str) -> dict:
+        """升级 Skill，返回迁移指南"""
+        current = self.installed.get(skill_name)
+        if not current:
+            return {"error": f"Skill {skill_name} 未安装"}
+
+        # 加载 CHANGELOG，检查是否需要迁移
+        changelog = self._load_changelog(skill_name)
+        migrations = []
+        for entry in changelog:
+            if self._version_between(entry["version"], current, target_version):
+                if any(c.startswith("MAJOR") for c in entry["changes"]):
+                    migrations.append(entry)
+
+        self.installed[skill_name] = target_version
+        return {
+            "upgraded": f"{current} → {target_version}",
+            "migration_steps": migrations
+        }</pre></div>
+
+<div class="tip-banner">
+<div class="banner-title">💡 沉淀优先级</div>
+<p>不要一开始就追求完美的 Skill 设计。WaLiCode 的 <strong>IterativeRefinement</strong> 模式告诉我们：先让 Agent 在项目中跑起来，观察它反复使用哪些工具组合，再把这些组合提炼成 Skill。项目实践是最好的 Skill 设计师——你只是把最佳实践<strong>固化</strong>下来。</p>
+</div>
+
+<!-- ===== 7.11 Skill 的权限与安全 ===== -->
+<h2 class="section-heading">7.11 Skill 的权限与安全</h2>
+
+<p>Skill 越强大，潜在风险越大。一个可以删除文件的 Skill 如果不加限制，Agent 可能误删关键数据。本章引入<strong>五层安全架构</strong>——参考 WaLiCode 的 permissionGuard 设计模式，给每一层加上护栏：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"l1","label":"Layer 1：声明式权限\nYAML 中声明所需权限\nnetwork / filesystem / email / payment","type":"start"},{"id":"l2","label":"Layer 2：运行时拦截\npermissionGuard 检查每次调用\n白名单 + 黑名单","type":"process"},{"id":"l3","label":"Layer 3：审批机制\n危险操作需用户确认\nrm / send_email / payment","type":"decision"},{"id":"l4","label":"Layer 4：审计日志\n记录所有 Skill 调用\nwho / when / what / result","type":"process"},{"id":"l5","label":"Layer 5：沙箱隔离\n危险 Skill 在沙箱中执行\n限制网络 + 文件系统访问","type":"end"}],"edges":[{"from":"l1","to":"l2"},{"from":"l2","to":"l3"},{"from":"l3","to":"l4"},{"from":"l4","to":"l5"}]}'></div>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>安全层</th><th>机制</th><th>拦截时机</th><th>示例</th><th>WaLiCode 对应</th></tr>
+</thead>
+<tbody>
+<tr><td>Layer 1 声明式</td><td>YAML 中声明 permissions</td><td>Skill 注册时</td><td>network: true, filesystem: write</td><td>PermissionDeclaration</td></tr>
+<tr><td>Layer 2 运行时拦截</td><td>permissionGuard 中间件</td><td>每次工具调用前</td><td>拦截 path_traversal、SSRF</td><td>RuntimeGuard</td></tr>
+<tr><td>Layer 3 审批机制</td><td>危险操作暂停，等用户确认</td><td>高危操作执行前</td><td>删除文件、发送邮件需 /approve</td><td>ApprovalGate</td></tr>
+<tr><td>Layer 4 审计日志</td><td>结构化记录每次调用</td><td>调用完成后</td><td>skill_audit_log 表</td><td>AuditTrail</td></tr>
+<tr><td>Layer 5 沙箱隔离</td><td>Docker/VM 限制资源访问</td><td>Skill 执行期间</td><td>payment Skill 在沙箱中运行</td><td>SandboxExecutor</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="sub-heading">7.11.1 Layer 1：声明式权限</h3>
+
+<p>每个 Skill 在 YAML 中声明自己需要哪些权限——这是<strong>最小权限原则</strong>的起点：</p>
+
+<div class="code-block"><pre># 声明式权限定义
+# skills/file-manager/skill.yml
+name: file-manager
+version: 1.0.0
+description: 文件管理技能，支持读写删除操作
+permissions:
+  filesystem:
+    read: true       # 需要读取文件
+    write: true      # 需要写入文件
+    delete: false    # 不允许删除（即使有工具也不给权限）
+  network: false     # 不需要网络访问
+  email: false       # 不需要发送邮件
+
+danger_level: medium  # low / medium / high / critical
+requires_approval:    # 哪些操作需要审批
+  - filesystem.write  # 写文件需审批
+  # filesystem.delete 不在列表中——因为权限已禁止</pre></div>
+
+<h3 class="sub-heading">7.11.2 Layer 2：运行时拦截（permissionGuard）</h3>
+
+<p>声明只是声明，<strong>运行时拦截</strong>才是真正的防线。permissionGuard 是一个中间件，在每次工具调用前检查权限：</p>
+
+<div class="code-block"><pre># permissionGuard 中间件实现
+class PermissionGuard:
+    """WaLiCode 运行时拦截模式——在工具调用前检查权限"""
+
+    # 黑名单：永远禁止的操作
+    BLOCKED_OPERATIONS = {
+        "rm_rf": "禁止递归删除",
+        "eval": "禁止动态代码执行",
+        "exec_shell": "禁止直接执行 shell 命令（除非白名单）",
+    }
+
+    # 白名单：特定 Skill 的允许操作
+    ALLOWED_PER_SKILL = {
+        "file-manager": {
+            "filesystem.read": True,
+            "filesystem.write": True,
+            "filesystem.delete": False,
+        },
+        "weather-advisor": {
+            "network.http_get": True,
+            "network.http_post": False,
+        },
+    }
+
+    def check(self, skill_name: str, operation: str, params: dict) -> dict:
+        """检查权限，返回 allow/deny/need_approval"""
+        # 1. 黑名单检查（最高优先级）
+        if operation in self.BLOCKED_OPERATIONS:
+            return {
+                "status": "denied",
+                "reason": self.BLOCKED_OPERATIONS[operation]
+            }
+
+        # 2. 白名单检查
+        skill_perms = self.ALLOWED_PER_SKILL.get(skill_name, {})
+        if not skill_perms.get(operation, False):
+            return {
+                "status": "denied",
+                "reason": f"Skill {skill_name} 未获得 {operation} 权限"
+            }
+
+        # 3. 参数级安全检查（如路径穿越、SSRF）
+        if "path" in params:
+            if ".." in params["path"] or params["path"].startswith("/etc"):
+                return {"status": "denied", "reason": "路径穿越攻击被拦截"}
+
+        if "url" in params:
+            blocked_hosts = ["localhost", "127.0.0.1", "0.0.0.0", "internal."]
+            if any(h in params["url"] for h in blocked_hosts):
+                return {"status": "denied", "reason": "SSRF 攻击被拦截"}
+
+        # 4. 审批检查
+        if operation in self.NEEDS_APPROVAL.get(skill_name, []):
+            return {"status": "need_approval", "operation": operation}
+
+        return {"status": "allow"}</pre></div>
+
+<h3 class="sub-heading">7.11.3 Layer 3：审批机制（ApprovalGate）</h3>
+
+<p>对于高危操作（删除文件、发送邮件、支付），Agent 必须<strong>暂停并等待用户确认</strong>：</p>
+
+<div class="code-block"><pre># 审批机制实现
+class ApprovalGate:
+    """WaLiCode ApprovalGate 模式——高危操作需用户确认"""
+
+    def __init__(self):
+        self.pending: dict = {}  # approval_id → operation details
+
+    def request_approval(self, skill_name: str, operation: str, params: dict) -> str:
+        """请求审批，返回 approval_id"""
+        approval_id = f"apr_{skill_name}_{operation}_{int(time.time())}"
+        self.pending[approval_id] = {
+            "skill": skill_name,
+            "operation": operation,
+            "params": params,
+            "status": "pending",
+            "created_at": time.time()
+        }
+        # 暂停执行，通知用户
+        print(f"⚠️ 需要审批: {skill_name} 想执行 {operation}")
+        print(f"   参数: {params}")
+        print(f"   请回复 /approve {approval_id} 或 /reject {approval_id}")
+        return approval_id
+
+    def handle_response(self, approval_id: str, approved: bool) -> dict:
+        """处理用户的审批响应"""
+        request = self.pending.get(approval_id)
+        if not request:
+            return {"error": "审批 ID 不存在"}
+
+        if approved:
+            request["status"] = "approved"
+            # 执行被暂停的操作
+            return {"status": "approved", "proceed": True}
+        else:
+            request["status"] = "rejected"
+            return {"status": "rejected", "proceed": False}
+
+# 使用示例
+guard_result = permission_guard.check("file-manager", "filesystem.write", {"path": "/data/report.csv"})
+if guard_result["status"] == "need_approval":
+    approval_id = approval_gate.request_approval("file-manager", "filesystem.write", {"path": "/data/report.csv"})
+    # Agent 等待用户响应...</pre></div>
+
+<h3 class="sub-heading">7.11.4 Layer 4：审计日志</h3>
+
+<p>所有 Skill 调用必须<strong>可追溯</strong>——谁在什么时候调用了什么、参数是什么、结果是什么：</p>
+
+<div class="code-block"><pre># 审计日志实现
+import sqlite3
+from datetime import datetime
+
+class SkillAuditLog:
+    """WaLiCode AuditTrail 模式——所有调用可追溯"""
+
+    def __init__(self, db_path: str = "skill_audit.db"):
+        self.conn = sqlite3.connect(db_path)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                skill_name TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                params TEXT NOT NULL,       -- JSON 格式
+                result TEXT NOT NULL,        -- JSON 格式
+                approved TEXT DEFAULT NULL,  -- approval_id 或 NULL
+                risk_level TEXT NOT NULL     -- low/medium/high/critical
+            )
+        """)
+
+    def log(self, session_id: str, skill_name: str, operation: str,
+            params: dict, result: dict, approved: str = None,
+            risk_level: str = "low"):
+        """记录一次 Skill 调用"""
+        self.conn.execute(
+            "INSERT INTO audit_log VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (datetime.now().isoformat(), session_id, skill_name, operation,
+             json.dumps(params), json.dumps(result), approved, risk_level)
+        )
+        self.conn.commit()
+
+    def query(self, skill_name: str = None, risk_level: str = None,
+              since: str = None) -> list[dict]:
+        """查询审计日志（合规审查用）"""
+        conditions = []
+        if skill_name:
+            conditions.append(f"skill_name = '{skill_name}'")
+        if risk_level:
+            conditions.append(f"risk_level = '{risk_level}'")
+        if since:
+            conditions.append(f"timestamp >= '{since}'")
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        rows = self.conn.execute(
+            f"SELECT * FROM audit_log WHERE {where} ORDER BY timestamp DESC LIMIT 100"
+        ).fetchall()
+        return [dict(zip(["id","ts","sid","skill","op","params","result","approved","risk"], r)) for r in rows]
+
+# 查询所有高风险调用（合规审查场景）
+high_risk_calls = audit_log.query(risk_level="critical")
+# → 返回所有 critical 级别的调用记录，供安全团队审查</pre></div>
+
+<h3 class="sub-heading">7.11.5 Layer 5：沙箱隔离</h3>
+
+<p>最危险的操作（如支付、访问生产数据库）应该在<strong>沙箱</strong>中执行——限制网络和文件系统访问：</p>
+
+<div class="code-block"><pre># 沙箱执行器实现（基于 subprocess + 资源限制）
+import subprocess
+import tempfile
+
+class SandboxExecutor:
+    """WaLiCode SandboxExecutor 模式——危险 Skill 在沙箱中执行"""
+
+    SANDBOX_CONFIG = {
+        "payment-skill": {
+            "network": "restricted",       # 只允许访问支付 API 域名
+            "filesystem": "read_only",     # 只读文件系统
+            "max_memory": "256MB",         # 内存限制
+            "max_cpu_time": 30,            # CPU 时间限制（秒）
+            "allowed_domains": ["api.payment.com"],
+        },
+        "database-query": {
+            "network": "restricted",
+            "filesystem": "none",          # 无文件系统访问
+            "max_memory": "512MB",
+            "max_cpu_time": 60,
+            "allowed_domains": ["db.internal.com"],
+        }
+    }
+
+    def execute_in_sandbox(self, skill_name: str, tool_name: str,
+                           params: dict) -> dict:
+        """在沙箱中执行 Skill 工具"""
+        config = self.SANDBOX_CONFIG.get(skill_name)
+        if not config:
+            # 无沙箱配置 → 正常执行
+            return self._execute_normal(skill_name, tool_name, params)
+
+        # 将调用序列化为临时脚本
+        script = self._serialize_call(skill_name, tool_name, params)
+        script_path = tempfile.mktemp(suffix=".py")
+        with open(script_path, "w") as f:
+            f.write(script)
+
+        # 在受限环境中执行
+        result = subprocess.run(
+            ["python3", script_path],
+            capture_output=True,
+            timeout=config["max_cpu_time"],
+            env={
+                "SKILL_SANDBOX": "true",
+                "ALLOWED_DOMAINS": ",".join(config["allowed_domains"]),
+                "MAX_MEMORY": config["max_memory"],
+            }
+        )
+
+        return {
+            "stdout": result.stdout.decode(),
+            "stderr": result.stderr.decode(),
+            "exit_code": result.returncode,
+            "sandbox": True
+        }</pre></div>
+
+<div class="tip-banner">
+<div class="banner-title">💡 安全分层原则</div>
+<p>不是所有 Skill 都需要五层防护。基础 Skill（如 get_weather）只需 Layer 1（声明）+ Layer 2（运行时拦截）。复合 Skill 加上 Layer 3（审批）+ Layer 4（审计）。领域 Skill 才需要完整的五层——包括沙箱隔离。安全不是越厚越好，而是<strong>按风险等级分层</strong>。</p>
+</div>
+
+<!-- ===== 7.12 实战：构建企业级 Skill 包 ===== -->
+<h2 class="section-heading">7.12 实战：构建企业级 Skill 包</h2>
+
+<p>前面讲了 Skill 的分层体系和安全架构，现在把它们<strong>串起来</strong>——从零构建一个完整的企业级 Skill 包，包括 YAML 定义、Python 实现、测试和发布流程：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"define","label":"Step 1：YAML 定义\n元数据 + 工具 + 知识 + 权限","type":"start"},{"id":"implement","label":"Step 2：Python 实现\n工具函数 + permissionGuard","type":"process"},{"id":"test","label":"Step 3：测试\n单元测试 + Prompt 测试 + 安全测试","type":"process"},{"id":"publish","label":"Step 4：发布\n版本号 + Changelog + 注册","type":"end"}],"edges":[{"from":"define","to":"implement"},{"from":"implement","to":"test"},{"from":"test","to":"publish"}]}'></div>
+
+<h3 class="sub-heading">7.12.1 Step 1：YAML 定义</h3>
+
+<p>以 <code>report-generator</code>（报表生成器）为例——这是一个复合 Skill，需要读取数据、分析数据、生成报表三个工具：</p>
+
+<div class="code-block"><pre># skills/compound/report-generator/skill.yml
+name: report-generator
+version: 1.0.0
+description: 企业报表生成器，从数据源读取数据并生成格式化报表
+layer: compound
+triggers: ["报表", "报告", "生成报告", "generate report", "周报", "月报"]
+
+permissions:
+  filesystem:
+    read: true
+    write: true         # 需要写入报表文件
+  network:
+    http_get: true      # 需要从 API 获取数据
+  email:
+    send: false         # 不直接发邮件（由上层 Skill 处理）
+
+danger_level: medium
+requires_approval:
+  - filesystem.write    # 写文件需审批
+
+tools:
+  - name: fetch_data
+    description: 从指定数据源获取原始数据
+    parameters:
+      source: { type: string, required: true, description: "数据源（api/file/db）" }
+      query: { type: string, default: null, description: "查询条件" }
+      format: { type: string, default: "json", description: "返回格式" }
+
+  - name: analyze_data
+    description: 分析数据，计算统计指标
+    parameters:
+      data: { type: array, required: true, description: "原始数据" }
+      metrics: { type: array, default: ["sum", "avg", "max", "min"], description: "统计指标" }
+      group_by: { type: string, default: null, description: "分组字段" }
+
+  - name: render_report
+    description: 将分析结果渲染为格式化报表
+    parameters:
+      analysis: { type: object, required: true, description: "分析结果" }
+      template: { type: string, default: "default", description: "报表模板" }
+      output_format: { type: string, default: "markdown", description: "输出格式" }
+
+knowledge: |
+  ## 调用策略
+  1. 先 fetch_data 从数据源获取数据
+  2. 再 analyze_data 计算统计指标
+  3. 最后 render_report 生成报表
+  4. 如果数据量 > 10万条，建议分批处理
+  5. 如果源是 API，注意分页和超时处理
+
+  ## WaLiCode 对应
+  - WorkflowChain: fetch → analyze → render
+  - ErrorRecovery: fetch 失败时尝试备用数据源
+  - PermissionGuard: 写文件前需审批
+
+  ## 异常处理
+  - fetch_data 失败 → 提示用户检查数据源配置
+  - analyze_data 数据为空 → 返回"数据不足，无法生成报表"
+  - render_report 模板缺失 → 使用默认模板</pre></div>
+
+<h3 class="sub-heading">7.12.2 Step 2：Python 实现</h3>
+
+<div class="code-block"><pre># skills/compound/report-generator/main.py
+import json
+import statistics
+from pathlib import Path
+from datetime import datetime
+
+class ReportGeneratorSkill:
+    """企业级报表生成 Skill——带 permissionGuard"""
+
+    def __init__(self, permission_guard: PermissionGuard = None):
+        self.guard = permission_guard
+
+    def fetch_data(self, source: str, query: str = None, format: str = "json") -> dict:
+        """从数据源获取原始数据"""
+        if source.startswith("http"):
+            # API 数据源（带超时和分页）
+            import requests
+            params = {"query": query} if query else {}
+            response = requests.get(source, params=params, timeout=30)
+            return {"data": response.json(), "source": source}
+        elif source.endswith(".csv") or source.endswith(".json"):
+            # 文件数据源（带安全检查）
+            if self.guard:
+                check = self.guard.check("report-generator", "filesystem.read", {"path": source})
+                if check["status"] == "denied":
+                    return {"error": check["reason"]}
+            with open(source, "r", encoding="utf-8") as f:
+                if source.endswith(".json"):
+                    data = json.load(f)
+                else:
+                    import csv
+                    reader = csv.DictReader(f)
+                    data = list(reader)
+            return {"data": data, "source": source}
+        else:
+            return {"error": f"不支持的数据源类型: {source}"}
+
+    def analyze_data(self, data: list, metrics: list = None, group_by: str = None) -> dict:
+        """分析数据，计算统计指标"""
+        if not data:
+            return {"error": "数据为空，无法分析"}
+
+        metrics = metrics or ["sum", "avg", "max", "min"]
+        numeric_fields = self._find_numeric_fields(data)
+        results = {}
+
+        for field in numeric_fields:
+            values = [row.get(field, 0) for row in data if row.get(field) is not None]
+            field_stats = {}
+            for m in metrics:
+                if m == "sum":
+                    field_stats["sum"] = sum(values)
+                elif m == "avg":
+                    field_stats["avg"] = statistics.mean(values) if values else 0
+                elif m == "max":
+                    field_stats["max"] = max(values) if values else 0
+                elif m == "min":
+                    field_stats["min"] = min(values) if values else 0
+            results[field] = field_stats
+
+        # 分组统计（如果指定 group_by）
+        if group_by:
+            groups = {}
+            for row in data:
+                key = row.get(group_by, "unknown")
+                groups.setdefault(key, []).append(row)
+            results["groups"] = {k: len(v) for k, v in groups.items()}
+
+        return {"analysis": results, "data_count": len(data), "fields": numeric_fields}
+
+    def render_report(self, analysis: dict, template: str = "default",
+                      output_format: str = "markdown") -> dict:
+        """渲染报表"""
+        stats = analysis.get("analysis", {})
+        count = analysis.get("data_count", 0)
+
+        # 生成 Markdown 报表
+        report = f"# 数据报表\n\n"
+        report += f"> 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+        report += f"> 数据量: {count} 条\n\n"
+
+        report += "## 统计指标\n\n"
+        report += "| 字段 | 求和 | 平均值 | 最大值 | 最小值 |\n"
+        report += "|------|------|--------|--------|--------|\n"
+        for field, field_stats in stats.items():
+            if field == "groups":
+                continue
+            report += f"| {field} | {field_stats.get('sum', '-')} | "
+            report += f"{field_stats.get('avg', '-')} | {field_stats.get('max', '-')} | "
+            report += f"{field_stats.get('min', '-')} |\n"
+
+        if "groups" in stats:
+            report += "\n## 分组统计\n\n"
+            for group, group_count in stats["groups"].items():
+                report += f"- **{group}**: {group_count} 条\n"
+
+        # 写入文件（需审批）
+        output_path = f"reports/report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        if self.guard:
+            check = self.guard.check("report-generator", "filesystem.write", {"path": output_path})
+            if check["status"] == "need_approval":
+                return {
+                    "report": report,
+                    "approval_needed": True,
+                    "message": f"需要审批才能写入文件: {output_path}"
+                }
+            elif check["status"] == "denied":
+                return {"error": check["reason"]}
+
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(report)
+
+        return {"report": report, "output_path": output_path, "written": True}
+
+    def _find_numeric_fields(self, data: list) -> list[str]:
+        """自动检测数值型字段"""
+        numeric = []
+        if data:
+            for key, val in data[0].items():
+                if isinstance(val, (int, float)):
+                    numeric.append(key)
+        return numeric</pre></div>
+
+<h3 class="sub-heading">7.12.3 Step 3：测试</h3>
+
+<p>企业级 Skill 需要<strong>三层测试</strong>：单元测试（工具函数）、Prompt 测试（AI 调用策略）、安全测试（权限拦截）：</p>
+
+<div class="code-block"><pre># tests/test_report_generator.py
+import pytest
+from skills.compound.report_generator.main import ReportGeneratorSkill
+from skills.compound.report_generator.permission_guard import PermissionGuard
+
+class TestReportGenerator:
+    """单元测试——验证工具函数逻辑"""
+
+    def setup_method(self):
+        self.skill = ReportGeneratorSkill()
+
+    def test_analyze_data_basic(self):
+        """测试基本统计分析"""
+        data = [
+            {"name": "A", "value": 10},
+            {"name": "B", "value": 20},
+            {"name": "C", "value": 30},
+        ]
+        result = self.skill.analyze_data(data)
+        assert result["data_count"] == 3
+        assert result["analysis"]["value"]["sum"] == 60
+        assert result["analysis"]["value"]["avg"] == 20
+
+    def test_analyze_data_empty(self):
+        """测试空数据返回错误"""
+        result = self.skill.analyze_data([])
+        assert "error" in result
+        assert "数据为空" in result["error"]
+
+    def test_analyze_data_with_groups(self):
+        """测试分组统计"""
+        data = [
+            {"department": "工程", "salary": 15000},
+            {"department": "工程", "salary": 18000},
+            {"department": "市场", "salary": 12000},
+        ]
+        result = self.skill.analyze_data(data, group_by="department")
+        assert result["analysis"]["groups"]["工程"] == 2
+        assert result["analysis"]["groups"]["市场"] == 1
+
+    def test_render_report_markdown(self):
+        """测试 Markdown 报表生成"""
+        analysis = {
+            "analysis": {"salary": {"sum": 45000, "avg": 15000}},
+            "data_count": 3,
+        }
+        result = self.skill.render_report(analysis)
+        assert "# 数据报表" in result["report"]
+        assert "salary" in result["report"]
+
+
+class TestPromptIntegration:
+    """Prompt 测试——验证 AI 能正确调用 Skill"""
+
+    PROMPT_TEST_CASES = [
+        {
+            "user_message": "帮我生成上周的销售报表",
+            "expected_skill": "report-generator",
+            "expected_call_order": ["fetch_data", "analyze_data", "render_report"],
+        },
+        {
+            "user_message": "分析一下各部门的工资分布",
+            "expected_skill": "report-generator",
+            "expected_call_order": ["fetch_data", "analyze_data"],
+        },
+    ]
+
+    def test_skill_activation(self):
+        """验证触发词能正确激活 Skill"""
+        manager = LazySkillManager(loader)
+        for case in self.PROMPT_TEST_CASES:
+            prompt = manager.get_prompt(case["user_message"])
+            assert "report-generator" in prompt
+            assert "(已激活)" in prompt
+
+
+class TestSecurity:
+    """安全测试——验证 permissionGuard 拦截"""
+
+    def setup_method(self):
+        self.guard = PermissionGuard()
+        self.skill = ReportGeneratorSkill(permission_guard=self.guard)
+
+    def test_path_traversal_blocked(self):
+        """测试路径穿越被拦截"""
+        result = self.skill.fetch_data(source="/etc/passwd")
+        assert "error" in result
+        assert "拦截" in result["error"]
+
+    def test_write_needs_approval(self):
+        """测试写文件需要审批"""
+        result = self.skill.render_report({"analysis": {}, "data_count": 0})
+        # 在审批机制下，render_report 应返回 need_approval
+        assert result.get("approval_needed") == True or "审批" in str(result)
+
+    def test_ssrf_blocked(self):
+        """测试 SSRF 被拦截"""
+        result = self.skill.fetch_data(source="http://127.0.0.1:8080/internal")
+        assert "error" in result
+        assert "SSRF" in result["error"] or "拦截" in result["error"]</pre></div>
+
+<h3 class="sub-heading">7.12.4 Step 4：发布流程</h3>
+
+<div class="code-block"><pre># 发布流程脚本 — publish_skill.sh
+#!/bin/bash
+# 企业级 Skill 发布流程（WaLiCode ReleasePipeline 模式）
+
+SKILL_NAME="report-generator"
+SKILL_DIR="skills/compound/${SKILL_NAME}"
+
+echo "=== Step 1: 版本检查 ==="
+CURRENT_VERSION=$(grep "version:" ${SKILL_DIR}/skill.yml | head -1 | cut -d' ' -f2)
+echo "当前版本: ${CURRENT_VERSION}"
+
+echo "=== Step 2: 运行测试 ==="
+cd tests && python -m pytest test_report_generator.py -v
+if [ $? -ne 0 ]; then
+    echo "❌ 测试失败，中止发布"
+    exit 1
+fi
+echo "✅ 所有测试通过"
+
+echo "=== Step 3: 安全审计 ==="
+python security_audit.py ${SKILL_NAME}
+# 检查: 权限声明完整性、danger_level 评估、是否有 known vulnerabilities
+
+echo "=== Step 4: 生成 Changelog ==="
+# 从 CHANGELOG.yml 中提取当前版本的变更记录
+python generate_changelog.py ${SKILL_NAME} ${CURRENT_VERSION}
+
+echo "=== Step 5: 打包 ==="
+tar -czf ${SKILL_NAME}-${CURRENT_VERSION}.tar.gz \
+    ${SKILL_DIR}/skill.yml \
+    ${SKILL_DIR}/main.py \
+    ${SKILL_DIR}/CHANGELOG.yml \
+    tests/test_report_generator.py
+
+echo "=== Step 6: 注册到 Skill 仓库 ==="
+# 内部仓库（类似 npm registry）
+curl -X POST http://skill-registry.internal.com/api/register \
+    -F "name=${SKILL_NAME}" \
+    -F "version=${CURRENT_VERSION}" \
+    -F "file=@${SKILL_NAME}-${CURRENT_VERSION}.tar.gz"
+
+echo "✅ 发布完成: ${SKILL_NAME} ${CURRENT_VERSION}"
+
+# 安装验证
+skill install ${SKILL_NAME}
+skill list | grep ${SKILL_NAME}</pre></div>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>发布阶段</th><th>检查项</th><th>失败处理</th><th>WaLiCode 对应</th></tr>
+</thead>
+<tbody>
+<tr><td>版本检查</td><td>版本号是否符合 SemVer</td><td>格式错误 → 修正后重试</td><td>VersionValidation</td></tr>
+<tr><td>运行测试</td><td>单元 + Prompt + 安全三层测试</td><td>测试失败 → 中止发布</td><td>QualityGate</td></tr>
+<tr><td>安全审计</td><td>权限声明、danger_level、已知漏洞</td><td>高危漏洞 → 修复后重新审计</td><td>SecurityAudit</td></tr>
+<tr><td>打包</td><td>YAML + 代码 + 测试 + Changelog</td><td>文件缺失 → 补充后重新打包</td><td>PackageBuilder</td></tr>
+<tr><td>注册</td><td>推送到 Skill 仓库 / 市场</td><td>网络失败 → 重试 3 次</td><td>RegistryPublish</td></tr>
+<tr><td>安装验证</td><td>skill install → skill list 能看到</td><td>安装失败 → 回滚发布</td><td>SmokeTest</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ===== 7.13 Skill 与 OpenClaw 的关系 ===== -->
+<h2 class="section-heading">7.13 Skill 与 OpenClaw 的关系</h2>
+
+<p>OpenClaw 是一个<strong>实际落地</strong>的 Agent 平台，它的 Skill 生态是本章理论的最佳实践。让我们从 OpenClaw 的 <code>~/.qclaw/skills/</code> 目录出发，看看 Skill 是如何在真实系统中运作的：</p>
+
+<h3 class="sub-heading">7.13.1 OpenClaw Skill 目录结构</h3>
+
+<div class="code-block"><pre># OpenClaw 的 Skill 目录扫描
+$ ls ~/.qclaw/skills/
+another_them/        # 蒸馏 Agent 人设的 Skill
+cloud-upload-backup/ # 云端上传备份
+docx/                # Word 文档处理
+email-skill/         # 邮件统一路由
+find-skills/         # Skill 发现与安装
+pdf/                 # PDF 处理
+persona-switch/      # 人设切换
+qclaw-cron-skill/    # 定时任务
+qclaw-env/           # 环境诊断与安装
+qclaw-rules/         # 系统规则（强制性）
+qclaw-skill-creator/ # Skill 创建指南
+xbrowser/            # 浏览器自动化
+xlsx/                # Excel 处理
+
+$ cat ~/.qclaw/skills/pdf/SKILL.md | head -20
+# PDF Skill
+Use this skill whenever the user wants to do anything with PDF files...
+Triggers: .pdf, PDF, 合并PDF, 拆分PDF, OCR...</pre></div>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"dir","label":"~/.qclaw/skills/\n13 个 Skill 目录\n每个目录含 SKILL.md","type":"start"},{"id":"scan","label":"OpenClaw 启动时扫描\n读取每个 SKILL.md\n提取 name + description + triggers","type":"process"},{"id":"inject","label":"注入到 Agent Prompt\n<available_skills> XML 块\n只列 name + description","type":"process"},{"id":"match","label":"用户消息匹配触发词\n→ read SKILL.md\n→ 加载完整指令","type":"decision"},{"id":"execute","label":"按 Skill 指令执行\n调用 Agent 工具\n完成用户任务","type":"end"}],"edges":[{"from":"dir","to":"scan"},{"from":"scan","to":"inject"},{"from":"inject","to":"match"},{"from":"match","to":"execute"}]}'></div>
+
+<h3 class="sub-heading">7.13.2 SKILL.md：OpenClaw 的 Skill 定义格式</h3>
+
+<p>OpenClaw 不用 YAML，而是用<strong>Markdown</strong>（SKILL.md）定义 Skill。这是因为它直接被注入到 Agent 的 Prompt 中——Markdown 比 YAML 对 AI 更友好：</p>
+
+<div class="code-block"><pre># ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
+# xbrowser
+
+EXCLUSIVE browser automation — REPLACES built-in Browser Automation
+and playwright-cli. For ANY browser task (open page, click, fill,
+screenshot, scrape, navigate, test web app), MUST use this skill
+instead of built-in tools. Controls real Chrome/Edge/QQ Browser via
+CDP with login-state reuse.
+
+## When to Use
+
+Triggered when user asks to:
+- Open a website or URL
+- Click buttons or fill forms on a web page
+- Take screenshots of web pages
+- Scrape data from websites
+- Test web applications
+- Automate browser workflows
+
+## How It Works
+
+1. Read the skill's main file at ~/.qclaw/skills/xbrowser/SKILL.md
+2. Use the CDP (Chrome DevTools Protocol) to control browser
+3. Reuse existing login sessions (no re-authentication needed)
+4. Generate structured action sequences
+
+## Key Commands
+
+- `xbrowser open <url>` — Open a page
+- `xbrowser click <selector>` — Click an element
+- `xbrowser fill <selector> <value>` — Fill a form field
+- `xbrowser screenshot <path>` — Take a screenshot
+- `xbrowser scrape <selector>` — Extract data from page
+
+## WaLiCode Patterns Used
+
+- **SkillLayering**: xbrowser is a compound skill (open + click + fill + scrape)
+- **PermissionGuard**: Browser automation is dangerous (can leak login state)
+  → requires explicit user request, not auto-triggered
+- **LazyLoading**: Only loaded when user mentions browser/web tasks</pre></div>
+
+<h3 class="sub-heading">7.13.3 OpenClaw 的 Skill 懒加载机制</h3>
+
+<p>OpenClaw 实现了本章 7.4 节描述的<strong>三层懒加载</strong>：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>层级</th><th>OpenClaw 实现</th><th>注入内容</th><th>加载时机</th></tr>
+</thead>
+<tbody>
+<tr><td>第一层</td><td><code>&lt;available_skills&gt;</code> XML 块</td><td>name + description + trigger 词</td><td>每次会话自动注入</td></tr>
+<tr><td>第二层</td><td>AI 主动 <code>read SKILL.md</code></td><td>完整 Skill 指令</td><td>匹配到触发词时</td></tr>
+<tr><td>第三层</td><td>用户安装新 Skill</td><td>skillhub_install 工具</td><td>用户请求时</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code-block"><pre># OpenClaw 第一层注入示例（来自实际的 system prompt）
+<available_skills>
+  <skill>
+    <name>pdf</name>
+    <description>Use this skill whenever the user wants to do anything
+    with PDF files. This includes reading, combining, splitting,
+    rotating, adding watermarks, OCR...</description>
+    <location>~/.qclaw/skills/pdf/SKILL.md</location>
+  </skill>
+  <skill>
+    <name>xbrowser</name>
+    <description>EXCLUSIVE browser automation — REPLACES built-in
+    Browser Automation and playwright-cli...</description>
+    <location>~/.qclaw/skills/xbrowser/SKILL.md</location>
+  </skill>
+  <!-- ... 13 个 Skill ... -->
+</available_skills>
+
+# AI 的决策流程
+# 1. 用户说"帮我合并这两个PDF"
+# 2. AI 匹配到 pdf Skill（触发词 "PDF"）
+# 3. AI 执行: read ~/.qclaw/skills/pdf/SKILL.md（第二层加载）
+# 4. 按照 SKILL.md 中的指令调用 pdf 工具</pre></div>
+
+<h3 class="sub-heading">7.13.4 OpenClaw Skill 的分层映射</h3>
+
+<p>将 OpenClaw 的 13 个 Skill 映射到本章的三层金字塔：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>层级</th><th>OpenClaw Skill</th><th>原因</th></tr>
+</thead>
+<tbody>
+<tr><td>基础 Skill</td><td>qclaw-rules、qclaw-env、qclaw-cron-skill</td><td>单功能封装：规则加载、环境安装、定时任务</td></tr>
+<tr><td>复合 Skill</td><td>pdf、docx、xlsx、xbrowser、email-skill</td><td>多工具组合：如 pdf = read + merge + split + OCR</td></tr>
+<tr><td>领域 Skill</td><td>another_them、qclaw-skill-creator</td><td>领域知识：蒸馏人设、创建 Skill 的方法论</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="sub-heading">7.13.5 OpenClaw Skill 的安全实践</h3>
+
+<p>OpenClaw 的 Skill 安全设计直接体现了本章 7.11 节的五层架构：</p>
+
+<div class="code-block"><pre># OpenClaw 安全实践对照
+
+# Layer 1：声明式权限 — qclaw-rules Skill 的强制性声明
+# （SKILL.md 中写道：[SYSTEM RULES - MANDATORY - ALWAYS LOAD - DO NOT SKIP]）
+# → 这是一种"强制加载"声明，比普通权限声明更严格
+
+# Layer 2：运行时拦截 — elevated 权限机制
+# exec 工具参数中有 elevated: true
+# → 需要用户 /approve 才能执行提权命令
+
+# Layer 3：审批机制 — /approve 命令
+# Agent 请求审批 → 用户回复 /approve <command>
+# → 体现了 ApprovalGate 模式
+
+# Layer 4：审计日志 — 会话记录
+# 所有工具调用记录在会话历史中
+# → 用户可以随时回溯 Agent 做了什么
+
+# Layer 5：沙箱隔离 — sandbox 执行
+# exec 工具支持 host: sandbox 参数
+# → 危险命令在沙箱中执行
+
+# 具体示例：qclaw-cron-skill 的安全设计
+# ~/.qclaw/skills/qclaw-cron-skill/SKILL.md:
+# "[MANDATORY - MUST LOAD] 凡是涉及定时/提醒/闹钟/周期执行/
+#  打卡/签到/cron/schedule/remind 等需求...必须读取本 skill，
+#  严禁凭记忆猜测参数。"
+# → Layer 1（声明式权限）+ Layer 3（审批式执行）的混合</pre></div>
+
+<div class="tip-banner">
+<div class="banner-title">💡 从 OpenClaw 学什么</div>
+<p>OpenClaw 的 Skill 生态证明了本章的核心论点：<strong>Skill = 工具 + 知识</strong>。每个 SKILL.md 不仅是工具列表，更是<strong>使用策略</strong>——告诉 AI 什么时候用、怎么用、什么不能用。这是 Skill 区别于普通工具的关键。</p>
+</div>
+
+<div class="summary-box">
+<div class="summary-title">🔗 第7章 核心要点</div>
+<p><strong>Skill = 工具 + 知识</strong>：不只是工具的集合，还包含使用策略、调用顺序、参数约束。</p>
+<p><strong>三层结构</strong>：元数据层（what）+ 工具层（how）+ 知识层（when/why）。</p>
+<p><strong>自动发现</strong>：文件系统扫描 + 触发词匹配 + 热重载。</p>
+<p><strong>三层懒加载</strong>：名称列表 → 触发词激活 → AI 主动搜索，控制 Prompt 长度。</p>
+<p><strong>三者关系</strong>：Function Calling（底层）→ MCP（传输层）→ Skills（组织层）。</p>
+<p><strong>分层金字塔</strong>：基础 Skill（单工具）→ 复合 Skill（多工具组合）→ 领域 Skill（行业知识包），自下而上构建。</p>
+<p><strong>沉淀与演进</strong>：从项目实践中提炼 Skill，遵循 SemVer 版本迭代，模式识别 → 抽象提炼 → 验证打磨 → 发布复用。</p>
+<p><strong>五层安全架构</strong>：声明式权限 → 运行时拦截 → 审批机制 → 审计日志 → 沙箱隔离，按风险等级分层。</p>
+<p><strong>OpenClaw 实践</strong>：SKILL.md 格式 + 三层懒加载 + 五层安全，是本章理论的落地验证。</p>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<h2 class="section-heading">📋 八股总结</h2>
+<div class="summary-box">
+<div class="summary-title">面试高频考点</div>
+<ol>
+<li><strong>Skill 和 Tool 的区别？</strong>：Tool 是单一操作，Skill 是工具的组合 + 使用知识。Tool 是函数，Skill 是模块。</li>
+<li><strong>如何让 Agent 发现 Skills？</strong>：文件系统扫描 + YAML 元数据 + 触发词匹配 + 热重载。</li>
+<li><strong>Skills 太多导致 Prompt 过长怎么办？</strong>：三层懒加载——始终加载名称、触发词匹配时加载完整定义、AI 主动搜索罕见 Skill。</li>
+<li><strong>Skills 和 MCP 的关系？</strong>：层次不同。MCP 是工具级标准协议，Skills 是能力级组织单元。一个 Skill 可以包含 MCP 工具。</li>
+<li><strong>Skill 的三层金字塔是什么？</strong>：基础 Skill（单工具封装，如 read_file）→ 复合 Skill（多工具组合 + 调用策略，如 code-reviewer）→ 领域 Skill（行业知识包，如 finance-advisor）。底层越通用、顶层越专业，应自下而上构建。</li>
+<li><strong>Skill 如何从项目实践中沉淀？</strong>：四步流程——模式识别（从日志提取重复模式）→ 抽象提炼（转化为 Skill YAML）→ 验证打磨（在多项目试用）→ 发布复用（版本号 + Changelog）。版本遵循 SemVer：PATCH 修复、MINOR 新增、MAJOR 重构。</li>
+<li><strong>Skill 的五层安全架构是什么？</strong>：Layer 1 声明式权限（YAML 中声明）→ Layer 2 运行时拦截（permissionGuard 中间件）→ Layer 3 审批机制（高危操作需 /approve）→ Layer 4 审计日志（所有调用可追溯）→ Layer 5 沙箱隔离（危险 Skill 限制资源）。不是所有 Skill 都需要五层，按风险等级分层。</li>
+</ol>
+</div>

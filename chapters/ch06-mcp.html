@@ -1,0 +1,1751 @@
+<!-- 第13章：MCP 协议 -->
+<h1 class="chapter-title">第6章 MCP：工具的标准化接口</h1>
+<p class="chapter-subtitle">Model Context Protocol — Agent 的 USB-C 接口</p>
+
+<!-- ===== 6.1 MCP 是什么 ===== -->
+<h2 class="section-heading">6.1 为什么需要 MCP？</h2>
+
+<p>在 MCP 出现前，每个 Agent 框架有自己的工具定义方式。LangChain 用 @tool 装饰器，AutoGen 用 register_function，CrewAI 用 BaseTool 类……工具开发者要为每个框架写一遍适配代码。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <strong>问题：</strong>N 个 Agent 框架 × M 个工具 = N×M 个适配代码。重复劳动、维护噩梦。
+</div>
+
+<p><strong>MCP（Model Context Protocol）</strong>是 Anthropic 在 2024 年提出的开放标准，目标是统一 Agent 与外部工具/数据的连接方式。</p>
+
+<div class="quote">
+  MCP 就像 Agent 世界的 USB-C 接口——一个标准协议，所有工具都按这个标准提供，所有 Agent 都按这个标准调用。N×M 变成 N+M。
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>解决：</strong>工具开发者只需实现一次 MCP Server，所有支持 MCP 的 Agent 框架都能用。N×M 变成 N+M。
+</div>
+
+<!-- ===== 6.2 MCP 架构 ===== -->
+<h2 class="section-heading">6.2 MCP 架构</h2>
+
+<div class="flowchart-container" id="mcpArch"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpArch', {
+    nodes: [
+      { id: 'agent', label: 'MCP Client\n(Agent/LLM应用)', type: 'start' },
+      { id: 'proto', label: 'MCP 协议层\n(JSON-RPC 2.0)', type: 'decision' },
+      { id: 'server1', label: '文件系统\nMCP Server', type: 'tool' },
+      { id: 'server2', label: '数据库\nMCP Server', type: 'tool' },
+      { id: 'server3', label: 'GitHub\nMCP Server', type: 'tool' },
+      { id: 'server4', label: '自定义\nMCP Server', type: 'tool' }
+    ],
+    edges: [
+      { from: 'agent', to: 'proto' },
+      { from: 'proto', to: 'server1' },
+      { from: 'proto', to: 'server2' },
+      { from: 'proto', to: 'server3' },
+      { from: 'proto', to: 'server4' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">📐 MCP 的三个核心概念</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">Tools（工具）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        可被 LLM 调用的函数。如搜索、查询数据库、发邮件。类似 Function Calling，但标准化了。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">Resources（资源）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        可被 LLM 读取的数据。如文件内容、数据库记录、API 返回。是只读的上下文。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">Prompts（提示模板）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        预定义的 Prompt 模板。Server 提供专业提示，Client 直接使用。标准化知识传递。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6.3 通信协议 ===== -->
+<h2 class="section-heading">6.3 MCP 的通信机制</h2>
+
+<p>MCP 基于 <strong>JSON-RPC 2.0</strong> 协议，支持两种传输方式：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">stdio（标准输入输出）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        MCP Server 作为子进程运行，通过标准输入输出通信。<br><br>
+        <strong>适合</strong>：本地工具、同机部署<br>
+        <strong>优点</strong>：简单、零网络开销<br>
+        <strong>缺点</strong>：不能跨机器
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">SSE（Server-Sent Events）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        通过 HTTP + SSE 双向通信。Client 发 HTTP 请求，Server 通过 SSE 推送响应。<br><br>
+        <strong>适合</strong>：远程工具、云服务<br>
+        <strong>优点</strong>：跨机器、可扩展<br>
+        <strong>缺点</strong>：有网络延迟
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">MCP 消息格式</h3>
+
+<div class="code-block">
+  <span class="code-label">MCP JSON-RPC 消息示例</span>
+<pre>// ===== Client → Server: 调用工具 =====
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "search_web",
+    "arguments": {
+      "query": "LangGraph tutorial"
+    }
+  }
+}
+
+// ===== Server → Client: 返回结果 =====
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "找到 10 条相关结果..."
+      }
+    ]
+  }
+}
+
+// ===== Server → Client: 推送通知 =====
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/progress",
+  "params": {
+    "progress": 50,
+    "message": "已搜索 50%"
+  }
+}</pre>
+</div>
+
+<!-- ===== 6.4 MCP Server 实现 ===== -->
+<h2 class="section-heading">6.4 编写一个 MCP Server</h2>
+
+<div class="code-block">
+  <span class="code-label">Python: 最简 MCP Server</span>
+<pre>from mcp import Server, Tool
+from mcp.types import TextContent
+
+server = Server("my-tools-server")
+
+# 注册工具
+@server.tool()
+def search_web(query: str) -> list[TextContent]:
+    """搜索互联网获取信息
+    
+    Args:
+        query: 搜索关键词
+    """
+    results = web_search(query)
+    return [TextContent(type="text", text=str(results))]
+
+@server.tool()
+def get_weather(city: str, unit: str = "celsius") -> list[TextContent]:
+    """获取城市天气
+    
+    Args:
+        city: 城市名
+        unit: 温度单位 (celsius/fahrenheit)
+    """
+    temp = weather_api(city, unit)
+    return [TextContent(type="text", text=f"{city}: {temp}°")]
+
+# 注册资源
+@server.resource("file://{path}")
+def read_file(path: str) -> str:
+    """读取本地文件"""
+    with open(path) as f:
+        return f.read()
+
+# 启动 Server
+if __name__ == "__main__":
+    server.run(transport="stdio")  # stdio 模式</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent); margin-top: 16px;">
+  <strong>关键点</strong>：这个 MCP Server 可以被任何支持 MCP 的 Agent 使用——Claude Desktop、Cursor、LangChain、OpenClaw 等。写一次，到处用。
+</div>
+
+<!-- ===== 6.5 MCP 生态 ===== -->
+<h2 class="section-heading">6.5 MCP 生态现状</h2>
+
+<div class="card">
+  <div class="card-title">🌐 谁在支持 MCP？</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">角色</th>
+        <th style="text-align: left; padding: 10px 8px;">支持者</th>
+        <th style="text-align: left; padding: 10px 8px;">状态</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">Client（消费方）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Claude Desktop, Cursor, Windsurf, Cline</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 已支持</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Server（提供方）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GitHub, Slack, Google Drive, PostgreSQL...</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 100+ 官方/社区 Server</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">框架集成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LangChain, Spring AI, ADK, OpenClaw</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 原生支持</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">标准化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Anthropic 主导，开放规范</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">📜 开放标准</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 6.6 MCP 客户端完整实现 ===== -->
+<h2 class="section-heading">6.6 MCP 客户端完整实现</h2>
+
+<p>上一节我们写了一个最简版的 MCP Server，但要让 Agent 真正使用 MCP Server 的能力，还需要一个完整的 MCP 客户端来发起连接、发现能力、调用工具。本节展示如何使用官方 <code>mcp</code> Python 库编写一个功能完整的 MCP 客户端，覆盖工具调用、资源读取和提示词获取三大场景。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info); margin-bottom: 16px;">
+  <strong>客户端核心流程</strong>：创建连接 → 初始化会话 → 列出能力 → 调用工具/读取资源/获取提示词 → 处理结果。每一步都是异步操作，需要使用 <code>async/await</code> 语法。
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python: 完整 MCP 客户端（使用官方 mcp 库）</span>
+<pre>import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def main():
+    # 1. 配置 Server 启动参数
+    server_params = StdioServerParameters(
+        command="python",
+        args=["mcp_server.py"],
+        env=None
+    )
+    
+    # 2. 建立 stdio 连接并创建会话
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # 3. 初始化握手（必须）
+            await session.initialize()
+            
+            # 4. 列出可用工具
+            tools = await session.list_tools()
+            print("可用工具:", [tool.name for tool in tools.tools])
+            
+            # 5. 列出可用资源
+            resources = await session.list_resources()
+            print("可用资源:", [res.uri for res in resources.resources])
+            
+            # 6. 调用工具
+            result = await session.call_tool(
+                "search_web",
+                arguments={"query": "AI Agent MCP protocol", "max_results": 5}
+            )
+            print("搜索结果:", result.content)
+            
+            # 7. 读取资源
+            content = await session.read_resource("file:///docs/api.md")
+            print("资源内容:", content.contents[0].text[:200])
+            
+            # 8. 获取提示词模板
+            prompt = await session.get_prompt(
+                "code_review",
+                arguments={"language": "python", "code": "def add(a,b): return a+b"}
+            )
+            print("提示词:", prompt.messages[0].content.text)
+
+asyncio.run(main())</pre>
+</div>
+
+<p>这段代码完整展示了 MCP 客户端的生命周期：通过 <code>StdioServerParameters</code> 指定 Server 的启动命令和参数，<code>stdio_client</code> 建立 stdio 传输通道，<code>ClientSession</code> 管理协议层会话。<code>session.initialize()</code> 完成能力协商握手，之后即可自由调用 <code>list_tools</code>、<code>call_tool</code>、<code>read_resource</code>、<code>get_prompt</code> 等方法。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <strong>注意</strong>：<code>session.initialize()</code> 是必须的第一步，它会完成 JSON-RPC 握手和能力协商。跳过这一步直接调用工具会报错。客户端和服务器端必须使用相同的传输方式（stdio 或 SSE）。
+</div>
+
+<!-- ===== 6.7 MCP Server 完整实现 ===== -->
+<h2 class="section-heading">6.7 MCP Server 完整实现</h2>
+
+<p>6.4 节展示了一个最简版的 Server，但生产级的 MCP Server 需要同时实现资源（Resources）、工具（Tools）和提示词（Prompts）三类能力，并正确处理生命周期。本节展示一个完整的天气数据 MCP Server，包含资源定义、工具注册和错误处理。</p>
+
+<div class="code-block">
+  <span class="code-label">Python: 完整 MCP Server（资源 + 工具 + 提示词）</span>
+<pre>import asyncio
+from mcp.server import Server, NotificationOptions
+from mcp.server.models import InitializationOptions
+import mcp.server.stdio
+import mcp.types as types
+
+app = Server("weather-data-server")
+
+# ===== 资源：只读数据 =====
+@app.list_resources()
+async def handle_list_resources() -> list[types.Resource]:
+    return [
+        types.Resource(
+            uri="weather://forecast/beijing",
+            name="北京天气预报",
+            description="北京未来7天天气",
+            mimeType="application/json"
+        ),
+        types.Resource(
+            uri="weather://forecast/shanghai",
+            name="上海天气预报",
+            description="上海未来7天天气",
+            mimeType="application/json"
+        )
+    ]
+
+@app.read_resource()
+async def handle_read_resource(uri: str) -> str:
+    if uri == "weather://forecast/beijing":
+        return '{"city":"北京","temp":25,"weather":"晴"}'
+    elif uri == "weather://forecast/shanghai":
+        return '{"city":"上海","temp":28,"weather":"多云"}'
+    raise ValueError(f"未知资源: {uri}")
+
+# ===== 工具：可调用的函数 =====
+@app.list_tools()
+async def handle_list_tools() -> list[types.Tool]:
+    return [
+        types.Tool(
+            name="get_weather",
+            description="获取指定城市的实时天气",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "城市名称"}
+                },
+                "required": ["city"]
+            }
+        )
+    ]
+
+@app.call_tool()
+async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+    if name == "get_weather":
+        city = arguments.get("city", "北京")
+        return [types.TextContent(
+            type="text",
+            text=f"{{'city':'{city}','temp':25,'humidity':60}}"
+        )]
+    raise ValueError(f"未知工具: {name}")
+
+# ===== 启动 Server =====
+async def main():
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await app.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="weather-data-server",
+                server_version="1.0.0",
+                capabilities=app.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={}
+                )
+            )
+        )
+
+asyncio.run(main())</pre>
+</div>
+
+<p>这个 Server 实现了 MCP 的三大核心能力：<strong>Resources</strong> 通过 <code>@app.list_resources()</code> 和 <code>@app.read_resource()</code> 暴露天气数据；<strong>Tools</strong> 通过 <code>@app.list_tools()</code> 和 <code>@app.call_tool()</code> 提供天气查询函数；<strong>InitializationOptions</strong> 声明服务器能力和版本信息，供客户端在握手阶段读取。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>架构要点</strong>：Server 使用装饰器模式注册处理器，每个处理器对应一个 JSON-RPC 方法。<code>app.run()</code> 启动事件循环后，所有通信通过 stdio 流自动完成。Client 不需要知道 Server 内部实现，只需通过标准协议调用即可。
+</div>
+
+<!-- ===== 6.8 MCP 协议深度解析 ===== -->
+<h2 class="section-heading">6.8 MCP 协议深度解析</h2>
+
+<p>理解 MCP 不能只停留在 API 使用层面，还需要深入协议底层。本节从 JSON-RPC 2.0 报文格式、能力协商流程、协议栈分层架构三个维度，带你彻底理解 MCP 的通信本质。</p>
+
+<h3 class="sub-heading">JSON-RPC 2.0 报文结构</h3>
+
+<p>MCP 选择 JSON-RPC 2.0 作为底层协议，因为它轻量、无状态、支持双向通信。每条消息都是一个 JSON 对象，包含 <code>jsonrpc</code> 版本号、<code>id</code>（请求标识）、<code>method</code>（方法名）和 <code>params</code>（参数）。服务端可以通过 <code>notifications/*</code> 方法主动推送通知，不需要客户端轮询。</p>
+
+<div class="code-block">
+  <span class="code-label">JSON-RPC 2.0: 能力协商完整握手流程</span>
+<pre>// ===== 1. Client → Server: 初始化请求 =====
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "roots": { "listChanged": true },
+      "sampling": {}
+    },
+    "clientInfo": { "name": "my-agent", "version": "1.0.0" }
+  }
+}
+
+// ===== 2. Server → Client: 返回能力 =====
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "tools": { "listChanged": true },
+      "resources": { "subscribe": true, "listChanged": true },
+      "prompts": { "listChanged": true }
+    },
+    "serverInfo": { "name": "weather-server", "version": "1.0.0" }
+  }
+}
+
+// ===== 3. Client → Server: 确认初始化完成 =====
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/initialized"
+}
+
+// ===== 4. Client → Server: 列出工具 =====
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }
+
+// ===== 5. Server → Client: 返回工具列表 =====
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [{
+      "name": "get_weather",
+      "description": "获取城市天气",
+      "inputSchema": { "type": "object", "properties": { "city": { "type": "string" } } }
+    }]
+  }
+}</pre>
+</div>
+
+<h3 class="sub-heading">能力协商（Capabilities Negotiation）</h3>
+
+<p>能力协商是 MCP 握手的核心环节。Client 和 Server 在 <code>initialize</code> 阶段各自声明自己支持的能力集合，双方取交集后确定可用功能。这意味着 Client 可以声明支持 <code>roots</code>（文件系统根目录）和 <code>sampling</code>（让 Server 请求 LLM 推理），Server 可以声明支持 <code>tools</code>、<code>resources</code>、<code>prompts</code> 中的一项或多项。协商完成后，双方只使用对方支持的能力，避免调用不存在的功能导致错误。</p>
+
+<div class="card">
+  <div class="card-title">📊 MCP vs Function Calling vs OpenAPI 对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">维度</th>
+      <th style="text-align: left; padding: 10px 8px;">MCP</th>
+      <th style="text-align: left; padding: 10px 8px;">Function Calling</th>
+      <th style="text-align: left; padding: 10px 8px;">OpenAPI</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">设计目标</td>
+        <td style="padding: 10px 8px;">Agent 与工具/数据连接</td>
+        <td style="padding: 10px 8px;">LLM 调用外部函数</td>
+        <td style="padding: 10px 8px;">REST API 描述规范</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">通信协议</td>
+        <td style="padding: 10px 8px;">JSON-RPC 2.0</td>
+        <td style="padding: 10px 8px;">LLM 厂商自定义</td>
+        <td style="padding: 10px 8px;">HTTP/HTTPS</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">运行方式</td>
+        <td style="padding: 10px 8px;">独立 Server 进程</td>
+        <td style="padding: 10px 8px;">框架内嵌函数</td>
+        <td style="padding: 10px 8px;">独立 HTTP 服务</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">能力发现</td>
+        <td style="padding: 10px 8px;">运行时动态发现</td>
+        <td style="padding: 10px 8px;">编译时静态注册</td>
+        <td style="padding: 10px 8px;">静态文档/Swagger UI</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">支持能力类型</td>
+        <td style="padding: 10px 8px;">Tools + Resources + Prompts</td>
+        <td style="padding: 10px 8px;">仅函数调用</td>
+        <td style="padding: 10px 8px;">HTTP 端点</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">双向通信</td>
+        <td style="padding: 10px 8px;">✅ 支持（通知/采样）</td>
+        <td style="padding: 10px 8px;">❌ 单向调用</td>
+        <td style="padding: 10px 8px;">❌ 请求-响应</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">跨框架复用</td>
+        <td style="padding: 10px 8px;">✅ 写一次到处用</td>
+        <td style="padding: 10px 8px;">❌ 每框架重写</td>
+        <td style="padding: 10px 8px;">⚠️ 需手动适配</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">MCP 协议栈分层架构</h3>
+
+<p>MCP 协议采用分层设计，每一层职责清晰：传输层负责字节流的收发，协议层负责 JSON-RPC 消息的序列化与路由，能力层负责 Tools/Resources/Prompts 的具体语义处理。这种分层设计使得 MCP 可以在不改变上层逻辑的前提下，灵活替换传输方式（stdio → SSE → WebSocket）。</p>
+
+<div style="text-align: center; margin: 24px 0;">
+<svg width="680" height="420" viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%;">
+  <defs>
+    <style>
+      .layer-bg { rx: 8; }
+      .layer-text { font-family: -apple-system, sans-serif; font-size: 14px; fill: #fff; font-weight: 600; }
+      .sub-text { font-family: -apple-system, sans-serif; font-size: 11px; fill: #fff; opacity: 0.85; }
+      @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      .anim-1 { animation: fadeInDown 0.6s ease-out 0.2s both; }
+      .anim-2 { animation: fadeInDown 0.6s ease-out 0.5s both; }
+      .anim-3 { animation: fadeInDown 0.6s ease-out 0.8s both; }
+      .anim-4 { animation: fadeInDown 0.6s ease-out 1.1s both; }
+      .anim-5 { animation: fadeInDown 0.6s ease-out 1.4s both; }
+    </style>
+  </defs>
+  <!-- Title -->
+  <text x="340" y="28" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="700" fill="#333">MCP 协议栈分层架构</text>
+  <!-- Layer 1: Application Layer -->
+  <g class="anim-1">
+    <rect x="80" y="50" width="520" height="60" rx="8" fill="#6366f1" />
+    <text x="340" y="78" text-anchor="middle" class="layer-text">应用层 (Application Layer)</text>
+    <text x="340" y="97" text-anchor="middle" class="sub-text">Agent / LLM — 决策调用、结果处理</text>
+  </g>
+  <!-- Layer 2: Capability Layer -->
+  <g class="anim-2">
+    <rect x="80" y="125" width="520" height="60" rx="8" fill="#8b5cf6" />
+    <text x="340" y="153" text-anchor="middle" class="layer-text">能力层 (Capability Layer)</text>
+    <text x="340" y="172" text-anchor="middle" class="sub-text">Tools · Resources · Prompts — 三大能力的语义处理</text>
+  </g>
+  <!-- Layer 3: Protocol Layer -->
+  <g class="anim-3">
+    <rect x="80" y="200" width="520" height="60" rx="8" fill="#ec4899" />
+    <text x="340" y="228" text-anchor="middle" class="layer-text">协议层 (Protocol Layer)</text>
+    <text x="340" y="247" text-anchor="middle" class="sub-text">JSON-RPC 2.0 — 消息序列化、请求路由、能力协商</text>
+  </g>
+  <!-- Layer 4: Transport Layer -->
+  <g class="anim-4">
+    <rect x="80" y="275" width="520" height="60" rx="8" fill="#f59e0b" />
+    <text x="340" y="303" text-anchor="middle" class="layer-text">传输层 (Transport Layer)</text>
+    <text x="340" y="322" text-anchor="middle" class="sub-text">stdio · SSE · WebSocket — 字节流收发</text>
+  </g>
+  <!-- Arrows -->
+  <line x1="340" y1="110" x2="340" y2="125" stroke="#999" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="340" y1="185" x2="340" y2="200" stroke="#999" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="340" y1="260" x2="340" y2="275" stroke="#999" stroke-width="2" marker-end="url(#arrow)" />
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#999" />
+    </marker>
+  </defs>
+  <!-- Labels on sides -->
+  <text x="60" y="85" text-anchor="end" font-size="11" fill="#666">Client</text>
+  <text x="60" y="160" text-anchor="end" font-size="11" fill="#666">双方</text>
+  <text x="60" y="235" text-anchor="end" font-size="11" fill="#666">双方</text>
+  <text x="60" y="310" text-anchor="end" font-size="11" fill="#666">Client/Server</text>
+  <text x="620" y="85" text-anchor="start" font-size="11" fill="#666">Host</text>
+  <text x="620" y="160" text-anchor="start" font-size="11" fill="#666">共享</text>
+  <text x="620" y="235" text-anchor="start" font-size="11" fill="#666">共享</text>
+  <text x="620" y="310" text-anchor="start" font-size="11" fill="#666">两端</text>
+  <!-- Bottom note -->
+  <text x="340" y="370" text-anchor="middle" font-size="12" fill="#888">每层可独立替换 · 传输层从 stdio 换成 SSE 不影响上层逻辑</text>
+</svg>
+</div>
+
+<h3 class="sub-heading">MCP 协议握手流程</h3>
+
+<p>下图动态展示了 MCP 客户端与服务器之间从建立连接到调用工具的完整握手流程。整个过程严格遵循 JSON-RPC 2.0 规范，每个步骤都有明确的请求和响应格式。</p>
+
+<div style="text-align: center; margin: 24px 0;">
+<svg width="680" height="380" viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%;">
+  <defs>
+    <style>
+      @keyframes drawLine { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      .msg-line { stroke-dasharray: 300; animation: drawLine 1s ease-out both; }
+      .msg-1 { animation-delay: 0.3s; }
+      .msg-2 { animation-delay: 1.0s; }
+      .msg-3 { animation-delay: 1.7s; }
+      .msg-4 { animation-delay: 2.4s; }
+      .msg-text { animation: fadeIn 0.5s ease-out both; font-family: -apple-system, sans-serif; font-size: 12px; fill: #333; }
+      .msg-text-1 { animation-delay: 0.5s; }
+      .msg-text-2 { animation-delay: 1.2s; }
+      .msg-text-3 { animation-delay: 1.9s; }
+      .msg-text-4 { animation-delay: 2.6s; }
+    </style>
+    <marker id="arrowR" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#6366f1" />
+    </marker>
+    <marker id="arrowL" markerWidth="10" markerHeight="10" refX="1" refY="5" orient="auto">
+      <path d="M10,0 L0,5 L10,10 Z" fill="#ec4899" />
+    </marker>
+  </defs>
+  <!-- Title -->
+  <text x="340" y="28" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="700" fill="#333">MCP 协议握手流程</text>
+  <!-- Client box -->
+  <rect x="60" y="50" width="160" height="300" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+  <text x="140" y="75" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#6366f1">MCP Client</text>
+  <!-- Server box -->
+  <rect x="460" y="50" width="160" height="300" rx="8" fill="#fdf2f8" stroke="#ec4899" stroke-width="2" />
+  <text x="540" y="75" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#ec4899">MCP Server</text>
+  <!-- Lifelines -->
+  <line x1="140" y1="85" x2="140" y2="340" stroke="#6366f1" stroke-width="1" stroke-dasharray="4,4" />
+  <line x1="540" y1="85" x2="540" y2="340" stroke="#ec4899" stroke-width="1" stroke-dasharray="4,4" />
+  <!-- Message 1: initialize → -->
+  <line class="msg-line msg-1" x1="140" y1="110" x2="535" y2="110" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowR)" />
+  <text class="msg-text msg-text-1" x="340" y="103" text-anchor="middle">① initialize (协议版本 + 客户端能力)</text>
+  <!-- Message 2: ← result -->
+  <line class="msg-line msg-2" x1="540" y1="155" x2="145" y2="155" stroke="#ec4899" stroke-width="2" marker-end="url(#arrowL)" />
+  <text class="msg-text msg-text-2" x="340" y="148" text-anchor="middle">② result (服务器能力 + 版本信息)</text>
+  <!-- Message 3: initialized notification → -->
+  <line class="msg-line msg-3" x1="140" y1="200" x2="535" y2="200" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowR)" stroke-dasharray="5,3" />
+  <text class="msg-text msg-text-3" x="340" y="193" text-anchor="middle">③ notifications/initialized (确认)</text>
+  <!-- Message 4: tools/list → -->
+  <line class="msg-line msg-4" x1="140" y1="255" x2="535" y2="255" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowR)" />
+  <text class="msg-text msg-text-4" x="340" y="248" text-anchor="middle">④ tools/list → ⑤ tools/call (实际调用)</text>
+  <!-- Phase labels -->
+  <rect x="40" y="95" width="15" height="75" rx="3" fill="#6366f1" opacity="0.3" />
+  <text x="30" y="135" text-anchor="middle" font-size="10" fill="#6366f1" transform="rotate(-90 30 135)">握手阶段</text>
+  <rect x="40" y="185" width="15" height="30" rx="3" fill="#8b5cf6" opacity="0.3" />
+  <text x="30" y="200" text-anchor="middle" font-size="10" fill="#8b5cf6" transform="rotate(-90 30 200)">确认</text>
+  <rect x="40" y="240" width="15" height="85" rx="3" fill="#f59e0b" opacity="0.3" />
+  <text x="30" y="285" text-anchor="middle" font-size="10" fill="#f59e0b" transform="rotate(-90 30 285)">调用阶段</text>
+</svg>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <strong>握手三阶段</strong>：<strong>初始化阶段</strong>（① ②）—— Client 发送 <code>initialize</code> 请求，携带自己支持的协议版本和能力；Server 返回自己支持的能力集合。<strong>确认阶段</strong>（③）—— Client 发送 <code>notifications/initialized</code> 通知，表示握手完成。<strong>调用阶段</strong>（④ ⑤）—— 双方开始正常的方法调用，如 <code>tools/list</code>、<code>tools/call</code>、<code>resources/read</code> 等。
+</div>
+
+<!-- ===== 6.9 MCP Gateway与路由 ===== -->
+<h2 class="section-heading">6.9 MCP Gateway 与路由</h2>
+
+<p>当 Agent 需要同时连接多个 MCP Server 时，直接管理每个连接会变得复杂：不同 Server 的健康状态、版本兼容、负载分布都需要逐一处理。<strong>MCP Gateway</strong> 正是为了解决这个问题而诞生的——它作为统一入口，代理所有 MCP Server 的连接和调度。</p>
+
+<div class="quote">
+  MCP Gateway 就像 Agent 世界中的 API Gateway——一个入口管所有后端，路由、鉴权、限流、负载均衡一站搞定。
+</div>
+
+<h3 class="sub-heading">Gateway 的核心职责</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">统一接入</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Agent 只需连接 Gateway 一个端点，Gateway 代理转发到所有后端 MCP Server。连接数从 N 降到 1。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">智能路由</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        根据工具类型、服务优先级、负载情况选择最优 Server。避免单点过载，提升响应速度。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">安全管控</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        集中鉴权、限流、审计日志。Agent 不直连后端 Server，安全边界统一收口到 Gateway。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Gateway 架构流程图</h3>
+
+<div class="flowchart-container" id="mcpGateway"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpGateway', {
+    nodes: [
+      { id: 'agent', label: 'MCP Client\n(Agent)', type: 'start' },
+      { id: 'gateway', label: 'MCP Gateway\n(统一入口)', type: 'decision' },
+      { id: 'router', label: '路由引擎\n(策略选择)', type: 'process' },
+      { id: 'auth', label: '安全管控\n(鉴权/限流)', type: 'process' },
+      { id: 'server1', label: '文件系统\nMCP Server', type: 'tool' },
+      { id: 'server2', label: '数据库\nMCP Server', type: 'tool' },
+      { id: 'server3', label: 'API\nMCP Server', type: 'tool' },
+      { id: 'server4', label: '云存储\nMCP Server', type: 'tool' }
+    ],
+    edges: [
+      { from: 'agent', to: 'gateway' },
+      { from: 'gateway', to: 'router' },
+      { from: 'gateway', to: 'auth' },
+      { from: 'router', to: 'server1' },
+      { from: 'router', to: 'server2' },
+      { from: 'router', to: 'server3' },
+      { from: 'router', to: 'server4' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">三种路由策略</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">策略</th>
+        <th style="text-align: left; padding: 10px 8px;">原理</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">按工具类型路由</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">根据工具名称/类别，将请求分发到对应专长的 Server</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工具职责明确、分类清晰</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">search_* → 搜索Server；db_* → 数据库Server</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">按服务优先级路由</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">配置 Server 优先级列表，优先使用高优先级 Server，降级到低优先级</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">有主备关系的 Server 集群</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">优先官方Server → 降级到社区Server</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">按负载均衡路由</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">根据各 Server 的当前负载、响应时间动态选择最空闲的 Server</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">同质 Server 多实例部署</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">3个相同DB Server，轮询/最少连接分配</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">配置 MCP Gateway</h3>
+
+<div class="code-block">
+  <span class="code-label">YAML: MCP Gateway 配置示例</span>
+<pre># mcp-gateway-config.yaml
+gateway:
+  name: "my-agent-gateway"
+  listen: "0.0.0.0:8080"     # Gateway 监听地址
+  
+  # 路由策略配置
+  routing:
+    strategy: "tool-type"     # tool-type | priority | load-balance
+    
+    # 按工具类型路由规则
+    tool_type_rules:
+      - pattern: "search_*"
+        servers: ["search-server-primary", "search-server-backup"]
+      - pattern: "db_*"
+        servers: ["postgres-server", "mysql-server"]
+      - pattern: "file_*"
+        servers: ["filesystem-server"]
+      - pattern: "*"
+        servers: ["general-server"]  # 默认兜底
+    
+    # 按优先级路由（tool-type 匹配多Server时）
+    priority_rules:
+      search_server_primary: 1   # 最高优先级
+      search_server_backup: 2    # 降级备选
+      postgres_server: 1
+      mysql_server: 2
+    
+    # 负载均衡配置（相同Server多实例时）
+    load_balance:
+      algorithm: "least-connections"  # round-robin | least-connections | weighted
+      health_check_interval: 30       # 健康检查间隔（秒）
+      retry_count: 2                  # 失败重试次数
+  
+  # 后端 MCP Server 列表
+  servers:
+    - name: "search-server-primary"
+      transport: "sse"
+      url: "http://search-server:3001/mcp"
+      timeout: 5000
+    - name: "search-server-backup"
+      transport: "sse"
+      url: "http://search-server-backup:3001/mcp"
+      timeout: 5000
+    - name: "postgres-server"
+      transport: "stdio"
+      command: "python"
+      args: ["postgres_mcp_server.py"]
+    - name: "filesystem-server"
+      transport: "stdio"
+      command: "npx"
+      args: ["-y", "@anthropic/mcp-server-filesystem", "/home/user/docs"]
+    - name: "general-server"
+      transport: "sse"
+      url: "http://general-server:3002/mcp"
+      timeout: 10000</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <strong>关键设计</strong>：Gateway 配置支持三种路由策略可组合使用——先按工具类型分流到对应 Server 组，再在组内按优先级或负载均衡选择具体实例。健康检查确保自动剔除不可用 Server，重试机制保障请求成功率。
+</div>
+
+<!-- ===== 6.10 MCP市场与Skills生态 ===== -->
+<h2 class="section-heading">6.10 MCP 市场与 Skills 生态</h2>
+
+<p>MCP 不仅仅是技术协议，它催生了一个完整的<strong>工具生态系统</strong>。截至 2025-2026 年，MCP Server 的月下载量已突破 <strong>9700 万至 1.1 亿</strong>次，Skills（技能包）生态超过 <strong>8.5 万个</strong>。这意味着 MCP 正在从技术标准走向产业生态——就像 USB-C 不只是接口规格，更催生了整个配件市场。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>数据亮点</strong>：MCP 月下载量 9700 万-1.1 亿 | Skills 生态超 8.5 万个 | 主要平台 SkillsMP（40万+ skills）、Skills.sh、ClawHub、LobeHub Skills。
+</div>
+
+<h3 class="sub-heading">三大架构角色</h3>
+
+<p>MCP 生态中，Agent、Skills、MCP Server 三者形成清晰的分工体系：</p>
+
+<div class="card">
+  <div class="card-title">🏗️ Agent × Skills × MCP 三大架构角色</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">Agent 决策中枢</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Agent 是大脑——负责理解用户意图、规划任务步骤、选择合适的 Skills 和 MCP Server 执行。类似公司的 CEO，决策但不亲手执行。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">Skills 专业技能库</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        Skills 是专业能力包——封装了特定领域的知识、流程和工具调用组合。如「PDF处理技能」「邮件技能」「数据分析技能」。类似公司的专业团队。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">MCP 标准化接口</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        MCP Server 是标准化工具接口——提供具体的原子能力（搜索、读写、计算）。Skills 组合多个 MCP Server 的原子能力完成复杂任务。类似公司的基础设施部门。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <strong>层级关系</strong>：Agent 调用 Skills → Skills 组合 MCP Server → MCP Server 执行原子操作。三层分工清晰：决策层、编排层、执行层。这与传统软件架构中的 Controller → Service → DAO 分层逻辑一致。
+</div>
+
+<h3 class="sub-heading">主要 Skills 市场平台</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">平台</th>
+        <th style="text-align: left; padding: 10px 8px;">Skills 数量</th>
+        <th style="text-align: left; padding: 10px 8px;">特色</th>
+        <th style="text-align: left; padding: 10px 8px;">定位</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">SkillsMP</td>
+        <td style="padding: 10px 8px;">40 万+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">品类最全，覆盖办公、开发、数据分析等全场景</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">综合型 Skills 超市</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Skills.sh</td>
+        <td style="padding: 10px 8px;">数万+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者友好，CLI 一键安装，强调可复用性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者工具集市</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">ClawHub</td>
+        <td style="padding: 10px 8px;">数万+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">OpenClaw 官方市场，与 OpenClaw Agent 深度集成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 原生 Skills 市场</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">LobeHub Skills</td>
+        <td style="padding: 10px 8px;">数千+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源社区驱动，与 LobeChat 深度整合</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源 Skills 社区</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">市场生态流程图</h3>
+
+<p>MCP Skills 市场的运作遵循一个清晰的三方流转模型：开发者上架 → 平台审核 → Agent 安装使用。这个流程与传统 App Store 模式有相似之处，但本质区别在于 Skills 是<strong>能力包</strong>而非独立应用。</p>
+
+<div class="flowchart-container" id="mcpMarket"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpMarket', {
+    nodes: [
+      { id: 'dev', label: '开发者\n(Skills/MCP Server)', type: 'start' },
+      { id: 'submit', label: '上架提交\n(代码+文档+配置)', type: 'process' },
+      { id: 'review', label: '平台审核\n(安全+质量+兼容)', type: 'decision' },
+      { id: 'reject', label: '审核拒绝\n(不合规/低质量)', type: 'end' },
+      { id: 'publish', label: '上架发布\n(Skills市场)', type: 'process' },
+      { id: 'agent', label: 'Agent\n(安装使用)', type: 'tool' },
+      { id: 'feedback', label: '使用反馈\n(评分+改进)', type: 'process' }
+    ],
+    edges: [
+      { from: 'dev', to: 'submit' },
+      { from: 'submit', to: 'review' },
+      { from: 'review', to: 'reject', label: '不合格' },
+      { from: 'review', to: 'publish', label: '合格' },
+      { from: 'publish', to: 'agent' },
+      { from: 'agent', to: 'feedback' },
+      { from: 'feedback', to: 'dev' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">与传统 App Store 模式的对比</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">维度</th>
+        <th style="text-align: left; padding: 10px 8px;">App Store 模式</th>
+        <th style="text-align: left; padding: 10px 8px;">Skills 市场模式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">交付物</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">独立应用（完整UI+逻辑+数据）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">能力包（知识+流程+工具组合）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">运行方式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">独立进程，用户直接操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 内嵌调用，用户间接使用</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">组合性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">应用间组合困难（沙箱隔离）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Skills 可自由组合编排（共享Agent上下文）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">接口标准</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">平台SDK（iOS SDK/Android SDK）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">MCP 协议（跨平台统一标准）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">审核重点</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">隐私合规、内容安全、用户体验</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">权限边界、数据安全、MCP 兼容性</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">商业模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">付费下载/订阅/广告</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源免费/企业定制/API调用计费</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <strong>本质区别</strong>：App Store 卖的是<strong>产品</strong>——用户直接使用的完整应用；Skills 市场卖的是<strong>能力</strong>——Agent 组合使用的专业技能包。前者面向终端用户，后者面向 Agent（代理用户）。这意味着 Skills 市场更注重<strong>可组合性</strong>和<strong>标准化接口</strong>，而非独立的用户体验。
+</div>
+
+<!-- ===== 6.11 MCP安全与权限管理 ===== -->
+<h2 class="section-heading">6.11 MCP 安全与权限管理</h2>
+
+<p>MCP Server 拥有强大的能力——读取文件、访问数据库、调用 API、发送邮件。这些能力如果不受管控，可能成为安全漏洞的入口。<strong>MCP 安全与权限管理</strong>的核心目标是：在赋予 Agent 能力的同时，划定明确的安全边界，确保每一次工具调用都在可控范围内。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <strong>风险警示</strong>：一个没有权限管控的 MCP Server 就像一扇没有锁的门。恶意 Prompt 可以通过 Agent 间接调用 MCP Server 删除文件、泄露数据、执行危险操作。权限管理不是可选的，是必须的。
+</div>
+
+<h3 class="sub-heading">MCP Server 的权限边界</h3>
+
+<p>每个 MCP Server 应声明自己的权限边界——它能做什么、不能做什么、在什么条件下可以做。这通过 Server 的 <code>capabilities</code> 声明和 <code>permissions</code> 配置来实现。</p>
+
+<div class="card">
+  <div class="card-title">🔒 四类权限边界</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">权限类型</th>
+        <th style="text-align: left; padding: 10px 8px;">含义</th>
+        <th style="text-align: left; padding: 10px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">作用域限制（Scope）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">限定工具可操作的数据范围</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文件Server只能访问 /home/user/docs 目录</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">操作类型限制（Action）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">限定工具可执行的操作类型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">数据库Server只允许SELECT，禁止DROP/DELETE</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">调用频率限制（Rate Limit）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">限定工具的调用频率上限</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">邮件Server每分钟最多发送5封</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">敏感操作标记（Sensitive）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">标记需要二次确认的危险操作</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">删除文件、转账、发布内容需人工确认</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">OAuth 2.0 认证集成</h3>
+
+<p>当 MCP Server 需要访问第三方服务（如 GitHub、Google Drive、Slack）时，OAuth 2.0 是标准的认证授权机制。MCP 协议规范在 2025 年的更新中正式加入了 OAuth 2.0 支持——Client 与 Server 之间的握手可以包含 OAuth 认证流程。</p>
+
+<div class="flowchart-container" id="mcpOAuth"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpOAuth', {
+    nodes: [
+      { id: 'client', label: 'MCP Client\n(Agent)', type: 'start' },
+      { id: 'gateway_auth', label: 'OAuth 授权服务器\n(Authorization Server)', type: 'decision' },
+      { id: 'user', label: '用户\n(授权确认)', type: 'process' },
+      { id: 'token', label: 'Access Token\n(访问令牌)', type: 'process' },
+      { id: 'server', label: 'MCP Server\n(资源服务器)', type: 'tool' },
+      { id: 'resource', label: '第三方资源\n(GitHub/Drive/Slack)', type: 'end' }
+    ],
+    edges: [
+      { from: 'client', to: 'gateway_auth', label: '1.请求授权' },
+      { from: 'gateway_auth', to: 'user', label: '2.用户登录确认' },
+      { from: 'user', to: 'gateway_auth', label: '3.授权同意' },
+      { from: 'gateway_auth', to: 'token', label: '4.颁发Token' },
+      { from: 'token', to: 'client', label: '5.返回Token' },
+      { from: 'client', to: 'server', label: '6.携带Token调用' },
+      { from: 'server', to: 'resource', label: '7.用Token访问资源' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="code-block">
+  <span class="code-label">MCP Server: OAuth 2.0 认证配置</span>
+<pre># OAuth 2.0 配置示例（MCP Server 端）
+oauth:
+  enabled: true
+  provider: "github"                    # 认证提供方
+  
+  # GitHub OAuth 配置
+  github:
+    client_id: "Ov23li1234567890"
+    client_secret: "${GITHUB_CLIENT_SECRET}"  # 从环境变量读取
+    authorization_url: "https://github.com/login/oauth/authorize"
+    token_url: "https://github.com/login/oauth/access_token"
+    scopes:
+      - "repo"           # 仓库读写权限
+      - "read:org"       # 组织信息读取
+      - "user:email"     # 用户邮箱读取
+  
+  # Token 生命周期管理
+  token:
+    refresh_enabled: true               # 支持刷新Token
+    expiry: 3600                         # Token有效期（秒）
+    refresh_expiry: 86400                # 刷新Token有效期
+  
+  # 权限映射：OAuth Scope → MCP 工具权限
+  scope_mapping:
+    "repo":
+      - "tools/repo_read"
+      - "tools/repo_write"
+    "read:org":
+      - "tools/org_list"
+      - "tools/org_member_read"
+    "user:email":
+      - "tools/user_info"</pre>
+</div>
+
+<h3 class="sub-heading">工具调用审计日志</h3>
+
+<p>审计日志是 MCP 安全的重要保障——每一次工具调用都应被完整记录，包括调用者、时间、工具名、参数、返回结果。这不仅用于事后追溯，还能发现异常调用模式（如频繁调用敏感工具、参数包含可疑内容）。</p>
+
+<div class="code-block">
+  <span class="code-label">MCP Gateway: 审计日志配置与格式</span>
+<pre># 审计日志配置
+audit:
+  enabled: true
+  storage: "postgresql"             # postgresql | elasticsearch | file
+  retention_days: 90                # 日志保留天数
+  
+  # 记录粒度
+  log_level: "full"                 # minimal | standard | full
+  # minimal: 仅记录工具名和调用时间
+  # standard: 记录工具名、参数摘要、返回状态
+  # full: 记录完整参数、完整返回、耗时、调用链
+  
+  # 敏感字段脱敏
+  sanitization:
+    fields: ["password", "token", "secret", "api_key", "credit_card"]
+    strategy: "mask"                # mask | hash | remove
+    mask_pattern: "***REDACTED***"
+
+# ===== 审计日志条目格式 =====
+{
+  "audit_id": "aud-20250701-001",
+  "timestamp": "2025-07-01T10:30:00.000Z",
+  "client_info": {
+    "agent_name": "my-assistant",
+    "session_id": "sess-abc123",
+    "user_id": "user-001"
+  },
+  "tool_call": {
+    "server_name": "github-mcp-server",
+    "tool_name": "create_issue",
+    "arguments": {
+      "repo": "org/main-project",
+      "title": "Bug: login page crashes",
+      "body": "When clicking login button..."
+    },
+    "result_status": "success",
+    "result_summary": "Created issue #1234"
+  },
+  "security": {
+    "oauth_scope_used": ["repo"],
+    "sensitive_flag": false,
+    "human_confirmed": false,
+    "rate_limit_remaining": 48
+  },
+  "performance": {
+    "latency_ms": 234,
+    "retry_count": 0
+  }
+}</pre>
+</div>
+
+<h3 class="sub-heading">敏感操作的二次确认机制</h3>
+
+<p>某些 MCP 工具的操作后果是不可逆的——删除文件、转账、发布内容、修改数据库。这些操作需要<strong>二次确认机制</strong>：Agent 调用工具时，Gateway 或 Server 拦截请求，暂停执行，向用户发送确认请求，只有用户明确同意后才继续执行。</p>
+
+<div class="flowchart-container" id="mcpConfirm"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('mcpConfirm', {
+    nodes: [
+      { id: 'agent', label: 'Agent\n(发起调用)', type: 'start' },
+      { id: 'gateway', label: 'Gateway/Server\n(拦截判断)', type: 'decision' },
+      { id: 'normal', label: '普通操作\n(直接执行)', type: 'tool' },
+      { id: 'confirm', label: '二次确认\n(暂停→通知用户)', type: 'process' },
+      { id: 'user_approve', label: '用户确认\n(同意执行)', type: 'process' },
+      { id: 'user_reject', label: '用户拒绝\n(取消操作)', type: 'end' },
+      { id: 'execute', label: '执行操作\n(返回结果)', type: 'tool' }
+    ],
+    edges: [
+      { from: 'agent', to: 'gateway' },
+      { from: 'gateway', to: 'normal', label: '非敏感' },
+      { from: 'gateway', to: 'confirm', label: '敏感操作' },
+      { from: 'confirm', to: 'user_approve' },
+      { from: 'confirm', to: 'user_reject' },
+      { from: 'user_approve', to: 'execute' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="code-block">
+  <span class="code-label">YAML: 敏感操作二次确认配置</span>
+<pre># 敏感操作二次确认配置
+confirmation:
+  enabled: true
+  
+  # 需要二次确认的工具列表
+  sensitive_tools:
+    - name: "file_delete"
+      level: "critical"            # critical | high | medium
+      message: "即将删除文件，此操作不可恢复。是否确认？"
+      timeout: 300                  # 确认超时（秒），超时自动取消
+      require_explicit: true        # 需要用户明确输入"确认"而非默认同意
+    
+    - name: "db_drop_table"
+      level: "critical"
+      message: "即将删除数据库表，所有数据将丢失。是否确认？"
+      timeout: 300
+      require_explicit: true
+    
+    - name: "send_email"
+      level: "high"
+      message: "即将发送邮件到 {{recipients}}，是否确认？"
+      timeout: 60
+    
+    - name: "git_push"
+      level: "medium"
+      message: "即将推送到 {{remote}}/{{branch}}，是否确认？"
+      timeout: 30
+    
+    - name: "payment_transfer"
+      level: "critical"
+      message: "即将转账 {{amount}} 元至 {{account}}，是否确认？"
+      timeout: 300
+      require_explicit: true
+    
+  # 通知渠道配置
+  notification:
+    channels: ["web_push", "email", "sms"]
+    # critical级别: web_push + email + sms 全渠道通知
+    # high级别: web_push + email
+    # medium级别: web_push
+    critical_channels: ["web_push", "email", "sms"]
+    high_channels: ["web_push", "email"]
+    medium_channels: ["web_push"]</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <strong>安全三原则</strong>：<strong>① 最小权限原则</strong>——每个 MCP Server 只申请它必需的权限，不多给一个。<strong>② 默认拒绝原则</strong>——未经明确授权的操作默认拒绝，而非默认允许。<strong>③ 可审计原则</strong>——每一次调用都有日志，每一次异常都可追溯。这三条原则构成了 MCP 安全的基石。
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<!-- ===== 6.12 CLI 工具：被忽视的 Agent 手脚 ===== -->
+<h2 class="section-heading">6.12 CLI 工具：被忽视的 Agent 手脚</h2>
+
+<p>讲到 Agent 的工具系统，大多数教程只提两种：Function Calling（自定义工具）和 MCP（标准化协议）。但生产环境中还有第三种——<strong>CLI 工具</strong>。你系统中已安装的 git、docker、kubectl、curl、jq……这些都可以成为 Agent 的手脚，零开发成本。</p>
+
+<h3 class="sub-heading">6.12.1 三种手脚的对比</h3>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>Function Calling</th><th>MCP Server</th><th>CLI 工具</th></tr>
+</thead>
+<tbody>
+<tr><td>开发成本</td><td>中（写函数 + Schema）</td><td>高（写 Server + 协议）</td><td><strong>零</strong>（系统已有）</td></tr>
+<tr><td>发现机制</td><td>手动注册</td><td>手动注册</td><td><strong>自动扫描 PATH</strong></td></tr>
+<tr><td>安全控制</td><td>函数级权限</td><td>协议内置权限</td><td>依赖权限系统（五层递进）</td></tr>
+<tr><td>调用方式</td><td>结构化函数调用</td><td>JSON-RPC 2.0</td><td>通过 Shell 执行</td></tr>
+<tr><td>适用场景</td><td>自定义业务工具</td><td>标准化跨平台工具</td><td>已有系统工具</td></tr>
+<tr><td>典型示例</td><td>send_email(to, subject)</td><td>database.query(sql)</td><td>git, docker, kubectl, curl</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>一个生产级 Agent 通常同时使用三种手脚：Function Calling 处理业务逻辑，MCP 连接标准化服务，CLI 工具操作基础设施。三者互补，不是替代关系。</p>
+
+<h3 class="sub-heading">6.12.2 CLI 工具注册系统设计</h3>
+
+<p>WaLiCode 的 cliRegistryService 实现了 CLI 工具的自动发现和管理：</p>
+
+<div class="code-block"><pre>interface CLIRegistryEntry {
+  name: string;          // 工具名，如 'git'
+  command: string;       // 实际命令，如 'git'
+  description: string;   // 描述，用于 Prompt 注入
+  category: string;      // 分类：version-control, container, network...
+  enabled: boolean;      // 用户可启用/禁用
+  keywords: string[];    // 关键词，用于工具搜索
+  safeSubcommands: string[]; // 安全子命令白名单
+  dangerousSubcommands: string[]; // 危险子命令黑名单
+}
+
+class CLIRegistryService {
+  private registry: Map&lt;string, CLIRegistryEntry&gt; = new Map();
+
+  // 扫描 PATH 发现已安装的 CLI 工具
+  async scanAndRegister() {
+    const knownTools = [
+      { name: 'git', category: 'version-control',
+        description: '版本控制工具',
+        safeSubcommands: ['status', 'log', 'diff', 'show', 'branch'],
+        dangerousSubcommands: ['push', 'reset --hard', 'clean -fd'] },
+      { name: 'docker', category: 'container',
+        description: '容器管理工具',
+        safeSubcommands: ['ps', 'logs', 'inspect', 'images'],
+        dangerousSubcommands: ['rm', 'rmi', 'system prune'] },
+      { name: 'kubectl', category: 'container',
+        description: 'Kubernetes 集群管理',
+        safeSubcommands: ['get', 'describe', 'logs', 'top'],
+        dangerousSubcommands: ['delete', 'apply', 'exec'] },
+      { name: 'curl', category: 'network',
+        description: 'HTTP 请求工具',
+        safeSubcommands: [],
+        dangerousSubcommands: [] },
+      { name: 'jq', category: 'text-processing',
+        description: 'JSON 处理工具',
+        safeSubcommands: [],
+        dangerousSubcommands: [] },
+    ];
+
+    for (const tool of knownTools) {
+      // 检查工具是否安装
+      const installed = await checkCommandExists(tool.name);
+      if (installed) {
+        this.registry.set(tool.name, { ...tool, enabled: true });
+      }
+    }
+  }
+
+  async checkCommandExists(cmd: string): Promise&lt;boolean&gt; {
+    try {
+      await exec(`which ${cmd}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}</pre></div>
+
+<p>关键设计：</p>
+<ul>
+<li><strong>分类管理</strong>：version-control、container、network、text-processing 等分类，便于按类别启用/禁用</li>
+<li><strong>子命令级安全</strong>：不是简单地放行或拒绝整个工具，而是区分安全子命令（git status）和危险子命令（git push --force）</li>
+<li><strong>用户可控</strong>：每个工具可独立启用/禁用，用户可以禁用不希望 Agent 使用的工具</li>
+</ul>
+
+<h3 class="sub-heading">6.12.3 Prompt 注入机制</h3>
+
+<p>CLI 工具注册后，如何让 AI 知道这些工具的存在？答案是<strong>Prompt 注入</strong>——把工具列表注入 AI 的 system prompt：</p>
+
+<div class="code-block"><pre>function getCLIPromptText(registry: CLIRegistryService): string {
+  const tools = registry.getEnabledTools();
+  if (tools.length === 0) return '';
+
+  const toolList = tools.map(t =&gt; {
+    const safe = t.safeSubcommands.length &gt; 0
+      ? ` (安全子命令: ${t.safeSubcommands.join(', ')})`
+      : '';
+    return `- ${t.name}: ${t.description}${safe}`;
+  }).join('\n');
+
+  return `你可以使用以下 CLI 工具（通过 run_terminal_cmd 调用）：
+${toolList}
+
+调用示例：使用 run_terminal_cmd(command="git status") 查看 Git 状态。
+注意：危险操作（如 git push, docker rm）需要用户确认。`;
+}
+
+// 注入到 system prompt
+const systemPrompt = basePrompt + '\n\n' + getCLIPromptText(registry);
+</pre></div>
+
+<p>AI 看到 Prompt 后，在需要时自然会调用这些工具。比如用户说"看看当前有哪些容器在运行"，AI 会调用 <code>run_terminal_cmd(command="docker ps")</code>。</p>
+
+<h3 class="sub-heading">6.12.4 工具懒加载三层策略</h3>
+
+<p>CLI 工具越多，Prompt 越长，token 消耗越大。WaLiCode 用<strong>三层懒加载策略</strong>解决这个矛盾：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>层级</th><th>策略</th><th>触发条件</th><th>示例</th><th>Token 消耗</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>第一层</strong></td><td>始终加载</td><td>alwaysLoad = true</td><td>read_file, GrepTool, AskUserQuestionTool</td><td>始终消耗</td></tr>
+<tr><td><strong>第二层</strong></td><td>条件激活</td><td>shouldActivate() 返回 true</td><td>SSH 工具（有连接时才加载）</td><td>满足条件时消耗</td></tr>
+<tr><td><strong>第三层</strong></td><td>按需唤醒</td><td>AI 主动搜索并激活</td><td>罕见工具（Java 反编译等）</td><td>仅使用时消耗</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code-block"><pre>// 三层懒加载示例
+const toolRegistry = [
+  // 第一层：始终加载（核心工具）
+  { name: 'read_file', alwaysLoad: true,
+    shouldActivate: () =&gt; true,
+    keywords: ['read', 'file', 'open'],
+    briefDescription: '读取文件内容' },
+
+  // 第二层：条件激活（按需加载）
+  { name: 'ssh_execute_command', alwaysLoad: false,
+    shouldActivate: () =&gt; {
+      // 只在有 SSH 连接时激活
+      const sshStore = useSshConnectionStore.getState();
+      return sshStore.sessions.length &gt; 0;
+    },
+    keywords: ['ssh', 'remote', 'execute'],
+    briefDescription: '执行远程命令' },
+
+  // 第三层：按需唤醒（AI 搜索激活）
+  { name: 'read_class_file', alwaysLoad: false,
+    shouldActivate: () =&gt; false, // 默认不激活
+    keywords: ['java', 'class', 'decompile'],
+    briefDescription: '读取 Java .class 文件' },
+];
+
+// AI 通过 ToolSearchTool 搜索并激活第三层工具
+// ToolSearchTool 搜索关键词匹配 toolRegistry 中的 keywords 字段
+// 匹配后激活工具，加入当前可用工具列表</pre></div>
+
+<p>懒加载解决了"工具越多越聪明但越混乱"的悖论：</p>
+<ul>
+<li><strong>第一层</strong>保证核心能力始终可用（约 10-15 个工具，固定消耗）</li>
+<li><strong>第二层</strong>根据上下文动态扩展（如打开 SSH 连接后自动加载 SSH 工具）</li>
+<li><strong>第三层</strong>按需唤醒，只有 AI 主动搜索时才加载（如用户问 Java 反编译才加载 read_class_file）</li>
+</ul>
+
+<h3 class="sub-heading">6.12.5 决策框架：何时用 CLI vs MCP vs Function Calling</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"q","label":"需要新工具","type":"start"},{"id":"exists","label":"系统中已有\nCLI 工具?","type":"decision"},{"id":"cli","label":"用 CLI 工具\n(零开发, 注册即可)","type":"end"},{"id":"standard","label":"需要跨平台\n标准化?","type":"decision"},{"id":"mcp","label":"用 MCP Server\n(标准化, 可复用)","type":"end"},{"id":"custom","label":"用 Function Calling\n(自定义, 灵活)","type":"end"}],"edges":[{"from":"q","to":"exists"},{"from":"exists","to":"cli","label":"是"},{"from":"exists","to":"standard","label":"否"},{"from":"standard","to":"mcp","label":"是"},{"from":"standard","to":"custom","label":"否"}]}'></div>
+
+<p>决策原则：</p>
+<ul>
+<li><strong>优先用 CLI</strong>：如果系统已有对应工具（git/docker/kubectl），零成本直接用</li>
+<li><strong>跨平台用 MCP</strong>：如果工具需要在不同 Agent 框架间共享，MCP 提供标准化协议</li>
+<li><strong>业务逻辑用 Function Calling</strong>：如果是自定义业务工具（发邮件、查订单），直接写函数</li>
+</ul>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 实践建议</h4>
+<p>很多团队一上来就给 Agent 写 MCP Server，但其实大部分需求用 CLI 工具就能满足。先检查系统中是否已有对应工具，再考虑开发新的。CLI 工具的另一个优势是<strong>经过充分测试</strong>——git、docker 这些工具有千万级用户验证，比你新写的 MCP Server 可靠得多。</p>
+</div>
+
+<div class="summary-box">
+<div class="summary-title">🔗 6.12 核心要点</div>
+<p><strong>CLI 是第三种手脚</strong>：与 Function Calling、MCP 并列，零开发成本利用已有工具。</p>
+<p><strong>自动发现</strong>：扫描 PATH → 注册表 → Prompt 注入，AI 自动知道可用工具。</p>
+<p><strong>三层懒加载</strong>：始终加载 → 条件激活 → 按需唤醒，平衡能力和 token 消耗。</p>
+<p><strong>决策框架</strong>：优先 CLI → 跨平台用 MCP → 业务逻辑用 Function Calling。</p>
+</div>
+
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: MCP 解决了什么问题？</div>
+    <div class="qa-answer">
+      <strong>问题</strong>：N 个 Agent 框架 × M 个工具 = N×M 个适配代码。每个框架有自己的工具定义方式，工具开发者要为每个框架写适配。<br><br>
+      <strong>解决</strong>：MCP 提供统一标准协议。工具开发者只需实现一次 MCP Server，所有支持 MCP 的 Agent 都能用。N×M 变成 N+M。<br><br>
+      <strong>类比</strong>：USB-C 接口——一个标准，所有设备通用。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: MCP 的三个核心概念是什么？</div>
+    <div class="qa-answer">
+      <strong>① Tools（工具）</strong>：可被 LLM 调用的函数。如搜索、查询数据库。类似标准化的 Function Calling。<br>
+      <strong>② Resources（资源）</strong>：可被 LLM 读取的只读数据。如文件内容、数据库记录。<br>
+      <strong>③ Prompts（提示模板）</strong>：预定义的 Prompt 模板。Server 提供专业提示，Client 直接使用。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: MCP 的两种传输方式是什么？各有什么优缺点？</div>
+    <div class="qa-answer">
+      <strong>① stdio（标准输入输出）</strong>：Server 作为子进程运行。<br>
+      - 优点：简单、零网络开销<br>
+      - 缺点：不能跨机器<br>
+      - 适合：本地工具<br><br>
+      <strong>② SSE（Server-Sent Events）</strong>：HTTP + SSE 双向通信。<br>
+      - 优点：跨机器、可扩展<br>
+      - 缺点：有网络延迟<br>
+      - 适合：远程工具、云服务
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: MCP 和 Function Calling 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Function Calling</strong>：LLM 厂商定义的调用格式。每个框架要自己实现工具注册和执行。工具与框架耦合。<br>
+      <strong>MCP</strong>：跨框架的标准协议。工具作为独立 Server 运行，通过 JSON-RPC 通信。工具与框架解耦。<br><br>
+      <strong>关系</strong>：MCP 不是替代 Function Calling，而是标准化了工具的暴露方式。Agent 内部仍然可以用 Function Calling，但工具来源可以是任何 MCP Server。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: 谁在支持 MCP？它的发展前景如何？</div>
+    <div class="qa-answer">
+      <strong>Client 端</strong>：Claude Desktop、Cursor、Windsurf、Cline 等已支持。<br>
+      <strong>Server 端</strong>：100+ 官方/社区 Server，覆盖 GitHub、Slack、Google Drive、PostgreSQL 等常用服务。<br>
+      <strong>框架集成</strong>：LangChain、Spring AI、Google ADK、OpenClaw 等原生支持。<br><br>
+      MCP 正在成为 Agent 工具生态的事实标准。Anthropic 主导但开放，类似 HTTP 之于 Web。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: MCP 协议的核心设计理念是什么？</div>
+    <div class="qa-answer">
+      MCP 的核心设计理念是<strong>「M×N 问题转化为 M+N」</strong>。在 MCP 出现前，M 个 Agent 框架和 N 个工具之间需要写 M×N 份适配代码。MCP 通过定义一个标准协议层，让工具开发者只写一次 Server，Agent 框架只实现一次 Client，就能互相通信。这借鉴了 USB-C 的设计哲学——统一接口、即插即用、解耦生产者和消费者。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: MCP 客户端如何发现服务器的可用能力？</div>
+    <div class="qa-answer">
+      通过<strong>能力协商（Capabilities Negotiation）</strong>机制。在 <code>initialize</code> 握手阶段，Client 发送自己的能力声明（如 <code>roots</code>、<code>sampling</code>），Server 返回自己的能力声明（如 <code>tools</code>、<code>resources</code>、<code>prompts</code>）。握手完成后，Client 通过 <code>tools/list</code>、<code>resources/list</code>、<code>prompts/list</code> 方法动态发现具体可用的工具、资源和提示词。整个过程是运行时动态发现的，不需要提前硬编码。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: MCP Server 提供哪三类能力？它们有什么区别？</div>
+    <div class="qa-answer">
+      <strong>① Tools（工具）</strong>：可被 LLM 主动调用的函数，有输入参数和返回值。如搜索、发邮件、查询数据库。是「动词」，执行操作。<br>
+      <strong>② Resources（资源）</strong>：可被 LLM 读取的只读数据，通过 URI 标识。如文件内容、数据库记录、配置信息。是「名词」，提供上下文。<br>
+      <strong>③ Prompts（提示模板）</strong>：预定义的 Prompt 模板，接受参数生成完整提示。如代码审查模板、SQL 优化模板。是「模板」，标准化知识传递。<br><br>
+      简单记忆：Tools 做事，Resources 读数据，Prompts 给模板。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: MCP 和 Function Calling 的本质区别是什么？</div>
+    <div class="qa-answer">
+      <strong>Function Calling</strong> 是 LLM 厂商定义的函数调用格式，工具与 Agent 框架紧耦合——每个框架要自己实现工具注册、Schema 定义和执行逻辑，工具不能跨框架复用。<br>
+      <strong>MCP</strong> 是跨框架的开放标准协议，工具作为独立进程运行，通过 JSON-RPC 通信，与 Agent 框架完全解耦。MCP 还支持双向通信（Server 可主动推送通知）和运行时能力发现，这些是 Function Calling 不具备的。<br><br>
+      <strong>关系</strong>：MCP 不替代 Function Calling，而是标准化了工具的暴露方式。Agent 内部仍可用 Function Calling 调度，但工具来源可以是任何 MCP Server。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: MCP 的传输层有哪些实现？各自适用什么场景？</div>
+    <div class="qa-answer">
+      <strong>① stdio（标准输入输出）</strong>：Server 作为 Client 的子进程运行，通过 stdin/stdout 通信。零网络开销、最简单，适合本地工具（文件系统、本地数据库）。<br>
+      <strong>② SSE（Server-Sent Events）</strong>：基于 HTTP + SSE 的双向通信。Client 发 HTTP POST 请求，Server 通过 SSE 流推送响应。支持跨机器，适合远程工具和云服务。<br>
+      <strong>③ 可扩展传输</strong>：MCP 的分层设计允许未来增加 WebSocket、gRPC 等传输方式，不影响上层协议逻辑。传输层可插拔是 MCP 架构的重要优势。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: MCP Gateway 解决了什么问题？它的三种路由策略是什么？</div>
+    <div class="qa-answer">
+      <strong>问题</strong>：当 Agent 同时连接多个 MCP Server 时，直接管理每个连接复杂度高——健康状态、版本兼容、负载分布都要逐一处理。<br><br>
+      <strong>MCP Gateway</strong>：统一入口管理所有 MCP Server。Agent 只需连接 Gateway 一个端点，Gateway 代理转发、智能路由、安全管控。<br><br>
+      <strong>三种路由策略</strong>：<br>
+      ① <strong>按工具类型路由</strong>：根据工具名称/类别分发到对应专长的 Server。如 search_* → 搜索Server。<br>
+      ② <strong>按服务优先级路由</strong>：优先使用高优先级 Server，故障时降级到低优先级。如官方Server → 社区Server。<br>
+      ③ <strong>按负载均衡路由</strong>：根据各 Server 当前负载动态选择最空闲实例。如轮询、最少连接数分配。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q12: MCP Skills 市场与传统 App Store 有什么本质区别？</div>
+    <div class="qa-answer">
+      <strong>App Store 卖的是产品</strong>——用户直接使用的完整应用，独立进程运行，应用间组合困难（沙箱隔离），审核关注隐私合规和用户体验。<br><br>
+      <strong>Skills 市场卖的是能力</strong>——Agent 组合使用的专业技能包，内嵌于 Agent 调用，Skills 可自由组合编排（共享 Agent 上下文），审核关注权限边界和 MCP 兼容性。<br><br>
+      <strong>本质区别</strong>：前者面向终端用户（直接交互），后者面向 Agent（代理用户间接使用）。Skills 市场更注重<strong>可组合性</strong>和<strong>标准化接口</strong>，而非独立的用户体验。截至 2025-2026 年，MCP 月下载量超 9700 万-1.1 亿，Skills 生态超 8.5 万个。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q13: MCP 安全管理的三原则是什么？敏感操作为什么要二次确认？</div>
+    <div class="qa-answer">
+      <strong>安全三原则</strong>：<br>
+      ① <strong>最小权限原则</strong>——每个 MCP Server 只申请必需权限，不多给一个。<br>
+      ② <strong>默认拒绝原则</strong>——未经明确授权的操作默认拒绝，而非默认允许。<br>
+      ③ <strong>可审计原则</strong>——每一次调用都有日志，每一次异常都可追溯。<br><br>
+      <strong>敏感操作二次确认</strong>的原因：<br>
+      - 某些操作后果不可逆（删除文件、转账、发布内容），一旦执行无法撤销。<br>
+      - 恶意 Prompt 可能通过 Agent 间接调用 MCP Server 执行危险操作（Prompt Injection 风险）。<br>
+      - 二次确认机制让用户在执行前有机会审查和拒绝，是 Agent 代理执行的安全护栏。<br>
+      - 不同敏感级别（critical/high/medium）对应不同的通知渠道和确认要求。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch13Questions = [
+  {
+    type: 'single',
+    question: 'MCP 解决的核心问题是？',
+    options: [
+      'LLM 推理速度慢',
+      'N个框架×M个工具的适配爆炸问题',
+      'Agent 内存不足',
+      '模型训练成本高'
+    ],
+    answer: [1],
+    explanation: 'MCP 统一了 Agent 与工具的连接方式。工具只需实现一次 MCP Server，所有支持 MCP 的 Agent 都能用。N×M 变成 N+M。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 基于什么通信协议？',
+    options: ['HTTP REST', 'gRPC', 'JSON-RPC 2.0', 'WebSocket'],
+    answer: [2],
+    explanation: 'MCP 基于 JSON-RPC 2.0 协议，支持 stdio 和 SSE 两种传输方式。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 的三个核心概念不包括以下哪个？',
+    options: ['Tools（工具）', 'Resources（资源）', 'Prompts（提示模板）', 'Gradients（梯度）'],
+    answer: [3],
+    explanation: 'MCP 三大核心概念：Tools、Resources、Prompts。Gradients 是深度学习概念。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 的 stdio 传输方式适合什么场景？',
+    options: ['跨机器通信', '本地工具同机部署', '高并发云服务', '移动端应用'],
+    answer: [1],
+    explanation: 'stdio 传输：Server 作为子进程运行，通过标准输入输出通信。简单、零网络开销，适合本地工具。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 和 Function Calling 的关系是？',
+    options: [
+      'MCP 替代了 Function Calling',
+      'Function Calling 替代了 MCP',
+      'MCP 标准化了工具暴露方式，Agent 内部仍可用 Function Calling',
+      '两者完全无关'
+    ],
+    answer: [2],
+    explanation: 'MCP 不替代 Function Calling，而是标准化工具的暴露方式。Agent 内部仍然可以用 Function Calling 调用工具。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些支持 MCP？（多选）',
+    options: ['Claude Desktop', 'Cursor', 'LangChain', 'Windows 记事本'],
+    answer: [0, 1, 2],
+    explanation: 'Claude Desktop、Cursor、LangChain 都支持 MCP。Windows 记事本与 MCP 无关。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 MCP 的 Resources（资源），以下说法正确的是？（多选）',
+    options: [
+      'Resources 是只读的上下文数据',
+      '可以包含文件内容',
+      'Resources 可以被 LLM 直接修改',
+      '可以包含数据库记录'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Resources 是只读的上下文数据，不能被 LLM 修改。可以包含文件内容、数据库记录等。'
+  },
+  {
+    type: 'multiple',
+    question: '编写 MCP Server 后，哪些 Agent 框架可以直接使用它？（多选）',
+    options: [
+      '支持 MCP 的任何框架',
+      'LangChain（已集成 MCP）',
+      'Spring AI（已集成 MCP）',
+      'Google ADK（已集成 MCP）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: 'MCP 是跨框架标准。只要框架支持 MCP 协议，就能直接使用任何 MCP Server。这就是 N+M 的好处。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 协议的底层通信协议是 JSON-RPC 2.0，以下哪个是 JSON-RPC 2.0 的必填字段？',
+    options: ['jsonrpc（协议版本）', 'id（请求标识）', 'method（方法名）', 'params（参数对象）'],
+    answer: [0],
+    explanation: 'JSON-RPC 2.0 规定每条消息必须包含 "jsonrpc" 字段且值为 "2.0"。id 仅用于请求（通知不需要），method 和 params 在响应消息中不出现。'
+  },
+  {
+    type: 'single',
+    question: '在使用 mcp Python 库编写客户端时，以下哪个步骤必须最先执行？',
+    options: [
+      'session.call_tool()',
+      'session.list_tools()',
+      'session.initialize()',
+      'session.read_resource()'
+    ],
+    answer: [2],
+    explanation: 'session.initialize() 是握手的第一步，完成协议版本协商和能力声明。跳过此步直接调用其他方法会报错，因为服务器还不知道客户端支持哪些能力。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 MCP 的 stdio 传输方式，以下说法正确的是？（多选）',
+    options: [
+      'Server 作为 Client 的子进程运行',
+      '通过 stdin/stdout 进行通信',
+      '支持跨机器调用',
+      '零网络开销，适合本地工具'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'stdio 传输中 Server 是子进程，通过标准输入输出通信，零网络开销，但不支持跨机器。跨机器需要使用 SSE 传输。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 MCP 的 SSE 传输方式，以下说法正确的是？（多选）',
+    options: [
+      '基于 HTTP 协议实现',
+      '支持跨机器通信',
+      'Server 可以通过 SSE 流主动推送通知',
+      '比 stdio 延迟更低'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'SSE 传输基于 HTTP，支持跨机器通信，Server 可通过 SSE 流推送通知。但由于有网络开销，延迟通常比 stdio 更高，而不是更低。'
+  },
+  {
+    type: 'multiple',
+    question: 'MCP Server 的三类能力中，以下描述正确的是？（多选）',
+    options: [
+      'Tools 是可被 LLM 调用的函数，有输入参数和返回值',
+      'Resources 是只读数据，通过 URI 标识',
+      'Prompts 是预定义的提示模板，接受参数生成完整提示',
+      'Resources 可以被 LLM 直接修改和写入'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Tools 是可调用的函数，Resources 是只读数据（不能被 LLM 修改），Prompts 是提示模板。Resources 的只读特性是其与 Tools 的关键区别——Resources 提供上下文，Tools 执行操作。'
+  },
+  {
+    type: 'single',
+    question: 'MCP Gateway 的核心价值是什么？',
+    options: [
+      '替代所有 MCP Server 的功能',
+      '提供统一入口管理多个 MCP Server，实现路由、鉴权、限流',
+      '让 Agent 直接连接更多 MCP Server',
+      '加速 MCP 协议的传输速度'
+    ],
+    answer: [1],
+    explanation: 'MCP Gateway 作为统一入口，Agent 只需连接 Gateway 一个端点，Gateway 代理转发到所有后端 MCP Server。它提供路由策略、安全管控、负载均衡等能力，而非替代 Server 功能或加速传输。'
+  },
+  {
+    type: 'single',
+    question: 'MCP Skills 市场与传统 App Store 的本质区别是什么？',
+    options: [
+      'Skills 市场的应用数量更多',
+      'Skills 市场面向 Agent 提供可组合的能力包，而非面向用户提供独立应用',
+      'Skills 市场不需要审核',
+      'App Store 的应用也可以被 Agent 调用'
+    ],
+    answer: [1],
+    explanation: 'App Store 卖的是产品——用户直接使用的完整应用；Skills 市场卖的是能力——Agent 组合使用的专业技能包。前者面向终端用户，后者面向 Agent（代理用户）。Skills 更注重可组合性和标准化接口。'
+  },
+  {
+    type: 'multiple',
+    question: 'MCP Gateway 支持的路由策略有哪些？（多选）',
+    options: [
+      '按工具类型路由：根据工具名称/类别分发到对应专长的 Server',
+      '按服务优先级路由：优先使用高优先级 Server，故障时降级',
+      '按负载均衡路由：根据各 Server 当前负载动态选择最空闲实例',
+      '按用户等级路由：VIP用户优先使用高端 Server'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'MCP Gateway 支持三种路由策略：按工具类型、按服务优先级、按负载均衡。按用户等级路由不是 MCP Gateway 的标准策略。三种策略可以组合使用——先按工具类型分流，再在组内按优先级或负载均衡选择。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 MCP 安全管理，以下说法正确的是？（多选）',
+    options: [
+      '最小权限原则：每个 MCP Server 只申请必需权限',
+      '默认拒绝原则：未经明确授权的操作默认拒绝',
+      '可审计原则：每一次调用都有日志，异常可追溯',
+      'MCP Server 不需要任何权限管控，Agent 天然安全'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'MCP 安全三原则是：最小权限、默认拒绝、可审计。没有权限管控的 MCP Server 存在安全风险——恶意 Prompt 可以通过 Agent 间接调用 MCP Server 执行危险操作。权限管理是必须的，而非可选的。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch13Questions); }, 500);
+</script>

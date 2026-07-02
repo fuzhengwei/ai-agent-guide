@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent 百科全书 —— 从基础认知到面试通关</title>
+  <meta name="description" content="20章渐进式可视化教程 — 从基础认知到面试通关，动画拆解 AI Agent 核心概念，覆盖 LangGraph、AutoGen、Dify、Coze、MCP、Spring AI 等主流框架">
+  <link rel="stylesheet" href="css/book.css?v=5">
+  <link rel="stylesheet" href="css/animations.css">
+  <!-- Prism.js 语法高亮 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    
+    <!-- ===== 左侧目录栏 ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>📚 AI Agent</h1>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-bar">
+          <div class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+        <div class="progress-text">
+          <span>学习进度</span>
+          <span>0/20 章</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <!-- 导航项由 JS 动态生成 -->
+      </nav>
+    </aside>
+    
+    <!-- ===== 中间内容区 ===== -->
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb" id="breadcrumb">首页</div>
+        <div class="nav-buttons">
+          <button class="nav-btn" id="prevChapter" disabled>← 上一章</button>
+          <button class="nav-btn" id="nextChapter">下一章 →</button>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody">
+        <!-- 内容由 JS 动态加载 -->
+      </div>
+    </main>
+    
+    <!-- ===== 右侧目录栏 (TOC) ===== -->
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header">
+        <h3>📋 本章目录</h3>
+        <button class="toc-toggle" id="tocToggleBtn" title="收起/展开">◀</button>
+      </div>
+      <nav class="toc-nav" id="tocNav">
+        <!-- 目录内容由 JS 动态生成 -->
+      </nav>
+    </aside>
+    
+    <!-- ===== 右侧 AI 对话栏 ===== -->
+    <aside class="chat-panel">
+      <div class="chat-header">
+        <div class="chat-title">
+          <span class="dot"></span>
+          AI 学习助手
+        </div>
+        <div class="chat-actions">
+          <button class="chat-action-btn" id="chatClearBtn" title="清空对话">🗑</button>
+        </div>
+      </div>
+      <div class="chat-model-selector">
+        <select id="modelSelector"></select>
+        <button class="settings-btn" id="chatSettingsBtn" title="API 配置">⚙</button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <!-- 消息由 JS 动态生成 -->
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrapper">
+          <textarea id="chatInput" placeholder="提问关于 AI Agent 的问题..." rows="1"></textarea>
+          <button class="send-btn" id="chatSendBtn" title="发送">↑</button>
+        </div>
+      </div>
+    </aside>
+    
+  </div>
+  
+  <!-- ===== API 设置弹窗 ===== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⚙ API 配置</h3>
+        <button class="close-btn" id="closeSettingsBtn">×</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- 配置表单由 JS 生成 -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="AIChat.closeSettings()">取消</button>
+        <button class="btn primary" id="saveSettingsBtn">保存</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ===== 考试模式全屏遮罩 ===== -->
+  <div class="exam-overlay" id="examOverlay" style="display:none;">
+    <div class="exam-container" id="examContainer">
+      <!-- 考试界面由 JS 动态生成 -->
+    </div>
+  </div>
+  
+  <!-- ===== 脚本 ===== -->
+  <script src="js/flowchart.js?v=3"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/chat.js?v=2"></script>
+  <script src="js/main.js?v=12"></script>
+</body>
+</html>

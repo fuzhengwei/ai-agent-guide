@@ -1,0 +1,1029 @@
+<!-- 第14章：Agent 评估与可观测性 -->
+<h1 class="chapter-title">第12章 Agent 评估与可观测性</h1>
+<p class="chapter-subtitle">怎么知道你的 Agent 好不好？</p>
+
+<!-- ===== 14.1 为什么需要评估 ===== -->
+<h2 class="section-heading">12.1 Agent 评估的挑战</h2>
+
+<p>传统软件有明确的对错——单元测试通过就行。但 Agent 的输出是自然语言，"好不好"变得模糊：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">传统软件评估</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>输入确定 → 输出确定</li>
+        <li>单元测试覆盖即可</li>
+        <li>有明确的对错标准</li>
+        <li>性能指标：延迟、吞吐量</li>
+      </ul>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">Agent 评估</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>相同输入 → 不同输出（LLM 随机性）</li>
+        <li>难以定义"正确"</li>
+        <li>多步骤、多轮交互</li>
+        <li>需评估：准确度、相关性、安全性、效率</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 14.2 评估维度 ===== -->
+<h2 class="section-heading">12.2 Agent 评估的六个维度</h2>
+
+<div class="flowchart-container" id="evalDimensions"></div>
+
+<script>
+setTimeout(() => {
+  const container = document.getElementById('evalDimensions');
+  container.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0;">
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-info);">
+        <strong style="color: var(--color-info);">1. 任务完成率</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          Agent 是否完成了用户要求的任务？最基本指标。分完全完成、部分完成、失败三级。
+        </p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-accent);">
+        <strong style="color: var(--color-accent);">2. 准确性</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          回答是否正确？事实是否准确？有没有幻觉？用 LLM-as-Judge 或人工标注评估。
+        </p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-success);">
+        <strong style="color: var(--color-success);">3. 效率</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          完成任务用了多少步？多少 token？多少时间？步数越少、token 越省越好。
+        </p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-warning);">
+        <strong style="color: var(--color-warning);">4. 安全性</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          有没有执行危险操作？有没有泄露敏感信息？有没有被提示注入攻击？
+        </p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-error);">
+        <strong style="color: var(--color-error);">5. 鲁棒性</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          面对异常输入、模糊指令、边界条件时是否稳定？不崩溃、不无限循环。
+        </p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; border-top: 3px solid var(--color-info);">
+        <strong style="color: var(--color-info);">6. 用户满意度</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+          用户觉得有用吗？通过反馈（👍👎）、评分、留存率衡量。最终指标。
+        </p>
+      </div>
+    </div>
+  `;
+}, 300);
+</script>
+
+<!-- ===== 14.3 评估方法 ===== -->
+<h2 class="section-heading">12.3 四种评估方法</h2>
+
+<div class="card">
+  <div class="card-title">🔬 怎么评估 Agent？</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">方法</th>
+        <th style="text-align: left; padding: 10px 8px;">原理</th>
+        <th style="text-align: left; padding: 10px 8px;">优缺点</th>
+        <th style="text-align: left; padding: 10px 8px;">适合场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">人工标注</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">人判断输出好不好</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓最准 ✗贵、慢</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">小规模、最终验收</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">LLM-as-Judge</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用另一个 LLM 评判</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓快、便宜 ✗有偏差</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">大规模、迭代优化</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">基准测试集</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">预设问答对，比对标准答案</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓可重复 ✗覆盖有限</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">回归测试、CI/CD</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">用户反馈</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">收集真实用户评分</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓最真实 ✗噪声大</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">线上监控、持续改进</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">LLM-as-Judge 示例</h3>
+
+<div class="code-block">
+  <span class="code-label">用 LLM 评估 Agent 输出质量</span>
+<pre>eval_prompt = """
+你是一个严格的评估员。请评估以下 Agent 回答的质量。
+
+用户问题：{question}
+Agent 回答：{answer}
+参考答案：{reference}
+
+请从以下维度打分（1-5分）：
+1. 准确性：回答是否正确，与参考答案一致
+2. 完整性：是否回答了问题的所有方面
+3. 相关性：回答是否切题，没有多余内容
+4. 表达清晰度：语言是否清晰易懂
+
+输出 JSON 格式：
+{
+  "accuracy": 4,
+  "completeness": 3,
+  "relevance": 5,
+  "clarity": 4,
+  "overall": 4,
+  "comments": "回答基本正确但缺少XX细节"
+}
+"""
+
+# 批量评估
+scores = []
+for sample in test_dataset:
+    result = judge_llm.invoke(
+        eval_prompt.format(
+            question=sample.question,
+            answer=sample.agent_answer,
+            reference=sample.reference
+        )
+    )
+    scores.append(parse_json(result))</pre>
+</div>
+
+<!-- ===== 14.4 可观测性 ===== -->
+<h2 class="section-heading">12.4 Agent 可观测性</h2>
+
+<p>评估是离线的——测试集跑完看分数。可观测性是<strong>在线的</strong>——生产环境中实时监控 Agent 行为。</p>
+
+<div class="card">
+  <div class="card-title">📊 Agent 可观测性的三个层次</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">1. 日志（Logging）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        记录每一步：用户输入、LLM 调用、工具调用、返回结果。最基本的可观测性。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">2. 指标（Metrics）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        聚合统计：Token 消耗、响应延迟、成功率、工具调用次数。用于监控和告警。
+      </p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">3. 追踪（Tracing）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">
+        全链路追踪：一次用户请求经过的所有步骤、每次 LLM 调用的完整 prompt 和 response。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">主流可观测性工具</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">工具</th>
+        <th style="text-align: left; padding: 10px 8px;">定位</th>
+        <th style="text-align: left; padding: 10px 8px;">特点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">LangSmith</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LangChain 官方</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">与 LangChain/LangGraph 深度集成</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Langfuse</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源可观测</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开源、自部署、框架无关</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Phoenix</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Arize AI 出品</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">支持评估+追踪+幻觉检测</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">OpenTelemetry</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通用标准</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">与现有 APM 系统集成</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 14.5 黄金指标 ===== -->
+<h2 class="section-heading">12.5 Agent 监控的黄金指标</h2>
+
+<div class="card">
+  <div class="card-title">📈 生产环境必须监控的指标</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">质量指标</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 6px 0 0;">
+        <li>任务成功率（应该 > 90%）</li>
+        <li>幻觉率（应该 < 5%）</li>
+        <li>用户满意度（👍率 > 80%）</li>
+        <li>工具调用成功率</li>
+      </ul>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">性能指标</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 6px 0 0;">
+        <li>首 token 延迟（P95 < 2s）</li>
+        <li>端到端延迟（P95 < 30s）</li>
+        <li>平均步数（越少越好）</li>
+        <li>Token 消耗（成本控制）</li>
+      </ul>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">安全指标</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 6px 0 0;">
+        <li>提示注入攻击次数</li>
+        <li>敏感信息泄露次数</li>
+        <li>危险工具调用次数</li>
+        <li>无限循环发生率</li>
+      </ul>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-warning);">业务指标</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 6px 0 0;">
+        <li>日活用户（DAU）</li>
+        <li>平均会话长度</li>
+        <li>用户留存率</li>
+        <li>每次对话成本</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 14.6 Agent 评估指标体系 ===== -->
+<h2 class="section-heading">12.6 Agent 评估指标体系</h2>
+
+<p>评估 Agent 不能只靠直觉和感觉，需要建立一套量化指标体系。下面从任务完成率、步数效率、Token 成本、准确率、鲁棒性五个核心维度展开，每个指标都有明确的计算公式和适用场景，帮助你建立可度量、可对比、可追踪的评估体系。</p>
+
+<div class="card">
+  <div class="card-title">📐 核心评估指标计算公式与适用场景</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">指标名称</th>
+        <th style="text-align: left; padding: 10px 8px;">计算公式</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+        <th style="text-align: left; padding: 10px 8px;">目标值</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">任务完成率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">完成任务数 / 总任务数 × 100%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">端到端 Agent 能力评估</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&gt; 90%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">步数效率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">实际步数 / 最优步数（比值越接近1越好）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 规划能力评估</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&lt; 1.5</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Token 成本</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">Σ(prompt_tokens + completion_tokens) × 单价</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">成本优化与预算控制</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按业务定</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">准确率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">正确回答数 / 总回答数 × 100%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">事实型问答、信息检索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&gt; 95%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-error);">鲁棒性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">异常输入下正常处理数 / 异常输入总数 × 100%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">压力测试、对抗测试</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&gt; 85%</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">幻觉率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">含幻觉回答数 / 总回答数 × 100%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">事实准确性监控</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&lt; 5%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">评估指标雷达图</h3>
+
+<div class="card">
+  <div class="card-title">🎯 Agent 五维评估雷达图</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 16px;">下图展示了一个优秀 Agent 的理想评估分数（蓝色）与当前版本评估分数（橙色）的对比。通过雷达图可以直观发现 Agent 的短板维度，指导优化方向。</p>
+  <div style="text-align: center;">
+    <svg width="500" height="420" viewBox="0 0 500 420" style="max-width: 100%;">
+      <!-- 背景网格圆 -->
+      <g fill="none" stroke="var(--color-border-light)" stroke-width="1">
+        <polygon points="250,80 386,179 334,332 166,332 114,179" />
+        <polygon points="250,120 354,194 313,318 187,318 146,194" />
+        <polygon points="250,160 322,209 292,304 208,304 178,209" />
+        <polygon points="250,200 290,224 271,290 229,290 210,224" />
+      </g>
+      <!-- 轴线 -->
+      <g stroke="var(--color-border-light)" stroke-width="1">
+        <line x1="250" y1="210" x2="250" y2="80"/>
+        <line x1="250" y1="210" x2="386" y2="179"/>
+        <line x1="250" y1="210" x2="334" y2="332"/>
+        <line x1="250" y1="210" x2="166" y2="332"/>
+        <line x1="250" y1="210" x2="114" y2="179"/>
+      </g>
+      <!-- 理想值（蓝色多边形） -->
+      <polygon points="250,90 370,183 320,322 180,322 130,183" 
+               fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="2"/>
+      <!-- 当前值（橙色多边形） -->
+      <polygon points="250,130 340,192 295,310 205,304 160,195" 
+               fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="2">
+        <animate attributeName="points" 
+                 values="250,210 250,210 250,210 250,210 250,210;
+                         250,130 340,192 295,310 205,304 160,195" 
+                 dur="2s" fill="freeze"/>
+      </polygon>
+      <!-- 数据点 -->
+      <g fill="#3b82f6">
+        <circle cx="250" cy="90" r="4"/>
+        <circle cx="370" cy="183" r="4"/>
+        <circle cx="320" cy="322" r="4"/>
+        <circle cx="180" cy="322" r="4"/>
+        <circle cx="130" cy="183" r="4"/>
+      </g>
+      <g fill="#fb923c">
+        <circle cx="250" cy="130" r="4"/>
+        <circle cx="340" cy="192" r="4"/>
+        <circle cx="295" cy="310" r="4"/>
+        <circle cx="205" cy="304" r="4"/>
+        <circle cx="160" cy="195" r="4"/>
+      </g>
+      <!-- 标签 -->
+      <g font-size="13" font-weight="600" fill="var(--color-text)">
+        <text x="250" y="65" text-anchor="middle">任务完成率 (95)</text>
+        <text x="400" y="170" text-anchor="middle">准确率 (90)</text>
+        <text x="345" y="355" text-anchor="middle">效率 (85)</text>
+        <text x="155" y="355" text-anchor="middle">鲁棒性 (80)</text>
+        <text x="100" y="170" text-anchor="middle">安全性 (92)</text>
+      </g>
+      <!-- 图例 -->
+      <g font-size="12" fill="var(--color-text-secondary)">
+        <rect x="30" y="385" width="12" height="12" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="48" y="395">理想目标值</text>
+        <rect x="140" y="385" width="12" height="12" fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="158" y="395">当前版本评分</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== 14.7 LangSmith 完整实战 ===== -->
+<h2 class="section-heading">12.7 LangSmith 完整实战</h2>
+
+<p>LangSmith 是 LangChain 官方推出的 Agent 评估与可观测性平台，提供了从 Trace 收集、数据分析到评估数据集管理的完整工具链。下面通过一个完整的实战案例，演示如何将 LangSmith 集成到 Agent 项目中，实现全链路追踪和自动化评估。</p>
+
+<h3 class="sub-heading">评估流水线图</h3>
+
+<div class="card">
+  <div class="card-title">🔄 LangSmith 评估流水线</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 16px;">下图展示了 LangSmith 评估的完整流程：从数据集创建、Agent 运行、评估器打分到结果对比分析。每个环节都通过 API 自动化完成，无需手动操作。</p>
+  <div style="text-align: center;">
+    <svg width="700" height="200" viewBox="0 0 700 200" style="max-width: 100%;">
+      <!-- 4个阶段方框 -->
+      <g>
+        <rect x="10" y="70" width="130" height="60" rx="8" fill="rgba(59,130,246,0.1)" stroke="#3b82f6" stroke-width="2"/>
+        <text x="75" y="95" text-anchor="middle" font-size="13" font-weight="600" fill="#3b82f6">Dataset</text>
+        <text x="75" y="115" text-anchor="middle" font-size="11" fill="var(--color-text-secondary)">创建评估数据集</text>
+      </g>
+      <g>
+        <rect x="190" y="70" width="130" height="60" rx="8" fill="rgba(251,146,60,0.1)" stroke="#fb923c" stroke-width="2"/>
+        <text x="255" y="95" text-anchor="middle" font-size="13" font-weight="600" fill="#fb923c">Run</text>
+        <text x="255" y="115" text-anchor="middle" font-size="11" fill="var(--color-text-secondary)">Agent 执行并追踪</text>
+      </g>
+      <g>
+        <rect x="370" y="70" width="130" height="60" rx="8" fill="rgba(34,197,94,0.1)" stroke="#22c55e" stroke-width="2"/>
+        <text x="435" y="95" text-anchor="middle" font-size="13" font-weight="600" fill="#22c55e">Evaluate</text>
+        <text x="435" y="115" text-anchor="middle" font-size="11" fill="var(--color-text-secondary)">评估器打分</text>
+      </g>
+      <g>
+        <rect x="550" y="70" width="130" height="60" rx="8" fill="rgba(168,85,247,0.1)" stroke="#a855f7" stroke-width="2"/>
+        <text x="615" y="95" text-anchor="middle" font-size="13" font-weight="600" fill="#a855f7">Compare</text>
+        <text x="615" y="115" text-anchor="middle" font-size="11" fill="var(--color-text-secondary)">对比实验结果</text>
+      </g>
+      <!-- 箭头 -->
+      <g stroke="var(--color-text-secondary)" stroke-width="2" fill="none" marker-end="url(#arrowhead)">
+        <line x1="140" y1="100" x2="185" y2="100">
+          <animate attributeName="stroke-dashoffset" values="50;0" dur="0.5s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dasharray" values="50" dur="0.5s" repeatCount="indefinite"/>
+        </line>
+        <line x1="320" y1="100" x2="365" y2="100">
+          <animate attributeName="stroke-dashoffset" values="50;0" dur="0.5s" begin="0.5s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dasharray" values="50" dur="0.5s" begin="0.5s" repeatCount="indefinite"/>
+        </line>
+        <line x1="500" y1="100" x2="545" y2="100">
+          <animate attributeName="stroke-dashoffset" values="50;0" dur="0.5s" begin="1s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dasharray" values="50" dur="0.5s" begin="1s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-text-secondary)"/>
+        </marker>
+      </defs>
+      <!-- 底部说明 -->
+      <g font-size="11" fill="var(--color-text-secondary)">
+        <text x="75" y="160" text-anchor="middle">create_dataset()</text>
+        <text x="255" y="160" text-anchor="middle">@traceable + invoke()</text>
+        <text x="435" y="160" text-anchor="middle">evaluate()</text>
+        <text x="615" y="160" text-anchor="middle">experiment_prefix</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<h3 class="sub-heading">LangSmith 集成与评估代码</h3>
+
+<div class="code-block">
+  <span class="code-label">LangSmith 全链路集成：追踪 + 数据集 + 评估</span>
+<pre>import os
+from langsmith import Client, traceable
+from langchain.chat_models import ChatOpenAI
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain import hub
+from langchain.tools import Tool
+from langchain_community.tools import DuckDuckGoSearchRun
+
+# 1. 配置环境变量
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = "lsv2_pt_xxx"
+os.environ["LANGCHAIN_PROJECT"] = "ai-agent-eval"
+os.environ["OPENAI_API_KEY"] = "sk-xxx"
+
+# 2. 定义工具
+search_tool = DuckDuckGoSearchRun()
+calc_tool = Tool(
+    name="calculator",
+    description="用于数学计算，输入数学表达式",
+    func=lambda expr: str(eval(expr)),
+)
+
+# 3. 装饰需要追踪的函数
+@traceable(run_type="chain", name="qa_agent")
+def run_qa_agent(question: str) -> str:
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    prompt = hub.pull("hwchase17/react")
+    tools = [search_tool, calc_tool]
+    agent = create_react_agent(llm, tools, prompt)
+    executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    result = executor.invoke({"input": question})
+    return result["output"]
+
+# 4. 创建评估数据集
+client = Client()
+dataset = client.create_dataset(
+    dataset_name="qa-eval-v1",
+    description="问答 Agent 评估集"
+)
+
+examples = [
+    {"inputs": {"question": "北京今天天气？"}, "outputs": {"answer": "晴，25度"}},
+    {"inputs": {"question": "1+1等于几？"}, "outputs": {"answer": "2"}},
+    {"inputs": {"question": "AI Agent 是什么？"}, "outputs": {"answer": "AI Agent 是能自主使用工具完成任务的智能体"}},
+]
+client.create_examples(dataset_id=dataset.id, examples=examples)
+
+# 5. 定义评估器
+def correctness(run, example):
+    """检查预测结果是否包含参考答案"""
+    pred = run.outputs["output"]
+    ref = example.outputs["answer"]
+    return {"score": 1.0 if ref in pred else 0.0}
+
+def conciseness(run, example):
+    """评估回答简洁性：少于100词得满分"""
+    pred = run.outputs["output"]
+    word_count = len(pred.split())
+    score = 1.0 if word_count <= 100 else 0.5
+    return {"score": score, "comment": f"词数: {word_count}"}
+
+# 6. 运行评估
+from langsmith.evaluation import evaluate
+results = evaluate(
+    run_qa_agent,
+    data=dataset.name,
+    evaluators=[correctness, conciseness],
+    experiment_prefix="gpt4o-baseline"
+)
+print(f"评估结果: {results}")
+# 输出示例：正确率 0.67 | 简洁性 1.0</pre>
+</div>
+
+<p>上面的代码展示了 LangSmith 的完整工作流：先通过 <code>@traceable</code> 装饰器自动收集 Trace，再通过 <code>Client</code> 创建评估数据集和样本，最后用 <code>evaluate</code> 函数批量运行评估。每次评估都会在 LangSmith 平台生成一个实验记录，支持多版本对比分析。</p>
+
+<h3 class="sub-heading">Trace 分析与调试</h3>
+
+<div class="code-block">
+  <span class="code-label">LangSmith Trace 查询与分析</span>
+<pre>from langsmith import Client
+from datetime import datetime, timedelta
+
+client = Client()
+
+# 查询最近24小时的追踪记录
+runs = client.list_runs(
+    project_name="ai-agent-eval",
+    start_time=datetime.now() - timedelta(hours=24),
+    run_type="chain",
+    error=False,
+)
+
+# 分析 Token 消耗与延迟
+for run in runs:
+    total_tokens = run.prompt_tokens + run.completion_tokens
+    latency = (run.end_time - run.start_time).total_seconds()
+    print(f"Run: {run.name} | Tokens: {total_tokens} | Latency: {latency:.1f}s | Status: {run.status}")
+
+# 找出耗时最长的 Top 5 请求
+slowest = sorted(runs, key=lambda r: (r.end_time - r.start_time), reverse=True)[:5]
+for run in slowest:
+    print(f"[SLOW] {run.name}: {(run.end_time - run.start_time).total_seconds():.1f}s")
+
+# 导出失败 Trace 用于离线分析
+failed_runs = client.list_runs(
+    project_name="ai-agent-eval",
+    start_time=datetime.now() - timedelta(hours=24),
+    error=True,
+)
+for run in failed_runs:
+    print(f"[ERROR] {run.name}: {run.error}")</pre>
+</div>
+
+<!-- ===== 14.8 评估驱动开发（EDD）方法论 ===== -->
+<h2 class="section-heading">12.8 评估驱动开发（EDD）方法论</h2>
+
+<p>评估驱动开发（Evaluation-Driven Development，简称 EDD）是一种以评估为核心的 Agent 开发方法论。它的核心理念是：先定义评估标准和数据集，再开发 Agent 逻辑。这类似于测试驱动开发（TDD），但评估集替代了单元测试，LLM 评估器替代了断言。</p>
+
+<div class="card">
+  <div class="card-title">🔄 EDD 开发流程</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">❌ 传统开发</strong>
+      <ol style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>开发 Agent 逻辑</li>
+        <li>手动测试几个 case</li>
+        <li>上线后发现效果不好</li>
+        <li>回头改 prompt、改工具</li>
+        <li>反复试错，效率低下</li>
+      </ol>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ EDD 开发</strong>
+      <ol style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>设计评估数据集（50+ case）</li>
+        <li>定义评估器和通过标准</li>
+        <li>跑基线评估（即使 Agent 还没写好）</li>
+        <li>开发 Agent，每改一版跑评估</li>
+        <li>评估分数达标后再上线</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">评估集设计原则</h3>
+
+<div class="card">
+  <div class="card-title">📐 评估集设计四原则</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">原则</th>
+        <th style="text-align: left; padding: 10px 8px;">说明</th>
+        <th style="text-align: left; padding: 10px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">代表性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">覆盖真实用户场景的典型问题</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">从真实日志中提取高频问题</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">多样性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">包含简单、中等、困难不同难度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单30% + 中等50% + 困难20%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">边界覆盖</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">包含异常输入和边界条件</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">空输入、超长文本、注入攻击</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">可演进</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">持续补充新发现的 bad case</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">线上 bad case 定期归入评估集</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">离线评估 vs 在线评估</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">离线评估（Offline）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        在固定数据集上运行 Agent，用评估器自动打分。<br>
+        <strong>特点</strong>：可重复、快速迭代、成本低。<br>
+        <strong>用途</strong>：开发阶段 prompt 优化、模型选型、回归测试。<br>
+        <strong>局限</strong>：评估集覆盖有限，无法发现新问题。
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">在线评估（Online）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.8;">
+        在生产环境中收集真实用户反馈和行为数据。<br>
+        <strong>特点</strong>：最真实、持续运行、噪声大。<br>
+        <strong>用途</strong>：线上质量监控、发现新 bad case、A/B 测试。<br>
+        <strong>局限</strong>：反馈滞后、需要流量、不可重复。
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">A/B 测试在 Agent 中的应用</h3>
+
+<div class="code-block">
+  <span class="code-label">Agent A/B 测试：对比两个版本的 Agent 表现</span>
+<pre>import random
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class ABTestConfig:
+    """A/B 测试配置"""
+    experiment_name: str
+    variant_a_name: str  # 对照组（如 gpt-4o）
+    variant_b_name: str  # 实验组（如 gpt-4o-mini）
+    traffic_split: float  # B 组流量比例，如 0.2 表示 20%
+    min_sample_size: int = 100  # 最小样本量
+    metrics: list = None  # 关注的指标列表
+
+class AgentABTester:
+    def __init__(self, config: ABTestConfig):
+        self.config = config
+        self.results_a = []  # A 组结果
+        self.results_b = []  # B 组结果
+
+    def assign_variant(self, user_id: str) -> str:
+        """根据用户 ID 确定性分配分组，保证同一用户始终在同一组"""
+        hash_val = hash(user_id) % 100 / 100
+        return self.config.variant_b_name if hash_val < self.config.traffic_split else self.config.variant_a_name
+
+    def record_result(self, variant: str, success: bool, latency: float, tokens: int):
+        """记录一次请求的结果"""
+        result = {"success": success, "latency": latency, "tokens": tokens}
+        if variant == self.config.variant_a_name:
+            self.results_a.append(result)
+        else:
+            self.results_b.append(result)
+
+    def analyze(self) -> dict:
+        """分析 A/B 测试结果，计算关键指标差异"""
+        def stats(results):
+            if not results:
+                return {"success_rate": 0, "avg_latency": 0, "avg_tokens": 0}
+            n = len(results)
+            return {
+                "success_rate": sum(r["success"] for r in results) / n,
+                "avg_latency": sum(r["latency"] for r in results) / n,
+                "avg_tokens": sum(r["tokens"] for r in results) / n,
+            }
+        return {self.config.variant_a_name: stats(self.results_a),
+                self.config.variant_b_name: stats(self.results_b)}</pre>
+</div>
+
+<p>A/B 测试是 Agent 线上迭代的核心手段。通过流量分割，将一部分用户导向新版本 Agent，对比关键指标（成功率、延迟、Token 消耗）的差异，决定是否全量发布。注意：Agent 的 A/B 测试需要更大的样本量，因为 LLM 输出方差大，单次请求的随机性可能掩盖真实差异。</p>
+
+<h3 class="sub-heading">回归测试设计</h3>
+
+<div class="code-block">
+  <span class="code-label">Agent 回归测试：确保改动不引入退化</span>
+<pre>import json
+from pathlib import Path
+
+# 回归测试集结构
+class RegressionTestSuite:
+    def __init__(self, test_data_path: str):
+        self.path = Path(test_data_path)
+        self.test_cases = self._load()
+
+    def _load(self):
+        """加载回归测试集"""
+        with open(self.path) as f:
+            return json.load(f)
+
+    def run(self, agent_fn, evaluators):
+        """运行回归测试，返回通过率和退化用例"""
+        results = []
+        for case in self.test_cases:
+            pred = agent_fn(case["input"])
+            scores = [ev(pred, case) for ev in evaluators]
+            passed = all(s["score"] >= 0.8 for s in scores)
+            results.append({
+                "case_id": case["id"],
+                "passed": passed,
+                "scores": scores,
+                "input": case["input"][:50],
+            })
+        passed_count = sum(r["passed"] for r in results)
+        regressions = [r for r in results if not r["passed"]]
+        return {"pass_rate": passed_count / len(results),
+                "regressions": regressions}
+
+# 使用示例
+suite = RegressionTestSuite("tests/agent_regression_v1.json")
+report = suite.run(run_qa_agent, [correctness, conciseness])
+print(f"通过率: {report['pass_rate']:.0%}")
+print(f"退化用例: {len(report['regressions'])}")</pre>
+</div>
+
+<p>回归测试是 EDD 方法论的安全网。每次修改 Agent 的 prompt、工具或模型后，都跑一遍回归测试集，确保改动不会引入退化。建议将回归测试集成到 CI/CD 流水线中，在每次 PR 合并前自动运行，退化用例数必须为 0 才允许合并。</p>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent 评估为什么比传统软件难？有哪些维度？</div>
+    <div class="qa-answer">
+      <strong>难点</strong>：LLM 输出有随机性（相同输入不同输出），"正确"难以定义，多步骤多轮交互。<br><br>
+      <strong>六个维度</strong>：①任务完成率 ②准确性 ③效率（步数/token/时间）④安全性 ⑤鲁棒性 ⑥用户满意度。<br><br>
+      传统软件只需要功能正确性，Agent 需要全方位评估。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: LLM-as-Judge 是什么？有什么优缺点？</div>
+    <div class="qa-answer">
+      <strong>原理</strong>：用另一个 LLM（通常是更强的模型）来评判 Agent 输出的质量。给定评分维度和标准，Judge LLM 输出分数和评语。<br><br>
+      <strong>优点</strong>：快、便宜、可大规模评估。<br>
+      <strong>缺点</strong>：有自身偏差（偏好长回答、偏好同模型输出）、对细微事实错误不敏感、评分一致性不如人工。<br><br>
+      <strong>最佳实践</strong>：用 LLM-as-Judge 做大规模初筛，人工标注做最终验收。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Agent 可观测性的三个层次是什么？</div>
+    <div class="qa-answer">
+      <strong>① 日志（Logging）</strong>：记录每一步操作——用户输入、LLM 调用、工具调用、返回结果。最基础。<br>
+      <strong>② 指标（Metrics）</strong>：聚合统计——Token 消耗、响应延迟、成功率、工具调用次数。用于监控告警。<br>
+      <strong>③ 追踪（Tracing）</strong>：全链路追踪——一次请求经过的所有步骤、每次 LLM 调用的完整 prompt 和 response。用于调试和优化。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: 生产环境 Agent 必须监控的黄金指标有哪些？</div>
+    <div class="qa-answer">
+      <strong>质量指标</strong>：任务成功率（>90%）、幻觉率（<5%）、满意度（>80%）<br>
+      <strong>性能指标</strong>：首 token 延迟（P95<2s）、端到端延迟（P95<30s）、Token 消耗<br>
+      <strong>安全指标</strong>：提示注入次数、敏感信息泄露、危险工具调用、无限循环<br>
+      <strong>业务指标</strong>：DAU、会话长度、留存率、每次对话成本
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: LangSmith 和 Langfuse 有什么区别？怎么选？</div>
+    <div class="qa-answer">
+      <strong>LangSmith</strong>：LangChain 官方产品，与 LangChain/LangGraph 深度集成。SaaS 为主，闭源。<br>
+      <strong>Langfuse</strong>：开源可观测平台，框架无关（支持任何 LLM 应用）。可自部署，数据自控。<br><br>
+      <strong>选择</strong>：用 LangChain 生态选 LangSmith（集成最好），要自部署或跨框架选 Langfuse（开源灵活）。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Agent 评估的 5 大核心指标是什么？分别怎么计算？</div>
+    <div class="qa-answer">
+      <strong>① 任务完成率</strong>：完成任务数 / 总任务数 × 100%，衡量 Agent 是否完成了用户要求。<br>
+      <strong>② 步数效率</strong>：实际步数 / 最优步数，比值越接近 1 说明规划能力越强。<br>
+      <strong>③ Token 成本</strong>：Σ(prompt_tokens + completion_tokens) × 单价，用于成本控制。<br>
+      <strong>④ 准确率</strong>：正确回答数 / 总回答数 × 100%，衡量事实准确性。<br>
+      <strong>⑤ 鲁棒性</strong>：异常输入下正常处理数 / 异常输入总数 × 100%，衡量稳定性。<br><br>
+      这五个指标从能力、效率、成本、质量、稳定性全面覆盖 Agent 表现。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: LangSmith 的核心功能有哪些？</div>
+    <div class="qa-answer">
+      <strong>① Trace 追踪</strong>：通过 <code>@traceable</code> 装饰器自动收集 Agent 每一步的输入输出、Token 消耗、延迟。<br>
+      <strong>② Dataset 管理</strong>：创建评估数据集，管理输入输出样本对，支持版本化。<br>
+      <strong>③ 自动化评估</strong>：<code>evaluate()</code> 函数批量运行 Agent 并用自定义评估器打分。<br>
+      <strong>④ 实验对比</strong>：通过 <code>experiment_prefix</code> 标记不同版本，在平台上直观对比指标差异。<br>
+      <strong>⑤ 在线监控</strong>：生产环境实时监控 Trace，支持按时间、项目、状态查询和告警。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 离线评估和在线评估有什么区别？怎么配合使用？</div>
+    <div class="qa-answer">
+      <strong>离线评估</strong>：在固定数据集上运行评估器打分。可重复、快速迭代、成本低，适合开发阶段做 prompt 优化和模型选型。但覆盖有限，无法发现新问题。<br>
+      <strong>在线评估</strong>：在生产环境中收集真实用户反馈和行为数据。最真实、持续运行，适合线上质量监控和发现 bad case。但反馈滞后、噪声大。<br><br>
+      <strong>配合方式</strong>：离线评估做快速迭代（每天多次），在线评估做长期监控（持续运行）。线上发现的 bad case 定期补充到离线评估集中，形成闭环。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 什么是评估驱动开发（EDD）？它和 TDD 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>EDD（Evaluation-Driven Development）</strong>：先设计评估数据集和评估器，再开发 Agent 逻辑。每改一版跑评估，分数达标再上线。<br><br>
+      <strong>与 TDD 的区别</strong>：TDD 用确定性的单元测试（assert 相等），EDD 用概率性的 LLM 评估器（打分 + 阈值）；TDD 关注功能正确性，EDD 关注多维度表现（准确率、效率、安全性等）；TDD 的断言是二值的，EDD 的评估是连续分数。<br><br>
+      <strong>核心价值</strong>：避免"凭感觉改 prompt"的盲目迭代，让每次改动都有数据支撑。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: 怎么设计 Agent 的回归测试集？</div>
+    <div class="qa-answer">
+      <strong>设计原则</strong>：<br>
+      ① <strong>代表性</strong>：从真实日志中提取高频问题，覆盖主要使用场景。<br>
+      ② <strong>多样性</strong>：包含简单（30%）、中等（50%）、困难（20%）三个难度。<br>
+      ③ <strong>边界覆盖</strong>：包含空输入、超长文本、提示注入等异常 case。<br>
+      ④ <strong>可演进</strong>：线上发现的 bad case 定期归入回归集，持续扩充。<br><br>
+      <strong>实践建议</strong>：回归集至少 50 个 case，集成到 CI/CD 流水线，每次 PR 自动运行。退化用例数必须为 0 才允许合并。建议按功能模块分组管理，定位问题更快。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch14Questions = [
+  {
+    type: 'single',
+    question: 'Agent 评估相比传统软件评估的最大挑战是？',
+    options: [
+      'Agent 运行速度太慢',
+      'LLM 输出有随机性，"正确"难以定义',
+      'Agent 不需要评估',
+      '评估工具太少'
+    ],
+    answer: [1],
+    explanation: 'Agent 输出是自然语言，有随机性（相同输入不同输出），"正确"难以明确定义。需要多维度评估。'
+  },
+  {
+    type: 'single',
+    question: 'LLM-as-Judge 评估方法的主要缺点是？',
+    options: [
+      '速度太慢',
+      '成本太高',
+      '有自身偏差（如偏好长回答）',
+      '无法使用'
+    ],
+    answer: [2],
+    explanation: 'LLM-as-Judge 有自身偏差：偏好长回答、偏好同模型输出、对细微事实错误不敏感、评分一致性不如人工。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 可观测性中 Tracing（追踪）的作用是？',
+    options: [
+      '记录聚合统计数据',
+      '全链路追踪一次请求的所有步骤',
+      '发送告警通知',
+      '训练模型'
+    ],
+    answer: [1],
+    explanation: 'Tracing 记录一次用户请求经过的所有步骤：每次 LLM 调用的完整 prompt 和 response、工具调用等。用于调试和优化。'
+  },
+  {
+    type: 'single',
+    question: '生产环境 Agent 的幻觉率应该控制在？',
+    options: ['< 1%', '< 5%', '< 20%', '< 50%'],
+    answer: [1],
+    explanation: '幻觉率应控制在 < 5%。任务成功率 > 90%，用户满意度 > 80% 是生产环境的基本要求。'
+  },
+  {
+    type: 'single',
+    question: '需要自部署且框架无关的 Agent 可观测性工具是？',
+    options: ['LangSmith', 'Langfuse', 'LangChain', 'PyTorch'],
+    answer: [1],
+    explanation: 'Langfuse 是开源可观测平台，支持自部署且框架无关。LangSmith 是 LangChain 官方的 SaaS 产品。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent 评估的六个维度包括哪些？（多选）',
+    options: ['任务完成率', '准确性', '代码行数', '安全性'],
+    answer: [0, 1, 3],
+    explanation: '六维度：任务完成率、准确性、效率、安全性、鲁棒性、用户满意度。代码行数不是评估维度。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Agent 评估方法，以下说法正确的是？（多选）',
+    options: [
+      '人工标注最准但贵且慢',
+      'LLM-as-Judge 快但有偏差',
+      '基准测试集可重复但覆盖有限',
+      '用户反馈最真实且无噪声'
+    ],
+    answer: [0, 1, 2],
+    explanation: '用户反馈最真实但噪声大（用户可能随便点）。其他三项描述正确。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent 生产环境必须监控的安全指标包括？（多选）',
+    options: [
+      '提示注入攻击次数',
+      '敏感信息泄露次数',
+      '危险工具调用次数',
+      '代码风格违规'
+    ],
+    answer: [0, 1, 2],
+    explanation: '安全指标：提示注入、敏感信息泄露、危险工具调用、无限循环。代码风格违规不是 Agent 安全指标。'
+  },
+  {
+    type: 'single',
+    question: 'LangSmith 中 @traceable 装饰器的作用是？',
+    options: [
+      '提高 Agent 运行速度',
+      '自动收集函数调用的 Trace 信息（输入、输出、延迟、Token）',
+      '加密 Agent 的 prompt',
+      '自动生成评估数据集'
+    ],
+    answer: [1],
+    explanation: '@traceable 装饰器会自动追踪被装饰函数的调用链路，记录输入、输出、延迟、Token 消耗等信息，并上传到 LangSmith 平台。'
+  },
+  {
+    type: 'single',
+    question: 'LangSmith 中创建评估数据集使用的 API 是？',
+    options: [
+      'Client.create_dataset() + Client.create_examples()',
+      'Client.upload_data()',
+      'Client.train_model()',
+      'Client.export_results()'
+    ],
+    answer: [0],
+    explanation: '先用 Client.create_dataset() 创建数据集，再用 Client.create_examples() 批量添加评估样本，每个样本包含 inputs 和 outputs。'
+  },
+  {
+    type: 'single',
+    question: 'LangSmith evaluate() 函数的 experiment_prefix 参数的作用是？',
+    options: [
+      '设置评估器的名称前缀',
+      '标记实验版本名称，便于在平台上对比不同版本的结果',
+      '限制评估的并发数',
+      '设置评估的超时时间'
+    ],
+    answer: [1],
+    explanation: 'experiment_prefix 用于标记实验版本（如 "gpt4o-baseline"、"gpt4o-mini-v2"），在 LangSmith 平台上可以直观对比不同实验的指标差异。'
+  },
+  {
+    type: 'multiple',
+    question: '关于评估驱动开发（EDD），以下说法正确的是？（多选）',
+    options: [
+      '先设计评估数据集，再开发 Agent 逻辑',
+      '每次改动后跑评估，用数据驱动决策',
+      'EDD 用确定性的 assert 断言替代评估器',
+      '评估分数达标后才上线'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'EDD 先设计评估集再开发，每改一版跑评估，达标才上线。EDD 用概率性评估器（打分+阈值），不是确定性 assert 断言，选项 C 错误。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent A/B 测试中需要注意的事项包括？（多选）',
+    options: [
+      '需要更大的样本量，因为 LLM 输出方差大',
+      '同一用户应始终分配到同一组（确定性分组）',
+      'A/B 测试只适合离线评估，不能用于线上',
+      '需要对比成功率、延迟、Token 消耗等多个指标'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'A/B 测试需要更大样本量（LLM 随机性大），同一用户确定性分组（避免体验不一致），对比多指标。A/B 测试主要用于线上评估，选项 C 错误。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch14Questions); }, 500);
+</script>

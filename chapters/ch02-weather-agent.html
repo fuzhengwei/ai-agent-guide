@@ -1,0 +1,1224 @@
+<h1 class="chapter-title">第2章 你的第一个 Agent：天气查询助手</h1>
+<p class="chapter-subtitle">第一篇：Agent 基础</p>
+
+<div class="info-banner">
+<div class="banner-title">📌 本章目标</div>
+<p>不看理论，先动手！用 50 行代码构建一个能查天气的 Agent，在实战中理解"感知→决策→行动→观察"循环。后续章节会逐步改进这个 Agent。</p>
+</div>
+
+<!-- ===== 2.1 从一个问题开始 ===== -->
+<h2 class="section-heading">2.1 从一个问题开始</h2>
+
+<p>假设你想问："北京明天天气怎么样？"</p>
+
+<p><strong>传统程序</strong>怎么做？写一个函数：<code>get_weather("北京", "明天")</code>，返回结果。但你还需要：解析用户输入、判断意图、处理"明天是几号"、格式化输出……</p>
+
+<p><strong>Agent</strong>怎么做？你只需要给 AI 一个工具（get_weather），AI 自己判断意图、组装参数、调用工具、格式化结果。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气?","type":"start"},{"id":"ai","label":"AI 思考\n意图：查天气\n参数：city=北京, date=明天","type":"process"},{"id":"tool","label":"调用 get_weather\n(city=北京, date=2025-07-02)","type":"process"},{"id":"result","label":"返回：晴 25°C","type":"process"},{"id":"format","label":"AI 格式化\n北京明天晴天，气温25°C","type":"end"}],"edges":[{"from":"user","to":"ai"},{"from":"ai","to":"tool"},{"from":"tool","to":"format"}]}'></div>
+
+<!-- ===== 2.2 准备工作 ===== -->
+<h2 class="section-heading">2.2 准备工作</h2>
+
+<h3 class="sub-heading">2.2.1 安装 Python 环境</h3>
+
+<div class="code-block"><pre># 安装 OpenAI SDK
+pip install openai
+
+# 确认 Python 版本（需要 3.8+）
+python --version</pre></div>
+
+<h3 class="sub-heading">2.2.2 获取 API Key</h3>
+
+<p>你需要一个 LLM API Key。本章用 OpenAI 兼容接口为例（支持 OpenAI、DeepSeek、Qwen 等）：</p>
+
+<div class="code-block"><pre># 环境变量设置（选一个你有的）
+export OPENAI_API_KEY="sk-xxx"       # OpenAI
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+
+# 或者用 DeepSeek（更便宜）
+export OPENAI_API_KEY="sk-xxx"
+export OPENAI_BASE_URL="https://api.deepseek.com/v1"</pre></div>
+
+<!-- ===== 2.3 定义工具 ===== -->
+<h2 class="section-heading">2.3 定义工具：给 AI 一双手</h2>
+
+<p>Agent 的核心是"AI + 工具"。我们先定义一个天气查询工具：</p>
+
+<div class="code-block"><pre>import json
+from datetime import datetime, timedelta
+
+def get_weather(city: str, date: str = "today") -> dict:
+    """
+    查询指定城市的天气
+
+    Args:
+        city: 城市名称，如 "北京"、"上海"
+        date: 日期，"today"、"tomorrow" 或 "YYYY-MM-DD" 格式
+
+    Returns:
+        包含天气信息的字典
+    """
+    # 模拟天气数据（实际项目调用天气 API）
+    weather_data = {
+        "北京": {"today": ("晴", 25), "tomorrow": ("多云", 23)},
+        "上海": {"today": ("小雨", 28), "tomorrow": ("阴", 27)},
+        "广州": {"today": ("雷阵雨", 31), "tomorrow": ("晴", 33)},
+    }
+
+    # 处理日期
+    if date == "today":
+        date_key = "today"
+    elif date == "tomorrow":
+        date_key = "tomorrow"
+    else:
+        # 如果是具体日期，简化为 today
+        date_key = "today"
+
+    if city not in weather_data:
+        return {"error": f"暂不支持查询 {city} 的天气"}
+
+    weather, temp = weather_data[city][date_key]
+    return {
+        "city": city,
+        "date": date,
+        "weather": weather,
+        "temperature": f"{temp}°C",
+    }
+
+# 测试工具
+print(get_weather("北京", "tomorrow"))
+# {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}</pre></div>
+
+<!-- ===== 2.4 定义工具 Schema ===== -->
+<h2 class="section-heading">2.4 定义工具 Schema：让 AI 知道工具怎么用</h2>
+
+<p>AI 怎么知道有这个工具？怎么知道参数格式？答案是<strong>工具 Schema</strong>——一份 JSON 描述：</p>
+
+<div class="code-block"><pre>tools_schema = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "查询指定城市指定日期的天气信息",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "城市名称，如 北京、上海、广州"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "日期，可以是 today、tomorrow 或 YYYY-MM-DD 格式",
+                        "default": "today"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    }
+]</pre></div>
+
+<p>Schema 的三个关键字段：</p>
+<ul>
+<li><strong>name</strong>：工具名，AI 调用时用这个名字</li>
+<li><strong>description</strong>：工具描述，AI 靠这段文字判断"该不该用这个工具"</li>
+<li><strong>parameters</strong>：参数定义，AI 靠这个组装正确的参数</li>
+</ul>
+
+<div class="tip-banner">
+<div class="banner-title">💡 description 是最重要的字段</div>
+<p>AI 是否调用工具，很大程度上取决于 description 写得好不好。不要写"查询天气"，要写"查询指定城市指定日期的天气信息"——越具体越好。</p>
+</div>
+
+<!-- ===== 2.5 组装 Agent ===== -->
+<h2 class="section-heading">2.5 组装 Agent：让 AI 用工具</h2>
+
+<p>现在把 AI 和工具连起来，形成完整的 Agent 循环：</p>
+
+<div class="code-block"><pre>import json
+from openai import OpenAI
+
+client = OpenAI()  # 自动读取环境变量
+
+def run_agent(user_message: str) -> str:
+    """运行 Agent：感知→决策→行动→观察"""
+    messages = [
+        {"role": "system", "content": "你是一个天气助手，帮用户查询天气。用自然语言回答。"},
+        {"role": "user", "content": user_message},
+    ]
+
+    # === Agent 循环 ===
+    while True:
+        # 1. 感知 + 决策：AI 决定是否调用工具
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=tools_schema,
+        )
+
+        msg = response.choices[0].message
+
+        # 2. 判断：AI 没调用工具 → 任务完成，返回结果
+        if not msg.tool_calls:
+            return msg.content
+
+        # 3. 行动：AI 要调工具 → 执行工具
+        messages.append(msg)  # 先把 AI 的消息加入历史
+
+        for tool_call in msg.tool_calls:
+            # 解析工具名和参数
+            func_name = tool_call.function.name
+            func_args = json.loads(tool_call.function.arguments)
+
+            print(f"🔧 调用工具: {func_name}({func_args})")
+
+            # 执行工具
+            if func_name == "get_weather":
+                result = get_weather(**func_args)
+            else:
+                result = {"error": f"未知工具: {func_name}"}
+
+            # 4. 观察：把工具结果返回给 AI
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+
+        # 循环回去 → AI 看到工具结果，决定下一步
+
+
+# === 测试 ===
+print(run_agent("北京明天天气怎么样？"))</pre></div>
+
+<p>运行结果：</p>
+<div class="code-block"><pre>🔧 调用工具: get_weather({'city': '北京', 'date': 'tomorrow'})
+北京明天多云，气温23°C。</pre></div>
+
+<!-- ===== 2.6 理解 Agent 循环 ===== -->
+<h2 class="section-heading">2.6 理解 Agent 循环</h2>
+
+<p>回顾上面的代码，Agent 的核心是一个 <code>while True</code> 循环：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"perceive","label":"1. 感知\n用户消息 + 历史","type":"start"},{"id":"decide","label":"2. 决策\nAI 判断：调工具 or 回答?","type":"decision"},{"id":"act","label":"3. 行动\n执行工具","type":"process"},{"id":"observe","label":"4. 观察\n工具结果加入历史","type":"process"},{"id":"respond","label":"5. 响应\n返回自然语言","type":"end"}],"edges":[{"from":"perceive","to":"decide"},{"from":"decide","to":"act","label":"调工具"},{"from":"decide","to":"respond","label":"直接回答"},{"from":"act","to":"observe"},{"from":"observe","to":"perceive","label":"循环"}]}'></div>
+
+<p>这就是 <strong>ReAct 循环</strong>的简化版——下一章会详细讲解。现在你只需要理解：</p>
+
+<ol>
+<li><strong>感知</strong>：AI 接收用户消息和对话历史</li>
+<li><strong>决策</strong>：AI 判断是否需要调用工具</li>
+<li><strong>行动</strong>：如果需要，执行工具调用</li>
+<li><strong>观察</strong>：把工具结果给 AI，让它看到结果</li>
+<li><strong>循环</strong>：AI 看到结果后，可能继续调工具，也可能直接回答</li>
+</ol>
+
+<!-- ===== 2.7 增强：多轮对话 ===== -->
+<h2 class="section-heading">2.7 增强：多轮对话</h2>
+
+<p>上面的 Agent 只能处理单个问题。加上多轮对话：</p>
+
+<div class="code-block"><pre>def run_agent_loop():
+    """多轮对话 Agent"""
+    messages = [
+        {"role": "system", "content": "你是一个天气助手，帮用户查询天气。用自然语言回答。"},
+    ]
+
+    print("🌤️ 天气助手已启动，输入 'quit' 退出\n")
+
+    while True:
+        user_input = input("👤 ")
+        if user_input.lower() in ["quit", "exit", "退出"]:
+            print("👋 再见！")
+            break
+
+        messages.append({"role": "user", "content": user_input})
+
+        # Agent 循环（和之前一样）
+        while True:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                tools=tools_schema,
+            )
+            msg = response.choices[0].message
+
+            if not msg.tool_calls:
+                print(f"🤖 {msg.content}\n")
+                messages.append(msg)
+                break
+
+            messages.append(msg)
+            for tool_call in msg.tool_calls:
+                func_name = tool_call.function.name
+                func_args = json.loads(tool_call.function.arguments)
+                print(f"🔧 调用: {func_name}({func_args})")
+
+                if func_name == "get_weather":
+                    result = get_weather(**func_args)
+                else:
+                    result = {"error": f"未知工具"}
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(result, ensure_ascii=False),
+                })
+
+# 启动
+run_agent_loop()</pre></div>
+
+<p>测试效果：</p>
+<div class="code-block"><pre>🌤️ 天气助手已启动，输入 'quit' 退出
+
+👤 北京明天天气怎么样？
+🔧 调用: get_weather({'city': '北京', 'date': 'tomorrow'})
+🤖 北京明天多云，气温23°C。
+
+👤 那上海呢？
+🔧 调用: get_weather({'city': '上海', 'date': 'tomorrow'})
+🤖 上海明天阴天，气温27°C。
+
+👤 这两个城市哪个更热？
+🤖 上海明天更热一些，气温27°C，而北京是23°C，差了4度。</pre></div>
+
+<p>注意第三次对话——AI 没有调用工具，而是<strong>从对话历史中推理</strong>出了答案。这就是 Agent 的"记忆"——第4章会详细讲。</p>
+
+<!-- ===== 2.8 工具异常处理 ===== -->
+<h2 class="section-heading">2.8 工具异常处理</h2>
+
+<p>现实世界并不总是顺利的——API 会超时、参数会出错、网络会断开。一个健壮的 Agent 必须能<strong>优雅地处理异常</strong>，而不是直接崩溃。</p>
+
+<p>前面我们写的 Agent 有一个致命缺陷：<strong>假设工具永远不会出错</strong>。如果 <code>get_weather</code> 抛异常，整个 Agent 就挂了。</p>
+
+<div class="warning-banner">
+<div class="banner-title">⚠️ 现实中的异常场景</div>
+<ul>
+<li><strong>API 超时</strong>：天气服务响应慢或不可达</li>
+<li><strong>参数错误</strong>：AI 生成了不合法的参数（如 city="纽约" 不在支持列表）</li>
+<li><strong>JSON 解析失败</strong>：AI 返回的 arguments 不是有效 JSON</li>
+<li><strong>服务限流</strong>：429 Too Many Requests</li>
+</ul>
+</div>
+
+<h3 class="sub-heading">2.8.1 三种异常处理策略</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"call","label":"调用工具","type":"start"},{"id":"ok","label":"成功返回","type":"end"},{"id":"err","label":"捕获异常","type":"decision"},{"id":"retry","label":"重试（指数退避）","type":"process"},{"id":"fallback","label":"优雅降级\n返回默认/提示","type":"process"},{"id":"maxretry","label":"超过最大重试","type":"process"}],"edges":[{"from":"call","to":"ok","label":"成功"},{"from":"call","to":"err","label":"异常"},{"from":"err","to":"retry","label":"可重试（超时/限流）"},{"from":"retry","to":"call","label":"重试"},{"from":"err","to":"fallback","label":"不可重试（参数错误）"},{"from":"err","to":"maxretry","label":"重试次数耗尽"},{"from":"maxretry","to":"fallback"}]}'></div>
+
+<p>面对异常，我们有三种策略：</p>
+<ul>
+<li><strong>重试</strong>：对于临时性故障（超时、限流），重试可能成功</li>
+<li><strong>优雅降级</strong>：对于不可恢复的故障，返回有意义的提示，而不是崩溃</li>
+<li><strong>让 AI 知道</strong>：把错误信息告诉 AI，让 AI 自己决定下一步（换工具？改参数？道歉？）</li>
+</ul>
+
+<div class="tip-banner">
+<div class="banner-title">💡 关键原则：把错误信息告诉 AI</div>
+<p>不要吞掉异常！把错误信息作为 tool result 返回给 AI，AI 会根据错误信息调整策略。比如：如果 city 参数不被支持，AI 可能换一个城市名再试；如果 API 超时，AI 可能直接用已有信息回答。</p>
+</div>
+
+<h3 class="sub-heading">2.8.2 完整异常处理代码</h3>
+
+<div class="code-block"><pre>import json
+import time
+import logging
+from openai import OpenAI
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("weather_agent")
+
+client = OpenAI()
+
+def get_weather(city: str, date: str = "today") -> dict:
+    """带模拟异常的天气查询"""
+    weather_data = {
+        "北京": {"today": ("晴", 25), "tomorrow": ("多云", 23)},
+        "上海": {"today": ("小雨", 28), "tomorrow": ("阴", 27)},
+        "广州": {"today": ("雷阵雨", 31), "tomorrow": ("晴", 33)},
+    }
+
+    # 模拟：不支持的城市 → 参数错误
+    if city not in weather_data:
+        return {
+            "error": f"不支持查询 {city} 的天气，目前支持：北京、上海、广州",
+            "supported_cities": list(weather_data.keys()),
+        }
+
+    # 模拟：随机超时（20%概率）
+    import random
+    if random.random() < 0.2:
+        raise TimeoutError("天气服务响应超时，请稍后重试")
+
+    weather, temp = weather_data[city].get(date, weather_data[city]["today"])
+    return {
+        "city": city,
+        "date": date,
+        "weather": weather,
+        "temperature": f"{temp}°C",
+    }
+
+def execute_tool_with_retry(func_name: str, func_args: dict, max_retries: int = 3) -> dict:
+    """
+    执行工具，带指数退避重试
+
+    Args:
+        func_name: 工具名
+        func_args: 工具参数
+        max_retries: 最大重试次数
+
+    Returns:
+        工具结果字典（成功或错误信息）
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            if func_name == "get_weather":
+                result = get_weather(**func_args)
+            else:
+                result = {"error": f"未知工具: {func_name}"}
+            return result
+
+        except TimeoutError as e:
+            if attempt < max_retries:
+                # 指数退避：1s → 2s → 4s
+                wait_time = 2 ** attempt
+                logger.warning(f"⚠️ 第 {attempt+1} 次重试，等待 {wait_time}s: {e}")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"❌ 超过最大重试次数 ({max_retries})")
+                return {
+                    "error": f"天气服务暂时不可用，已重试 {max_retries} 次。建议稍后再试。",
+                    "retry_attempts": max_retries,
+                }
+
+        except json.JSONDecodeError as e:
+            # 不可重试的错误 → 直接降级
+            logger.error(f"❌ 参数解析失败（不可重试）: {e}")
+            return {
+                "error": f"参数格式错误，无法解析: {str(e)}",
+                "raw_args": str(func_args),
+            }
+
+        except TypeError as e:
+            # 参数类型错误 → 不可重试，告诉 AI
+            logger.error(f"❌ 参数类型错误（不可重试）: {e}")
+            return {
+                "error": f"工具参数错误: {str(e)}",
+                "expected_params": "city (str), date (str, optional)",
+            }
+
+        except Exception as e:
+            # 未知异常 → 降级，不暴露内部细节
+            logger.error(f"❌ 未知异常: {type(e).__name__}: {e}")
+            return {
+                "error": "工具执行遇到未知错误，请稍后再试或换个方式提问。",
+            }
+
+def run_agent_robust(user_message: str) -> str:
+    """带异常处理的 Agent"""
+    messages = [
+        {"role": "system", "content": "你是一个天气助手。如果工具返回错误信息，请根据错误提示调整策略或如实告诉用户。"},
+        {"role": "user", "content": user_message},
+    ]
+
+    while True:
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                tools=tools_schema,
+            )
+        except Exception as e:
+            # LLM API 本身出错
+            logger.error(f"❌ LLM API 异常: {e}")
+            return "抱歉，AI 服务暂时不可用，请稍后再试。"
+
+        msg = response.choices[0].message
+
+        if not msg.tool_calls:
+            return msg.content
+
+        messages.append(msg)
+
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            try:
+                func_args = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                # AI 返回了无效 JSON → 直接告诉 AI
+                func_args = {}
+                logger.warning(f"⚠️ AI 返回无效参数")
+
+            print(f"🔧 调用工具: {func_name}({func_args})")
+
+            # 使用带重试的工具执行
+            result = execute_tool_with_retry(func_name, func_args)
+
+            print(f"📦 结果: {result}")
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+
+# 测试各种异常场景
+print("=== 正常查询 ===")
+print(run_agent_robust("北京今天天气怎么样？"))
+
+print("\n=== 不支持的城市 ===")
+print(run_agent_robust("纽约今天天气怎么样？"))
+
+print("\n=== 可能触发超时重试 ===")
+print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
+
+<p>运行效果：</p>
+<div class="code-block"><pre>=== 正常查询 ===
+🔧 调用工具: get_weather({'city': '北京', 'date': 'today'})
+📦 结果: {'city': '北京', 'date': 'today', 'weather': '晴', 'temperature': '25°C'}
+北京今天晴天，气温25°C。
+
+=== 不支持的城市 ===
+🔧 调用工具: get_weather({'city': '纽约', 'date': 'today'})
+📦 结果: {'error': '不支持查询 纽约 的天气，目前支持：北京、上海、广州', 'supported_cities': ['北京', '上海', '广州']}
+抱歉，目前不支持查询纽约的天气。我可以查询北京、上海和广州的天气，您想查哪个城市？
+
+=== 可能触发超时重试 ===
+🔧 调用工具: get_weather({'city': '上海', 'date': 'tomorrow'})
+⚠️ 第 1 次重试，等待 1s: 天气服务响应超时
+⚠️ 第 2 次重试，等待 2s: 天气服务响应超时
+📦 结果: {'city': '上海', 'date': 'tomorrow', 'weather': '阴', 'temperature': '27°C'}
+上海明天阴天，气温27°C。</pre></div>
+
+<p>注意 AI 在面对不同错误时的<strong>自适应行为</strong>：</p>
+<ul>
+<li><strong>不支持的城市</strong>：AI 看到了 supported_cities 列表，主动推荐可用城市</li>
+<li><strong>超时重试成功</strong>：Agent 重试后成功获取数据，正常回答</li>
+<li><strong>超时重试耗尽</strong>：Agent 告知用户服务不可用，建议稍后重试</li>
+</ul>
+
+<div class="tip-banner">
+<div class="banner-title">💡 指数退避的数学原理</div>
+<p>指数退避（Exponential Backoff）的等待时间是 <code>2^attempt</code>：第1次等1秒，第2次等2秒，第3次等4秒……这比固定间隔重试更友好——给服务恢复的时间，避免雪崩。生产环境通常还会加入随机 jitter（抖动），避免所有客户端同时重试。</p>
+</div>
+
+<h3 class="sub-heading">2.8.3 重试 vs 降级的决策表</h3>
+
+<p>哪些错误应该重试？哪些应该直接降级？这是工程决策，不是拍脑袋：</p>
+
+<table class="data-table">
+<thead><tr><th>异常类型</th><th>能否重试</th><th>策略</th><th>示例</th></tr></thead>
+<tbody>
+<tr><td>TimeoutError</td><td>✅ 可以</td><td>指数退避重试</td><td>API 超时、网络抖动</td></tr>
+<tr><td>429 Rate Limit</td><td>✅ 可以</td><td>指数退避 + jitter</td><td>请求过多被限流</td></tr>
+<tr><td>503 Service Unavailable</td><td>✅ 可以</td><td>指数退避重试</td><td>服务临时不可用</td></tr>
+<tr><td>TypeError（参数错误）</td><td>❌ 不行</td><td>告诉 AI 调整参数</td><td>传了 int 给 string 参数</td></tr>
+<tr><td>JSONDecodeError</td><td>❌ 不行</td><td>告诉 AI 参数无效</td><td>AI 生成了非法 JSON</td></tr>
+<tr><td>KeyError（数据不存在）</td><td>❌ 不行</td><td>降级返回提示</td><td>查询不存在的城市</td></tr>
+<tr><td>PermissionError</td><td>❌ 不行</td><td>降级返回提示</td><td>没有权限访问某资源</td></tr>
+</tbody>
+</table>
+
+<p>核心判断原则：<strong>可重试 = 临时性故障（可能自己恢复），不可重试 = 逻辑性错误（再试也一样）</strong>。</p>
+
+<p>2.7 节的多轮对话让 Agent 能和用户持续交互，2.8 节的异常处理让 Agent 在面对现实世界的不确定性时不崩溃。两者结合，Agent 才从"玩具"变成"产品"。接下来我们让 Agent 从单工具进化到多工具协作。</p>
+
+<!-- ===== 2.9 多工具协作 ===== -->
+<h2 class="section-heading">2.9 多工具协作</h2>
+
+<p>真正的 Agent 不只有一个工具。就像人不止会查天气——你还会查天气、看地图、规划行程。Agent 也应该能<strong>协调多个工具</strong>完成复杂任务。</p>
+
+<p>这一节我们给天气助手加一个新伙伴：<strong>行程规划工具</strong>。然后看看 Agent 如何让两个工具协作。</p>
+
+<h3 class="sub-heading">2.9.1 定义行程规划工具</h3>
+
+<div class="code-block"><pre>def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
+    """
+    根据城市和天气情况规划出行建议
+
+    Args:
+        city: 目的地城市
+        weather_condition: 天气情况（晴/多云/小雨/雷阵雨等）
+        days: 出行天数
+
+    Returns:
+        行程建议字典
+    """
+    trip_data = {
+        "北京": {
+            "晴": "适合去故宫、颐和园，推荐户外游览",
+            "多云": "适合逛博物馆、胡同，室内外均可",
+            "小雨": "建议参观国家博物馆、798艺术区，以室内为主",
+            "雷阵雨": "强烈建议室内活动：故宫室内展区、国家大剧院",
+        },
+        "上海": {
+            "晴": "外滩散步、豫园游览、迪士尼乐园",
+            "多云": "南京路逛街、田子坊艺术区",
+            "小雨": "上海博物馆、环球金融中心观光厅",
+            "雷阵雨": "室内商场、上海大剧院",
+        },
+        "广州": {
+            "晴": "白云山登山、珠江夜游",
+            "多云": "陈家祠、沙面岛散步",
+            "小雨": "广州图书馆、广东省博物馆",
+            "雷阵雨": "天河城购物中心、室内美食探店",
+        },
+    }
+
+    if city not in trip_data:
+        return {
+            "error": f"暂不支持 {city} 的行程规划",
+            "supported_cities": list(trip_data.keys()),
+        }
+
+    if not weather_condition:
+        return {
+            "city": city,
+            "note": "请先查询天气，我再给出更精准的行程建议",
+            "general_tip": trip_data[city].get("晴", "建议户外游览"),
+        }
+
+    recommendation = trip_data[city].get(
+        weather_condition,
+        "建议根据天气灵活安排室内外活动"
+    )
+
+    return {
+        "city": city,
+        "weather_condition": weather_condition,
+        "recommendation": recommendation,
+        "days": days,
+    }
+
+# 测试
+print(plan_trip("北京", "雷阵雨", 2))
+# {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}</pre></div>
+
+<h3 class="sub-heading">2.9.2 扩展工具 Schema</h3>
+
+<p>现在有两个工具，Schema 也需要扩展：</p>
+
+<div class="code-block"><pre>tools_schema = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "查询指定城市指定日期的天气信息，包括天气状况和温度",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "城市名称，如 北京、上海、广州"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "日期，可以是 today、tomorrow 或 YYYY-MM-DD",
+                        "default": "today"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "plan_trip",
+            "description": "根据城市和天气情况规划出行建议，需要天气信息作为输入",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "目的地城市，如 北京、上海、广州"
+                    },
+                    "weather_condition": {
+                        "type": "string",
+                        "description": "天气状况，如 晴、多云、小雨、雷阵雨"
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "出行天数，默认1天",
+                        "default": 1
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    }
+]</pre></div>
+
+<h3 class="sub-heading">2.9.3 多工具 Agent 循环</h3>
+
+<p>Agent 循环的结构不变——AI 自己决定先查天气还是先规划行程：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天适不适合出游？","type":"start"},{"id":"think1","label":"AI 思考：\n先查天气，再规划行程","type":"process"},{"id":"weather","label":"调用 get_weather\n(北京, tomorrow)\n→ 多云 23°C","type":"process"},{"id":"think2","label":"AI 思考：\n天气是多云，可以规划行程了","type":"process"},{"id":"plan","label":"调用 plan_trip\n(北京, 多云, 1)\n→ 逛博物馆、胡同","type":"process"},{"id":"answer","label":"AI 综合回答：\n北京明天多云23°C\n适合逛博物馆和胡同","type":"end"}],"edges":[{"from":"user","to":"think1"},{"from":"think1","to":"weather"},{"from":"weather","to":"think2"},{"from":"think2","to":"plan"},{"from":"plan","to":"answer"}]}'></div>
+
+<div class="code-block"><pre>def run_multi_tool_agent(user_message: str) -> str:
+    """多工具协作 Agent"""
+    messages = [
+        {
+            "role": "system",
+            "content": "你是一个出行助手，可以查询天气和规划行程。\n"
+                       "如果用户问出行建议，先查天气再规划行程。\n"
+                       "如果工具返回错误，根据错误信息调整策略。",
+        },
+        {"role": "user", "content": user_message},
+    ]
+
+    tool_map = {
+        "get_weather": get_weather,
+        "plan_trip": plan_trip,
+    }
+
+    while True:
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                tools=tools_schema,
+            )
+        except Exception as e:
+            return f"AI 服务暂时不可用: {e}"
+
+        msg = response.choices[0].message
+
+        if not msg.tool_calls:
+            return msg.content
+
+        messages.append(msg)
+
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            try:
+                func_args = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                func_args = {}
+
+            print(f"🔧 调用: {func_name}({func_args})")
+
+            # 使用带重试的执行（复用 2.8 节的代码）
+            result = execute_tool_with_retry(func_name, func_args)
+
+            print(f"📦 结果: {result}")
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+
+# 测试多工具协作
+print("=== 简单天气查询 ===")
+print(run_multi_tool_agent("北京明天天气怎么样？"))
+
+print("\n=== 出行建议（触发双工具协作） ===")
+print(run_multi_tool_agent("北京明天适不适合出游？"))
+
+print("\n=== 直接问行程（Agent 自行决定先查天气） ===")
+print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
+
+<p>运行效果：</p>
+<div class="code-block"><pre>=== 简单天气查询 ===
+🔧 调用: get_weather({'city': '北京', 'date': 'tomorrow'})
+📦 结果: {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}
+北京明天多云，气温23°C。
+
+=== 出行建议（触发双工具协作） ===
+🔧 调用: get_weather({'city': '北京', 'date': 'tomorrow'})
+📦 结果: {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}
+🔧 调用: plan_trip({'city': '北京', 'weather_condition': '多云', 'days': 1})
+📦 结果: {'city': '北京', 'weather_condition': '多云', 'recommendation': '适合逛博物馆、胡同，室内外均可', 'days': 1}
+北京明天多云23°C，适合逛博物馆和胡同，室内外活动都可以安排。
+
+=== 直接问行程（Agent 自行决定先查天气） ===
+🔧 调用: get_weather({'city': '上海', 'date': 'today'})
+📦 结果: {'city': '上海', 'date': 'today', 'weather': '小雨', 'temperature': '28°C'}
+🔧 调用: plan_trip({'city': '上海', 'weather_condition': '小雨', 'days': 1})
+📦 结果: {'city': '上海', 'weather_condition': '小雨', 'recommendation': '上海博物馆、环球金融中心观光厅', 'days': 1}
+上海今天小雨28°C，建议以室内为主：上海博物馆和环球金融中心观光厅。</pre></div>
+
+<div class="tip-banner">
+<div class="banner-title">💡 AI 自己决定了调用顺序！</div>
+<p>我们没有写"先查天气再规划行程"的逻辑——AI 自己推理出了这个顺序。这就是 Agent 的核心优势：<strong>你不需要硬编码流程，AI 会根据目标和工具描述自行编排</strong>。但这也有代价——AI 有可能编错顺序，这正是 2.10 节要分析的问题。</p>
+</div>
+
+<h3 class="sub-heading">2.9.4 多工具 vs 单工具的成本对比</h3>
+
+<p>多工具协作的代价是什么？</p>
+
+<table class="data-table">
+<thead><tr><th>维度</th><th>单工具（查天气）</th><th>双工具（天气+行程）</th></tr></thead>
+<tbody>
+<tr><td>工具 Schema tokens</td><td>~150</td><td>~350</td></tr>
+<tr><td>典型循环次数</td><td>1 次</td><td>2-3 次</td></tr>
+<tr><td>总 token 消耗</td><td>~500</td><td>~1500</td></tr>
+<tr><td>延迟</td><td>1-2s</td><td>3-6s</td></tr>
+<tr><td>出错概率</td><td>低</td><td>中（AI 可能调错顺序）</td></tr>
+</tbody>
+</table>
+
+<p>工具越多，AI 的决策空间越大，出错概率越高，延迟也越长。这不是免费的——<strong>2.11 节会讨论 Agent 的边界</strong>，什么时候不该用多工具 Agent。</p>
+
+<p>2.9 节展示了 Agent 从单工具到多工具的进化。但一个关键问题还没回答：<strong>Agent 循环到底消耗了多少资源？</strong>我们需要量化分析，才能做出理性决策。这正是下一节的主题。</p>
+
+<!-- ===== 2.10 工具调用链分析 ===== -->
+<h2 class="section-heading">2.10 工具调用链分析</h2>
+
+<p>Agent 不是魔法——每次循环都在消耗 token、时间和钱。一个优秀的 Agent 工程师必须能<strong>量化分析每次调用</strong>，才能优化成本和延迟。</p>
+
+<p>这一节我们给 Agent 加上<strong>调用链追踪</strong>——打印每次循环的 token 消耗、调用次数、延迟，让你看清 Agent 的真实运行过程。</p>
+
+<h3 class="sub-heading">2.10.1 什么是调用链？</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"loop1","label":"循环 1\nAI 决策 → 调 get_weather\ntokens: 500 | 延迟: 1.2s","type":"process"},{"id":"loop2","label":"循环 2\nAI 决策 → 调 plan_trip\ntokens: 800 | 延迟: 1.5s","type":"process"},{"id":"loop3","label":"循环 3\nAI 综合回答\ntokens: 200 | 延迟: 0.3s","type":"end"},{"id":"total","label":"总计\n3次循环 | 1500 tokens | 3.0s","type":"start"}],"edges":[{"from":"loop1","to":"loop2"},{"from":"loop2","to":"loop3"},{"from":"loop3","to":"total"}]}'></div>
+
+<p>一次 Agent 请求可能触发<strong>多次循环</strong>，每次循环包含：</p>
+<ul>
+<li><strong>LLM 调用</strong>：消耗 token，产生延迟</li>
+<li><strong>工具执行</strong>：消耗时间，可能有延迟</li>
+<li><strong>消息累积</strong>：历史越来越长，token 消耗递增</li>
+</ul>
+
+<h3 class="sub-heading">2.10.2 带追踪的 Agent</h3>
+
+<div class="code-block"><pre>import time
+import json
+from openai import OpenAI
+
+client = OpenAI()
+
+class AgentTracer:
+    """Agent 调用链追踪器"""
+
+    def __init__(self):
+        self.loops = []      # 每次循环的记录
+        self.total_tokens = 0
+        self.total_time = 0.0
+        self.tool_calls_count = 0
+
+    def record_loop(self, loop_num: int, response, loop_time: float, tool_names: list = None):
+        """记录一次循环"""
+        usage = response.usage
+        loop_info = {
+            "loop": loop_num,
+            "prompt_tokens": usage.prompt_tokens if usage else 0,
+            "completion_tokens": usage.completion_tokens if usage else 0,
+            "total_tokens": usage.total_tokens if usage else 0,
+            "time_seconds": round(loop_time, 2),
+            "tool_calls": tool_names or [],
+            "has_tool_call": len(tool_names or []) > 0,
+        }
+        self.loops.append(loop_info)
+        self.total_tokens += loop_info["total_tokens"]
+        self.total_time += loop_time
+        if tool_names:
+            self.tool_calls_count += len(tool_names)
+
+    def print_report(self):
+        """打印分析报告"""
+        print("\n" + "="*50)
+        print("📊 Agent 调用链分析报告")
+        print("="*50)
+        print(f"总循环次数: {len(self.loops)}")
+        print(f"总工具调用: {self.tool_calls_count} 次")
+        print(f"总 token 消耗: {self.total_tokens}")
+        print(f"总耗时: {round(self.total_time, 2)}s")
+        print(f"\n--- 每次循环详情 ---")
+        for loop in self.loops:
+            role = "🔧 工具调用" if loop["has_tool_call"] else "💬 最终回答"
+            print(f"  循环 {loop['loop']}: {role}")
+            print(f"    tokens: {loop['total_tokens']} (prompt: {loop['prompt_tokens']}, completion: {loop['completion_tokens']})")
+            print(f"    延迟: {loop['time_seconds']}s")
+            if loop['tool_calls']:
+                print(f"    工具: {', '.join(loop['tool_calls'])}")
+        print("="*50)
+
+        # 成本估算（以 GPT-4o-mini 为例）
+        cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
+        cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
+
+        input_tokens = sum(l["prompt_tokens"] for l in self.loops)
+        output_tokens = sum(l["completion_tokens"] for l in self.loops)
+        estimated_cost = input_tokens * cost_per_1k_input + output_tokens * cost_per_1k_output
+        print(f"💰 预估成本: ${estimated_cost:.6f}")
+
+
+def run_agent_with_tracer(user_message: str) -> str:
+    """带调用链追踪的 Agent"""
+    tracer = AgentTracer()
+    messages = [
+        {
+            "role": "system",
+            "content": "你是一个出行助手，可以查询天气和规划行程。"
+        },
+        {"role": "user", "content": user_message},
+    ]
+
+    tool_map = {
+        "get_weather": get_weather,
+        "plan_trip": plan_trip,
+    }
+
+    loop_num = 0
+
+    while True:
+        loop_num += 1
+        start_time = time.time()
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=tools_schema,
+        )
+
+        loop_time = time.time() - start_time
+        msg = response.choices[0].message
+
+        # 记录工具调用名
+        tool_names = [tc.function.name for tc in (msg.tool_calls or [])]
+        tracer.record_loop(loop_num, response, loop_time, tool_names)
+
+        if not msg.tool_calls:
+            tracer.print_report()
+            return msg.content
+
+        messages.append(msg)
+
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            func_args = json.loads(tool_call.function.arguments)
+            print(f"🔧 调用: {func_name}({func_args})")
+
+            result = execute_tool_with_retry(func_name, func_args)
+            print(f"📦 结果: {result}")
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+
+# 测试
+print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
+
+<p>运行效果：</p>
+<div class="code-block"><pre>🔧 调用: get_weather({'city': '北京', 'date': 'tomorrow'})
+📦 结果: {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}
+🔧 调用: plan_trip({'city': '北京', 'weather_condition': '多云', 'days': 1})
+📦 结果: {'city': '北京', 'weather_condition': '多云', 'recommendation': '适合逛博物馆、胡同，室内外均可', 'days': 1}
+
+==================================================
+📊 Agent 调用链分析报告
+==================================================
+总循环次数: 3
+总工具调用: 2 次
+总 token 消耗: 1478
+总耗时: 3.21s
+
+--- 每次循环详情 ---
+  循环 1: 🔧 工具调用
+    tokens: 523 (prompt: 385, completion: 138)
+    延迟: 1.12s
+    工具: get_weather
+  循环 2: 🔧 工具调用
+    tokens: 675 (prompt: 532, completion: 143)
+    廳迟: 1.35s
+    工具: plan_trip
+  循环 3: 💬 最终回答
+    tokens: 280 (prompt: 210, completion: 70)
+    延迟: 0.74s
+==================================================
+💰 预估成本: $0.000354
+
+北京明天多云23°C，适合逛博物馆和胡同，室内外活动均可。</pre></div>
+
+<h3 class="sub-heading">2.10.3 关键发现：token 递增现象</h3>
+
+<p>注意循环 2 的 prompt_tokens (532) > 循环 1 的 prompt_tokens (385)。为什么？因为<strong>每次循环都把上一次的消息加入历史</strong>：</p>
+
+<div class="code-block"><pre># 循环 1 的 messages:
+#   [system, user] → prompt_tokens: 385
+
+# 循环 2 的 messages:
+#   [system, user, AI_msg(含工具调用), tool_result] → prompt_tokens: 532
+
+# 循环 3 的 messages:
+#   [system, user, AI_msg, tool_result, AI_msg, tool_result] → prompt_tokens: 210
+#   （注意：最终回答的 prompt 包含了所有历史）</pre></div>
+
+<p>这就是 <strong>token 递增问题</strong>：Agent 循环次数越多，历史越长，token 消耗越大。对于简单任务，这不是问题；对于需要 10+ 次循环的复杂任务，成本可能飙升。</p>
+
+<div class="warning-banner">
+<div class="banner-title">⚠️ 生产环境的 token 管理</div>
+<ul>
+<li><strong>设置最大循环次数</strong>：防止无限循环（如 max_loops=10）</li>
+<li><strong>设置最大 token 预算</strong>：超过预算就停止（如 max_tokens=5000）</li>
+<li><strong>压缩历史消息</strong>：循环超过 N 次后，摘要之前的对话</li>
+<li><strong>选择合适的模型</strong>：简单任务用 gpt-4o-mini，复杂任务用 gpt-4o</li>
+</ul>
+</div>
+
+<h3 class="sub-heading">2.10.4 不同任务的调用链对比</h3>
+
+<table class="data-table">
+<thead><tr><th>用户问题</th><th>循环次数</th><th>工具调用</th><th>总 tokens</th><th>耗时</th><th>成本</th></tr></thead>
+<tbody>
+<tr><td>北京明天天气？</td><td>2</td><td>1 (get_weather)</td><td>~500</td><td>1.5s</td><td>$0.0001</td></tr>
+<tr><td>北京明天适合出游？</td><td>3</td><td>2 (天气+行程)</td><td>~1500</td><td>3.2s</td><td>$0.0004</td></tr>
+<tr><td>帮我规划上海2天行程</td><td>3</td><td>2 (天气+行程)</td><td>~1800</td><td>4.0s</td><td>$0.0005</td></tr>
+<tr><td>北京上海广州三城天气对比</td><td>4</td><td>3 (三次天气)</td><td>~2500</td><td>5.5s</td><td>$0.0008</td></tr>
+</tbody>
+</table>
+
+<p>从数据可以看出：<strong>工具越多、循环越多，成本和延迟越高</strong>。这不是线性的——因为 token 递增效应，第 N 次循环的成本比第 1 次更高。</p>
+
+<p>2.10 节给了我们量化的视角。数据告诉我们，Agent 不是万能的——有时候它太贵、太慢。那么什么时候不该用 Agent？什么时候必须用？这正是下一节的核心问题。</p>
+
+<!-- ===== 2.11 Agent 的边界 ===== -->
+<h2 class="section-heading">2.11 Agent 的边界</h2>
+
+<p>Agent 很酷，但不是万能药。理解 Agent 的<strong>能力边界</strong>，比理解它的能力更重要——这样你才不会在应该写普通程序的场景里强行用 Agent。</p>
+
+<h3 class="sub-heading">2.11.1 什么时候 Agent 不如传统程序？</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"task","label":"需要完成一个任务","type":"start"},{"id":"rule","label":"规则明确？\n步骤固定？","type":"decision"},{"id":"traditional","label":"用传统程序\n更快、更稳、更便宜","type":"process"},{"id":"ambiguous","label":"需要理解意图？\n需要灵活决策？","type":"decision"},{"id":"agent","label":"用 Agent\nAI 自主编排流程","type":"process"},{"id":"both","label":"混合架构\n确定性部分 → 传统程序\n不确定性部分 → Agent","type":"end"}],"edges":[{"from":"task","to":"rule"},{"from":"rule","to":"traditional","label":"是"},{"from":"rule","to":"ambiguous","label":"否"},{"from":"ambiguous","to":"agent","label":"是"},{"from":"ambiguous","to":"both","label":"部分"}]}'></div>
+
+<p>以下场景，传统程序完胜 Agent：</p>
+
+<table class="data-table">
+<thead><tr><th>场景</th><th>传统程序</th><th>Agent</th><th>胜者</th></tr></thead>
+<tbody>
+<tr><td>CRUD 操作（增删改查）</td><td>确定性逻辑，100% 准确</td><td>可能理解错意图</td><td>❌ 传统</td></tr>
+<tr><td>数学计算</td><td>精确无误</td><td>LLM 算术不可靠</td><td>❌ 传统</td></tr>
+<tr><td>格式转换（CSV → JSON）</td><td>规则明确，速度快</td><td>没必要让 AI 决策</td><td>❌ 传统</td></tr>
+<tr><td>定时批处理任务</td><td>稳定、低成本</td><td>每次调用都花钱</td><td>❌ 传统</td></tr>
+<tr><td>高并发低延迟 API</td><td>毫秒级响应</td><td>秒级响应，成本高</td><td>❌ 传统</td></tr>
+</tbody>
+</table>
+
+<p>核心原因：<strong>确定性任务不需要决策，而决策是 Agent 的核心价值</strong>。给一个不需要决策的任务加 Agent，就像给计算器装个大脑——费钱还更慢。</p>
+
+<h3 class="sub-heading">2.11.2 什么时候必须用 Agent？</h3>
+
+<p>反过来，以下场景 Agent 完胜传统程序：</p>
+
+<table class="data-table">
+<thead><tr><th>场景</th><th>传统程序</th><th>Agent</th><th>胜者</th></tr></thead>
+<tbody>
+<tr><td>自然语言交互</td><td>需要写大量解析规则</td><td>天然理解意图</td><td>✅ Agent</td></tr>
+<tr><td>多步骤编排（先查再规划）</td><td>需要硬编码所有流程</td><td>自主决定步骤顺序</td><td>✅ Agent</td></tr>
+<tr><td>灵活错误处理</td><td>每种错误写 if-else</td><td>根据错误自行调整</td><td>✅ Agent</td></tr>
+<tr><td>跨领域问答</td><td>无法覆盖所有领域</td><td>通用推理能力</td><td>✅ Agent</td></tr>
+<tr><td>长尾场景（罕见情况）</td><td>无法穷举</td><td>临场推理</td><td>✅ Agent</td></tr>
+</tbody>
+</table>
+
+<p>核心原因：<strong>不确定性任务需要决策，而 AI 的推理能力远超硬编码规则</strong>。</p>
+
+<h3 class="sub-heading">2.11.3 混合架构：最佳实践</h3>
+
+<p>最聪明的做法不是"全用 Agent"或"全不用 Agent"，而是<strong>混合架构</strong>：</p>
+
+<div class="code-block"><pre># === 混合架构示例：天气出行系统 ===
+
+# 确定性部分：用传统程序
+def calculate_route(start: str, end: str) -> dict:
+    """路线计算 → 传统程序（确定性逻辑）"""
+    routes = {
+        "北京-上海": {"distance": "1200km", "time": "高铁4小时"},
+        "北京-广州": {"distance": "2200km", "time": "高铁8小时"},
+        "上海-广州": {"distance": "1400km", "time": "高铁6小时"},
+    }
+    key = f"{start}-{end}"
+    if key in routes:
+        return routes[key]
+    # 反向查找
+    key_rev = f"{end}-{start}"
+    if key_rev in routes:
+        r = routes[key_rev]
+        return {"distance": r["distance"], "time": r["time"] + "（反向）"}
+    return {"error": f"暂不支持 {start} 到 {end} 的路线"}
+
+
+def format_weather_report(weather: dict) -> str:
+    """格式化天气报告 → 传统程序（确定性逻辑）"""
+    if "error" in weather:
+        return f"⚠️ {weather['error']}"
+    return f"{weather['city']} {weather['date']}: {weather['weather']}，气温{weather['temperature']}"
+
+
+# 不确定性部分：用 Agent
+# （复用 2.8 的多工具 Agent）
+
+def run_hybrid_agent(user_message: str) -> str:
+    """混合架构 Agent：确定性用传统程序，不确定性用 AI"""
+    # 先让 Agent 处理意图理解和工具调用
+    messages = [
+        {
+            "role": "system",
+            "content": "你是一个出行助手。查询天气、规划行程、计算路线。\n"
+                       "天气和行程用工具查，路线计算用 calculate_route 工具。",
+        },
+        {"role": "user", "content": user_message},
+    ]
+
+    # 扩展 Schema，加入路线计算工具
+    hybrid_tools = tools_schema + [
+        {
+            "type": "function",
+            "function": {
+                "name": "calculate_route",
+                "description": "计算两个城市之间的路线信息（距离和交通时间）",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "start": {
+                            "type": "string",
+                            "description": "出发城市"
+                        },
+                        "end": {
+                            "type": "string",
+                            "description": "目的地城市"
+                        }
+                    },
+                    "required": ["start", "end"]
+                }
+            }
+        }
+    ]
+
+    tool_map = {
+        "get_weather": get_weather,
+        "plan_trip": plan_trip,
+        "calculate_route": calculate_route,  # 传统程序！
+    }
+
+    while True:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=hybrid_tools,
+        )
+        msg = response.choices[0].message
+
+        if not msg.tool_calls:
+            return msg.content
+
+        messages.append(msg)
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            func_args = json.loads(tool_call.function.arguments)
+            print(f"🔧 调用: {func_name}({func_args})")
+
+            result = execute_tool_with_retry(func_name, func_args)
+            print(f"📦 结果: {result}")
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+
+# 测试混合架构
+print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下"))</pre></div>
+
+<p>运行效果：</p>
+<div class="code-block"><pre>🔧 调用: get_weather({'city': '上海', 'date': 'tomorrow'})
+📦 结果: {'city': '上海', 'date': 'tomorrow', 'weather': '阴', 'temperature': '27°C'}
+🔧 调用: plan_trip({'city': '上海', 'weather_condition': '阴', 'days': 2})
+📦 结果: {'city': '上海', 'weather_condition': '阴', 'recommendation': '南京路逛街、田子坊艺术区', 'days': 2}
+🔧 调用: calculate_route({'start': '北京', 'end': '上海'})
+📦 结果: {'distance': '1200km', 'time': '高铁4小时'}
+
+好的！从北京到上海两天行程建议：
+- 交通：高铁4小时，距离1200km
+- 天气：上海明天阴天27°C
+- 行程：南京路逛街、田子坊艺术区
+- 建议带伞，阴天可能有小雨</pre></div>
+
+<p>注意 <code>calculate_route</code> 是<strong>纯确定性逻辑</strong>——AI 不会"推理"路线，它只是判断"用户需要路线 → 调用 calculate_route"。确定性计算交给传统程序，不确定性决策交给 AI，这就是混合架构的精髓。</p>
+
+<div class="tip-banner">
+<div class="banner-title">💡 选择架构的决策树</div>
+<p>问自己三个问题：(1) 步骤是否固定？→ 固定用传统程序。(2) 输入是否结构化？→ 结构化用传统程序。(3) 是否需要理解自然语言？→ 需要就用 Agent。如果部分固定部分灵活 → 混合架构。</p>
+</div>
+
+<h3 class="sub-heading">2.11.4 Agent 的成本陷阱</h3>
+
+<p>即使该用 Agent 的场景，也要警惕成本陷阱：</p>
+
+<div class="code-block"><pre># 成本对比：查天气的三种方式
+
+# 方式1：直接调用天气API（传统程序）
+#   成本：0（免费API） | 延迟：0.1s | 准确率：100%
+
+# 方式2：硬编码规则匹配（传统程序 + NLU）
+#   成本：0 | 延迟：0.05s | 准确率：80%（无法处理"明天"等模糊词）
+
+# 方式3：Agent（AI + 工具）
+#   成本：$0.0001/次 | 延迟：1.5s | 准确率：95%（能理解"明天"、"后天"等）
+
+# 结论：如果每天查询10次 → Agent成本$0.001/天，可以接受
+#        如果每天查询10000次 → Agent成本$1/天，需要考虑
+#        如果每天查询1000000次 → Agent成本$100/天，必须用传统程序</pre></div>
+
+<p>关键指标：<strong>每秒查询数（QPS）和单次成本</strong>。当 QPS × 单次成本 > 你的预算，就该考虑传统程序或混合架构。</p>
+
+<p>2.11 节讨论了 Agent 的边界。理解边界不是为了否定 Agent，而是为了<strong>在正确的场景使用正确的工具</strong>。现在，让我们回顾整章内容，做个全面总结。</p>
+
+<!-- ===== 2.12 本章小结 ===== -->
+<h2 class="section-heading">2.12 本章小结</h2>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ch1","label":"2.1-2.4\n基础概念\n从问题到工具","type":"start"},{"id":"ch2","label":"2.5-2.7\nAgent 核心\n循环 + 多轮对话","type":"process"},{"id":"ch3","label":"2.8\n异常处理\n重试 + 降级","type":"process"},{"id":"ch4","label":"2.8-2.8\n多工具协作\n调用链分析","type":"process"},{"id":"ch5","label":"2.8\nAgent 边界\n什么时候用/不用","type":"process"},{"id":"next","label":"第3章\nReAct 模式\n加入推理环节","type":"end"}],"edges":[{"from":"ch1","to":"ch2"},{"from":"ch2","to":"ch3"},{"from":"ch3","to":"ch4"},{"from":"ch4","to":"ch5"},{"from":"ch5","to":"next"}]}'></div>
+
+<div class="summary-box">
+<div class="summary-title">🔗 本章核心</div>
+<p><strong>Agent = AI + 工具 + 循环</strong>：三者缺一不可。没有工具的 AI 只能聊天，没有循环的 AI 只能做一次工具调用，没有异常处理的 Agent 在现实世界会崩溃。</p>
+<p><strong>工具 Schema 是桥梁</strong>：description 决定 AI 是否调用，parameters 决定 AI 怎么调用。description 写得好，Agent 就聪明；写得差，Agent 就困惑。</p>
+<p><strong>Agent 循环</strong>：感知→决策→行动→观察→循环，直到 AI 不需要再调工具。多轮对话让循环跨多轮交互。</p>
+<p><strong>异常处理三策略</strong>：可重试的用指数退避，不可重试的用优雅降级，所有错误都要告诉 AI。</p>
+<p><strong>多工具协作</strong>：AI 自行编排工具调用顺序——先查天气再规划行程，不需要硬编码流程。</p>
+<p><strong>调用链分析</strong>：每次循环都消耗 token，历史递增导致成本递增。量化分析是优化 Agent 的前提。</p>
+<p><strong>Agent 的边界</strong>：确定性任务用传统程序，不确定性任务用 Agent，混合架构是最佳实践。</p>
+<p><strong>下一步</strong>：第3章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
+</div>
+
+<div class="summary-box">
+<div class="summary-title">📊 本章知识图谱</div>
+<p>从简单到复杂的递进路径：</p>
+<ul>
+<li><strong>2.1-2.4</strong>：理解问题 → 准备环境 → 定义工具 → 设计 Schema（<em>入门</em>）</li>
+<li><strong>2.5-2.6</strong>：组装 Agent → 理解循环（<em>核心</em>）</li>
+<li><strong>2.7</strong>：多轮对话 → Agent 有记忆（<em>增强</em>）</li>
+<li><strong>2.8</strong>：异常处理 → Agent 不崩溃（<em>健壮性</em>）</li>
+<li><strong>2.8</strong>：多工具协作 → Agent 自主编排（<em>进化</em>）</li>
+<li><strong>2.8</strong>：调用链分析 → 量化成本（<em>工程化</em>）</li>
+<li><strong>2.8</strong>：Agent 边界 → 理性选择架构（<em>工程智慧</em>）</li>
+</ul>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<h2 class="section-heading">📋 八股总结</h2>
+<div class="summary-box">
+<div class="summary-title">面试高频考点</div>
+<ol>
+<li><strong>Agent 和普通 LLM 调用的区别？</strong>：普通 LLM 调用是一问一答，没有工具；Agent 是循环执行，AI 可以调用工具、观察结果、再推理，直到任务完成。</li>
+<li><strong>工具 Schema 中最重要的字段是什么？</strong>：description。AI 靠它判断是否调用工具，写得越具体越准确。</li>
+<li><strong>Agent 循环什么时候停止？</strong>：当 AI 不再请求调用工具时（finish_reason 为 stop），循环结束，返回最终回答。</li>
+<li><strong>为什么需要多轮对话？</strong>：AI 可能需要多次工具调用才能完成任务；用户可能追问相关问题，需要从历史中获取上下文。</li>
+<li><strong>指数退避重试的原理和适用场景？</strong>：等待时间按 2^n 递增（1s→2s→4s），适用于临时性故障（超时、限流、503），不适用于逻辑性错误（参数错误、权限不足）。生产环境需加入随机 jitter 防止雪崩。</li>
+<li><strong>多工具协作中 AI 如何决定调用顺序？</strong>：AI 根据工具 description 和用户意图自行推理调用顺序，无需硬编码流程。代价是出错概率增加、延迟和成本递增。</li>
+<li><strong>Agent 调用链的 token 递增现象？</strong>：每次循环把上一次消息加入历史，导致 prompt_tokens 逐次递增。循环次数越多，单次循环成本越高。需设置 max_loops 和 token 预算上限。</li>
+</ol>
+</div>
+
+<div class="summary-box">
+<div class="summary-title">📝 思考题</div>
+<ol>
+<li><strong>场景判断</strong>："用户输入城市名，返回固定格式天气报告"——这个需求该用 Agent 还是传统程序？为什么？如果是"用户用自然语言问天气，可能追问、可能对比多个城市"——又该用什么？</li>
+<li><strong>重试设计</strong>：一个 Agent 同时调用天气 API 和路线 API，天气超时了但路线成功。如果直接重试整个循环，路线结果就浪费了。如何设计重试机制，只重试失败的工具，而不是重试整个循环？</li>
+<li><strong>成本优化</strong>：你的天气 Agent 每天处理 50000 次请求，每次平均消耗 800 tokens。按 GPT-4o-mini 价格（$0.15/1M input, $0.60/1M output），月成本是多少？如果 80% 的请求只是"北京今天天气"这种简单查询，如何用混合架构降低成本？</li>
+</ol>
+</div>

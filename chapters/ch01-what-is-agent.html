@@ -1,0 +1,1020 @@
+<!-- 第1章：什么是 AI Agent？ -->
+<h1 class="chapter-title">第1章 什么是 AI Agent？</h1>
+<p class="chapter-subtitle">从 ChatBot 到 Agent，AI 应用的范式跃迁</p>
+
+<!-- ===== 1.1 引入 ===== -->
+<h2 class="section-heading">1.1 一个问题引入</h2>
+
+<p>如果我问你：<strong>ChatGPT 是 AI Agent 吗？</strong></p>
+
+<p>答案是：不是。ChatGPT 是一个出色的 <strong>ChatBot（聊天机器人）</strong>，它能理解你的问题并生成回答。但它不会主动帮你查航班、订外卖、写代码到文件里。</p>
+
+<p>而 AI Agent 可以。</p>
+
+<div class="quote">
+  "ChatBot 回答问题，Agent 解决问题。"
+</div>
+
+<!-- ===== 1.2 ChatBot vs Agent 对比动画 ===== -->
+<h2 class="section-heading">1.2 ChatBot vs Agent：核心区别</h2>
+
+<p>我们先通过一个动画来看两者的区别。同样的任务：<strong>"帮我查一下明天北京的天气"</strong></p>
+
+<div class="compare-animation" id="compareAnimation1">
+  <div class="compare-side left">
+    <div class="side-label">ChatBot</div>
+    <div class="side-content" id="chatbotSide">
+      <div class="highlight-line">用户：明天北京天气怎么样？</div>
+      <div class="highlight-line">ChatBot：我无法实时查询天气，但你可以...</div>
+      <div class="highlight-line">用户：那帮我订个提醒？</div>
+      <div class="highlight-line">ChatBot：抱歉，我没有这个能力。</div>
+      <div class="highlight-line" style="color: var(--color-error);">→ 只能对话，不能行动</div>
+    </div>
+  </div>
+  <div class="compare-side right">
+    <div class="side-label">Agent</div>
+    <div class="side-content" id="agentSide">
+      <div class="highlight-line">用户：明天北京天气怎么样？</div>
+      <div class="highlight-line">Agent：[思考] 需要调用天气API</div>
+      <div class="highlight-line">Agent：[工具调用] weather_api("北京", "2026-07-02")</div>
+      <div class="highlight-line">Agent：[观察] 明天北京晴，28°C</div>
+      <div class="highlight-line" style="color: var(--color-success);">→ 明天北京晴，最高28°C。需要我设个提醒吗？</div>
+    </div>
+  </div>
+</div>
+
+<p>看到了吗？ChatBot 只能"说"，Agent 能"做"。这个"做"的能力，来自于 Agent 独有的四个核心模块。</p>
+
+<!-- ===== 1.3 Agent 四模块拆解 ===== -->
+<h2 class="section-heading">1.3 AI Agent 的四大核心模块</h2>
+
+<p>一个完整的 AI Agent 由四个核心模块组成，缺一不可：</p>
+
+<div class="card">
+  <div class="card-title">🧠 Agent 四模块</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-primary);">1. LLM（大脑）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">负责理解、推理、决策。是 Agent 的"智力引擎"。</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-primary);">2. 记忆（Memory）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">短期记忆（对话上下文）+ 长期记忆（向量数据库）。</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-primary);">3. 规划（Planning）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">将复杂任务拆解为子任务，制定执行计划。</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-primary);">4. 工具（Tools）</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">调用外部 API、数据库、代码执行器等，实现"行动"。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 流程图动画 -->
+<div class="flowchart-container" id="flowchartBasic"></div>
+
+<script>
+// 渲染流程图
+setTimeout(() => {
+  FlowChart.render('flowchartBasic', {
+    nodes: [
+      { id: 'input', label: '用户输入', type: 'start' },
+      { id: 'llm', label: 'LLM 理解', type: 'process' },
+      { id: 'plan', label: '规划拆解', type: 'process' },
+      { id: 'memory', label: '检索记忆', type: 'process' },
+      { id: 'tool', label: '调用工具', type: 'tool' },
+      { id: 'output', label: '返回结果', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'llm' },
+      { from: 'llm', to: 'plan', label: '需要行动' },
+      { from: 'plan', to: 'memory' },
+      { from: 'memory', to: 'tool' },
+      { from: 'tool', to: 'output' },
+      { from: 'llm', to: 'output', label: '直接回答' }
+    ],
+    animate: true
+  });
+}, 300);
+</script>
+
+<!-- ===== 1.4 步骤动画：Agent 执行流程 ===== -->
+<h2 class="section-heading">1.4 Agent 是怎么工作的？</h2>
+
+<p>我们来看 Agent 完成一个任务的完整流程。点击"下一步"逐步查看：</p>
+
+<div class="step-animation" id="stepAnimation1">
+  <div class="step-canvas">
+    <div class="step-content" id="stepContent">
+      <div class="step-number">1</div>
+      <div class="step-title">感知（Perceive）</div>
+      <div class="step-desc">用户输入"帮我分析一下最近的房价趋势"，Agent 通过 LLM 理解用户意图。</div>
+    </div>
+  </div>
+  <div class="step-controls">
+    <button class="step-btn" id="stepPrev" disabled>←</button>
+    <span class="step-indicator" id="stepIndicator">1 / 5</span>
+    <button class="step-btn" id="stepNext">→</button>
+    <button class="step-replay" onclick="StepAnim.reset()">重播</button>
+  </div>
+</div>
+
+<script>
+const StepAnim = {
+  current: 0,
+  steps: [
+    { num: 1, title: '感知（Perceive）', desc: '用户输入"帮我分析一下最近的房价趋势"，Agent 通过 LLM 理解用户意图。' },
+    { num: 2, title: '规划（Plan）', desc: 'Agent 将任务拆解为：①搜索房价数据 ②整理趋势 ③生成分析报告。制定执行计划。' },
+    { num: 3, title: '行动（Act）', desc: 'Agent 调用搜索工具获取最新房价数据，调用数据库工具存储中间结果。这就是"做"的能力。' },
+    { num: 4, title: '观察（Observe）', desc: '工具返回数据后，Agent 观察、分析数据，发现"一线城市环比下降2%，二线城市持平"的趋势。' },
+    { num: 5, title: '反馈（Feedback）', desc: 'Agent 将分析结果组织成报告返回给用户，并将本次对话存入记忆，为下次交互提供上下文。' }
+  ],
+  
+  render() {
+    const step = this.steps[this.current];
+    const content = document.getElementById('stepContent');
+    content.innerHTML = `
+      <div class="step-number">${step.num}</div>
+      <div class="step-title">${step.title}</div>
+      <div class="step-desc">${step.desc}</div>
+    `;
+    content.classList.remove('fade-in');
+    void content.offsetWidth;
+    content.classList.add('fade-in');
+    
+    document.getElementById('stepIndicator').textContent = `${this.current + 1} / ${this.steps.length}`;
+    document.getElementById('stepPrev').disabled = this.current === 0;
+    document.getElementById('stepNext').disabled = this.current === this.steps.length - 1;
+  },
+  
+  next() {
+    if (this.current < this.steps.length - 1) {
+      this.current++;
+      this.render();
+    }
+  },
+  
+  prev() {
+    if (this.current > 0) {
+      this.current--;
+      this.render();
+    }
+  },
+  
+  reset() {
+    this.current = 0;
+    this.render();
+  }
+};
+
+document.getElementById('stepNext').addEventListener('click', () => StepAnim.next());
+document.getElementById('stepPrev').addEventListener('click', () => StepAnim.prev());
+window.StepAnim = StepAnim;
+</script>
+
+<!-- ===== 1.5 感知-决策-行动-反馈闭环 ===== -->
+<h2 class="section-heading">1.5 Agent 的核心闭环</h2>
+
+<p>上面的五个步骤可以抽象为一个经典闭环：<strong>感知 → 决策 → 行动 → 反馈</strong>。这个闭环是所有 Agent 的基础运行模式。</p>
+
+<div class="flowchart-container" id="loopDiagram"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('loopDiagram', {
+    nodes: [
+      { id: 'perceive', label: '感知', type: 'start' },
+      { id: 'decide', label: '决策', type: 'process' },
+      { id: 'act', label: '行动', type: 'tool' },
+      { id: 'feedback', label: '反馈', type: 'end' }
+    ],
+    edges: [
+      { from: 'perceive', to: 'decide' },
+      { from: 'decide', to: 'act' },
+      { from: 'act', to: 'feedback' },
+      { from: 'feedback', to: 'perceive', label: '循环', dashed: true }
+    ],
+    animate: true
+  });
+}, 500);
+</script>
+
+<p>这个闭环不断循环，让 Agent 能够处理多步骤、多轮交互的复杂任务。后续章节讲的 ReAct 模式、反思机制，都是在这个闭环基础上的演进。</p>
+
+<!-- ===== 1.6 Agent vs ChatBot vs Copilot ===== -->
+<h2 class="section-heading">1.6 Agent vs ChatBot vs Copilot</h2>
+
+<p>面试中经常被问到这三者的区别，我们用一张表总结：</p>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">维度</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-info);">ChatBot</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-warning);">Copilot</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-success);">Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">核心能力</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">对话回答</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">辅助完成</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自主完成</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">自主性</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低（需人引导）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高（自主规划）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">工具使用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✗</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">有限</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✓ 完整</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">记忆能力</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">短期</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">短期</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">短期+长期</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">典型产品</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">ChatGPT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GitHub Copilot</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Devin, AutoGPT</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 1.7 从用户输入到输出的完整链路 ===== -->
+<h2 class="section-heading">1.7 从用户输入到输出的完整链路</h2>
+
+<p>面试最高频的问题之一：<strong>整个 Agent 从用户发出消息到完成任务，中间经历了哪些步骤？</strong> 很多面试官会要求你从接收消息开始，一步一步讲清楚每一步做了什么、为什么需要、哪些模块负责。本节把这条链路彻底拆透。</p>
+
+<div class="quote">
+  "能画出完整链路图，面试基本稳了。"
+</div>
+
+<h3 style="color: var(--color-primary); margin-top: 24px;">🔗 完整 8 步链路</h3>
+
+<p>一条完整的 Agent 执行链路，从用户输入到最终输出，包含 8 个核心步骤：</p>
+
+<div class="flowchart-container" id="chainFlowchart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('chainFlowchart', {
+    nodes: [
+      { id: 'step1', label: 'Step 1\n用户输入接收', type: 'start' },
+      { id: 'step2', label: 'Step 2\n意图识别', type: 'process' },
+      { id: 'step3', label: 'Step 3\n任务分类', type: 'process' },
+      { id: 'step4', label: 'Step 4\n任务拆解', type: 'process' },
+      { id: 'step5', label: 'Step 5\n执行调度', type: 'process' },
+      { id: 'step6', label: 'Step 6\n工具调用', type: 'tool' },
+      { id: 'step7', label: 'Step 7\n结果整合', type: 'process' },
+      { id: 'step8', label: 'Step 8\n输出返回', type: 'end' }
+    ],
+    edges: [
+      { from: 'step1', to: 'step2' },
+      { from: 'step2', to: 'step3' },
+      { from: 'step3', to: 'step4', label: '复杂任务' },
+      { from: 'step3', to: 'step5', label: '简单任务', dashed: true },
+      { from: 'step4', to: 'step5' },
+      { from: 'step5', to: 'step6', label: '需要工具' },
+      { from: 'step5', to: 'step7', label: '纯推理', dashed: true },
+      { from: 'step6', to: 'step7' },
+      { from: 'step7', to: 'step8' },
+      { from: 'step5', to: 'step2', label: '迭代循环', dashed: true }
+    ],
+    animate: true
+  });
+}, 400);
+</script>
+
+<p>注意：<strong>Step 5 → Step 2</strong> 的回边表示 Agent 在执行调度后，可能发现需要重新理解意图（比如工具返回了新信息），进入迭代循环。这正是 Agent 与 ChatBot 的核心差异——Agent 不是一条直线，而是可以<strong>循环迭代</strong>的。</p>
+
+<div class="card">
+  <div class="card-title">📌 每一步详细说明</div>
+  <div style="margin-top: 16px;">
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 1: 用户输入接收</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：接收用户的原始消息（文本、图片、语音等），进行预处理（格式化、清洗噪声）。为什么需要：这是 Agent 与外部世界的接口，所有后续步骤都基于此输入。负责模块：输入处理模块 + 消息队列。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 2: 意图识别</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：理解用户想做什么——是简单问答？是代码修改？还是复杂的多步任务？为什么需要：不同的意图决定不同的执行路径。负责模块：LLM（语义理解）+ 规则引擎（关键词匹配）。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 3: 任务分类</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：判断任务类型和复杂度等级（简单问答 / 代码解释 / 代码修改 / 复杂开发）。为什么需要：复杂度决定是否需要拆解，类型决定调用哪些工具。负责模块：分类器（LLM 推理或规则引擎）。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 4: 任务拆解</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：将复杂任务分解为有序的子任务序列，并确定依赖关系和执行顺序。为什么需要：LLM 单次调用无法完成复杂目标，必须拆成可执行的小步骤。负责模块：规划模块（Planning）——详见 1.3 节。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 5: 执行调度</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：决定先做什么后做什么，何时调用模型推理、何时调用外部工具。为什么需要：资源有限，执行顺序影响效率和结果质量。负责模块：调度器（Scheduler）——详见 1.9 节。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 6: 工具调用</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：通过 Function Calling / MCP 协议调用外部工具（搜索引擎、数据库、代码执行器、API 等）。为什么需要：LLM 本身无法查天气、执行代码、读写文件，必须借助工具。负责模块：工具模块（Tools）+ Function Calling 接口。</p>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--color-border-light);">
+      <strong style="color: var(--color-primary);">Step 7: 结果整合</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：收集各子步骤的输出（模型推理结果 + 工具返回数据），整合为逻辑连贯的完整答案。为什么需要：多步执行的结果是碎片化的，必须缝合才能形成有意义的回复。负责模块：LLM（结果合成）+ 记忆模块（中间结果缓存）。</p>
+    </div>
+    <div style="padding: 12px 0;">
+      <strong style="color: var(--color-primary);">Step 8: 输出返回</strong>
+      <p style="font-size: 14px; color: var(--color-text-secondary); margin: 6px 0 0;">做什么：格式化最终结果（文本、表格、代码块、图表等），返回给用户。同时将本次交互存入记忆。为什么需要：用户体验取决于输出质量；记忆存入为下次交互提供上下文。负责模块：格式化引擎 + 记忆写入模块。</p>
+    </div>
+  </div>
+</div>
+
+<p>来看一段模拟完整链路执行的代码：</p>
+
+<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+# 模拟 Agent 完整执行链路
+
+class AgentChain:
+    def __init__(self):
+        self.llm = LLMEngine()       # Step 2/5/7 的核心引擎
+        self.memory = MemoryStore()   # 记忆模块
+        self.tools = ToolRegistry()   # Step 6 的工具集
+        self.classifier = TaskClassifier()  # Step 3 分类器
+        self.planner = TaskPlanner()        # Step 4 规划器
+
+    def run(self, user_input):
+        # Step 1: 用户输入接收
+        raw_msg = InputHandler.receive(user_input)
+        print(f"[Step1] 收到原始消息: {raw_msg}")
+
+        # Step 2: 意图识别
+        intent = self.llm.identify_intent(raw_msg)
+        print(f"[Step2] 意图识别结果: {intent}")  # e.g. "数据分析"
+
+        # Step 3: 任务分类
+        task_type, complexity = self.classifier.classify(intent)
+        print(f"[Step3] 任务类型={task_type}, 复杂度={complexity}")
+
+        # Step 4: 任务拆解（仅复杂任务）
+        if complexity == "complex":
+            sub_tasks = self.planner.decompose(raw_msg, intent)
+            print(f"[Step4] 拆解为 {len(sub_tasks)} 个子任务")
+        else:
+            sub_tasks = [raw_msg]  # 简单任务无需拆解
+            print(f"[Step4] 简单任务，无需拆解")
+
+        # Step 5: 执行调度
+        schedule = self.llm.schedule(sub_tasks, self.tools.available_tools())
+        print(f"[Step5] 调度计划: {schedule}")
+
+        results = []
+        for task in schedule:
+            # Step 6: 工具调用（需要时）
+            if task.need_tool:
+                tool_result = self.tools.call(task.tool_name, task.tool_args)
+                print(f"[Step6] 工具 {task.tool_name} 返回: {tool_result}")
+                results.append(tool_result)
+            else:
+                # 纯模型推理
+                model_result = self.llm.reason(task.prompt)
+                print(f"[Step5→推理] 模型推理结果: {model_result}")
+                results.append(model_result)
+
+        # Step 7: 结果整合
+        final_answer = self.llm.synthesize(results, original_intent=intent)
+        print(f"[Step7] 整合完成: {final_answer}")
+
+        # Step 8: 输出返回
+        formatted = OutputFormatter.format(final_answer)
+        self.memory.save_interaction(raw_msg, intent, formatted)
+        print(f"[Step8] 输出返回给用户")
+        return formatted
+
+# 执行示例
+agent = AgentChain()
+result = agent.run("帮我分析最近北京房价趋势")
+# [Step1] 收到原始消息: 帮我分析最近北京房价趋势
+# [Step2] 意图识别结果: 数据分析
+# [Step3] 任务类型=complex, 复杂度=complex
+# [Step4] 拆解为 3 个子任务
+# [Step5] 调度计划: [search_housing_data → analyze_trend → generate_report]
+# [Step6] 工具 search_api 返回: {...房价数据...}
+# [Step5→推理] 模型推理结果: 一线城市环比下降2%
+# [Step7] 整合完成: 北京房价分析报告
+# [Step8] 输出返回给用户
+</pre>
+
+<p>代码中每一步都打印了日志，你可以清楚地看到<strong>一条消息从进入 Agent 到变成最终输出，走过了哪些节点</strong>。面试时，能讲出这 8 步并解释每步的作用，就是满分回答。</p>
+
+<!-- ===== 1.8 意图识别与任务分类 ===== -->
+<h2 class="section-heading">1.8 意图识别与任务分类</h2>
+
+<p>Step 2（意图识别）和 Step 3（任务分类）是整条链路的<strong>分叉点</strong>——Agent 能否走上正确的执行路径，取决于这两步做得好不好。面试中经常追问：<strong>Agent 怎么理解用户意图？怎么判断任务复杂度？</strong></p>
+
+<h3 style="color: var(--color-primary); margin-top: 24px;">🎯 三种意图识别方法</h3>
+
+<div class="card">
+  <div class="card-title">意图识别的三种方法对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">方法</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">优点</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">缺点</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">关键词匹配</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">匹配预设关键词，如"天气"→查询意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">速度快，成本低</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">粗粒度，误判率高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单指令型交互</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">语义理解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通过 LLM 深层理解用户表达的真实意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">精准，能理解隐含意图</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">成本高，延迟大</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">复杂多意图场景</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">模式识别</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">基于历史对话模式匹配相似意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">利用经验，越用越准</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">依赖数据量，新意图难识别</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高频重复场景</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>实际工程中，<strong>三者通常组合使用</strong>：先用关键词匹配快速筛选常见意图，命中后直接走快速路径；没命中则交给 LLM 做语义理解；长期积累的模式数据用于优化匹配规则。这就是<strong>分层意图识别</strong>策略。</p>
+
+<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+# 分层意图识别：关键词 → 语义 → 模式
+
+def identify_intent(user_input, context):
+    # 第一层：关键词匹配（快路径）
+    keyword_intent = match_keywords(user_input)
+    if keyword_intent and keyword_intent.confidence > 0.9:
+        return keyword_intent  # 高置信度，直接返回
+
+    # 第二层：语义理解（慢路径）
+    semantic_intent = llm_understand_intent(user_input, context)
+    if semantic_intent.confidence > 0.7:
+        # 记录新模式，丰富规则库
+        pattern_db.record(user_input, semantic_intent)
+        return semantic_intent
+
+    # 第三层：模式识别（兜底）
+    pattern_intent = match_patterns(user_input, pattern_db)
+    return pattern_intent or semantic_intent
+
+# 示例
+print(identify_intent("明天天气咋样", []))
+# → Intent(type="查询", sub_type="天气", confidence=0.95)  # 关键词命中
+
+print(identify_intent("我项目里这段代码跑不通，帮我看看", []))
+# → Intent(type="代码修改", confidence=0.85)  # 语义理解命中
+</pre>
+
+<h3 style="color: var(--color-primary); margin-top: 24px;">📊 任务分类矩阵</h3>
+
+<p>意图识别之后，Agent 需要对任务进行分类，决定<strong>执行策略</strong>。不同的任务类型对应不同的处理路径：</p>
+
+<div class="card">
+  <div class="card-title">任务分类矩阵：类型 → 策略 → 路径</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">任务类型</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">典型输入</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">执行策略</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">链路路径</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">复杂度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">简单问答</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"Python 的 list 怎么排序？"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">直接回答</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">Step 1→2→3→5→7→8</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">低</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">代码解释</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"这段代码在做什么？"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">分析 + 输出说明</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">Step 1→2→3→5→7→8</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">代码修改</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"把这段代码改成异步版本"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">理解+定位+修改</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">Step 1→2→3→4→5→6→7→8</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中高</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">复杂开发</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我搭建一个 REST API 项目"</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">Step 1→2→3→4→5→6→7→8（多轮循环）</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">高</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>关键观察：<strong>简单问答可以跳过 Step 4（任务拆解）和 Step 6（工具调用）</strong>，直接走快速路径。而复杂开发任务必须走完全部 8 步，且 Step 5→2 的迭代循环可能执行多轮。</p>
+
+<h3 style="color: var(--color-primary); margin-top: 24px;">🔀 分类决策流程图</h3>
+
+<div class="flowchart-container" id="classifyFlowchart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('classifyFlowchart', {
+    nodes: [
+      { id: 'input', label: '用户输入', type: 'start' },
+      { id: 'intent', label: '意图识别', type: 'process' },
+      { id: 'classify', label: '任务分类', type: 'decision' },
+      { id: 'simple', label: '简单问答\n→直接回答', type: 'end' },
+      { id: 'code_explain', label: '代码解释\n→分析+说明', type: 'process' },
+      { id: 'code_modify', label: '代码修改\n→定位+修改', type: 'process' },
+      { id: 'complex', label: '复杂开发\n→拆解+多步执行', type: 'process' }
+    ],
+    edges: [
+      { from: 'input', to: 'intent' },
+      { from: 'intent', to: 'classify' },
+      { from: 'classify', to: 'simple', label: '简单问答' },
+      { from: 'classify', to: 'code_explain', label: '代码解释' },
+      { from: 'classify', to: 'code_modify', label: '代码修改' },
+      { from: 'classify', to: 'complex', label: '复杂开发' },
+      { from: 'code_explain', to: 'simple' },
+      { from: 'code_modify', to: 'simple' },
+      { from: 'complex', to: 'simple' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+# 任务分类器：判断复杂度并选择执行路径
+
+class TaskClassifier:
+    # 关键词 → 复杂度的映射规则
+    COMPLEXITY_RULES = {
+        "简单问答": {
+            "keywords": ["是什么", "怎么用", "区别", "概念"],
+            "path": "direct_answer",
+            "complexity": "low"
+        },
+        "代码解释": {
+            "keywords": ["这段代码", "什么意思", "解释一下"],
+            "path": "analyze_explain",
+            "complexity": "medium"
+        },
+        "代码修改": {
+            "keywords": ["修改", "改成", "优化", "修复", "重构"],
+            "path": "locate_modify",
+            "complexity": "medium_high"
+        },
+        "复杂开发": {
+            "keywords": ["搭建", "实现", "开发", "创建项目", "从零开始"],
+            "path": "decompose_execute",
+            "complexity": "high"
+        }
+    }
+
+    def classify(self, intent):
+        # 规则匹配 + LLM 兜底
+        for task_type, rule in self.COMPLEXITY_RULES.items():
+            if any(kw in intent.raw_input for kw in rule["keywords"]):
+                return task_type, rule["complexity"], rule["path"]
+
+        # 规则未命中，交给 LLM 判断
+        llm_result = self.llm_classify(intent)
+        return llm_result.type, llm_result.complexity, llm_result.path
+
+# 示例
+classifier = TaskClassifier()
+print(classifier.classify(Intent(raw_input="Python list 怎么排序？")))
+# → ("简单问答", "low", "direct_answer")
+
+print(classifier.classify(Intent(raw_input="帮我搭建一个 REST API")))
+# → ("复杂开发", "high", "decompose_execute")
+</pre>
+
+<!-- ===== 1.9 执行调度决策 ===== -->
+<h2 class="section-heading">1.9 执行调度决策</h2>
+
+<p>Agent 拿到子任务列表后，下一步是<strong>执行调度</strong>——决定先做什么后做什么，什么时候该调用模型（推理/理解/生成文本），什么时候该调用工具（搜索/计算/文件操作）。这是 1.7 链路中 Step 5 的核心逻辑。</p>
+
+<div class="quote">
+  "调度器的质量，决定了 Agent 是'聪明地做事'还是'笨拙地乱撞'。"
+</div>
+
+<h3 style="color: var(--color-primary); margin-top: 24px;">🌳 调度决策树</h3>
+
+<p>调度决策的核心逻辑可以用一棵决策树描述：</p>
+
+<div class="flowchart-container" id="schedulerFlowchart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('schedulerFlowchart', {
+    nodes: [
+      { id: 'task', label: '当前子任务', type: 'start' },
+      { id: 'q1', label: '需要外部数据？', type: 'decision' },
+      { id: 'call_tool', label: '调用工具\n（搜索/计算/文件）', type: 'tool' },
+      { id: 'q2', label: '需要逻辑推理？', type: 'decision' },
+      { id: 'call_model', label: '调用模型\n（理解/推理/生成）', type: 'process' },
+      { id: 'q3', label: '需要格式化输出？', type: 'decision' },
+      { id: 'format', label: '调用模型\n（格式化/润色）', type: 'process' },
+      { id: 'q4', label: '需要验证结果？', type: 'decision' },
+      { id: 'verify', label: '工具+模型\n（交叉验证）', type: 'process' },
+      { id: 'done', label: '执行完成', type: 'end' }
+    ],
+    edges: [
+      { from: 'task', to: 'q1' },
+      { from: 'q1', to: 'call_tool', label: '是' },
+      { from: 'q1', to: 'q2', label: '否' },
+      { from: 'call_tool', to: 'q2' },
+      { from: 'q2', to: 'call_model', label: '是' },
+      { from: 'q2', to: 'q3', label: '否' },
+      { from: 'call_model', to: 'q3' },
+      { from: 'q3', to: 'format', label: '是' },
+      { from: 'q3', to: 'q4', label: '否' },
+      { from: 'format', to: 'q4' },
+      { from: 'q4', to: 'verify', label: '是' },
+      { from: 'q4', to: 'done', label: '否' },
+      { from: 'verify', to: 'done' }
+    ],
+    animate: true
+  });
+}, 700);
+</script>
+
+<div class="card">
+  <div class="card-title">⚡ 模型 vs 工具：何时调用谁？</div>
+  <div style="margin-top: 16px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; background: rgba(var(--color-primary-rgb), 0.05);">
+        <strong style="color: var(--color-primary);">调用模型（LLM）</strong>
+        <ul style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0; padding-left: 20px;">
+          <li>理解用户意图和上下文</li>
+          <li>逻辑推理和因果分析</li>
+          <li>生成文本、代码、创意内容</li>
+          <li>结果整合与格式化</li>
+          <li>判断下一步做什么</li>
+        </ul>
+      </div>
+      <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; background: rgba(var(--color-success-rgb), 0.05);">
+        <strong style="color: var(--color-success);">调用工具（Tools）</strong>
+        <ul style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0; padding-left: 20px;">
+          <li>搜索实时信息（天气、新闻）</li>
+          <li>执行代码（运行、测试）</li>
+          <li>读写文件（磁盘操作）</li>
+          <li>调用外部 API（支付、数据库）</li>
+          <li>数学计算（高精度运算）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>一个关键原则：<strong>模型擅长"思考"，工具擅长"行动"</strong>。调度器的核心职责就是判断当前子任务属于哪一类，把任务分给最合适的执行者。</p>
+
+<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+# 调度器实现：根据任务特征分配执行路径
+
+class Scheduler:
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = tools
+
+    def dispatch(self, sub_task):
+        """根据子任务特征，决定调用模型还是工具"""
+        
+        # 判断1：是否需要外部数据？
+        if sub_task.requires_external_data:
+            # 搜索、数据库查询、API调用 → 工具
+            tool_name = self._select_tool(sub_task)
+            result = self.tools.call(tool_name, sub_task.params)
+            print(f"[调度] 工具执行: {tool_name} → {result}")
+            return result
+
+        # 判断2：是否需要逻辑推理？
+        if sub_task.requires_reasoning:
+            # 分析、推理、决策 → 模型
+            result = self.llm.reason(sub_task.prompt)
+            print(f"[调度] 模型推理: {sub_task.prompt} → {result}")
+            return result
+
+        # 判断3：是否需要格式化输出？
+        if sub_task.requires_formatting:
+            result = self.llm.format(sub_task.raw_output)
+            print(f"[调度] 模型格式化 → {result}")
+            return result
+
+        # 判断4：是否需要验证结果？
+        if sub_task.requires_verification:
+            # 交叉验证：先工具获取事实，再模型判断一致性
+            tool_result = self.tools.call("verify", sub_task.params)
+            model_result = self.llm.reason(
+                f"验证以下结果是否合理: {tool_result}"
+            )
+            print(f"[调度] 交叉验证 → 工具:{tool_result}, 模型:{model_result}")
+            return model_result
+
+        # 默认：模型处理
+        return self.llm.reason(sub_task.prompt)
+
+    def _select_tool(self, sub_task):
+        """根据任务类型选择最合适的工具"""
+        tool_map = {
+            "search": "search_api",
+            "database": "db_query",
+            "code_execution": "code_runner",
+            "file_operation": "file_handler",
+            "calculation": "calculator"
+        }
+        return tool_map.get(sub_task.tool_type, "general_tool")
+
+# 执行示例
+scheduler = Scheduler(LLMEngine(), ToolRegistry())
+
+# 搜索类任务 → 调用工具
+scheduler.dispatch(SubTask(type="search", requires_external_data=True))
+# [调度] 工具执行: search_api → {"北京房价": ...}
+
+# 推理类任务 → 调用模型
+scheduler.dispatch(SubTask(type="analyze", requires_reasoning=True))
+# [调度] 模型推理: 分析房价趋势 → 一线城市环比下降2%
+
+# 验证类任务 → 工具+模型
+scheduler.dispatch(SubTask(type="verify", requires_verification=True))
+# [调度] 交叉验证 → 工具:数据查询结果, 模型:验证通过
+</pre>
+
+<p>调度器的核心价值在于<strong>避免无谓的调用</strong>：如果用户只是问"Python 怎么排序"，不需要调用搜索工具，模型直接回答即可；如果用户问"北京明天天气"，模型无法知道实时数据，必须调用工具。调度器就是在做这个判断。</p>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q1: 什么是 AI Agent？它和 ChatBot 的本质区别是什么？</div>
+    <div class="qa-answer">
+      AI Agent 是一种能够<strong>感知环境、自主规划、使用工具、采取行动</strong>来完成目标的 AI 系统。<br><br>
+      本质区别在于：<strong>自主性</strong>。ChatBot 只能被动回答问题（输入→输出），Agent 能主动拆解任务、调用工具、多步执行（感知→规划→行动→反馈）。ChatBot 是"嘴"，Agent 是"手+脑"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: AI Agent 的四大核心模块是什么？分别有什么作用？</div>
+    <div class="qa-answer">
+      <strong>① LLM（大脑）</strong>：理解意图、推理决策、生成回答<br>
+      <strong>② 记忆（Memory）</strong>：短期记忆保存对话上下文，长期记忆通过向量库存储经验<br>
+      <strong>③ 规划（Planning）</strong>：将复杂目标拆解为可执行的子任务序列<br>
+      <strong>④ 工具（Tools）</strong>：调用外部 API、代码执行器、数据库等，实现"行动"能力<br><br>
+      四者协同构成 Agent 的完整能力闭环。缺了 LLM 没有智力，缺了记忆没有连贯性，缺了规划只能做简单任务，缺了工具无法与外部世界交互。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Agent 的"感知-决策-行动-反馈"闭环是什么意思？</div>
+    <div class="qa-answer">
+      这是 Agent 运行的基本范式：<br>
+      <strong>感知</strong>：接收用户输入或环境变化<br>
+      <strong>决策</strong>：LLM 推理分析，决定下一步做什么<br>
+      <strong>行动</strong>：调用工具执行具体操作<br>
+      <strong>反馈</strong>：观察行动结果，更新状态，决定是否继续循环<br><br>
+      这个闭环可以多轮循环，使 Agent 能处理需要多个步骤才能完成的复杂任务。ReAct 模式（第3章）就是这个闭环的经典实现。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: Agent、ChatBot、Copilot 三者的区别？面试怎么答？</div>
+    <div class="qa-answer">
+      <strong>ChatBot</strong>：被动对话，只能回答，不能行动。如 ChatGPT。<br>
+      <strong>Copilot</strong>：辅助人类完成工作，人在主导，AI 是工具。如 GitHub Copilot。<br>
+      <strong>Agent</strong>：自主完成目标，AI 主导，人可监督。能独立规划、决策、执行。<br><br>
+      关键区别在于<strong>自主性程度</strong>：ChatBot 无自主性，Copilot 低自主性（人主导），Agent 高自主性（AI 主导）。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: 为什么说 2025-2026 年是 Agent 元年？技术条件发生了什么变化？</div>
+    <div class="qa-answer">
+      几个关键条件同时成熟：<br>
+      <strong>① LLM 能力跃升</strong>：GPT-4o、Claude 3.5、Gemini 2.0 推理能力大幅提升，足以支撑复杂规划<br>
+      <strong>② Function Calling 标准化</strong>：OpenAI 等原生支持工具调用，不再需要 hack<br>
+      <strong>③ MCP 协议</strong>：工具调用标准化，跨框架复用成为可能<br>
+      <strong>④ 框架成熟</strong>：LangGraph、CrewAI、Google ADK、Spring AI 等生产级框架涌现<br>
+      <strong>⑤ 成本下降</strong>：模型调用成本大幅降低，多轮 Agent 调用经济可行
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: 从用户输入到 Agent 输出，完整链路包含哪些步骤？每步的作用是什么？</div>
+    <div class="qa-answer">
+      完整 8 步链路：<br>
+      <strong>① 用户输入接收</strong>：接收原始消息，预处理清洗<br>
+      <strong>② 意图识别</strong>：理解用户想做什么（问答/修改/开发），决定执行路径<br>
+      <strong>③ 任务分类</strong>：判断任务类型和复杂度，决定是否需要拆解<br>
+      <strong>④ 任务拆解</strong>：将复杂任务分解为子任务序列（仅复杂任务需要）<br>
+      <strong>⑤ 执行调度</strong>：决定何时调用模型、何时调用工具，安排执行顺序<br>
+      <strong>⑥ 工具调用</strong>：通过 Function Calling/MCP 调用外部工具获取数据或执行操作<br>
+      <strong>⑦ 结果整合</strong>：收集各步骤输出，缝合为完整答案<br>
+      <strong>⑧ 输出返回</strong>：格式化结果返回用户，同时存入记忆<br><br>
+      关键：Step 5→2 的回边表示迭代循环，Agent 不是单程直线，而是可以循环调整的。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Agent 如何判断一个任务是简单问答还是需要多步执行？判断依据是什么？</div>
+    <div class="qa-answer">
+      通过<strong>意图识别 + 任务分类</strong>两步判断：<br><br>
+      <strong>意图识别</strong>有三种方法：关键词匹配（快但粗糙）、语义理解（精准但成本高）、模式识别（利用历史经验）。实际工程中三者组合使用，形成分层识别策略。<br><br>
+      <strong>任务分类</strong>依据四个维度：<br>
+      ① 是否需要外部数据？（需要 → 至少涉及工具调用）<br>
+      ② 是否需要多步操作？（需要 → 必须任务拆解）<br>
+      ③ 输入的复杂度？（单句问答 → 简单，长文+多要求 → 复杂）<br>
+      ④ 是否有依赖关系？（步骤间有先后依赖 → 复杂调度）<br><br>
+      简单问答：跳过拆解和工具调用，直接回答。复杂任务：走完 8 步链路，可能多轮迭代。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Agent 的调度器如何决定"调用模型"还是"调用工具"？</div>
+    <div class="qa-answer">
+      调度决策的核心原则：<strong>模型擅长思考，工具擅长行动</strong>。<br><br>
+      决策树的四个判断节点：<br>
+      ① 需要外部数据？→ 调用工具（搜索/数据库/API）<br>
+      ② 需要逻辑推理？→ 调用模型（理解/分析/生成）<br>
+      ③ 需要格式化输出？→ 调用模型（润色/排版）<br>
+      ④ 需要验证结果？→ 工具+模型交叉验证（工具获取事实，模型判断一致性）<br><br>
+      实际工程中，调度器还考虑成本和延迟：简单意图先用关键词快速路由（低成本），复杂意图才走完整 LLM 推理链路（高成本但精准）。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+// 加载考试题目
+const ch01Questions = [
+  {
+    type: 'single',
+    question: 'AI Agent 与传统 ChatBot 最核心的区别是什么？',
+    options: [
+      'Agent 使用更大的语言模型，回答更准确',
+      'Agent 具备自主规划、决策和使用工具的能力',
+      'Agent 只能回答预设的问题',
+      'Agent 不需要自然语言处理技术'
+    ],
+    answer: [1],
+    explanation: '核心区别在于自主性。ChatBot 只能被动回答问题（输入→输出），Agent 能主动拆解任务、调用工具、多步执行（感知→规划→行动→反馈）。模型大小不是本质区别。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 AI Agent 的四大核心模块之一？',
+    options: [
+      'LLM（大语言模型）',
+      '记忆系统（Memory）',
+      '规划模块（Planning）',
+      '语音识别（ASR）'
+    ],
+    answer: [3],
+    explanation: 'AI Agent 的四大核心模块是：LLM（大脑）、记忆（短期+长期）、规划（任务拆解）、工具（调用外部能力）。语音识别是输入方式，不是 Agent 的核心模块。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 的"感知-决策-行动-反馈"闭环中，"决策"环节主要由哪个模块负责？',
+    options: [
+      '工具模块（Tools）',
+      'LLM（大语言模型）',
+      '记忆系统（Memory）',
+      '外部 API'
+    ],
+    answer: [1],
+    explanation: '决策（Decide）主要由 LLM 负责。LLM 接收感知到的信息，结合记忆中的上下文，推理出下一步应该做什么。工具是行动阶段的执行者，记忆是辅助决策的参考。'
+  },
+  {
+    type: 'single',
+    question: '关于 Agent、ChatBot、Copilot 三者的自主性，以下说法正确的是？',
+    options: [
+      'ChatBot 自主性最高，Agent 自主性最低',
+      '三者自主性相同，只是应用场景不同',
+      'Agent 自主性最高，ChatBot 无自主性，Copilot 居中',
+      'Copilot 自主性最高，因为它能辅助编程'
+    ],
+    answer: [2],
+    explanation: '自主性排序：Agent > Copilot > ChatBot。Agent 能自主规划和执行，Copilot 需要人类引导（人主导），ChatBot 完全被动响应。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个产品最符合"AI Agent"的定义？',
+    options: [
+      'ChatGPT（网页版聊天）',
+      'GitHub Copilot（代码补全）',
+      'Devin（自主完成开发任务的 AI 工程师）',
+      'Google Translate（机器翻译）'
+    ],
+    answer: [2],
+    explanation: 'Devin 是一个能自主规划、编写代码、调试、部署的 AI 软件工程师，具备完整的 Agent 四模块，属于典型 AI Agent。ChatGPT 是 ChatBot，Copilot 是辅助工具，翻译工具不具备自主性。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 完整链路中，意图识别发生在哪一步？',
+    options: [
+      'Step 1（用户输入接收）',
+      'Step 2（意图识别）',
+      'Step 3（任务分类）',
+      'Step 5（执行调度）'
+    ],
+    answer: [1],
+    explanation: '意图识别发生在 Step 2。Step 1 只是接收原始消息，Step 2 才理解用户想做什么。Step 3 是基于意图结果进行任务分类，Step 5 是根据分类结果安排执行顺序。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 AI Agent 区别于 ChatBot 的关键特征？（多选）',
+    options: [
+      '能使用外部工具（API、数据库、代码执行器）',
+      '能将复杂任务拆解为子任务并规划执行顺序',
+      '能保存长期记忆，跨会话使用经验',
+      '能生成更长的文本回复'
+    ],
+    answer: [0, 1, 2],
+    explanation: '工具使用、任务规划、长期记忆都是 Agent 的关键特征。"生成更长的文本"只是输出长度差异，不是本质区别——ChatBot 也能生成长文本。'
+  },
+  {
+    type: 'multiple',
+    question: 'AI Agent 的记忆系统通常包含哪些类型？（多选）',
+    options: [
+      '短期记忆（工作记忆/对话上下文）',
+      '长期记忆（向量数据库存储的经验）',
+      '遗传记忆（从父Agent继承）',
+      '情景记忆（具体事件和交互记录）'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'Agent 的记忆系统通常包含：短期记忆（上下文窗口）、长期记忆（向量库）、情景记忆（具体交互记录）。"遗传记忆"是生物概念，不适用于 AI Agent。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些条件促成了 2025-2026 年 AI Agent 的爆发？（多选）',
+    options: [
+      'LLM 推理能力大幅提升，足以支撑复杂规划',
+      'Function Calling 和 MCP 协议标准化了工具调用',
+      'LangGraph、CrewAI 等生产级框架成熟',
+      '量子计算突破了算力瓶颈'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Agent 爆发的条件：LLM 能力跃升、工具调用标准化（Function Calling/MCP）、框架成熟（LangGraph/CrewAI/ADK/Spring AI）、成本下降。量子计算与 Agent 爆发无直接关系。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent 的意图识别有哪些方法？（多选）',
+    options: [
+      '关键词匹配：快速但粗糙，适合简单指令',
+      '语义理解：通过 LLM 精准理解深层意图',
+      '模式识别：基于历史对话模式匹配',
+      '随机猜测：不依赖任何规则，纯靠运气'
+    ],
+    answer: [0, 1, 2],
+    explanation: '意图识别的三种方法：关键词匹配（快但粗）、语义理解（精准但贵）、模式识别（利用经验）。"随机猜测"不是意图识别方法，Agent 不靠运气做决策。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些场景应该由调度器决定"调用工具"而非"调用模型"？（多选）',
+    options: [
+      '查询实时天气数据',
+      '分析房价趋势的因果关系',
+      '执行一段测试代码',
+      '将多个碎片结果整合为完整报告'
+    ],
+    answer: [0, 2],
+    explanation: '查询实时天气和执行代码都需要外部操作，属于"调用工具"场景。分析因果和整合报告属于"调用模型"（推理和生成）。调度原则：需要外部数据/执行 → 工具，需要推理/生成 → 模型。'
+  }
+];
+
+setTimeout(() => {
+  Quiz.render('quizArea', ch01Questions);
+}, 500);
+</script>

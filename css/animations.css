@@ -1,0 +1,452 @@
+/* ========================================
+   AI Agent Guide - 动画效果库
+   ======================================== */
+
+/* ===== 流程图节点动画 ===== */
+.flowchart-container {
+  width: 100%;
+  margin: var(--space-lg) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.flowchart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.flowchart-svg .node {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.flowchart-svg .node rect {
+  fill: var(--color-surface);
+  stroke: var(--color-border-dark);
+  stroke-width: 1.5;
+  rx: 8;
+  ry: 8;
+  transition: all 0.3s ease;
+}
+
+.flowchart-svg .node.active rect {
+  fill: var(--color-accent);
+  stroke: var(--color-accent-dark);
+  stroke-width: 2;
+}
+
+.flowchart-svg .node.highlight rect {
+  fill: rgba(231, 111, 81, 0.15);
+  stroke: var(--color-accent);
+}
+
+.flowchart-svg .node text {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  fill: var(--color-text);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.flowchart-svg .node.active text {
+  fill: white;
+  font-weight: 600;
+}
+
+.flowchart-svg .edge {
+  fill: none;
+  stroke: var(--color-border-dark);
+  stroke-width: 1.5;
+  transition: all 0.3s ease;
+}
+
+.flowchart-svg .edge.active {
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+}
+
+.flowchart-svg .edge.dashed {
+  stroke-dasharray: 5, 4;
+}
+
+.flowchart-svg .edge-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: var(--color-text-tertiary);
+  text-anchor: middle;
+}
+
+.flowchart-svg .edge-label.active {
+  fill: var(--color-accent);
+  font-weight: 600;
+}
+
+/* 流动粒子动画 */
+.flowchart-svg .particle {
+  fill: var(--color-accent);
+  r: 4;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.flowchart-svg .particle.active {
+  opacity: 1;
+  animation: flow 1.5s linear infinite;
+}
+
+@keyframes flow {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+
+/* ===== 步骤动画 ===== */
+.step-animation {
+  margin: var(--space-lg) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+.step-canvas {
+  min-height: 200px;
+  position: relative;
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-content {
+  text-align: center;
+  width: 100%;
+}
+
+.step-content .step-number {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: white;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-md);
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+}
+
+.step-content .step-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.step-content .step-desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+.step-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.step-controls .step-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-md);
+  transition: var(--transition);
+}
+
+.step-controls .step-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+.step-controls .step-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.step-controls .step-indicator {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  min-width: 60px;
+  text-align: center;
+}
+
+.step-controls .step-replay {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.step-controls .step-replay:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* ===== 对比动画 ===== */
+.compare-animation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin: var(--space-lg) 0;
+}
+
+.compare-animation .compare-side {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.compare-animation .compare-side .side-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-md);
+}
+
+.compare-animation .compare-side .side-content {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  min-height: 120px;
+}
+
+.compare-animation .compare-side .side-content .highlight-line {
+  padding: 4px 8px;
+  margin: 4px 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: var(--transition);
+}
+
+.compare-animation .compare-side .side-content .highlight-line.active {
+  background: rgba(231, 111, 81, 0.12);
+  color: var(--color-text);
+}
+
+.compare-animation .compare-side.left .side-label {
+  color: var(--color-info);
+}
+
+.compare-animation .compare-side.right .side-label {
+  color: var(--color-success);
+}
+
+/* ===== 淡入动画 ===== */
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 脉冲动画 ===== */
+.pulse {
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+/* ===== 打字机效果 ===== */
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--color-accent);
+  animation: typing 2s steps(40, end), blink 0.7s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+
+/* ===== 循环轨道动画 ===== */
+.orbit-container {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orbit-center {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  z-index: 2;
+  position: relative;
+}
+
+.orbit-item {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  transition: all 0.5s ease;
+}
+
+.orbit-item.active {
+  background: var(--color-accent);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* ===== 进度环动画 ===== */
+.progress-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+}
+
+.progress-ring svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring .ring-bg {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 4;
+}
+
+.progress-ring .ring-fill {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 339.292;
+  stroke-dashoffset: 339.292;
+  transition: stroke-dashoffset 0.8s ease;
+}
+
+.progress-ring .ring-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* ===== 标签弹出动画 ===== */
+.pop-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: popIn 0.4s ease forwards;
+}
+
+@keyframes popIn {
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ===== 连接线动画 ===== */
+.connector-line {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawLine 0.8s ease forwards;
+}
+
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ===== 高亮闪烁 ===== */
+.highlight-flash {
+  animation: flash 0.6s ease;
+}
+
+@keyframes flash {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(231, 111, 81, 0.2); }
+}
+
+/* ===== 翻页过渡 ===== */
+.page-transition {
+  animation: pageIn 0.4s ease;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
