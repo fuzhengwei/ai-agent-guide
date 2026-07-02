@@ -199,8 +199,8 @@ observer.start()</pre></div>
         )
         return f"- {skill['name']} (已激活)\n  工具:\n{tools_desc}\n  策略:\n{skill.get('knowledge', '')}"</pre></div>
 
-<!-- ===== 7.5 Skill 匹配与调度 ===== -->
-<h2 class="section-heading">7.5 Skill 匹配与调度</h2>
+<!-- ===== 8.5 Skill 匹配与调度 ===== -->
+<h2 class="section-heading">8.5 Skill 匹配与调度</h2>
 
 <p>当用户说"北京明天天气怎么样，穿什么合适？"，Agent 需要：</p>
 <ol>
@@ -212,8 +212,8 @@ observer.start()</pre></div>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气\n穿什么合适?","type":"start"},{"id":"match","label":"Skill 匹配\n触发词「天气」→ weather-advisor","type":"process"},{"id":"activate","label":"激活 Skill\n加载完整 Schema + 知识","type":"process"},{"id":"plan","label":"AI 规划\n1. 调 get_weather\n2. 调 get_clothing_advice","type":"process"},{"id":"exec1","label":"执行 get_weather\n→ 晴 25°C","type":"process"},{"id":"exec2","label":"执行 get_clothing_advice\n→ 薄外套+长裤","type":"process"},{"id":"respond","label":"综合回答\n北京明天晴 25°C\n建议穿薄外套+长裤","type":"end"}],"edges":[{"from":"user","to":"match"},{"from":"match","to":"activate"},{"from":"activate","to":"plan"},{"from":"plan","to":"exec1"},{"from":"exec1","to":"exec2"},{"from":"exec2","to":"respond"}]}'></div>
 
-<!-- ===== 7.6 Skills vs MCP vs Function Calling ===== -->
-<h2 class="section-heading">7.6 Skills vs MCP vs Function Calling</h2>
+<!-- ===== 8.6 Skills vs MCP vs Function Calling ===== -->
+<h2 class="section-heading">8.6 Skills vs MCP vs Function Calling</h2>
 
 <div class="comparison-table">
 <table>
@@ -242,8 +242,8 @@ observer.start()</pre></div>
 <p>Skills 不排斥 MCP。一个 <code>database-advisor</code> Skill 可以包含一个 MCP database server 提供的查询工具，加上自定义的 SQL 优化建议工具，以及"先分析表结构再优化查询"的使用策略。</p>
 </div>
 
-<!-- ===== 7.7 实战：构建一个 Skill ===== -->
-<h2 class="section-heading">7.7 实战：构建一个 Skill</h2>
+<!-- ===== 8.7 实战：构建一个 Skill ===== -->
+<h2 class="section-heading">8.7 实战：构建一个 Skill</h2>
 
 <p>把第2章的天气查询升级为一个完整的 Skill：</p>
 

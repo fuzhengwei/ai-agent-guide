@@ -5,6 +5,24 @@
 
 const FlowChart = {
   /**
+   * 自动查找页面上带有 data-flowchart 的元素并渲染
+   */
+  init() {
+    const containers = document.querySelectorAll('.flowchart-container[data-flowchart]');
+    containers.forEach(container => {
+      if (!container.id) {
+        container.id = 'flowchart_' + Math.random().toString(36).substring(2, 9);
+      }
+      try {
+        const config = JSON.parse(container.dataset.flowchart);
+        this.render(container.id, config);
+      } catch (e) {
+        console.error('[FlowChart] Parse config error for', container.id, e);
+      }
+    });
+  },
+
+  /**
    * 渲染流程图
    * @param {string} containerId - 容器元素ID
    * @param {object} config - 配置 {nodes, edges, animate, direction}

@@ -345,8 +345,8 @@ const App = {
         // 后处理：章节底部导航
         this.addChapterNav();
         // 渲染流程图（自动渲染带 data-flowchart 属性的容器）
-        if (typeof FlowChart !== 'undefined' && FlowChart.render) {
-          FlowChart.render();
+        if (typeof FlowChart !== 'undefined' && FlowChart.init) {
+          FlowChart.init();
         }
         // 加载章节考试题
         if (typeof Quiz !== 'undefined' && Quiz.loadChapterQuiz) {

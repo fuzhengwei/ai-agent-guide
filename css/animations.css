@@ -12,6 +12,10 @@
   padding: var(--space-lg);
   position: relative;
   overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .flowchart-svg {
