@@ -52,6 +52,10 @@ const App = {
     this.loadTheme();
     Progress.updateUI();
     AIChat.init();
+    
+    // AI助手默认展开（收藏到侧边栏）
+    this.setDefaultChatVisible();
+    
     this.showCover();
   },
 
@@ -155,16 +159,49 @@ const App = {
   },
 
   /**
+   * 设置 AI 助手默认展开（收藏到侧边栏）
+   * 首次访问时自动展开，用户手动关闭后保持关闭状态
+   */
+  setDefaultChatVisible() {
+    const layout = document.querySelector('.app-layout');
+    const chatBtn = document.getElementById('toolbarChatBtn');
+    if (!layout) return;
+    
+    // 检查用户是否曾经手动关闭过AI助手
+    const chatHidden = localStorage.getItem('ai-agent-guide-chat-hidden');
+    
+    if (chatHidden === 'true') {
+      // 用户之前关闭过，保持关闭状态
+      layout.classList.add('chat-collapsed');
+      if (chatBtn) chatBtn.classList.remove('active');
+    } else {
+      // 默认展开AI助手
+      if (chatBtn) chatBtn.classList.add('active');
+    }
+  },
+
+  /**
    * 切换 AI 助手对话栏 显示/隐藏
    */
   toggleChat() {
     const layout = document.querySelector('.app-layout');
-    if (layout) {
-      layout.classList.toggle('chat-collapsed');
-      const btn = document.getElementById('toolbarChatBtn');
-      if (btn) {
-        btn.classList.toggle('active', !layout.classList.contains('chat-collapsed'));
-      }
+    if (!layout) return;
+    
+    const chatBtn = document.getElementById('toolbarChatBtn');
+    const isCollapsed = layout.classList.contains('chat-collapsed');
+    
+    if (isCollapsed) {
+      // 展开
+      layout.classList.remove('chat-collapsed');
+      if (chatBtn) chatBtn.classList.add('active');
+      // 记住用户选择了展开
+      localStorage.removeItem('ai-agent-guide-chat-hidden');
+    } else {
+      // 收起
+      layout.classList.add('chat-collapsed');
+      if (chatBtn) chatBtn.classList.remove('active');
+      // 记住用户选择了收起
+      localStorage.setItem('ai-agent-guide-chat-hidden', 'true');
     }
   },
 
@@ -435,6 +472,7 @@ const App = {
 
   /**
    * 生成右侧目录 (TOC)
+   * 智能显示：如果当前章节没有 h2/h3 标题，则隐藏 TOC 面板
    */
   generateTOC() {
     const tocNav = document.getElementById('tocNav');
@@ -443,11 +481,25 @@ const App = {
     const contentBody = document.getElementById('contentBody');
     if (!contentBody) return;
     
-    // 清空现有目录
-    tocNav.innerHTML = '';
-    
     // 查找所有标题 (h2.section-heading, h3.sub-heading)
     const headings = contentBody.querySelectorAll('h2.section-heading, h3.sub-heading');
+    
+    // 智能显示：没有标题时隐藏 TOC 面板
+    const tocPanel = document.getElementById('tocPanel');
+    if (headings.length === 0) {
+      if (tocPanel) {
+        tocPanel.style.display = 'none';
+      }
+      return;
+    }
+    
+    // 有标题时显示 TOC 面板
+    if (tocPanel) {
+      tocPanel.style.display = '';
+    }
+    
+    // 清空现有目录
+    tocNav.innerHTML = '';
     
     if (headings.length === 0) {
       tocNav.innerHTML = '<div style="padding: 20px; color: var(--color-text-tertiary); font-size: 12px; text-align: center;">暂无目录</div>';
