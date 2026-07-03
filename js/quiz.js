@@ -7,15 +7,18 @@ const Quiz = {
   currentQuestions: [],
   currentAnswers: {},
   submitted: false,
+  _bankCache: null, // 题库缓存，避免重复 fetch 160KB JSON
 
   /**
-   * 加载题库
+   * 加载题库（带缓存）
    */
   async loadBank(chapterId) {
     try {
-      const response = await fetch('data/quiz-bank.json');
-      const bank = await response.json();
-      return bank[chapterId] || [];
+      if (!this._bankCache) {
+        const response = await fetch('data/quiz-bank.json');
+        this._bankCache = await response.json();
+      }
+      return this._bankCache[chapterId] || [];
     } catch (e) {
       console.warn('题库加载失败，使用内置题目', e);
       return this.getBuiltInQuestions(chapterId);

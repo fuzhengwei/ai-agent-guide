@@ -2,6 +2,23 @@
 <h1 class="chapter-title">第1章 大模型与 Agent 基础概念</h1>
 <p class="chapter-subtitle">理解 Token、Prompt、Embedding 与思维框架</p>
 
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🧭 本章先抓住这条主线</div>
+  <p>很多小白一上来就被 Token、Prompt、Embedding、Function Calling 这些词绕晕。其实你只要按一条线理解就够了：</p>
+  <p><strong>Token</strong> 解释模型如何看文本，<strong>Prompt</strong> 解释你如何对模型下指令，<strong>Embedding</strong> 解释模型如何找回知识，<strong>Function Calling</strong> 解释模型如何把"会说"变成"会做"。</p>
+  <p style="margin-top: 12px;">读完本章的最低目标不是背概念，而是能回答这四个问题：模型怎么计费、为什么 Prompt 会影响结果、RAG 为什么要 Embedding、为什么工具调用比字符串解析更可靠。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">🎤 面试官更爱这样追问</div>
+  <p>比起问"什么是 Token"，更真实的问法通常是：</p>
+  <ul style="margin: 10px 0 0 20px; color: var(--color-text-secondary);">
+    <li>为什么同样一段中文比英文更贵？</li>
+    <li>Prompt 明明只改了几句话，为什么效果会变化这么大？</li>
+    <li>为什么 RAG 不直接全文塞进上下文，而要先做 Embedding 检索？</li>
+  </ul>
+</div>
+
 <!-- ===== 1.1 Token ===== -->
 <h2 class="section-heading">1.1 Token：AI 的"字"</h2>
 
@@ -975,3 +992,148 @@ setTimeout(() => {
   "框架不是越复杂越好，而是越匹配越好。简单任务用 CoT，工具任务用 ReAct，探索任务用 ToT。选对框架，事半功倍。"
 </div>
 
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q1：Token 和字符的关系是什么？为什么中文比英文贵？</strong></div>
+    <div class="qa-a">Token 是大模型处理文本的基本单位，由分词器（Tokenizer）按 BPE 算法切分。Token ≠ 字符 ≠ 词，介于两者之间。英文通常 1 Token ≈ 4 字符（约 0.75 词），而中文一个字可能切分为 1~2 个 Token（取决于词表）。因为中文 Token 粒度更细，同样长度的文本中文消耗的 Token 数更多，所以费用更高。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q2：上下文窗口大小意味着什么？窗口越大一定越好吗？</strong></div>
+    <div class="qa-a">上下文窗口是模型一次能处理的最大 Token 数，决定了"记忆容量"。窗口越大能塞的信息越多，但并不意味着越好：① 费用随 Token 数线性增长；② 过长的上下文会导致"中间遗忘"（Lost in the Middle）效应——模型对中间位置的信息注意力下降；③ 推理延迟增加。实际应用中应根据任务需求选择合适窗口大小，配合 RAG 或记忆压缩策略。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q3：System Prompt 和 User Prompt 的区别？为什么 System Prompt 更重要？</strong></div>
+    <div class="qa-a">System Prompt 设定模型的角色、规则和约束，具有最高优先级，模型在整个对话中都会遵循；User Prompt 是用户的具体问题或指令。System Prompt 更重要是因为：① 它定义了模型的行为边界和安全约束；② 它在多轮对话中持续生效，避免用户通过后续提问绕过限制；③ 良好的 System Prompt 能显著提升输出质量和一致性。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q4：Embedding 的作用是什么？为什么 RAG 不直接全文塞进上下文？</strong></div>
+    <div class="qa-a">Embedding 将文本映射为稠密向量，使语义相近的文本在向量空间中距离更近。RAG 不直接全文塞入上下文的原因：① 全文可能超出上下文窗口限制；② 全文塞入会产生大量无关信息，干扰模型注意力导致回答质量下降；③ 全文输入 Token 消耗巨大，费用高昂。通过 Embedding 检索最相关的片段再注入上下文，兼顾了准确性、速度和成本。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q5：Function Calling 比让模型输出 JSON 字符串有什么优势？</strong></div>
+    <div class="qa-a">Function Calling 的核心优势：① <strong>结构化保证</strong>——模型通过专门的 function_call 通道输出参数，不依赖字符串解析，避免了 JSON 格式错误；② <strong>安全隔离</strong>——函数定义中有类型约束和参数校验，模型不会输出非法字段；③ <strong>多轮协作</strong>——模型可以调用多个函数、观察返回结果、再决定下一步，形成 Agent 闭环；④ <strong>原生支持</strong>——模型在训练时就学过 function calling 格式，准确率远高于 prompt 工程。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q6：CoT、ReAct、ToT 三种思维框架的区别和适用场景？</strong></div>
+    <div class="qa-a">① <strong>CoT（Chain of Thought）</strong>：逐步推理，适合纯推理任务（数学题、逻辑题），无需工具调用；② <strong>ReAct（Reasoning + Acting）</strong>：推理+行动交替执行，先思考再调工具再观察结果，适合需要工具调用的任务（查天气、查数据库）；③ <strong>ToT（Tree of Thought）</strong>：多路径探索+回溯，适合复杂规划任务（迷宫、博弈），可以探索多条路径取最优。递进关系：CoT（纯推理）→ ReAct（+工具）→ ToT（+多路径探索）。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q7：开源模型和闭源模型怎么选？</strong></div>
+    <div class="qa-a">选择维度：① <strong>数据隐私</strong>——金融、医疗等敏感场景必须选开源模型私有化部署；② <strong>成本</strong>——高频调用场景开源模型长期更划算，低频场景闭源模型按量付费更省；③ <strong>能力上限</strong>——闭源模型（GPT-4、Claude）在推理能力和工具调用上通常领先；④ <strong>可控性</strong>——需要微调或定制行为时选开源；⑤ <strong>生态</strong>——闭源模型 API 更稳定，开源模型需要自己维护推理服务。实际项目中常见混合策略：关键场景用闭源，辅助场景用开源。</div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch01Questions = [
+  {
+    type: 'single',
+    question: '关于 Token 的说法，正确的是？',
+    options: [
+      'Token 等于一个英文字母',
+      'Token 等于一个汉字',
+      'Token 是大模型处理文本的基本单位，由分词器按 BPE 算法切分',
+      '所有模型的 Token 切分方式完全相同'
+    ],
+    answer: [2],
+    explanation: 'Token 是大模型处理文本的基本单位，由分词器（Tokenizer）根据 BPE 算法切分，不等于字符也不等于词，不同模型的词表不同，切分粒度也不同。'
+  },
+  {
+    type: 'single',
+    question: '同样长度的文本，中文比英文 Token 费用更高，主要原因是？',
+    options: [
+      '中文编码比英文复杂',
+      '中文一个字通常消耗更多 Token，因为中文 Token 粒度更细',
+      '模型处理中文速度更慢',
+      '中文模型不支持批量折扣'
+    ],
+    answer: [1],
+    explanation: '中文一个字可能被切分为 1~2 个 Token，而英文通常 1 Token ≈ 4 字符。同样长度的文本，中文消耗的 Token 数更多，费用更高。'
+  },
+  {
+    type: 'single',
+    question: '关于上下文窗口，以下说法错误的是？',
+    options: [
+      '上下文窗口决定了模型一次能处理的最大 Token 数',
+      '窗口越大一定越好，信息越全面',
+      '过长的上下文会导致"中间遗忘"效应',
+      '推理延迟随上下文长度增加而增加'
+    ],
+    answer: [1],
+    explanation: '窗口越大并不一定越好。过长的上下文会导致"Lost in the Middle"效应（中间信息注意力下降），同时增加费用和延迟。应根据任务需求选择合适窗口大小。'
+  },
+  {
+    type: 'single',
+    question: 'System Prompt 和 User Prompt 的核心区别是？',
+    options: [
+      'System Prompt 是英文，User Prompt 是中文',
+      'System Prompt 设定角色和规则具有最高优先级，User Prompt 是用户的具体问题',
+      'System Prompt 只能用一次，User Prompt 可以多次使用',
+      '两者没有区别，只是命名不同'
+    ],
+    answer: [1],
+    explanation: 'System Prompt 设定模型的角色、规则和约束，具有最高优先级且在整个对话中持续生效。User Prompt 是用户的具体问题或指令。'
+  },
+  {
+    type: 'single',
+    question: 'RAG 不直接全文塞进上下文，而是先做 Embedding 检索的核心原因是？',
+    options: [
+      'Embedding 技术更先进',
+      '全文可能超出窗口限制，且无关信息会干扰模型注意力，同时费用高昂',
+      '全文检索速度太慢',
+      '模型不支持长文本输入'
+    ],
+    answer: [1],
+    explanation: 'RAG 通过 Embedding 检索最相关的片段再注入上下文，兼顾了准确性（减少无关信息干扰）、速度（减少输入 Token）和成本（避免全文输入的高费用）。'
+  },
+  {
+    type: 'multiple',
+    question: 'Function Calling 相比让模型输出 JSON 字符串的优势有哪些？（多选）',
+    options: [
+      '通过 function_call 通道输出参数，不依赖字符串解析，避免格式错误',
+      '函数定义中有类型约束和参数校验',
+      '模型可以调用多个函数、观察结果、再决定下一步，形成 Agent 闭环',
+      '完全不需要写 Prompt 就能自动调用'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Function Calling 的优势是结构化保证、安全隔离、多轮协作和原生支持。选项 D 错误，仍然需要通过 Prompt 描述可用函数和用户意图。'
+  },
+  {
+    type: 'single',
+    question: 'CoT、ReAct、ToT 的递进关系是？',
+    options: [
+      'ToT → ReAct → CoT，从复杂到简单',
+      'CoT（纯推理）→ ReAct（+工具调用）→ ToT（+多路径探索）',
+      '三者完全独立，没有递进关系',
+      'ReAct → CoT → ToT，先行动再推理再探索'
+    ],
+    answer: [1],
+    explanation: '递进关系：CoT 是纯推理（逐步思考），ReAct 在 CoT 基础上加入了工具调用（推理+行动），ToT 在 ReAct 基础上加入了多路径探索和回溯。'
+  },
+  {
+    type: 'multiple',
+    question: '选择开源模型还是闭源模型时，应考虑哪些维度？（多选）',
+    options: [
+      '数据隐私——敏感场景需私有化部署',
+      '成本——高频调用场景开源长期更划算',
+      '能力上限——闭源模型推理能力通常领先',
+      '品牌知名度——越知名越好'
+    ],
+    answer: [0, 1, 2],
+    explanation: '选择维度包括数据隐私、成本、能力上限、可控性和生态。品牌知名度不是技术决策依据。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch01Questions); }, 500);
+</script>

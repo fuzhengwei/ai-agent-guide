@@ -878,172 +878,165 @@ print(agent.chat("git log --oneline -5"))
   <text x="400" y="325" text-anchor="middle" fill="#ccc" font-size="11">特殊需求 → 自建框架</text>
 </svg>
 
-<!-- ===== 八股题 ===== -->
-<h2 class="section-heading">面试八股题</h2>
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
-<div class="interview-card">
-  <h3 class="interview-q">Q1: CLI Agent 和 Web Agent 的核心区别是什么？</h3>
-  <div class="interview-a">
-    <p>CLI Agent 通过命令行终端与用户交互，输入输出都是文本，适合开发者和技术运维人员。Web Agent 运行在浏览器中，有丰富的 UI 交互能力。核心区别体现在三个方面：<strong>交互模式</strong>——CLI 是纯文本流，支持管道和重定向，可以与其他命令行工具无缝串联；Web 是 GUI 交互，依赖点击和表单。<strong>执行环境</strong>——CLI Agent 直接运行在用户的操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器沙箱限制，只能通过 API 间接访问系统资源。<strong>自动化能力</strong>——CLI Agent 可以轻松嵌入 Shell 脚本、CI/CD Pipeline、Cron 任务中实现无人值守自动化；Web Agent 通常需要人工操作或额外的 RPA 工具。CLI Agent 的优势在于快速、可脚本化、管道友好，但学习门槛较高；Web Agent 门槛低但灵活性受限。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q2: 如何设计 CLI Agent 的安全沙箱？请描述四层防呆机制。</h3>
-  <div class="interview-a">
-    <p>安全沙箱是 CLI Agent 的生命线。四层防呆机制从外到内依次为：<strong>第一层：命令白名单</strong>——只允许预定义的安全命令执行，基于命令前缀匹配，如 ls、cat、grep、git 等常见命令，拦截未知命令。<strong>第二层：危险模式正则拦截</strong>——即使命令在白名单中，也要检查参数是否包含危险模式，如 rm -rf /、dd if=、fork bomb 等，使用正则表达式匹配已知攻击模式。<strong>第三层：沙箱执行环境</strong>——在隔离的环境中执行命令，方案包括 Docker 容器（文件系统隔离 + 资源限制）、Firejail（Linux 轻量沙箱）、bubblewrap（Flatpak 使用的沙箱），以及权限降级（非 root 运行、只读挂载关键目录）。<strong>第四层：人工审批机制</strong>——对于敏感操作（如部署、删除、网络请求），弹出确认提示要求用户明确同意后才执行。四层机制层层递进，即使某一层被绕过，下一层仍能兜底。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q3: 如何提升 NL2Shell 的准确率？</h3>
-  <div class="interview-a">
-    <p>NL2Shell 准确率提升是一个系统工程，从五个方面入手：<strong>1. Few-Shot 示例优化</strong>——精选 20-30 个高质量示例，按场景分类（文件操作、进程管理、网络诊断、版本控制、容器管理），每类 5-6 个，覆盖常见和边界情况。示例质量比数量更重要。<strong>2. 上下文感知</strong>——在 Prompt 中注入操作系统类型、Shell 版本、已安装工具列表、当前工作目录等信息，让 LLM 生成与环境匹配的命令。比如在 macOS 上不生成 apt-get 命令。<strong>3. RAG 增强</strong>——将用户历史命令库和 man page 作为知识库，通过向量检索找到相似场景的参考命令，作为 Few-Shot 示例动态注入。<strong>4. 多候选 + 投票</strong>——让 LLM 生成 3-5 个候选命令，通过规则校验（语法检查、安全检查）和二次 LLM 评分选出最佳命令。<strong>5. 持续学习</strong>——记录用户对生成命令的修改和反馈，将有价值的修正加入 Few-Shot 库，形成正向飞轮。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q4: CLI Agent 命令执行失败后如何实现自愈？</h3>
-  <div class="interview-a">
-    <p>命令执行失败后的自愈是 CLI Agent 智能化的核心体现。自愈流程分四步：<strong>第一步：错误分类</strong>——将失败原因分为可重试类（网络超时、资源暂时不可用）、需修正类（命令语法错误、权限不足）、需人工介入类（文件不存在、服务未安装）。<strong>第二步：自动修正</strong>——对于语法错误，将错误信息回传给 LLM 重新生成命令；对于权限问题，尝试加 sudo 或切换用户；对于路径问题，尝试模糊匹配查找正确路径。<strong>第三步：重试策略</strong>——对于瞬时故障，采用指数退避重试（1s → 2s → 4s），最多重试 3 次；对于复杂操作，回退到上一个已知稳定状态。<strong>第四步：降级与上报</strong>——如果自动修正失败，降级为提示用户手动处理，同时提供错误分析和建议命令。关键设计：每次自愈都要记录日志，形成"错误 → 修正"映射表，逐步提升自愈能力。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q5: 命令注入攻击的原理和防御策略是什么？</h3>
-  <div class="interview-a">
-    <p>命令注入是 CLI Agent 面临的最严重的安全威胁。<strong>攻击原理</strong>：攻击者通过自然语言输入中嵌入 Shell 元字符（如 ;、|、&、$()、``），使 LLM 生成的命令包含恶意载荷。例如用户输入"查看文件 ; rm -rf /"，如果 LLM 直接拼接为 cat file ; rm -rf /，就会导致灾难性后果。另一个向量是环境变量注入，如 $HOME 可能被篡改。<strong>防御策略</strong>：<strong>1. 输入净化</strong>——在自然语言输入阶段检测并过滤 Shell 元字符，对 $、;、|、&、反引号等字符进行转义。<strong>2. 命令结构化解析</strong>——不使用 shell=True 执行，而是将命令拆分为程序名 + 参数列表（subprocess.run(["ls", "-la"])），避免 Shell 解释器介入。<strong>3. 参数白名单</strong>——对每个命令定义允许的参数集合，拒绝不在白名单中的参数。<strong>4. 沙箱隔离</strong>——即使在容器内执行，也限制网络访问、文件系统写入范围和系统调用。<strong>5. 审计日志</strong>——记录所有执行的命令、输入来源和执行结果，便于事后追溯。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q6: OpenClaw CLI 的架构优势和设计理念是什么？</h3>
-  <div class="interview-a">
-    <p>OpenClaw CLI 是一个以安全为核心、Skill 可插拔的 CLI Agent 框架。<strong>架构优势</strong>：<strong>1. Skill 生态</strong>——每个 Skill 是一个独立的能力包（SKILL.md + 脚本），可以热加载、组合使用。用户可以自建 Skill 也可以从 SkillHub 安装社区 Skill，形成能力飞轮。<strong>2. 四级安全模型</strong>——命令白名单 → 危险模式拦截 → 沙箱执行 → 人工审批，层层递进。尤其审批机制让用户对敏感操作有最终控制权。<strong>3. MCP 协议支持</strong>——通过 Model Context Protocol 标准化工具调用，支持跨模型、跨平台的工具互操作。<strong>4. 多模态对接</strong>——不只是命令行，还能对接消息平台（Telegram、Discord、企业微信）、设备节点（手机摄像头、屏幕录制）等。<strong>5. 会话管理</strong>——支持主会话和子会话隔离，复杂任务可以派发子任务并行执行，主会话不被阻塞。<strong>设计理念</strong>是"安全优先、可扩展、开发者友好"——先保证不出事，再通过 Skill 生态无限扩展能力。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q7: CLI Agent 在 DevOps 场景中有哪些典型应用？</h3>
-  <div class="interview-a">
-    <p>CLI Agent 在 DevOps 场景中大有可为，三个典型应用：<strong>应用一：智能 CI/CD 流水线</strong>——传统 CI/CD 需要手写 YAML 配置，CLI Agent 可以根据自然语言描述自动生成 Pipeline 配置，在部署失败时自动分析日志、定位问题、执行回滚。例如"部署 user-service 到 staging 环境"，Agent 自动执行构建→测试→推送→滚动更新→健康检查五步流水线，任一步骤失败自动回滚。<strong>应用二：日志智能分析</strong>——线上服务出问题时，运维人员需要在一堆日志中找到根因。CLI Agent 可以自动收集多服务日志（kubectl logs）、过滤错误（grep ERROR）、归类异常模式、关联时间线，最后给出根因假设和修复建议。比传统 ELK 查询更灵活，因为 Agent 能理解日志语义。<strong>应用三：故障自愈</strong>——监控告警触发后，CLI Agent 自动执行诊断命令（查看 CPU/内存/磁盘、检查进程状态、分析网络连接），根据预设规则执行修复操作（重启服务、清理缓存、扩容节点），并将处理过程记录到工单系统。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q8: CLI Agent 如何管理上下文和处理长命令输出？</h3>
-  <div class="interview-a">
-    <p>上下文管理是 CLI Agent 的核心技术挑战。LLM 的上下文窗口有限（4K-128K tokens），而命令输出可能动辄上万行。<strong>策略一：输出摘要</strong>——对超长输出进行分层摘要：首先截取前 N 行和后 N 行（头尾通常最重要），中间部分用 LLM 生成摘要。对于结构化输出（如 JSON、表格），提取关键字段而非全文。<strong>策略二：滑动窗口</strong>——维护一个滑动上下文窗口，保留最近 K 轮对话和命令结果。超过窗口的旧内容通过摘要压缩，保留关键信息（执行了什么命令、结果成功/失败、关键输出）。<strong>策略三：语义检索</strong>——将所有历史命令和输出存入向量数据库，当需要历史信息时通过语义检索找到相关上下文，而不是全量加载。<strong>策略四：上下文分区</strong>——将上下文分为"任务上下文"（当前任务目标）、"环境上下文"（OS、目录、工具）、"历史上下文"（最近命令和结果），按优先级分配 token 预算，确保任务关键信息不被挤占。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q9: CLI Agent 中如何落地 RBAC 权限控制？</h3>
-  <div class="interview-a">
-    <p>RBAC（Role-Based Access Control）在 CLI Agent 中的落地需要考虑命令级别的权限粒度。<strong>角色定义</strong>：通常分为 Viewer（只读权限，可执行 ls/ps/cat/grep 等查看类命令）、Operator（可执行运维操作，如 git/docker/kubectl 的非破坏性命令）、Admin（全权限，包括删除、部署、配置修改）。<strong>权限矩阵</strong>：为每个角色定义命令白名单和参数约束。例如 Operator 可以执行 kubectl get/describe/logs 但不能执行 kubectl delete。<strong>实现机制</strong>：<strong>1. 命令分类</strong>——将所有命令分为 read/write/admin 三级，写入配置文件。<strong>2. 参数检查</strong>——不仅检查命令本身，还检查参数。如 git push 属于 write 级别，需要 Operator 以上权限。<strong>3. 审批流程</strong>——越权操作需要更高级别用户审批。CLI Agent 可以生成审批请求，发送到 IM 工具（如企业微信/飞书），审批通过后自动执行。<strong>4. 审计日志</strong>——记录每条命令的执行者、时间、结果、权限级别，支持事后审计和合规检查。<strong>5. 动态权限</strong>——支持临时提权（如紧急运维时 1 小时内获得 Admin 权限），超时自动降级。</p>
-  </div>
-</div>
-
-<div class="interview-card">
-  <h3 class="interview-q">Q10: CLI Agent 的未来发展趋势是什么？</h3>
-  <div class="interview-a">
-    <p>CLI Agent 正处于快速发展期，五个趋势值得关注：<strong>趋势一：多模态融合</strong>——未来的 CLI Agent 不只处理文本，还能接收截图（分析 UI 错误）、语音指令（免手输入）、甚至视频（分析操作录屏）。多模态输入让 Agent 的感知能力大幅提升。<strong>趋势二：Agent 间协作</strong>——多个 CLI Agent 可以组成协作网络，A Agent 负责前端部署，B Agent 负责后端部署，C Agent 负责数据库迁移，通过 A2A 协议协调完成复杂任务。类似微服务架构，每个 Agent 专注一个领域。<strong>趋势三：自进化能力</strong>——Agent 持续学习用户的命令习惯、偏好和工作流，自动优化 Few-Shot 示例库、调整命令推荐策略。从"通用 Agent"演进为"个人定制 Agent"。<strong>趋势四：安全可信</strong>——引入形式化验证（执行前数学证明命令安全）、可解释 AI（解释为什么选择这条命令）、零信任架构（每条命令都需要动态授权）。<strong>趋势五：与 IDE/CI 深度集成</strong>——CLI Agent 不再是独立工具，而是嵌入 VS Code、JetBrains、GitHub Actions 中，成为开发流程的有机组成部分。</p>
-  </div>
-</div>
-
-<!-- ===== 考试题 ===== -->
-<h2 class="section-heading">本章考试</h2>
-<div class="quiz-container" data-chapter="ch15">
-  <div class="quiz-question" data-type="single" data-answer="0">
-    <p class="quiz-q">1. CLI Agent 与 Web Agent 的最核心区别是？</p>
-    <label><input type="radio" name="q1" value="0">A. CLI Agent 运行在操作系统层面，可以直接访问系统资源；Web Agent 受浏览器沙箱限制</label><br>
-    <label><input type="radio" name="q1" value="1">B. CLI Agent 比 Web Agent 功能更强大</label><br>
-    <label><input type="radio" name="q1" value="2">C. Web Agent 不能使用 AI 模型</label><br>
-    <label><input type="radio" name="q1" value="3">D. CLI Agent 不需要安全机制</label>
-    <div class="quiz-explanation">CLI Agent 直接运行在操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器安全模型限制，只能通过 API 间接访问。这是最本质的区别。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q1: CLI Agent 和 Web Agent 的核心区别是什么？</div>
+    <div class="qa-answer">CLI Agent 通过命令行终端与用户交互，输入输出都是文本，适合开发者和技术运维人员。Web Agent 运行在浏览器中，有丰富的 UI 交互能力。核心区别体现在三个方面：<strong>交互模式</strong>——CLI 是纯文本流，支持管道和重定向，可以与其他命令行工具无缝串联；Web 是 GUI 交互，依赖点击和表单。<strong>执行环境</strong>——CLI Agent 直接运行在用户的操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器沙箱限制，只能通过 API 间接访问系统资源。<strong>自动化能力</strong>——CLI Agent 可以轻松嵌入 Shell 脚本、CI/CD Pipeline、Cron 任务中实现无人值守自动化；Web Agent 通常需要人工操作或额外的 RPA 工具。CLI Agent 的优势在于快速、可脚本化、管道友好，但学习门槛较高；Web Agent 门槛低但灵活性受限。</div>
   </div>
 
-  <div class="quiz-question" data-type="single" data-answer="1">
-    <p class="quiz-q">2. 在安全沙箱设计中，以下哪项是第一道防线？</p>
-    <label><input type="radio" name="q2" value="0">A. Docker 容器隔离</label><br>
-    <label><input type="radio" name="q2" value="1">B. 命令白名单机制</label><br>
-    <label><input type="radio" name="q2" value="2">C. 人工审批确认</label><br>
-    <label><input type="radio" name="q2" value="3">D. 权限降级运行</label>
-    <div class="quiz-explanation">四层防呆从外到内依次是：命令白名单 → 危险模式拦截 → 沙箱执行环境 → 人工审批。白名单是第一道防线，只允许预定义的安全命令执行。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q2: 如何设计 CLI Agent 的安全沙箱？请描述四层防呆机制。</div>
+    <div class="qa-answer">安全沙箱是 CLI Agent 的生命线。四层防呆机制从外到内依次为：<strong>第一层：命令白名单</strong>——只允许预定义的安全命令执行，基于命令前缀匹配，如 ls、cat、grep、git 等常见命令，拦截未知命令。<strong>第二层：危险模式正则拦截</strong>——即使命令在白名单中，也要检查参数是否包含危险模式，如 rm -rf /、dd if=、fork bomb 等，使用正则表达式匹配已知攻击模式。<strong>第三层：沙箱执行环境</strong>——在隔离的环境中执行命令，方案包括 Docker 容器（文件系统隔离 + 资源限制）、Firejail（Linux 轻量沙箱）、bubblewrap（Flatpak 使用的沙箱），以及权限降级（非 root 运行、只读挂载关键目录）。<strong>第四层：人工审批机制</strong>——对于敏感操作（如部署、删除、网络请求），弹出确认提示要求用户明确同意后才执行。四层机制层层递进，即使某一层被绕过，下一层仍能兜底。</div>
   </div>
 
-  <div class="quiz-question" data-type="single" data-answer="2">
-    <p class="quiz-q">3. NL2Shell 中 Few-Shot 示例的最佳数量和分类策略是？</p>
-    <label><input type="radio" name="q3" value="0">A. 越多越好，至少 200 个</label><br>
-    <label><input type="radio" name="q3" value="1">B. 5 个即可，保持简洁</label><br>
-    <label><input type="radio" name="q3" value="2">C. 20-30 个高质量示例，按场景分类，每类 5-6 个</label><br>
-    <label><input type="radio" name="q3" value="3">D. 随机选取 10 个即可</label>
-    <div class="quiz-explanation">研究表明，精选 20-30 个高质量示例比堆砌 200 个重复示例更有效。按场景分类（文件操作、进程管理等），每类 5-6 个，覆盖常见和边界情况。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q3: 如何提升 NL2Shell 的准确率？</div>
+    <div class="qa-answer">NL2Shell 准确率提升是一个系统工程，从五个方面入手：<strong>1. Few-Shot 示例优化</strong>——精选 20-30 个高质量示例，按场景分类（文件操作、进程管理、网络诊断、版本控制、容器管理），每类 5-6 个，覆盖常见和边界情况。示例质量比数量更重要。<strong>2. 上下文感知</strong>——在 Prompt 中注入操作系统类型、Shell 版本、已安装工具列表、当前工作目录等信息，让 LLM 生成与环境匹配的命令。比如在 macOS 上不生成 apt-get 命令。<strong>3. RAG 增强</strong>——将用户历史命令库和 man page 作为知识库，通过向量检索找到相似场景的参考命令，作为 Few-Shot 示例动态注入。<strong>4. 多候选 + 投票</strong>——让 LLM 生成 3-5 个候选命令，通过规则校验（语法检查、安全检查）和二次 LLM 评分选出最佳命令。<strong>5. 持续学习</strong>——记录用户对生成命令的修改和反馈，将有价值的修正加入 Few-Shot 库，形成正向飞轮。</div>
   </div>
 
-  <div class="quiz-question" data-type="single" data-answer="1">
-    <p class="quiz-q">4. 以下哪个不是 CLI Agent 的典型 DevOps 应用场景？</p>
-    <label><input type="radio" name="q4" value="0">A. CI/CD 流水线自动编排</label><br>
-    <label><input type="radio" name="q4" value="1">B. 用户界面 A/B 测试</label><br>
-    <label><input type="radio" name="q4" value="2">C. 线上日志智能分析</label><br>
-    <label><input type="radio" name="q4" value="3">D. 故障自动诊断与自愈</label>
-    <div class="quiz-explanation">A/B 测试属于产品/UI 优化领域，不是 CLI Agent 的典型 DevOps 应用。CLI Agent 的 DevOps 价值在流水线编排、日志分析和故障自愈。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q4: CLI Agent 命令执行失败后如何实现自愈？</div>
+    <div class="qa-answer">命令执行失败后的自愈是 CLI Agent 智能化的核心体现。自愈流程分四步：<strong>第一步：错误分类</strong>——将失败原因分为可重试类（网络超时、资源暂时不可用）、需修正类（命令语法错误、权限不足）、需人工介入类（文件不存在、服务未安装）。<strong>第二步：自动修正</strong>——对于语法错误，将错误信息回传给 LLM 重新生成命令；对于权限问题，尝试加 sudo 或切换用户；对于路径问题，尝试模糊匹配查找正确路径。<strong>第三步：重试策略</strong>——对于瞬时故障，采用指数退避重试（1s → 2s → 4s），最多重试 3 次；对于复杂操作，回退到上一个已知稳定状态。<strong>第四步：降级与上报</strong>——如果自动修正失败，降级为提示用户手动处理，同时提供错误分析和建议命令。关键设计：每次自愈都要记录日志，形成"错误 → 修正"映射表，逐步提升自愈能力。</div>
   </div>
 
-  <div class="quiz-question" data-type="single" data-answer="3">
-    <p class="quiz-q">5. 命令注入攻击中最常见的 Shell 元字符是？</p>
-    <label><input type="radio" name="q5" value="0">A. @ 和 #</label><br>
-    <label><input type="radio" name="q5" value="1">B. * 和 ?</label><br>
-    <label><input type="radio" name="q5" value="2">C. + 和 -</label><br>
-    <label><input type="radio" name="q5" value="3">D. ; 和 |</label>
-    <div class="quiz-explanation">分号（;）用于命令分隔，管道符（|）用于命令串联，是命令注入中最常见的攻击向量。例如 "cat file; rm -rf /" 通过分号注入了删除命令。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q5: 命令注入攻击的原理和防御策略是什么？</div>
+    <div class="qa-answer">命令注入是 CLI Agent 面临的最严重的安全威胁。<strong>攻击原理</strong>：攻击者通过自然语言输入中嵌入 Shell 元字符（如 ;、|、&、$()、``），使 LLM 生成的命令包含恶意载荷。例如用户输入"查看文件 ; rm -rf /"，如果 LLM 直接拼接为 cat file ; rm -rf /，就会导致灾难性后果。另一个向量是环境变量注入，如 $HOME 可能被篡改。<strong>防御策略</strong>：<strong>1. 输入净化</strong>——在自然语言输入阶段检测并过滤 Shell 元字符，对 $、;、|、&、反引号等字符进行转义。<strong>2. 命令结构化解析</strong>——不使用 shell=True 执行，而是将命令拆分为程序名 + 参数列表（subprocess.run(["ls", "-la"])），避免 Shell 解释器介入。<strong>3. 参数白名单</strong>——对每个命令定义允许的参数集合，拒绝不在白名单中的参数。<strong>4. 沙箱隔离</strong>——即使在容器内执行，也限制网络访问、文件系统写入范围和系统调用。<strong>5. 审计日志</strong>——记录所有执行的命令、输入来源和执行结果，便于事后追溯。</div>
   </div>
 
-  <div class="quiz-question" data-type="multi" data-answer="0,1,2">
-    <p class="quiz-q">6. 以下哪些是 CLI Agent 的安全防御策略？（多选）</p>
-    <label><input type="checkbox" name="q6" value="0">A. 输入净化，过滤 Shell 元字符</label><br>
-    <label><input type="checkbox" name="q6" value="1">B. 命令结构化解析，不使用 shell=True</label><br>
-    <label><input type="checkbox" name="q6" value="2">C. 沙箱隔离，限制网络和文件系统访问</label><br>
-    <label><input type="checkbox" name="q6" value="3">D. 禁用所有命令执行功能</label>
-    <div class="quiz-explanation">A、B、C 都是有效的安全防御策略。D 过于极端，CLI Agent 的核心价值就是执行命令，禁用所有命令等于失去功能。正确做法是"安全地执行"而非"不执行"。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q6: OpenClaw CLI 的架构优势和设计理念是什么？</div>
+    <div class="qa-answer">OpenClaw CLI 是一个以安全为核心、Skill 可插拔的 CLI Agent 框架。<strong>架构优势</strong>：<strong>1. Skill 生态</strong>——每个 Skill 是一个独立的能力包（SKILL.md + 脚本），可以热加载、组合使用。用户可以自建 Skill 也可以从 SkillHub 安装社区 Skill，形成能力飞轮。<strong>2. 四级安全模型</strong>——命令白名单 → 危险模式拦截 → 沙箱执行 → 人工审批，层层递进。尤其审批机制让用户对敏感操作有最终控制权。<strong>3. MCP 协议支持</strong>——通过 Model Context Protocol 标准化工具调用，支持跨模型、跨平台的工具互操作。<strong>4. 多模态对接</strong>——不只是命令行，还能对接消息平台（Telegram、Discord、企业微信）、设备节点（手机摄像头、屏幕录制）等。<strong>5. 会话管理</strong>——支持主会话和子会话隔离，复杂任务可以派发子任务并行执行，主会话不被阻塞。<strong>设计理念</strong>是"安全优先、可扩展、开发者友好"——先保证不出事，再通过 Skill 生态无限扩展能力。</div>
   </div>
 
-  <div class="quiz-question" data-type="multi" data-answer="0,2,3">
-    <p class="quiz-q">7. 提升 NL2Shell 准确率的方法包括哪些？（多选）</p>
-    <label><input type="checkbox" name="q7" value="0">A. 上下文感知（注入 OS、Shell、已装工具信息）</label><br>
-    <label><input type="checkbox" name="q7" value="1">B. 禁止用户输入自然语言</label><br>
-    <label><input type="checkbox" name="q7" value="2">C. RAG 增强（从历史命令库检索相似场景）</label><br>
-    <label><input type="checkbox" name="q7" value="3">D. 多候选生成 + 规则校验 + LLM 评分</label>
-    <div class="quiz-explanation">A、C、D 都是有效的准确率提升方法。B 是错误的——NL2Shell 的核心就是接收自然语言输入，禁止自然语言就失去了意义。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q7: CLI Agent 在 DevOps 场景中有哪些典型应用？</div>
+    <div class="qa-answer">CLI Agent 在 DevOps 场景中大有可为，三个典型应用：<strong>应用一：智能 CI/CD 流水线</strong>——传统 CI/CD 需要手写 YAML 配置，CLI Agent 可以根据自然语言描述自动生成 Pipeline 配置，在部署失败时自动分析日志、定位问题、执行回滚。例如"部署 user-service 到 staging 环境"，Agent 自动执行构建→测试→推送→滚动更新→健康检查五步流水线，任一步骤失败自动回滚。<strong>应用二：日志智能分析</strong>——线上服务出问题时，运维人员需要在一堆日志中找到根因。CLI Agent 可以自动收集多服务日志（kubectl logs）、过滤错误（grep ERROR）、归类异常模式、关联时间线，最后给出根因假设和修复建议。比传统 ELK 查询更灵活，因为 Agent 能理解日志语义。<strong>应用三：故障自愈</strong>——监控告警触发后，CLI Agent 自动执行诊断命令（查看 CPU/内存/磁盘、检查进程状态、分析网络连接），根据预设规则执行修复操作（重启服务、清理缓存、扩容节点），并将处理过程记录到工单系统。</div>
   </div>
 
-  <div class="quiz-question" data-type="multi" data-answer="0,1,3">
-    <p class="quiz-q">8. CLI Agent 的上下文管理策略包括哪些？（多选）</p>
-    <label><input type="checkbox" name="q8" value="0">A. 输出摘要（截取头尾 + LLM 摘要中间部分）</label><br>
-    <label><input type="checkbox" name="q8" value="1">B. 滑动窗口（保留最近 K 轮对话）</label><br>
-    <label><input type="checkbox" name="q8" value="2">C. 删除所有历史记录节省 token</label><br>
-    <label><input type="checkbox" name="q8" value="3">D. 语义检索（从向量数据库查找相关历史上下文）</label>
-    <div class="quiz-explanation">A、B、D 是标准上下文管理策略。C 是错误的——删除所有历史记录会导致 Agent 失去记忆，无法理解上下文连贯性。正确做法是摘要压缩而非删除。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q8: CLI Agent 如何管理上下文和处理长命令输出？</div>
+    <div class="qa-answer">上下文管理是 CLI Agent 的核心技术挑战。LLM 的上下文窗口有限（4K-128K tokens），而命令输出可能动辄上万行。<strong>策略一：输出摘要</strong>——对超长输出进行分层摘要：首先截取前 N 行和后 N 行（头尾通常最重要），中间部分用 LLM 生成摘要。对于结构化输出（如 JSON、表格），提取关键字段而非全文。<strong>策略二：滑动窗口</strong>——维护一个滑动上下文窗口，保留最近 K 轮对话和命令结果。超过窗口的旧内容通过摘要压缩，保留关键信息（执行了什么命令、结果成功/失败、关键输出）。<strong>策略三：语义检索</strong>——将所有历史命令和输出存入向量数据库，当需要历史信息时通过语义检索找到相关上下文，而不是全量加载。<strong>策略四：上下文分区</strong>——将上下文分为"任务上下文"（当前任务目标）、"环境上下文"（OS、目录、工具）、"历史上下文"（最近命令和结果），按优先级分配 token 预算，确保任务关键信息不被挤占。</div>
   </div>
 
-  <div class="quiz-question" data-type="multi" data-answer="0,1,2">
-    <p class="quiz-q">9. 以下哪些是主流 CLI Agent 框架？（多选）</p>
-    <label><input type="checkbox" name="q9" value="0">A. OpenClaw CLI</label><br>
-    <label><input type="checkbox" name="q9" value="1">B. Claude Code</label><br>
-    <label><input type="checkbox" name="q9" value="2">C. Aider</label><br>
-    <label><input type="checkbox" name="q9" value="3">D. Microsoft Excel</label>
-    <div class="quiz-explanation">A、B、C 都是主流 CLI Agent 框架。OpenClaw CLI 强调安全和 Skill 生态；Claude Code 专注代码理解；Aider 走 Git 原生路线。Excel 是电子表格软件，不是 CLI Agent。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q9: CLI Agent 中如何落地 RBAC 权限控制？</div>
+    <div class="qa-answer">RBAC（Role-Based Access Control）在 CLI Agent 中的落地需要考虑命令级别的权限粒度。<strong>角色定义</strong>：通常分为 Viewer（只读权限，可执行 ls/ps/cat/grep 等查看类命令）、Operator（可执行运维操作，如 git/docker/kubectl 的非破坏性命令）、Admin（全权限，包括删除、部署、配置修改）。<strong>权限矩阵</strong>：为每个角色定义命令白名单和参数约束。例如 Operator 可以执行 kubectl get/describe/logs 但不能执行 kubectl delete。<strong>实现机制</strong>：<strong>1. 命令分类</strong>——将所有命令分为 read/write/admin 三级，写入配置文件。<strong>2. 参数检查</strong>——不仅检查命令本身，还检查参数。如 git push 属于 write 级别，需要 Operator 以上权限。<strong>3. 审批流程</strong>——越权操作需要更高级别用户审批。CLI Agent 可以生成审批请求，发送到 IM 工具（如企业微信/飞书），审批通过后自动执行。<strong>4. 审计日志</strong>——记录每条命令的执行者、时间、结果、权限级别，支持事后审计和合规检查。<strong>5. 动态权限</strong>——支持临时提权（如紧急运维时 1 小时内获得 Admin 权限），超时自动降级。</div>
   </div>
 
-  <div class="quiz-question" data-type="multi" data-answer="0,2,3">
-    <p class="quiz-q">10. CLI Agent 的 RBAC 权限控制中，Operator 角色通常可以执行哪些操作？（多选）</p>
-    <label><input type="checkbox" name="q10" value="0">A. kubectl get / describe / logs</label><br>
-    <label><input type="checkbox" name="q10" value="1">B. kubectl delete</label><br>
-    <label><input type="checkbox" name="q10" value="2">C. git push</label><br>
-    <label><input type="checkbox" name="q10" value="3">D. docker ps / logs</label>
-    <div class="quiz-explanation">Operator 可以执行运维操作（A、C、D），但删除操作（B）属于 Admin 权限。kubectl delete 是破坏性操作，需要更高权限级别。</div>
+  <div class="qa-item">
+    <div class="qa-question">Q10: CLI Agent 的未来发展趋势是什么？</div>
+    <div class="qa-answer">CLI Agent 正处于快速发展期，五个趋势值得关注：<strong>趋势一：多模态融合</strong>——未来的 CLI Agent 不只处理文本，还能接收截图（分析 UI 错误）、语音指令（免手输入）、甚至视频（分析操作录屏）。多模态输入让 Agent 的感知能力大幅提升。<strong>趋势二：Agent 间协作</strong>——多个 CLI Agent 可以组成协作网络，A Agent 负责前端部署，B Agent 负责后端部署，C Agent 负责数据库迁移，通过 A2A 协议协调完成复杂任务。类似微服务架构，每个 Agent 专注一个领域。<strong>趋势三：自进化能力</strong>——Agent 持续学习用户的命令习惯、偏好和工作流，自动优化 Few-Shot 示例库、调整命令推荐策略。从"通用 Agent"演进为"个人定制 Agent"。<strong>趋势四：安全可信</strong>——引入形式化验证（执行前数学证明命令安全）、可解释 AI（解释为什么选择这条命令）、零信任架构（每条命令都需要动态授权）。<strong>趋势五：与 IDE/CI 深度集成</strong>——CLI Agent 不再是独立工具，而是嵌入 VS Code、JetBrains、GitHub Actions 中，成为开发流程的有机组成部分。</div>
   </div>
-</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch15Questions = [
+  {
+    type: 'single',
+    question: 'CLI Agent 与 Web Agent 的最核心区别是？',
+    options: [
+      'CLI Agent 运行在操作系统层面，可以直接访问系统资源；Web Agent 受浏览器沙箱限制',
+      'CLI Agent 比 Web Agent 功能更强大',
+      'Web Agent 不能使用 AI 模型',
+      'CLI Agent 不需要安全机制'
+    ],
+    answer: [0],
+    explanation: 'CLI Agent 直接运行在操作系统上，可以访问文件系统、进程、网络等全部系统资源；Web Agent 受浏览器安全模型限制，只能通过 API 间接访问。这是最本质的区别。'
+  },
+  {
+    type: 'single',
+    question: '在安全沙箱设计中，以下哪项是第一道防线？',
+    options: [
+      'Docker 容器隔离',
+      '命令白名单机制',
+      '人工审批确认',
+      '权限降级运行'
+    ],
+    answer: [1],
+    explanation: '四层防呆从外到内依次是：命令白名单 → 危险模式拦截 → 沙箱执行环境 → 人工审批。白名单是第一道防线，只允许预定义的安全命令执行。'
+  },
+  {
+    type: 'single',
+    question: 'NL2Shell 中 Few-Shot 示例的最佳数量和分类策略是？',
+    options: [
+      '越多越好，至少 200 个',
+      '5 个即可，保持简洁',
+      '20-30 个高质量示例，按场景分类，每类 5-6 个',
+      '随机选取 10 个即可'
+    ],
+    answer: [2],
+    explanation: '研究表明，精选 20-30 个高质量示例比堆砌 200 个重复示例更有效。按场景分类（文件操作、进程管理等），每类 5-6 个，覆盖常见和边界情况。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 CLI Agent 的典型 DevOps 应用场景？',
+    options: [
+      'CI/CD 流水线自动编排',
+      '用户界面 A/B 测试',
+      '线上日志智能分析',
+      '故障自动诊断与自愈'
+    ],
+    answer: [1],
+    explanation: 'A/B 测试属于产品/UI 优化领域，不是 CLI Agent 的典型 DevOps 应用。CLI Agent 的 DevOps 价值在流水线编排、日志分析和故障自愈。'
+  },
+  {
+    type: 'single',
+    question: '命令注入攻击中最常见的 Shell 元字符是？',
+    options: [
+      '@ 和 #',
+      '* 和 ?',
+      '+ 和 -',
+      '; 和 |'
+    ],
+    answer: [3],
+    explanation: '分号（;）用于命令分隔，管道符（|）用于命令串联，是命令注入中最常见的攻击向量。例如 "cat file; rm -rf /" 通过分号注入了删除命令。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 CLI Agent 的安全防御策略？（多选）',
+    options: [
+      '输入净化，过滤 Shell 元字符',
+      '命令结构化解析，不使用 shell=True',
+      '沙箱隔离，限制网络和文件系统访问',
+      '禁用所有命令执行功能'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'A、B、C 都是有效的安全防御策略。D 过于极端，CLI Agent 的核心价值就是执行命令，禁用所有命令等于失去功能。正确做法是"安全地执行"而非"不执行"。'
+  },
+  {
+    type: 'multiple',
+    question: '提升 NL2Shell 准确率的方法包括哪些？（多选）',
+    options: [
+      '上下文感知（注入 OS、Shell、已装工具信息）',
+      '禁止用户输入自然语言',
+      'RAG 增强（从历史命令库检索相似场景）',
+      '多候选生成 + 规则校验 + LLM 评分'
+    ],
+    answer: [0, 2, 3],
+    explanation: 'A、C、D 都是有效的准确率提升方法。B 是错误的——NL2Shell 的核心就是接收自然语言输入，禁止自然语言就失去了意义。'
+  },
+  {
+    type: 'multiple',
+    question: 'CLI Agent 的上下文管理策略包括哪些？（多选）',
+    options: [
+      '输出摘要（截取头尾 + LLM 摘要中间部分）',
+      '滑动窗口（保留最近 K 轮对话）',
+      '删除所有历史记录节省 token',
+      '语义检索（从向量数据库查找相关历史上下文）'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'A、B、D 是标准上下文管理策略。C 是错误的——删除所有历史记录会导致 Agent 失去记忆，无法理解上下文连贯性。正确做法是摘要压缩而非删除。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch15Questions); }, 500);
+</script>
 
 <!-- 章节导航 -->
 <div class="chapter-nav">

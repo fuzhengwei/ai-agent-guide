@@ -2474,3 +2474,247 @@ code[class*="language-"] {
   .hero-stat-item .stat-num { font-size: 22px; }
   .hero-agent-loop { gap: 12px; }
 }
+
+/* ========================================
+   Chapter Tabs - 精致小标签：文章/八股/面试
+   ======================================== */
+
+/* ===== 章节书签 Tab 导航 ===== */
+
+/* 导航栏容器 */
+.chapter-tabs-nav {
+  display: flex;
+  gap: 2px;
+  padding: 0;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-surface);
+}
+
+/* 单个 Tab 按钮 */
+.chapter-tab-btn {
+  position: relative;
+  padding: 10px 22px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  border-radius: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+/* Tab 图标 */
+.chapter-tab-btn .tab-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Tab 计数徽章 */
+.chapter-tab-btn .tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* hover 态 */
+.chapter-tab-btn:hover {
+  color: var(--color-text);
+}
+
+.chapter-tab-btn:hover .tab-badge {
+  background: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+/* 激活态 — 底部指示线 + 强调色 */
+.chapter-tab-btn.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.chapter-tab-btn.active .tab-badge {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+/* ===== 深色主题适配 ===== */
+[data-theme="dark"] .chapter-tabs-nav {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .chapter-tab-btn {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .chapter-tab-btn:hover {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .chapter-tab-btn.active {
+  color: var(--color-accent-light);
+  border-bottom-color: var(--color-accent-light);
+}
+
+[data-theme="dark"] .chapter-tab-btn .tab-badge {
+  background: var(--color-border-dark);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .chapter-tab-btn.active .tab-badge {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+/* ===== 面板容器 ===== */
+.chapter-panels-container {
+  position: relative;
+}
+
+/* 内容面板 */
+.chapter-tab-panel {
+  display: none;
+  padding: 8px 0;
+  min-height: 200px;
+}
+
+.chapter-tab-panel.active {
+  display: block;
+}
+
+/* 标签页内的 qa-item 微调 */
+.chapter-tab-panel .qa-item,
+[data-tab-section="bagu"] .qa-item {
+  margin-bottom: var(--space-md);
+}
+
+/* 标签页内的 quiz 微调 */
+.chapter-tab-panel #quizArea,
+[data-tab-section="quiz"] #quizArea {
+  padding: 0;
+}
+
+/* 标签页隐藏类 */
+.tab-hidden {
+  display: none !important;
+}
+
+/* ===== 移动端响应式适配 ===== */
+@media (max-width: 1024px) {
+  /* 中等屏幕：隐藏 TOC 面板，保留侧边栏和内容区 */
+  .toc-panel {
+    display: none !important;
+  }
+  .app-layout {
+    grid-template-columns: var(--sidebar-width) 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 平板/手机：隐藏侧边栏和聊天栏，改为抽屉式 */
+  .app-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: "content" !important;
+  }
+
+  /* 侧边栏改为抽屉 */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* 聊天面板改为底部抽屉 */
+  .chat-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    height: 60vh;
+    width: 100% !important;
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .chat-panel.mobile-open {
+    transform: translateY(0);
+  }
+
+  /* 右侧工具栏改为底部固定 */
+  .right-toolbar {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    flex-direction: row !important;
+    z-index: 999;
+  }
+
+  /* 内容区占满宽度 */
+  .content-area {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Tab 书签在小屏幕上紧凑显示 */
+  .chapter-tab-btn {
+    padding: 8px 14px;
+    font-size: var(--text-xs);
+  }
+  .chapter-tab-btn .tab-icon {
+    font-size: 13px;
+  }
+
+  /* 代码块横向滚动 */
+  .code-block-wrapper pre {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 手机端进一步缩小 */
+  .chapter-tab-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .chapter-tab-btn .tab-badge {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+  .content-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

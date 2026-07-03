@@ -1,9 +1,15 @@
-<!-- 第3章：ReAct模式详解 -->
-<h1 class="chapter-title">第3章 ReAct模式详解</h1>
+<!-- 第4章：ReAct模式详解 -->
+<h1 class="chapter-title">第4章 ReAct模式详解</h1>
 <p class="chapter-subtitle">让 Agent 学会"边想边做"的经典范式</p>
 
-<!-- ===== 3.1 什么是 ReAct ===== -->
-<h2 class="section-heading">3.1 从一个问题开始</h2>
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🎯 本章先掌握 3 件事</div>
+  <p>这一章内容很多，但如果你是第一次接触 ReAct，只要先搞懂三件事就够了：<strong>为什么要先想再做、Thought / Action / Observation 如何形成闭环、它和上一章工具调用有什么关系</strong>。</p>
+  <p style="margin-top: 12px;">你可以先读 4.1 到 4.4，把 ReAct 的核心循环吃透；4.5 之后的 ReWOO、LLM Compiler、Reflexion 和生产级主循环更适合作为进阶阅读，不需要一次全吞下去。</p>
+</div>
+
+<!-- ===== 4.1 什么是 ReAct ===== -->
+<h2 class="section-heading">4.1 从一个问题开始</h2>
 
 <p>假设用户问 Agent：<strong>"2024年诺贝尔物理学奖得主是谁？他们的研究领域是什么？"</strong></p>
 
@@ -16,8 +22,8 @@
   让 LLM 交替进行"推理（Thought）"和"行动（Action）"，通过"观察（Observation）"获取反馈，循环直到得出最终答案。
 </div>
 
-<!-- ===== 3.2 ReAct 诞生背景 ===== -->
-<h2 class="section-heading">3.2 ReAct 的诞生背景</h2>
+<!-- ===== 4.2 ReAct 诞生背景 ===== -->
+<h2 class="section-heading">4.2 ReAct 的诞生背景</h2>
 
 <p>在 ReAct 之前，Agent 面临两难：</p>
 
@@ -51,8 +57,8 @@
   <p><strong>推理指导行动，行动反馈推理。</strong>LLM 先"想"该做什么（Thought），再"做"（Action），然后"看"结果（Observation），基于结果再"想"下一步——形成闭环。</p>
 </div>
 
-<!-- ===== 3.3 ReAct 循环拆解 ===== -->
-<h2 class="section-heading">3.3 ReAct 循环：Thought → Action → Observation</h2>
+<!-- ===== 4.3 ReAct 循环拆解 ===== -->
+<h2 class="section-heading">4.3 ReAct 循环：Thought → Action → Observation</h2>
 
 <p>ReAct 的核心是三个角色的循环：</p>
 
@@ -141,7 +147,7 @@ window.ReactAnim = ReactAnim;
 </script>
 
 <!-- ===== 3.4 ReAct Prompt 模板 ===== -->
-<h2 class="section-heading">3.4 ReAct 的 Prompt 模板</h2>
+<h2 class="section-heading">4.4 ReAct 的 Prompt 模板</h2>
 
 <p>ReAct 的实现核心是 System Prompt。来看一个标准的 ReAct prompt：</p>
 
@@ -194,7 +200,7 @@ Action: finish(最终答案)
 </div>
 
 <!-- ===== 3.5 ReWOO 模式 ===== -->
-<h2 class="section-heading">3.5 ReWOO 模式（Reasoning Without Observation）</h2>
+<h2 class="section-heading">4.5 ReWOO 模式（Reasoning Without Observation）</h2>
 
 <p>ReAct 的核心循环是"边想边做"——每一步 Thought 之后立刻 Action，获得 Observation 后再想下一步。这很直观，但有一个严重的问题：<strong>每一步的 Observation 都会被塞入上下文，随着步数增加，token 消耗线性膨胀。</strong></p>
 
@@ -394,7 +400,7 @@ answer = rewoo_agent("北京今天天气如何？适合户外活动吗？")</pre
 </div>
 
 <!-- ===== 3.6 LLM Compiler 模式 ===== -->
-<h2 class="section-heading">3.6 LLM Compiler 模式</h2>
+<h2 class="section-heading">4.6 LLM Compiler 模式</h2>
 
 <p>ReAct 是串行的：Thought₁ → Action₁ → Observation₁ → Thought₂ → Action₂ → …。如果 Agent 需要调用 5 个独立的工具，即使它们之间没有依赖关系，也必须一个一个等。</p>
 
@@ -588,7 +594,7 @@ answer = await llm_compiler_agent(
 </div>
 
 <!-- ===== 3.7 Reflexion 模式 ===== -->
-<h2 class="section-heading">3.7 Reflexion 模式（反思校验）</h2>
+<h2 class="section-heading">4.7 Reflexion 模式（反思校验）</h2>
 
 <p>ReAct 有一个隐含假设：<strong>LLM 的推理是对的</strong>。它只观察工具返回的<strong>外部结果</strong>，从不质疑自己的推理质量。如果 LLM 在 Thought 中犯了逻辑错误，ReAct 无法发现——它只会继续沿着错误方向走。</p>
 
@@ -735,7 +741,7 @@ answer = reflexion_agent(
 </div>
 
 <!-- ===== 3.8 Structured Output ===== -->
-<h2 class="section-heading">3.8 Structured Output（结构化输出）</h2>
+<h2 class="section-heading">4.8 Structured Output（结构化输出）</h2>
 
 <p>ReAct 用 "Thought:" "Action:" 标记强制 LLM 输出特定格式，但文本标记解析<strong>极不稳定</strong>——LLM 可能输出 "Thought: ..." 或 "思考: ..." 或干脆不写标记。这是 Agent 开发中最头疼的问题之一。</p>
 
@@ -885,7 +891,7 @@ validate_agent_response(result)</pre>
 </div>
 
 <!-- ===== 3.9 上下文压缩实战 ===== -->
-<h2 class="section-heading">3.9 上下文压缩实战</h2>
+<h2 class="section-heading">4.9 上下文压缩实战</h2>
 
 <p>ReAct 的致命问题是<strong>上下文膨胀</strong>。每一步 Thought + Action + Observation 都被追加到消息历史中，10步任务可能积累上千 token 的上下文。到第20步，LLM 可能因为上下文太长而"遗忘"最初的问题。</p>
 
@@ -1086,7 +1092,7 @@ def compare_compression(original_msgs, compressed_msgs):
 </div>
 
 <!-- ===== 3.10 ReAct 的代码实现 ===== -->
-<h2 class="section-heading">3.10 用 50 行代码实现 ReAct</h2>
+<h2 class="section-heading">4.10 用 50 行代码实现 ReAct</h2>
 
 <div class="code-block">
   <span class="code-label">Python: 最简 ReAct 实现</span>
@@ -1138,7 +1144,7 @@ answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
 <p>核心就这几步：<strong>LLM 生成 → 解析 Action → 执行工具 → 注入 Observation → 循环</strong>。</p>
 
 <!-- ===== 3.11 ReAct 的优缺点 ===== -->
-<h2 class="section-heading">3.11 ReAct 的优势与局限</h2>
+<h2 class="section-heading">4.11 ReAct 的优势与局限</h2>
 
 <div class="compare-grid">
   <div class="card">
@@ -1164,7 +1170,7 @@ answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
 </div>
 
 <!-- ===== 3.12 ReAct 的演进 ===== -->
-<h2 class="section-heading">3.12 ReAct 的演进与变体</h2>
+<h2 class="section-heading">4.12 ReAct 的演进与变体</h2>
 
 <p>本章介绍了 ReAct 的多个演进变体，下面是完整的 ReAct 家族演进图谱：</p>
 
@@ -1222,7 +1228,7 @@ answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
 
 <!-- ===== 八股总结 ===== -->
 <!-- ===== 3.13 工程深度：生产级 Agent 主循环设计 ===== -->
-<h2 class="section-heading">3.13 工程深度：生产级 Agent 主循环设计</h2>
+<h2 class="section-heading">4.13 工程深度：生产级 Agent 主循环设计</h2>
 
 <p>前面我们学习了 ReAct、ReWOO、Reflexion 等推理模式，但它们都是<strong>概念模型</strong>。生产环境中，Agent 主循环需要解决一系列工程问题：烧钱怎么控制？死循环怎么检测？AI 输出被截断怎么办？接口超时怎么重试？本节基于 WaLiCode 项目的 streamingAgent.ts 真实实现，讲解生产级 Agent 主循环的六大工程机制。</p>
 

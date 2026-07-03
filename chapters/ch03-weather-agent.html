@@ -1,4 +1,4 @@
-<h1 class="chapter-title">第2章 你的第一个 Agent：天气查询助手</h1>
+<h1 class="chapter-title">第3章 你的第一个 Agent：天气查询助手</h1>
 <p class="chapter-subtitle">第一篇：Agent 基础</p>
 
 <div class="info-banner">
@@ -6,8 +6,29 @@
 <p>不看理论，先动手！用 50 行代码构建一个能查天气的 Agent，在实战中理解"感知→决策→行动→观察"循环。后续章节会逐步改进这个 Agent。</p>
 </div>
 
-<!-- ===== 2.1 从一个问题开始 ===== -->
-<h2 class="section-heading">2.1 从一个问题开始</h2>
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🚀 小白先完成一个最小闭环</div>
+  <p>如果你是第一次写 Agent，不要一上来追求"多工具、多轮对话、异常重试"。先只完成下面四步：</p>
+  <ol style="margin: 10px 0 0 20px; color: var(--color-text-secondary);">
+    <li>安装依赖并准备 API Key</li>
+    <li>定义一个 <code>get_weather</code> 工具</li>
+    <li>把工具传给模型，让模型决定是否调用</li>
+    <li>看到终端里打印出工具入参与最终回答</li>
+  </ol>
+  <p style="margin-top: 12px;">只要这四步跑通，你就已经真正做出了第一个 Agent。后面的多轮记忆、异常处理、调用链分析，都是在这个最小闭环上渐进增强。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">🎤 这一章的真实面试追问</div>
+  <ul style="margin: 0 0 0 20px; color: var(--color-text-secondary);">
+    <li>为什么要限制 Agent 的最大循环次数，而不是让它一直试？</li>
+    <li>工具调用失败时，应该重试工具、重试整轮，还是直接降级回答？</li>
+    <li>如果模型没有触发工具，而是直接胡说八道，你会怎么排查？</li>
+  </ul>
+</div>
+
+<!-- ===== 3.1 从一个问题开始 ===== -->
+<h2 class="section-heading">3.1 从一个问题开始</h2>
 
 <p>假设你想问："北京明天天气怎么样？"</p>
 
@@ -17,8 +38,8 @@
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气?","type":"start"},{"id":"ai","label":"AI 思考\n意图：查天气\n参数：city=北京, date=明天","type":"process"},{"id":"tool","label":"调用 get_weather\n(city=北京, date=2025-07-02)","type":"process"},{"id":"result","label":"返回：晴 25°C","type":"process"},{"id":"format","label":"AI 格式化\n北京明天晴天，气温25°C","type":"end"}],"edges":[{"from":"user","to":"ai"},{"from":"ai","to":"tool"},{"from":"tool","to":"format"}]}'></div>
 
-<!-- ===== 2.2 准备工作 ===== -->
-<h2 class="section-heading">2.2 准备工作</h2>
+<!-- ===== 3.2 准备工作 ===== -->
+<h2 class="section-heading">3.2 准备工作</h2>
 
 <h3 class="sub-heading">2.2.1 安装 Python 环境</h3>
 
@@ -40,8 +61,8 @@ export OPENAI_BASE_URL="https://api.openai.com/v1"
 export OPENAI_API_KEY="sk-xxx"
 export OPENAI_BASE_URL="https://api.deepseek.com/v1"</pre></div>
 
-<!-- ===== 2.3 定义工具 ===== -->
-<h2 class="section-heading">2.3 定义工具：给 AI 一双手</h2>
+<!-- ===== 3.3 定义工具：给 AI 一双手 ===== -->
+<h2 class="section-heading">3.3 定义工具：给 AI 一双手</h2>
 
 <p>Agent 的核心是"AI + 工具"。我们先定义一个天气查询工具：</p>
 
@@ -90,9 +111,8 @@ def get_weather(city: str, date: str = "today") -> dict:
 print(get_weather("北京", "tomorrow"))
 # {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}</pre></div>
 
-<!-- ===== 2.4 定义工具 Schema ===== -->
-<h2 class="section-heading">2.4 定义工具 Schema：让 AI 知道工具怎么用</h2>
-
+<!-- ===== 3.4 定义工具 Schema：让 AI 知道工具怎么用 ===== -->
+<h2 class="section-heading">3.4 定义工具 Schema：让 AI 知道工具怎么用</h2>
 <p>AI 怎么知道有这个工具？怎么知道参数格式？答案是<strong>工具 Schema</strong>——一份 JSON 描述：</p>
 
 <div class="code-block"><pre>tools_schema = [
@@ -132,8 +152,8 @@ print(get_weather("北京", "tomorrow"))
 <p>AI 是否调用工具，很大程度上取决于 description 写得好不好。不要写"查询天气"，要写"查询指定城市指定日期的天气信息"——越具体越好。</p>
 </div>
 
-<!-- ===== 2.5 组装 Agent ===== -->
-<h2 class="section-heading">2.5 组装 Agent：让 AI 用工具</h2>
+<!-- ===== 3.5 组装 Agent：让 AI 用工具 ===== -->
+<h2 class="section-heading">3.5 组装 Agent：让 AI 用工具</h2>
 
 <p>现在把 AI 和工具连起来，形成完整的 Agent 循环：</p>
 
@@ -197,8 +217,8 @@ print(run_agent("北京明天天气怎么样？"))</pre></div>
 <div class="code-block"><pre>🔧 调用工具: get_weather({'city': '北京', 'date': 'tomorrow'})
 北京明天多云，气温23°C。</pre></div>
 
-<!-- ===== 2.6 理解 Agent 循环 ===== -->
-<h2 class="section-heading">2.6 理解 Agent 循环</h2>
+<!-- ===== 3.6 理解 Agent 循环 ===== -->
+<h2 class="section-heading">3.6 理解 Agent 循环</h2>
 
 <p>回顾上面的代码，Agent 的核心是一个 <code>while True</code> 循环：</p>
 
@@ -214,8 +234,8 @@ print(run_agent("北京明天天气怎么样？"))</pre></div>
 <li><strong>循环</strong>：AI 看到结果后，可能继续调工具，也可能直接回答</li>
 </ol>
 
-<!-- ===== 2.7 增强：多轮对话 ===== -->
-<h2 class="section-heading">2.7 增强：多轮对话</h2>
+<!-- ===== 3.7 增强：多轮对话 ===== -->
+<h2 class="section-heading">3.7 增强：多轮对话</h2>
 
 <p>上面的 Agent 只能处理单个问题。加上多轮对话：</p>
 
@@ -285,8 +305,8 @@ run_agent_loop()</pre></div>
 
 <p>注意第三次对话——AI 没有调用工具，而是<strong>从对话历史中推理</strong>出了答案。这就是 Agent 的"记忆"——第4章会详细讲。</p>
 
-<!-- ===== 2.8 工具异常处理 ===== -->
-<h2 class="section-heading">2.8 工具异常处理</h2>
+<!-- ===== 3.8 工具异常处理 ===== -->
+<h2 class="section-heading">3.8 工具异常处理</h2>
 
 <p>现实世界并不总是顺利的——API 会超时、参数会出错、网络会断开。一个健壮的 Agent 必须能<strong>优雅地处理异常</strong>，而不是直接崩溃。</p>
 
@@ -523,8 +543,8 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 
 <p>2.7 节的多轮对话让 Agent 能和用户持续交互，2.8 节的异常处理让 Agent 在面对现实世界的不确定性时不崩溃。两者结合，Agent 才从"玩具"变成"产品"。接下来我们让 Agent 从单工具进化到多工具协作。</p>
 
-<!-- ===== 2.9 多工具协作 ===== -->
-<h2 class="section-heading">2.9 多工具协作</h2>
+<!-- ===== 3.9 多工具协作 ===== -->
+<h2 class="section-heading">3.9 多工具协作</h2>
 
 <p>真正的 Agent 不只有一个工具。就像人不止会查天气——你还会查天气、看地图、规划行程。Agent 也应该能<strong>协调多个工具</strong>完成复杂任务。</p>
 
@@ -763,8 +783,8 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
 
 <p>2.9 节展示了 Agent 从单工具到多工具的进化。但一个关键问题还没回答：<strong>Agent 循环到底消耗了多少资源？</strong>我们需要量化分析，才能做出理性决策。这正是下一节的主题。</p>
 
-<!-- ===== 2.10 工具调用链分析 ===== -->
-<h2 class="section-heading">2.10 工具调用链分析</h2>
+<!-- ===== 3.10 工具调用链分析 ===== -->
+<h2 class="section-heading">3.10 工具调用链分析</h2>
 
 <p>Agent 不是魔法——每次循环都在消耗 token、时间和钱。一个优秀的 Agent 工程师必须能<strong>量化分析每次调用</strong>，才能优化成本和延迟。</p>
 
@@ -976,8 +996,8 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 <p>2.10 节给了我们量化的视角。数据告诉我们，Agent 不是万能的——有时候它太贵、太慢。那么什么时候不该用 Agent？什么时候必须用？这正是下一节的核心问题。</p>
 
-<!-- ===== 2.11 Agent 的边界 ===== -->
-<h2 class="section-heading">2.11 Agent 的边界</h2>
+<!-- ===== 3.11 Agent 的边界 ===== -->
+<h2 class="section-heading">3.11 Agent 的边界</h2>
 
 <p>Agent 很酷，但不是万能药。理解 Agent 的<strong>能力边界</strong>，比理解它的能力更重要——这样你才不会在应该写普通程序的场景里强行用 Agent。</p>
 
@@ -1168,10 +1188,10 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 
 <p>2.11 节讨论了 Agent 的边界。理解边界不是为了否定 Agent，而是为了<strong>在正确的场景使用正确的工具</strong>。现在，让我们回顾整章内容，做个全面总结。</p>
 
-<!-- ===== 2.12 本章小结 ===== -->
-<h2 class="section-heading">2.12 本章小结</h2>
+<!-- ===== 3.12 本章小结 ===== -->
+<h2 class="section-heading">3.12 本章小结</h2>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ch1","label":"2.1-2.4\n基础概念\n从问题到工具","type":"start"},{"id":"ch2","label":"2.5-2.7\nAgent 核心\n循环 + 多轮对话","type":"process"},{"id":"ch3","label":"2.8\n异常处理\n重试 + 降级","type":"process"},{"id":"ch4","label":"2.8-2.8\n多工具协作\n调用链分析","type":"process"},{"id":"ch5","label":"2.8\nAgent 边界\n什么时候用/不用","type":"process"},{"id":"next","label":"第3章\nReAct 模式\n加入推理环节","type":"end"}],"edges":[{"from":"ch1","to":"ch2"},{"from":"ch2","to":"ch3"},{"from":"ch3","to":"ch4"},{"from":"ch4","to":"ch5"},{"from":"ch5","to":"next"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ch1","label":"3.1-3.4\n基础概念\n从问题到工具","type":"start"},{"id":"ch2","label":"3.5-3.7\nAgent 核心\n循环 + 多轮对话","type":"process"},{"id":"ch3","label":"3.8\n异常处理\n重试 + 降级","type":"process"},{"id":"ch4","label":"3.9-3.10\n多工具协作\n调用链分析","type":"process"},{"id":"ch5","label":"3.11\nAgent 边界\n什么时候用/不用","type":"process"},{"id":"next","label":"第4章\nReAct 模式\n加入推理环节","type":"end"}],"edges":[{"from":"ch1","to":"ch2"},{"from":"ch2","to":"ch3"},{"from":"ch3","to":"ch4"},{"from":"ch4","to":"ch5"},{"from":"ch5","to":"next"}]}'></div>
 
 <div class="summary-box">
 <div class="summary-title">🔗 本章核心</div>
@@ -1182,7 +1202,7 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 <p><strong>多工具协作</strong>：AI 自行编排工具调用顺序——先查天气再规划行程，不需要硬编码流程。</p>
 <p><strong>调用链分析</strong>：每次循环都消耗 token，历史递增导致成本递增。量化分析是优化 Agent 的前提。</p>
 <p><strong>Agent 的边界</strong>：确定性任务用传统程序，不确定性任务用 Agent，混合架构是最佳实践。</p>
-<p><strong>下一步</strong>：第3章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
+<p><strong>下一步</strong>：第4章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
 </div>
 
 <div class="summary-box">
@@ -1200,25 +1220,163 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<h2 class="section-heading">📋 八股总结</h2>
 <div class="summary-box">
-<div class="summary-title">面试高频考点</div>
-<ol>
-<li><strong>Agent 和普通 LLM 调用的区别？</strong>：普通 LLM 调用是一问一答，没有工具；Agent 是循环执行，AI 可以调用工具、观察结果、再推理，直到任务完成。</li>
-<li><strong>工具 Schema 中最重要的字段是什么？</strong>：description。AI 靠它判断是否调用工具，写得越具体越准确。</li>
-<li><strong>Agent 循环什么时候停止？</strong>：当 AI 不再请求调用工具时（finish_reason 为 stop），循环结束，返回最终回答。</li>
-<li><strong>为什么需要多轮对话？</strong>：AI 可能需要多次工具调用才能完成任务；用户可能追问相关问题，需要从历史中获取上下文。</li>
-<li><strong>指数退避重试的原理和适用场景？</strong>：等待时间按 2^n 递增（1s→2s→4s），适用于临时性故障（超时、限流、503），不适用于逻辑性错误（参数错误、权限不足）。生产环境需加入随机 jitter 防止雪崩。</li>
-<li><strong>多工具协作中 AI 如何决定调用顺序？</strong>：AI 根据工具 description 和用户意图自行推理调用顺序，无需硬编码流程。代价是出错概率增加、延迟和成本递增。</li>
-<li><strong>Agent 调用链的 token 递增现象？</strong>：每次循环把上一次消息加入历史，导致 prompt_tokens 逐次递增。循环次数越多，单次循环成本越高。需设置 max_loops 和 token 预算上限。</li>
-</ol>
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent 和普通 LLM 调用的区别是什么？</div>
+    <div class="qa-answer">普通 LLM 调用是一问一答，没有工具；Agent 是循环执行，AI 可以调用工具、观察结果、再推理，直到任务完成。核心区别在于<strong>行动能力和循环决策能力</strong>。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: 工具 Schema 中最重要的字段是什么？</div>
+    <div class="qa-answer"><strong>description</strong>。AI 靠它判断是否调用工具，写得越具体越准确。name 只是标识，parameters 决定怎么调用，但 AI 首先靠 description 决定"要不要调"。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Agent 循环什么时候停止？</div>
+    <div class="qa-answer">当 AI 不再请求调用工具时（finish_reason 为 stop），循环结束，返回最终回答。需设置 max_loops 防止无限循环。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: 为什么需要多轮对话？</div>
+    <div class="qa-answer">AI 可能需要多次工具调用才能完成任务；用户可能追问相关问题，需要从历史中获取上下文。多轮对话让 Agent 具备"记忆"能力。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: 指数退避重试的原理和适用场景？</div>
+    <div class="qa-answer">等待时间按 2^n 递增（1s→2s→4s），适用于<strong>临时性故障</strong>（超时、限流、503），不适用于<strong>逻辑性错误</strong>（参数错误、权限不足）。生产环境需加入随机 jitter 防止雪崩。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: 多工具协作中 AI 如何决定调用顺序？</div>
+    <div class="qa-answer">AI 根据工具 description 和用户意图自行推理调用顺序，无需硬编码流程。代价是出错概率增加、延迟和成本递增。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Agent 调用链的 token 递增现象？</div>
+    <div class="qa-answer">每次循环把上一次消息加入历史，导致 prompt_tokens 逐次递增。循环次数越多，单次循环成本越高。需设置 max_loops 和 token 预算上限。</div>
+  </div>
 </div>
 
 <div class="summary-box">
-<div class="summary-title">📝 思考题</div>
-<ol>
-<li><strong>场景判断</strong>："用户输入城市名，返回固定格式天气报告"——这个需求该用 Agent 还是传统程序？为什么？如果是"用户用自然语言问天气，可能追问、可能对比多个城市"——又该用什么？</li>
-<li><strong>重试设计</strong>：一个 Agent 同时调用天气 API 和路线 API，天气超时了但路线成功。如果直接重试整个循环，路线结果就浪费了。如何设计重试机制，只重试失败的工具，而不是重试整个循环？</li>
-<li><strong>成本优化</strong>：你的天气 Agent 每天处理 50000 次请求，每次平均消耗 800 tokens。按 GPT-4o-mini 价格（$0.15/1M input, $0.60/1M output），月成本是多少？如果 80% 的请求只是"北京今天天气"这种简单查询，如何用混合架构降低成本？</li>
-</ol>
+  <div class="summary-title">📝 思考题</div>
+  <div class="qa-item">
+    <div class="qa-question">思考1: 场景判断</div>
+    <div class="qa-answer">"用户输入城市名，返回固定格式天气报告"——这个需求该用 Agent 还是传统程序？如果是"用户用自然语言问天气，可能追问、可能对比多个城市"——又该用什么？</div>
+  </div>
+  <div class="qa-item">
+    <div class="qa-question">思考2: 重试设计</div>
+    <div class="qa-answer">一个 Agent 同时调用天气 API 和路线 API，天气超时了但路线成功。如果直接重试整个循环，路线结果就浪费了。如何设计重试机制，只重试失败的工具，而不是重试整个循环？</div>
+  </div>
+  <div class="qa-item">
+    <div class="qa-question">思考3: 成本优化</div>
+    <div class="qa-answer">你的天气 Agent 每天处理 50000 次请求，每次平均消耗 800 tokens。按 GPT-4o-mini 价格（$0.15/1M input, $0.60/1M output），月成本是多少？如果 80% 的请求只是"北京今天天气"这种简单查询，如何用混合架构降低成本？</div>
+  </div>
 </div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch03Questions = [
+  {
+    type: 'single',
+    question: 'Agent 和普通 LLM 调用的核心区别是？',
+    options: [
+      'Agent 使用的模型更大',
+      'Agent 是循环执行，AI 可以调用工具、观察结果、再推理，直到任务完成',
+      'Agent 只能处理英文',
+      'Agent 不需要 API Key'
+    ],
+    answer: [1],
+    explanation: '普通 LLM 调用是一问一答，没有工具；Agent 是循环执行，AI 可以调用工具、观察结果、再推理，直到任务完成。循环停止条件是 AI 不再请求调用工具（finish_reason 为 stop）。'
+  },
+  {
+    type: 'single',
+    question: '工具 Schema 中最重要的字段是？',
+    options: [
+      'name（函数名）',
+      'description（描述）——AI 靠它判断是否调用工具',
+      'parameters（参数定义）',
+      'returns（返回值定义）'
+    ],
+    answer: [1],
+    explanation: 'description 是 AI 判断是否调用工具的依据，写得越具体越准确。name 只是标识，parameters 决定怎么调用，但 AI 首先靠 description 决定"要不要调"。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 循环什么时候停止？',
+    options: [
+      '固定循环 10 次后停止',
+      '当 AI 不再请求调用工具时（finish_reason 为 stop）',
+      '当 token 消耗超过 1000 时',
+      '当用户按下 Ctrl+C 时'
+    ],
+    answer: [1],
+    explanation: 'Agent 循环的停止条件是 AI 不再请求调用工具（finish_reason 为 stop），此时 AI 认为已经有足够信息给出最终回答。'
+  },
+  {
+    type: 'single',
+    question: '指数退避重试的等待时间递增规律是？',
+    options: [
+      '固定等待 1 秒',
+      '按 2^n 递增（1s→2s→4s）',
+      '按线性递增（1s→2s→3s）',
+      '随机等待 0~10 秒'
+    ],
+    answer: [1],
+    explanation: '指数退避按 2^n 递增（1s→2s→4s），适用于临时性故障（超时、限流、503），不适用于逻辑性错误。生产环境需加入随机 jitter 防止雪崩。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 调用链中 token 递增现象的原因是？',
+    options: [
+      '模型每次调用会额外消耗 token',
+      '每次循环把上一次消息加入历史，导致 prompt_tokens 逐次递增',
+      '工具调用结果会压缩 token',
+      'API 每次调用都有固定手续费'
+    ],
+    answer: [1],
+    explanation: '每次循环把上一次的消息（包括工具调用和返回结果）加入历史，导致 prompt_tokens 逐次递增。循环次数越多，单次循环成本越高。需设置 max_loops 和 token 预算上限。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 Agent 多工具协作的正确描述？（多选）',
+    options: [
+      'AI 根据工具 description 和用户意图自行推理调用顺序',
+      '多工具协作无需硬编码流程',
+      '多工具协作不会增加出错概率',
+      '多工具协作的延迟和成本会递增'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'AI 根据工具 description 自行推理调用顺序，无需硬编码。但代价是出错概率增加、延迟和成本递增。选项 C 错误，多工具协作确实会增加出错概率。'
+  },
+  {
+    type: 'multiple',
+    question: '设计 Agent 重试机制时应考虑哪些因素？（多选）',
+    options: [
+      '区分临时性故障和逻辑性错误，只重试临时性故障',
+      '加入随机 jitter 防止雪崩',
+      '设置最大重试次数',
+      '所有错误都无限重试直到成功'
+    ],
+    answer: [0, 1, 2],
+    explanation: '重试机制应：区分故障类型（只重试临时性故障）、加入 jitter 防雪崩、设置最大重试次数。选项 D 错误，无限重试会导致资源浪费和成本失控。'
+  },
+  {
+    type: 'multiple',
+    question: '降低天气 Agent 成本的混合架构策略包括哪些？（多选）',
+    options: [
+      '简单查询走缓存或规则引擎，不走 LLM',
+      '复杂查询才启动 Agent 循环',
+      '所有查询都用最贵的模型',
+      '使用 Token 预算上限控制单次对话成本'
+    ],
+    answer: [0, 1, 3],
+    explanation: '混合架构：80% 简单查询走缓存/规则引擎，20% 复杂查询才启动 Agent。配合 Token 预算上限控制成本。选项 C 错误，应按需选择模型。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch03Questions); }, 500);
+</script>

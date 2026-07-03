@@ -179,6 +179,8 @@ const AIChat = {
       this.hideLoading();
       if (err.name === 'AbortError') {
         this.addMessage('assistant', '（已取消）');
+      } else if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('ERR_CONNECTION'))) {
+        this.addMessage('assistant', '⚠️ 无法连接到 AI 服务。请确认：\n1. 已启动 CORS 代理：`node cors-proxy.js 8091`\n2. API 配置中的 Base URL 和 API Key 正确\n3. 网络连接正常');
       } else {
         this.addMessage('assistant', `调用失败：${err.message}。请检查 API 配置是否正确。`);
       }

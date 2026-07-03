@@ -1497,16 +1497,149 @@ Triggered when user asks to:
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<h2 class="section-heading">📋 八股总结</h2>
 <div class="summary-box">
-<div class="summary-title">面试高频考点</div>
-<ol>
-<li><strong>Skill 和 Tool 的区别？</strong>：Tool 是单一操作，Skill 是工具的组合 + 使用知识。Tool 是函数，Skill 是模块。</li>
-<li><strong>如何让 Agent 发现 Skills？</strong>：文件系统扫描 + YAML 元数据 + 触发词匹配 + 热重载。</li>
-<li><strong>Skills 太多导致 Prompt 过长怎么办？</strong>：三层懒加载——始终加载名称、触发词匹配时加载完整定义、AI 主动搜索罕见 Skill。</li>
-<li><strong>Skills 和 MCP 的关系？</strong>：层次不同。MCP 是工具级标准协议，Skills 是能力级组织单元。一个 Skill 可以包含 MCP 工具。</li>
-<li><strong>Skill 的三层金字塔是什么？</strong>：基础 Skill（单工具封装，如 read_file）→ 复合 Skill（多工具组合 + 调用策略，如 code-reviewer）→ 领域 Skill（行业知识包，如 finance-advisor）。底层越通用、顶层越专业，应自下而上构建。</li>
-<li><strong>Skill 如何从项目实践中沉淀？</strong>：四步流程——模式识别（从日志提取重复模式）→ 抽象提炼（转化为 Skill YAML）→ 验证打磨（在多项目试用）→ 发布复用（版本号 + Changelog）。版本遵循 SemVer：PATCH 修复、MINOR 新增、MAJOR 重构。</li>
-<li><strong>Skill 的五层安全架构是什么？</strong>：Layer 1 声明式权限（YAML 中声明）→ Layer 2 运行时拦截（permissionGuard 中间件）→ Layer 3 审批机制（高危操作需 /approve）→ Layer 4 审计日志（所有调用可追溯）→ Layer 5 沙箱隔离（危险 Skill 限制资源）。不是所有 Skill 都需要五层，按风险等级分层。</li>
-</ol>
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: Skill 和 Tool 的区别？</div>
+    <div class="qa-answer">Tool 是单一操作，Skill 是工具的组合 + 使用知识。Tool 是函数，Skill 是模块。Skill 不仅包含工具，还包含调用策略、参数约束和使用时机。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: 如何让 Agent 发现 Skills？</div>
+    <div class="qa-answer">文件系统扫描 + YAML 元数据 + 触发词匹配 + 热重载。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Skills 太多导致 Prompt 过长怎么办？</div>
+    <div class="qa-answer">三层懒加载——始终加载名称、触发词匹配时加载完整定义、AI 主动搜索罕见 Skill。这样可以在 Skill 数量很多时控制 Prompt 长度。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: Skills 和 MCP 的关系？</div>
+    <div class="qa-answer">层次不同。MCP 是工具级标准协议，Skills 是能力级组织单元。一个 Skill 可以包含 MCP 工具。MCP 连接 Agent 和工具，Skills 组织工具为能力包。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: Skill 的三层金字塔是什么？</div>
+    <div class="qa-answer">基础 Skill（单工具封装，如 read_file）→ 复合 Skill（多工具组合 + 调用策略，如 code-reviewer）→ 领域 Skill（行业知识包，如 finance-advisor）。底层越通用、顶层越专业，应自下而上构建。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Skill 如何从项目实践中沉淀？</div>
+    <div class="qa-answer">四步流程——模式识别（从日志提取重复模式）→ 抽象提炼（转化为 Skill YAML）→ 验证打磨（在多项目试用）→ 发布复用（版本号 + Changelog）。版本遵循 SemVer：PATCH 修复、MINOR 新增、MAJOR 重构。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: Skill 的五层安全架构是什么？</div>
+    <div class="qa-answer">Layer 1 声明式权限（YAML 中声明）→ Layer 2 运行时拦截（permissionGuard 中间件）→ Layer 3 审批机制（高危操作需 /approve）→ Layer 4 审计日志（所有调用可追溯）→ Layer 5 沙箱隔离（危险 Skill 限制资源）。不是所有 Skill 都需要五层，按风险等级分层。</div>
+  </div>
 </div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch08Questions = [
+  {
+    type: 'single',
+    question: 'Skill 和 Tool 的核心区别是？',
+    options: [
+      'Skill 就是 Tool 的另一个名字',
+      'Tool 是单一操作，Skill 是工具的组合 + 使用知识。Tool 是函数，Skill 是模块',
+      'Skill 比 Tool 速度更快',
+      'Tool 只能用在 Agent 中，Skill 只能用在 ChatBot 中'
+    ],
+    answer: [1],
+    explanation: 'Tool 是单一操作（函数级），Skill 是工具的组合 + 使用知识（模块级）。Skill 不仅包含工具，还包含调用策略、参数约束和使用时机。'
+  },
+  {
+    type: 'single',
+    question: 'Skills 三层懒加载策略中，始终加载的是？',
+    options: [
+      'Skill 的完整定义',
+      'Skill 的名称',
+      'Skill 的所有工具实现',
+      'Skill 的知识库'
+    ],
+    answer: [1],
+    explanation: '三层懒加载：始终加载名称 → 触发词匹配时加载完整定义 → AI 主动搜索罕见 Skill。这样可以在 Skill 数量很多时控制 Prompt 长度。'
+  },
+  {
+    type: 'single',
+    question: 'Skills 和 MCP 的关系是？',
+    options: [
+      'Skills 和 MCP 是同一回事',
+      'MCP 是工具级标准协议，Skills 是能力级组织单元，一个 Skill 可以包含 MCP 工具',
+      'MCP 替代了 Skills',
+      'Skills 替代了 MCP'
+    ],
+    answer: [1],
+    explanation: '层次不同：MCP 是工具级标准协议（连接 Agent 和工具），Skills 是能力级组织单元（工具组合 + 知识）。一个 Skill 可以包含多个 MCP 工具。'
+  },
+  {
+    type: 'single',
+    question: 'Skill 的三层金字塔从底到顶是？',
+    options: [
+      '领域 Skill → 复合 Skill → 基础 Skill',
+      '基础 Skill → 复合 Skill → 领域 Skill',
+      '复合 Skill → 基础 Skill → 领域 Skill',
+      '领域 Skill → 基础 Skill → 复合 Skill'
+    ],
+    answer: [1],
+    explanation: '基础 Skill（单工具封装，如 read_file）→ 复合 Skill（多工具组合 + 调用策略，如 code-reviewer）→ 领域 Skill（行业知识包，如 finance-advisor）。底层越通用、顶层越专业。'
+  },
+  {
+    type: 'single',
+    question: 'Skill 版本号遵循 SemVer 规范，修复 Bug 应递增哪个版本号？',
+    options: [
+      'MAJOR（主版本号）',
+      'MINOR（次版本号）',
+      'PATCH（补丁号）',
+      'BUILD（构建号）'
+    ],
+    answer: [2],
+    explanation: 'SemVer 规范：PATCH 修复（向后兼容的 Bug 修复）、MINOR 新增（向后兼容的新功能）、MAJOR 重构（不兼容的 API 变更）。'
+  },
+  {
+    type: 'multiple',
+    question: 'Skill 从项目实践中沉淀的四步流程是？（多选）',
+    options: [
+      '模式识别（从日志提取重复模式）',
+      '抽象提炼（转化为 Skill YAML）',
+      '验证打磨（在多项目试用）',
+      '发布复用（版本号 + Changelog）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四步流程：模式识别 → 抽象提炼 → 验证打磨 → 发布复用。每一步都不可省略，确保 Skill 的质量和可复用性。'
+  },
+  {
+    type: 'multiple',
+    question: 'Skill 的五层安全架构包括哪些？（多选）',
+    options: [
+      '声明式权限（YAML 中声明）',
+      '运行时拦截（permissionGuard 中间件）',
+      '审批机制（高危操作需 /approve）',
+      '审计日志（所有调用可追溯）',
+      '沙箱隔离（危险 Skill 限制资源）'
+    ],
+    answer: [0, 1, 2, 3, 4],
+    explanation: '五层安全架构：Layer 1 声明式权限 → Layer 2 运行时拦截 → Layer 3 审批机制 → Layer 4 审计日志 → Layer 5 沙箱隔离。不是所有 Skill 都需要五层，按风险等级分层。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 Skill 发现与加载的机制？（多选）',
+    options: [
+      '文件系统扫描',
+      'YAML 元数据解析',
+      '触发词匹配',
+      '热重载',
+      'AI 自动生成 Skill'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: 'Skill 发现与加载机制：文件系统扫描 + YAML 元数据 + 触发词匹配 + 热重载。选项 E 不属于发现机制，AI 不会自动生成 Skill（需要人工创建）。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch08Questions); }, 500);
+</script>

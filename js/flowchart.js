@@ -29,27 +29,22 @@ const FlowChart = {
    */
   render(containerId, config) {
     const container = document.getElementById(containerId);
-    console.log('[FlowChart] render called:', containerId, 'container:', container);
     if (!container) {
       console.error('[FlowChart] Container not found:', containerId);
       return;
     }
 
     const { nodes, edges, animate = false, direction = 'TB' } = config;
-    console.log('[FlowChart] config:', { nodes: nodes.length, edges: edges.length, animate, direction });
     
     // 计算节点位置
     const positioned = this.layout(nodes, edges, direction);
-    console.log('[FlowChart] positioned nodes:', Object.keys(positioned));
     
     // 创建SVG
     const svg = this.createSVG(positioned, edges, direction);
-    console.log('[FlowChart] SVG created:', svg);
     
     // 插入容器
     container.innerHTML = '';
     container.appendChild(svg);
-    console.log('[FlowChart] SVG appended to container');
     
     // 动画
     if (animate) {

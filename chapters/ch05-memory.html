@@ -1,9 +1,15 @@
-<!-- 第4章：记忆系统 -->
-<h1 class="chapter-title">第4章 记忆系统</h1>
+<!-- 第5章：记忆系统 -->
+<h1 class="chapter-title">第5章 记忆系统</h1>
 <p class="chapter-subtitle">让 Agent 拥有短期的专注和长期的经验</p>
 
-<!-- ===== 4.1 为什么 Agent 需要记忆 ===== -->
-<h2 class="section-heading">4.1 没有记忆的 Agent 会怎样？</h2>
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">📝 先看一个最小记忆例子</div>
+  <p>如果用户第一轮说"我喜欢简洁风格"，第二轮说"帮我写周报"，没有记忆的 Agent 会重新追问风格；有记忆的 Agent 会直接按简洁风格输出。</p>
+  <p style="margin-top: 12px;">所以你可以把本章先简单理解成一句话：<strong>记忆不是为了存很多内容，而是为了让 Agent 在下一轮做出更一致、更省心的决定。</strong></p>
+</div>
+
+<!-- ===== 5.1 为什么 Agent 需要记忆 ===== -->
+<h2 class="section-heading">5.1 没有记忆的 Agent 会怎样？</h2>
 
 <p>想象一个失忆的助手：你上午告诉他你喜欢简洁的报告，下午他又问你"你需要什么风格？"；你刚给了他一份资料，下一秒他就忘了。</p>
 
@@ -14,8 +20,8 @@
   <p>记忆让 Agent 从"活在当下"变成"有过去、有经验"。它影响 Agent 的<strong>连贯性</strong>（同一对话内的一致性）、<strong>个性化</strong>（记住用户偏好）和<strong>学习进化</strong>（从历史中优化）。</p>
 </div>
 
-<!-- ===== 4.2 三层记忆架构 ===== -->
-<h2 class="section-heading">4.2 三层记忆架构</h2>
+<!-- ===== 5.2 三层记忆架构 ===== -->
+<h2 class="section-heading">5.2 三层记忆架构</h2>
 
 <p>人类有感觉记忆、短期记忆、长期记忆三层结构。Agent 也有类似的设计：</p>
 
@@ -80,8 +86,8 @@ setTimeout(() => {
   </table>
 </div>
 
-<!-- ===== 4.3 短期记忆管理 ===== -->
-<h2 class="section-heading">4.3 短期记忆的管理策略</h2>
+<!-- ===== 5.3 短期记忆管理 ===== -->
+<h2 class="section-heading">5.3 短期记忆的管理策略</h2>
 
 <p>短期记忆 = LLM 上下文窗口。对话越长，上下文越大。但窗口有上限，必须管理：</p>
 
@@ -131,7 +137,7 @@ window.MemAnim = MemAnim;
 </script>
 
 <!-- ===== 4.4 长期记忆与向量检索 ===== -->
-<h2 class="section-heading">4.4 长期记忆：向量数据库</h2>
+<h2 class="section-heading">5.4 长期记忆：向量数据库</h2>
 
 <p>长期记忆让 Agent 能回忆起几天前甚至几个月前的交互。核心技术是<strong>向量数据库 + 语义检索</strong>。</p>
 
@@ -210,7 +216,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 4.5 上下文压缩实战 ===== -->
-<h2 class="section-heading">4.5 上下文压缩实战</h2>
+<h2 class="section-heading">5.5 上下文压缩实战</h2>
 
 <p>在长任务中，Agent 的上下文窗口会不断膨胀——每次工具调用返回结果、每次推理步骤、每次对话轮次都在累积 token。这种现象称为<strong>上下文膨胀</strong>（Context Bloat），也叫<strong>上下文腐烂</strong>（Context Rot）。</p>
 
@@ -386,7 +392,7 @@ public class AiConfig {
 </div>
 
 <!-- ===== 4.6 记忆架构实战 ===== -->
-<h2 class="section-heading">4.6 记忆架构实战</h2>
+<h2 class="section-heading">5.6 记忆架构实战</h2>
 
 <p>选择合适的向量数据库和 Embedding 模型是构建记忆系统的关键决策。本节提供完整的选型对比和架构实现。</p>
 
@@ -742,7 +748,7 @@ print(answer)</pre>
 </div>
 
 <!-- ===== 4.7 反思记忆与情景记忆 ===== -->
-<h2 class="section-heading">4.7 反思记忆与情景记忆</h2>
+<h2 class="section-heading">5.7 反思记忆与情景记忆</h2>
 
 <p>前面介绍的三层记忆架构解决了<strong>存储和检索</strong>问题，但记忆系统还有更高阶的能力：<strong>从经验中学习</strong>（反思记忆）和<strong>记录完整事件</strong>（情景记忆）。</p>
 
@@ -974,7 +980,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 4.8 记忆治理与上下文工程 ===== -->
-<h2 class="section-heading">4.8 记忆治理与上下文工程</h2>
+<h2 class="section-heading">5.8 记忆治理与上下文工程</h2>
 
 <p>记忆系统的终极问题不是"怎么存"，而是<strong>怎么管</strong>。本节从工程视角讨论记忆的完整生命周期治理，以及从 Prompt Engineering 到 Context Engineering 的范式转变。</p>
 
@@ -1281,7 +1287,7 @@ governor.evict()</pre>
 </div>
 
 <!-- ===== 4.9 长期记忆的静态与动态分类 ===== -->
-<h2 class="section-heading">4.9 长期记忆的静态与动态分类</h2>
+<h2 class="section-heading">5.9 长期记忆的静态与动态分类</h2>
 
 <p>长期记忆不是铁板一块。仔细观察就会发现，有些记忆<strong>几乎不变</strong>，有些记忆<strong>持续更新</strong>。把长期记忆分为<strong>静态长期记忆</strong>和<strong>动态长期记忆</strong>，是面试中的高频考点，也是工程落地时的关键设计决策。</p>
 
@@ -1422,7 +1428,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 4.10 记忆存储触发链路 ===== -->
-<h2 class="section-heading">4.10 记忆存储触发链路</h2>
+<h2 class="section-heading">5.10 记忆存储触发链路</h2>
 
 <p>一个常见误解是：<strong>"每轮对话都触发长期记忆写入"</strong>。如果真的每轮都写，长期记忆库会变成完整对话日志的备份——噪音爆炸，检索失效。</p>
 
@@ -1636,7 +1642,7 @@ result = trigger.process_turn("你好，今天天气不错")
 </div>
 
 <!-- ===== 4.11 记忆召回决策与上下文污染防控 ===== -->
-<h2 class="section-heading">4.11 记忆召回决策与上下文污染防控</h2>
+<h2 class="section-heading">5.11 记忆召回决策与上下文污染防控</h2>
 
 <p>记忆召回的核心问题不是"能不能找到"，而是<strong>"该不该注入"</strong>。召回太多无关记忆，比没有记忆更危险——这就是<strong>上下文污染</strong>。</p>
 
@@ -1920,7 +1926,7 @@ results = engine.recall("分析上个季度的销售趋势并给出优化建议"
 
 <!-- ===== 八股总结 ===== -->
 <!-- ===== 4.12 工程深度：生产级上下文压缩系统 ===== -->
-<h2 class="section-heading">4.12 工程深度：生产级上下文压缩系统</h2>
+<h2 class="section-heading">5.12 工程深度：生产级上下文压缩系统</h2>
 
 <p>4.5 节介绍了上下文压缩的概念，但生产级系统远比概念复杂：什么时候压缩？用什么策略压缩？压缩后如何避免频繁重复压缩？压缩失败怎么办？本节基于 WaLiCode 项目的 contextCompressor.ts 和 ChatContextManager.ts 真实实现，讲解生产级上下文压缩系统的六大设计。</p>
 

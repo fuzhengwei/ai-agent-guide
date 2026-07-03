@@ -2029,17 +2029,153 @@ result = app.invoke({"query": "Research AI trends"})</pre>
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<h2 class="section-heading">📋 八股总结</h2>
 <div class="summary-box">
-<div class="summary-title">面试高频考点</div>
-<ol>
-<li><strong>AutoGen 和 CrewAI 的区别？</strong>：AutoGen 是对话式协作，灵活性高但可控性低；CrewAI 是任务式协作，角色分工明确，可控性高。AutoGen 支持代码执行沙箱和缓存；CrewAI 支持三层记忆和回调机制。</li>
-<li><strong>Google ADK 的核心理念？</strong>：渐进式披露——从一行代码到复杂系统，按需增加复杂度。五大核心组件：Agent、Skill、Session & State、Runner、Artifact。</li>
-<li><strong>ADK 的 Agent 嵌套与 OpenAI Handoff 的区别？</strong>：ADK 用 sub_agents 嵌套——父 Agent 是编排者，结果回传父 Agent；OpenAI 用 Handoff 交接——Agent 之间显式转交对话，无缝切换。</li>
-<li><strong>A2A 协议解决了什么问题？</strong>：跨框架 Agent 互操作。核心组件：Agent Card（身份名片）、Skill（技能清单）、Task（协作单位）、Message & Artifact（通信载体）。与 MCP 互补：MCP 连 Agent 和工具，A2A 连 Agent 和 Agent。</li>
-<li><strong>OpenAI Agents SDK 的三大核心概念？</strong>：Agent（推理单元）、Handoff（交接机制）、Guardrails（安全护栏）。Guardrails 是一等公民，有 input_guardrail 和 output_guardrail。</li>
-<li><strong>Spring AI 的三层架构？</strong>：Augmented LLM（ChatClient+Tools）→ Graph Runtime（StateGraph/Node/Edge）→ Agent Framework（ReactAgent/MultiAgent）。</li>
-<li><strong>如何选择 Agent 框架？</strong>：企业 Java → Spring AI；Google 生态 → ADK；安全优先 → OpenAI SDK；复杂工作流 → LangGraph；角色协作 → CrewAI；探索性任务 → AutoGen；低代码 → Dify/Coze。</li>
-<li><strong>从 AutoGen/CrewAI 迁移到 LangGraph 的关键步骤？</strong>：① Agent → Node 函数 ② Process → Edge（顺序→线性边，层级→条件边）③ Tools → ToolNode + bind_tools ④ State → TypedDict + Checkpoint。注意角色信息不要丢失，任务依赖要显式设计。</li>
-</ol>
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: AutoGen 和 CrewAI 的区别？</div>
+    <div class="qa-answer">AutoGen 是对话式协作，灵活性高但可控性低；CrewAI 是任务式协作，角色分工明确，可控性高。AutoGen 支持代码执行沙箱和缓存；CrewAI 支持三层记忆和回调机制。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: Google ADK 的核心理念？</div>
+    <div class="qa-answer">渐进式披露——从一行代码到复杂系统，按需增加复杂度。五大核心组件：Agent、Skill、Session & State、Runner、Artifact。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: ADK 的 Agent 嵌套与 OpenAI Handoff 的区别？</div>
+    <div class="qa-answer">ADK 用 sub_agents 嵌套——父 Agent 是编排者，结果回传父 Agent；OpenAI 用 Handoff 交接——Agent 之间显式转交对话，无缝切换。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: A2A 协议解决了什么问题？</div>
+    <div class="qa-answer">跨框架 Agent 互操作。核心组件：Agent Card（身份名片）、Skill（技能清单）、Task（协作单位）、Message & Artifact（通信载体）。与 MCP 互补：MCP 连 Agent 和工具，A2A 连 Agent 和 Agent。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: OpenAI Agents SDK 的三大核心概念？</div>
+    <div class="qa-answer">Agent（推理单元）、Handoff（交接机制）、Guardrails（安全护栏）。Guardrails 是一等公民，有 input_guardrail 和 output_guardrail。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Spring AI 的三层架构？</div>
+    <div class="qa-answer">Augmented LLM（ChatClient+Tools）→ Graph Runtime（StateGraph/Node/Edge）→ Agent Framework（ReactAgent/MultiAgent）。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 如何选择 Agent 框架？</div>
+    <div class="qa-answer">企业 Java → Spring AI；Google 生态 → ADK；安全优先 → OpenAI SDK；复杂工作流 → LangGraph；角色协作 → CrewAI；探索性任务 → AutoGen；低代码 → Dify/Coze。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 从 AutoGen/CrewAI 迁移到 LangGraph 的关键步骤？</div>
+    <div class="qa-answer">① Agent → Node 函数 ② Process → Edge（顺序→线性边，层级→条件边）③ Tools → ToolNode + bind_tools ④ State → TypedDict + Checkpoint。注意角色信息不要丢失，任务依赖要显式设计。</div>
+  </div>
 </div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch11Questions = [
+  {
+    type: 'single',
+    question: 'AutoGen 和 CrewAI 的核心区别是？',
+    options: [
+      'AutoGen 是任务式协作，CrewAI 是对话式协作',
+      'AutoGen 是对话式协作灵活性高，CrewAI 是任务式协作角色分工明确可控性高',
+      '两者完全相同',
+      'AutoGen 只支持 Java，CrewAI 只支持 Python'
+    ],
+    answer: [1],
+    explanation: 'AutoGen 是对话式协作，灵活性高但可控性低；CrewAI 是任务式协作，角色分工明确，可控性高。AutoGen 支持代码执行沙箱和缓存；CrewAI 支持三层记忆和回调机制。'
+  },
+  {
+    type: 'single',
+    question: 'Google ADK 的核心理念是？',
+    options: [
+      '复杂优先——先设计最复杂的架构',
+      '渐进式披露——从一行代码到复杂系统，按需增加复杂度',
+      '闭源优先——只支持 Google 内部使用',
+      '性能优先——忽略安全性追求最快速度'
+    ],
+    answer: [1],
+    explanation: 'ADK 的核心理念是渐进式披露（Progressive Disclosure），从一行代码到复杂系统按需增加复杂度。五大核心组件：Agent、Skill、Session & State、Runner、Artifact。'
+  },
+  {
+    type: 'single',
+    question: 'ADK 的 Agent 嵌套与 OpenAI Handoff 的区别是？',
+    options: [
+      '两者机制完全相同',
+      'ADK 用 sub_agents 嵌套，父 Agent 是编排者结果回传；OpenAI 用 Handoff 交接，Agent 之间显式转交对话',
+      'ADK 不支持 Agent 嵌套',
+      'OpenAI Handoff 不支持 Agent 间切换'
+    ],
+    answer: [1],
+    explanation: 'ADK 用 sub_agents 嵌套——父 Agent 是编排者，结果回传父 Agent；OpenAI 用 Handoff 交接——Agent 之间显式转交对话，无缝切换。'
+  },
+  {
+    type: 'single',
+    question: 'A2A 协议与 MCP 协议的关系是？',
+    options: [
+      'A2A 替代了 MCP',
+      'MCP 替代了 A2A',
+      '互补关系：MCP 连 Agent 和工具，A2A 连 Agent 和 Agent',
+      '两者完全相同'
+    ],
+    answer: [2],
+    explanation: 'A2A 与 MCP 互补：MCP 连接 Agent 和工具（工具级标准协议），A2A 连接 Agent 和 Agent（跨框架互操作）。A2A 核心组件：Agent Card、Skill、Task、Message & Artifact。'
+  },
+  {
+    type: 'single',
+    question: 'OpenAI Agents SDK 的三大核心概念是？',
+    options: [
+      'Agent、Tool、Memory',
+      'Agent、Handoff、Guardrails',
+      'Agent、Skill、Session',
+      'Agent、Edge、Node'
+    ],
+    answer: [1],
+    explanation: 'OpenAI Agents SDK 三大核心：Agent（推理单元）、Handoff（交接机制）、Guardrails（安全护栏）。Guardrails 是一等公民，有 input_guardrail 和 output_guardrail。'
+  },
+  {
+    type: 'single',
+    question: 'Spring AI 的三层架构从底到顶是？',
+    options: [
+      'Agent Framework → Graph Runtime → Augmented LLM',
+      'Augmented LLM → Graph Runtime → Agent Framework',
+      'Graph Runtime → Augmented LLM → Agent Framework',
+      'Agent Framework → Augmented LLM → Graph Runtime'
+    ],
+    answer: [1],
+    explanation: 'Spring AI 三层架构：Augmented LLM（ChatClient+Tools）→ Graph Runtime（StateGraph/Node/Edge）→ Agent Framework（ReactAgent/MultiAgent）。'
+  },
+  {
+    type: 'multiple',
+    question: '如何选择 Agent 框架？以下对应关系正确的有？（多选）',
+    options: [
+      '企业 Java → Spring AI',
+      'Google 生态 → ADK',
+      '安全优先 → OpenAI Agents SDK',
+      '复杂工作流 → LangGraph'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '选型决策：企业 Java → Spring AI；Google 生态 → ADK；安全优先 → OpenAI SDK；复杂工作流 → LangGraph；角色协作 → CrewAI；探索性任务 → AutoGen；低代码 → Dify/Coze。'
+  },
+  {
+    type: 'multiple',
+    question: '从 AutoGen/CrewAI 迁移到 LangGraph 的关键步骤包括哪些？（多选）',
+    options: [
+      'Agent → Node 函数',
+      'Process → Edge（顺序→线性边，层级→条件边）',
+      'Tools → ToolNode + bind_tools',
+      'State → TypedDict + Checkpoint',
+      '删除所有工具重新编写'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四步迁移：① Agent → Node 函数 ② Process → Edge ③ Tools → ToolNode + bind_tools ④ State → TypedDict + Checkpoint。注意角色信息不要丢失，任务依赖要显式设计。选项 E 错误，工具是通过 bind_tools 迁移而非重写。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch11Questions); }, 500);
+</script>

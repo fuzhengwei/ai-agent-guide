@@ -1,9 +1,9 @@
-<!-- 第1章：什么是 AI Agent？ -->
-<h1 class="chapter-title">第1章 什么是 AI Agent？</h1>
+<!-- 第2章：什么是 AI Agent？ -->
+<h1 class="chapter-title">第2章 什么是 AI Agent？</h1>
 <p class="chapter-subtitle">从 ChatBot 到 Agent，AI 应用的范式跃迁</p>
 
-<!-- ===== 1.1 引入 ===== -->
-<h2 class="section-heading">1.1 一个问题引入</h2>
+<!-- ===== 2.1 引入 ===== -->
+<h2 class="section-heading">2.1 一个问题引入</h2>
 
 <p>如果我问你：<strong>ChatGPT 是 AI Agent 吗？</strong></p>
 
@@ -15,8 +15,8 @@
   "ChatBot 回答问题，Agent 解决问题。"
 </div>
 
-<!-- ===== 1.2 ChatBot vs Agent 对比动画 ===== -->
-<h2 class="section-heading">1.2 ChatBot vs Agent：核心区别</h2>
+<!-- ===== 2.2 ChatBot vs Agent 对比动画 ===== -->
+<h2 class="section-heading">2.2 ChatBot vs Agent：核心区别</h2>
 
 <p>我们先通过一个动画来看两者的区别。同样的任务：<strong>"帮我查一下明天北京的天气"</strong></p>
 
@@ -45,8 +45,8 @@
 
 <p>看到了吗？ChatBot 只能"说"，Agent 能"做"。这个"做"的能力，来自于 Agent 独有的四个核心模块。</p>
 
-<!-- ===== 1.3 Agent 四模块拆解 ===== -->
-<h2 class="section-heading">1.3 AI Agent 的四大核心模块</h2>
+<!-- ===== 2.3 Agent 四模块拆解 ===== -->
+<h2 class="section-heading">2.3 AI Agent 的四大核心模块</h2>
 
 <p>一个完整的 AI Agent 由四个核心模块组成，缺一不可：</p>
 
@@ -100,8 +100,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<!-- ===== 1.4 步骤动画：Agent 执行流程 ===== -->
-<h2 class="section-heading">1.4 Agent 是怎么工作的？</h2>
+<!-- ===== 2.4 步骤动画：Agent 执行流程 ===== -->
+<h2 class="section-heading">2.4 Agent 是怎么工作的？</h2>
 
 <p>我们来看 Agent 完成一个任务的完整流程。点击"下一步"逐步查看：</p>
 
@@ -174,8 +174,8 @@ document.getElementById('stepPrev').addEventListener('click', () => StepAnim.pre
 window.StepAnim = StepAnim;
 </script>
 
-<!-- ===== 1.5 感知-决策-行动-反馈闭环 ===== -->
-<h2 class="section-heading">1.5 Agent 的核心闭环</h2>
+<!-- ===== 2.5 感知-决策-行动-反馈闭环 ===== -->
+<h2 class="section-heading">2.5 Agent 的核心闭环</h2>
 
 <p>上面的五个步骤可以抽象为一个经典闭环：<strong>感知 → 决策 → 行动 → 反馈</strong>。这个闭环是所有 Agent 的基础运行模式。</p>
 
@@ -203,8 +203,8 @@ setTimeout(() => {
 
 <p>这个闭环不断循环，让 Agent 能够处理多步骤、多轮交互的复杂任务。后续章节讲的 ReAct 模式、反思机制，都是在这个闭环基础上的演进。</p>
 
-<!-- ===== 1.6 Agent vs ChatBot vs Copilot ===== -->
-<h2 class="section-heading">1.6 Agent vs ChatBot vs Copilot</h2>
+<!-- ===== 2.6 Agent vs ChatBot vs Copilot ===== -->
+<h2 class="section-heading">2.6 Agent vs ChatBot vs Copilot</h2>
 
 <p>面试中经常被问到这三者的区别，我们用一张表总结：</p>
 
@@ -253,8 +253,8 @@ setTimeout(() => {
   </table>
 </div>
 
-<!-- ===== 1.7 从用户输入到输出的完整链路 ===== -->
-<h2 class="section-heading">1.7 从用户输入到输出的完整链路</h2>
+<!-- ===== 2.7 从用户输入到输出的完整链路 ===== -->
+<h2 class="section-heading">2.7 从用户输入到输出的完整链路</h2>
 
 <p>面试最高频的问题之一：<strong>整个 Agent 从用户发出消息到完成任务，中间经历了哪些步骤？</strong> 很多面试官会要求你从接收消息开始，一步一步讲清楚每一步做了什么、为什么需要、哪些模块负责。本节把这条链路彻底拆透。</p>
 
@@ -415,8 +415,8 @@ result = agent.run("帮我分析最近北京房价趋势")
 
 <p>代码中每一步都打印了日志，你可以清楚地看到<strong>一条消息从进入 Agent 到变成最终输出，走过了哪些节点</strong>。面试时，能讲出这 8 步并解释每步的作用，就是满分回答。</p>
 
-<!-- ===== 1.8 意图识别与任务分类 ===== -->
-<h2 class="section-heading">1.8 意图识别与任务分类</h2>
+<!-- ===== 2.8 意图识别与任务分类 ===== -->
+<h2 class="section-heading">2.8 意图识别与任务分类</h2>
 
 <p>Step 2（意图识别）和 Step 3（任务分类）是整条链路的<strong>分叉点</strong>——Agent 能否走上正确的执行路径，取决于这两步做得好不好。面试中经常追问：<strong>Agent 怎么理解用户意图？怎么判断任务复杂度？</strong></p>
 
@@ -619,8 +619,8 @@ print(classifier.classify(Intent(raw_input="帮我搭建一个 REST API")))
 # → ("复杂开发", "high", "decompose_execute")
 </pre>
 
-<!-- ===== 1.9 执行调度决策 ===== -->
-<h2 class="section-heading">1.9 执行调度决策</h2>
+<!-- ===== 2.9 执行调度决策 ===== -->
+<h2 class="section-heading">2.9 执行调度决策</h2>
 
 <p>Agent 拿到子任务列表后，下一步是<strong>执行调度</strong>——决定先做什么后做什么，什么时候该调用模型（推理/理解/生成文本），什么时候该调用工具（搜索/计算/文件操作）。这是 1.7 链路中 Step 5 的核心逻辑。</p>
 

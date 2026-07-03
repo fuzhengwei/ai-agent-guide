@@ -120,7 +120,8 @@ const App = {
     const examOverlay = document.getElementById('examOverlay');
     if (examOverlay) {
       examOverlay.addEventListener('click', (e) => {
-        if (e.target === examOverlay && confirm('确定要退出考试吗？')) {
+        if (e.target === examOverlay) {
+          this.showExamExitConfirm();
           this.closeExam();
         }
       });
@@ -332,7 +333,9 @@ const App = {
         const html = await response.text();
         contentArea.innerHTML = `<div class="page-transition">${html}</div>`;
         
-        // 后处理：执行章节内的 <script> 标签（如 ch00 的交互图）
+        // 后处理：八股/考试标签页包装（在脚本执行之前，标记区域）
+        this.wrapTabSections(contentArea);
+        // 后处理：执行章节内的 <script> 标签（如 ch00 的交互图、Quiz.render）
         this.executeChapterScripts(contentArea);
         
         // 后处理：生成右侧目录
@@ -364,12 +367,34 @@ const App = {
 
     this.updateNavButtons();
 
-    setTimeout(() => Progress.markCompleted(chapterId), 5000);
+    // 滚动到底部时标记章节完成（替代原来的 5 秒自动完成）
+    this.setupScrollCompletion(chapterId);
+  },
+
+  /**
+   * 滚动到底部标记完成
+   */
+  setupScrollCompletion(chapterId) {
+    const contentArea = document.querySelector('.content-area');
+    if (!contentArea) return;
+
+    let marked = false;
+    const checkScroll = () => {
+      if (marked) return;
+      const { scrollTop, scrollHeight, clientHeight } = contentArea;
+      // 滚动到距底部 100px 以内时标记完成
+      if (scrollHeight - scrollTop - clientHeight < 100) {
+        marked = true;
+        Progress.markCompleted(chapterId);
+        contentArea.removeEventListener('scroll', checkScroll);
+      }
+    };
+    contentArea.addEventListener('scroll', checkScroll, { passive: true });
   },
 
   /**
    * 执行章节内的 <script> 标签（innerHTML 不会自动执行脚本）
-   * 等待 DOM 完全就绪后再执行，确保容器元素存在
+   * 使用 <script> 元素 append 方式替代 eval()，更安全且支持调试
    */
   executeChapterScripts(container) {
     const scripts = container.querySelectorAll('script');
@@ -392,11 +417,15 @@ const App = {
             newScript.src = src;
             document.head.appendChild(newScript);
           } else if (text) {
-            // 内联脚本：直接 eval
+            // 内联脚本：通过 <script> 元素执行（替代 eval，更安全且支持调试）
             try {
-              eval(text);
+              const newScript = document.createElement('script');
+              newScript.textContent = text;
+              document.head.appendChild(newScript);
+              // 执行后移除，避免 DOM 膨胀
+              document.head.removeChild(newScript);
             } catch (e) {
-              console.error('[ChapterScript] eval error:', e);
+              console.error('[ChapterScript] execution error:', e);
             }
           }
         });
@@ -543,6 +572,184 @@ const App = {
       wrapper.className = 'table-wrapper';
       table.parentNode.insertBefore(wrapper, table);
       wrapper.appendChild(table);
+    });
+  },
+
+  /**
+   * 将章节内容包装成顶部三标签页：文章 / 八股 / 面试
+   * 兼容多种八股格式：
+   *   - 标准格式：<div class="summary-title">📋 八股总结 — 面试高频考点</div>
+   *   - 非标准格式：<h2 class="section-heading">📋 八股总结</h2>
+   * 使用 CSS 控制显示/隐藏，不移动 DOM 节点
+   */
+  wrapTabSections(container) {
+    const pageDiv = container.querySelector('.page-transition');
+    if (!pageDiv) return;
+
+    // 查找八股总结区域 — 兼容多种格式
+    let baguStartEl = null;
+    let baguParentEl = null;
+    // 格式1: <div class="summary-title"> 含"八股"文字（标准格式，含 qa-item 卡片）
+    const allSummaryTitles = pageDiv.querySelectorAll('.summary-title');
+    for (const el of allSummaryTitles) {
+      const text = el.textContent.trim();
+      // 匹配"八股总结"或"面试高频考点"
+      if (/八股|面试高频/.test(text)) {
+        baguStartEl = el;
+        // 找到该 summary-title 所在 summary-box（通常是 pageDiv 的直接子元素）
+        baguParentEl = el.closest('.summary-box');
+        break;
+      }
+    }
+    // 格式2: <h2 class="section-heading"> 含"八股"文字（非标准格式，含 ol 列表）
+    if (!baguStartEl) {
+      const allHeadings = pageDiv.querySelectorAll('h2.section-heading');
+      for (const el of allHeadings) {
+        if (/八股/.test(el.textContent.trim())) {
+          baguStartEl = el;
+          baguParentEl = el;
+          break;
+        }
+      }
+    }
+
+    // 查找考试区域
+    const quizStartEl = pageDiv.querySelector('#quizArea');
+
+    // 既没有八股也没有考试，跳过
+    if (!baguStartEl && !quizStartEl) return;
+
+    // 标记各个区域的内容
+    let currentSection = 'article';
+    const children = Array.from(pageDiv.children);
+
+    // 用于统计八股题目数和面试题目数
+    let baguCount = 0;
+    let quizCount = 0;
+
+    children.forEach(child => {
+      // 检查是否是八股开始（用 contains 判断，因为 baguStartEl 可能是子元素而非直接子元素）
+      if (baguParentEl && baguParentEl.contains(child)) {
+        currentSection = 'bagu';
+      }
+      // 检查是否是考试开始
+      if (child === quizStartEl || child.id === 'quizArea') {
+        currentSection = 'quiz';
+      }
+
+      // 添加数据属性标记
+      child.dataset.tabSection = currentSection;
+
+      // 统计八股题目数
+      if (currentSection === 'bagu') {
+        baguCount += child.querySelectorAll('.qa-item').length;
+        // 非标准格式用 ol > li
+        if (!baguCount) {
+          baguCount += child.querySelectorAll('ol > li').length;
+        }
+      }
+    });
+
+    // 面试题目数：从 quizArea 内的 quiz-question 统计，或从题库 JSON 预估
+    if (quizStartEl) {
+      // quizArea 初始为空，Quiz.render 后才有内容，延迟统计
+      setTimeout(() => {
+        const quizQs = quizStartEl.querySelectorAll('.quiz-question').length;
+        const badge = navDiv.querySelector('[data-tab="quiz"] .tab-badge');
+        if (badge && quizQs > 0) badge.textContent = quizQs;
+      }, 800);
+    }
+
+    // 创建标签页导航栏
+    const navDiv = document.createElement('div');
+    navDiv.className = 'chapter-tabs-nav';
+
+    const hasArticle = children.some(c => c.dataset.tabSection === 'article');
+    const hasBagu = children.some(c => c.dataset.tabSection === 'bagu');
+    const hasQuiz = children.some(c => c.dataset.tabSection === 'quiz');
+
+    // Tab 定义：图标 + 标签 + 徽章
+    const tabIcons = { article: '📖', bagu: '📋', quiz: '📝' };
+    const tabLabels = { article: '文章', bagu: '八股', quiz: '面试' };
+
+    const tabDefs = [];
+    if (hasArticle) tabDefs.push({ id: 'article', active: true });
+    if (hasBagu) tabDefs.push({ id: 'bagu', active: !hasArticle, badge: baguCount || null });
+    if (hasQuiz) tabDefs.push({ id: 'quiz', active: !hasArticle && !hasBagu });
+
+    // 绑定标签切换事件
+    const switchTab = (tabId) => {
+      // 更新按钮状态
+      navDiv.querySelectorAll('.chapter-tab-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = navDiv.querySelector(`[data-tab="${tabId}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      // 更新内容显示
+      const allChildren = Array.from(pageDiv.children);
+      allChildren.forEach(child => {
+        if (child.classList.contains('chapter-tabs-nav')) return;
+
+        const section = child.dataset.tabSection || 'article';
+        if (section === tabId) {
+          child.classList.remove('tab-hidden');
+        } else {
+          child.classList.add('tab-hidden');
+        }
+      });
+
+      // 重新生成 TOC
+      setTimeout(() => this.generateTOC(), 50);
+    };
+
+    // 创建标签按钮（带图标和计数徽章）
+    tabDefs.forEach(def => {
+      const btn = document.createElement('button');
+      btn.className = 'chapter-tab-btn' + (def.active ? ' active' : '');
+      btn.dataset.tab = def.id;
+      btn.type = 'button';
+
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'tab-icon';
+      iconSpan.textContent = tabIcons[def.id];
+
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = tabLabels[def.id];
+
+      btn.appendChild(iconSpan);
+      btn.appendChild(labelSpan);
+
+      // 计数徽章
+      if (def.badge) {
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = 'tab-badge';
+        badgeSpan.textContent = def.badge;
+        btn.appendChild(badgeSpan);
+      } else if (def.id === 'quiz') {
+        // 面试 Tab 的徽章延迟填充，先占位
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = 'tab-badge';
+        badgeSpan.textContent = '?';
+        btn.appendChild(badgeSpan);
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        switchTab(def.id);
+      });
+      navDiv.appendChild(btn);
+    });
+
+    // 插入导航栏到 pageDiv 开头
+    pageDiv.insertBefore(navDiv, pageDiv.firstChild);
+
+    // 初始化：隐藏非活动标签的内容
+    const activeTab = tabDefs.find(t => t.active)?.id || 'article';
+    children.forEach(child => {
+      const section = child.dataset.tabSection || 'article';
+      if (section !== activeTab) {
+        child.classList.add('tab-hidden');
+      }
     });
   },
 
@@ -785,12 +992,17 @@ const App = {
    * 随机考试模式
    */
   async startRandomExam() {
-    // 加载题库
+    // 加载题库（复用 Quiz 缓存）
     let quizBank = {};
     try {
-      const resp = await fetch('data/quiz-bank.json');
-      if (resp.ok) {
-        quizBank = await resp.json();
+      if (typeof Quiz !== 'undefined' && Quiz._bankCache) {
+        quizBank = Quiz._bankCache;
+      } else {
+        const resp = await fetch('data/quiz-bank.json');
+        if (resp.ok) {
+          quizBank = await resp.json();
+          if (typeof Quiz !== 'undefined') Quiz._bankCache = quizBank;
+        }
       }
     } catch (e) {
       console.error('题库加载失败', e);
@@ -861,14 +1073,14 @@ const App = {
             <span class="exam-q-type ${q.type}">${q.type === 'single' ? '单选' : '多选'}</span>
             <span class="exam-q-chapter">来自第${parseInt(chNum)}章</span>
           </div>
-          <div class="exam-q-text">${q.question}</div>
+          <div class="exam-q-text">${this.escapeHtml(q.question)}</div>
           <div class="exam-options">
       `;
       q.options.forEach((opt, oi) => {
         html += `
           <label class="exam-option" onclick="App.selectExamAnswer(${i}, ${oi})">
             <input type="${q.type === 'single' ? 'radio' : 'checkbox'}" name="exam-q${i}" value="${oi}">
-            <span class="exam-option-text">${String.fromCharCode(65 + oi)}. ${opt}</span>
+            <span class="exam-option-text">${String.fromCharCode(65 + oi)}. ${this.escapeHtml(opt)}</span>
           </label>
         `;
       });
@@ -1097,6 +1309,54 @@ const App = {
     }
     this.examQuestions = [];
     this.examAnswers = {};
+  },
+
+  /**
+   * 考试退出确认弹窗（替代原生 confirm）
+   */
+  showExamExitConfirm() {
+    const examContainer = document.getElementById('examContainer');
+    if (!examContainer) return;
+
+    // 如果已有确认弹窗则不重复创建
+    if (document.getElementById('examExitConfirm')) return;
+
+    const confirmDiv = document.createElement('div');
+    confirmDiv.id = 'examExitConfirm';
+    confirmDiv.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:100;';
+    confirmDiv.innerHTML = `
+      <div style="background:var(--color-surface);border-radius:var(--radius-lg);padding:32px;max-width:360px;text-align:center;box-shadow:var(--shadow-lg);">
+        <div style="font-size:28px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:var(--text-lg);font-weight:600;color:var(--color-text);margin-bottom:8px;">确定退出考试？</div>
+        <div style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:24px;">退出后当前答题进度不会保存</div>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button id="examExitCancel" style="padding:8px 24px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:transparent;color:var(--color-text);cursor:pointer;font-size:var(--text-sm);">继续考试</button>
+          <button id="examExitConfirmBtn" style="padding:8px 24px;border:none;border-radius:var(--radius-sm);background:var(--color-error);color:#fff;cursor:pointer;font-size:var(--text-sm);">确认退出</button>
+        </div>
+      </div>
+    `;
+    examContainer.appendChild(confirmDiv);
+
+    document.getElementById('examExitCancel').addEventListener('click', () => {
+      confirmDiv.remove();
+    });
+    document.getElementById('examExitConfirmBtn').addEventListener('click', () => {
+      confirmDiv.remove();
+      this.closeExam();
+    });
+  },
+
+  /**
+   * HTML 转义工具方法 — 防止 XSS
+   */
+  escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   },
 
   /**
