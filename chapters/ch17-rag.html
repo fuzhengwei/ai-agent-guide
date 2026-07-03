@@ -1,0 +1,641 @@
+<!-- 第17章：RAG 检索增强生成 -->
+<h1 class="chapter-title">第17章 RAG：检索增强生成</h1>
+<p class="chapter-subtitle">让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
+
+<!-- ===== 17.1 什么是 RAG ===== -->
+<h2 class="section-heading">17.1 为什么 Agent 需要 RAG？</h2>
+
+<p>大模型有两个硬伤：<strong>知识截止日期</strong>（训练数据有时效性）和<strong>领域知识不足</strong>（通用模型不懂你的业务）。微调可以解决一部分，但成本高、周期长、更新慢。<strong>RAG（Retrieval-Augmented Generation，检索增强生成）</strong>提供了更灵活的方案：<strong>先检索，再生成</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 RAG 的核心思想</div>
+  <p>不是把知识"塞进"模型参数，而是在生成回答前，<strong>先从外部知识库检索相关文档</strong>，把检索到的内容作为上下文喂给 LLM。模型只需要"阅读理解"，不需要"死记硬背"。</p>
+</div>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title">🔴 纯 LLM（无 RAG）</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>知识截止到训练日期，不知道最新信息</li>
+      <li>企业内部文档一概不知</li>
+      <li>容易产生幻觉（编造事实）</li>
+      <li>无法引用信息来源</li>
+      <li>更新知识需要重新训练或微调</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🟢 LLM + RAG</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>知识实时更新，随时新增文档</li>
+      <li>接入企业内部知识库（Wiki/文档/工单）</li>
+      <li>基于检索到的真实内容回答，减少幻觉</li>
+      <li>可以引用来源文档，可追溯</li>
+      <li>无需重新训练，成本极低</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">RAG vs 微调：什么时候用什么？</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">对比维度</th>
+        <th style="text-align: left; padding: 12px 8px;">RAG</th>
+        <th style="text-align: left; padding: 12px 8px;">微调</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>知识更新</strong></td><td>实时，加文档即可</td><td>需要重新微调</td></tr>
+      <tr><td><strong>适合场景</strong></td><td>事实性问答、文档检索</td><td>风格/格式/推理模式定制</td></tr>
+      <tr><td><strong>成本</strong></td><td>低（向量数据库 + 检索）</td><td>高（GPU 训练）</td></tr>
+      <tr><td><strong>延迟</strong></td><td>多一次检索（+200-500ms）</td><td>无额外延迟</td></tr>
+      <tr><td><strong>幻觉控制</strong></td><td>✅ 强（基于检索内容）</td><td>⚠️ 弱（仍可能编造）</td></tr>
+      <tr><td><strong>最佳实践</strong></td><td colspan="2" style="text-align: center;"><strong>RAG + 微调结合</strong>：微调改善风格，RAG 提供知识</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 17.2 RAG 完整流程 ===== -->
+<h2 class="section-heading">17.2 RAG 的完整流程</h2>
+
+<p>RAG 不是简单的"搜索 + 拼接"，一个生产级 RAG 系统包含<strong>五个阶段</strong>：</p>
+
+<div class="flowchart-container" id="ragPipeline"></div>
+
+<script>
+setTimeout(() => {
+  const container = document.getElementById('ragPipeline');
+  if (!container) return;
+  container.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 20px 0;">
+      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">📄</div>
+        <strong style="font-size: 13px; color: var(--color-accent);">1. 文档处理</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">加载/分块/清洗</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🔢</div>
+        <strong style="font-size: 13px; color: var(--color-info);">2. 向量化</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">Embedding 编码</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🗄️</div>
+        <strong style="font-size: 13px; color: var(--color-success);">3. 存储</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">向量数据库</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🔍</div>
+        <strong style="font-size: 13px; color: var(--color-warning);">4. 检索</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">相似度搜索</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🤖</div>
+        <strong style="font-size: 13px; color: var(--color-accent);">5. 生成</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">LLM 回答</p>
+      </div>
+    </div>
+  `;
+}, 100);
+</script>
+
+<h3 class="sub-heading">阶段一：文档处理（Chunking）</h3>
+
+<p>文档不能整篇丢给模型——上下文窗口有限，检索精度也不够。需要将长文档<strong>分块（Chunking）</strong>。</p>
+
+<div class="code-block">
+<span class="code-label">Python</span>
+<pre>from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# 递归字符分割器：按优先级依次尝试分隔符
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=512,        # 每块最大 512 字符
+    chunk_overlap=64,      # 块间重叠 64 字符（保持上下文连贯）
+    separators=["\n\n", "\n", "。", "！", "？", "，", " ", ""],
+    keep_separator=True
+)
+
+chunks = splitter.split_text(long_document)
+
+print(f"文档被分为 {len(chunks)} 块")
+# chunk_size 太大 → 检索不精确、浪费 Token
+# chunk_size 太小 → 上下文断裂、语义不完整
+# 经验值：512-1024 字符，overlap 10-15%</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 分块策略选择</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+    <div>
+      <strong style="color: var(--color-info);">固定大小分块</strong>
+      <ul style="padding-left: 16px; color: var(--color-text-secondary); line-height: 1.8;">
+        <li>简单快速，适合大多数场景</li>
+        <li>可能在句子中间截断</li>
+      </ul>
+    </div>
+    <div>
+      <strong style="color: var(--color-accent);">语义分块</strong>
+      <ul style="padding-left: 16px; color: var(--color-text-secondary); line-height: 1.8;">
+        <li>按段落/标题/语义边界分块</li>
+        <li>检索质量更高，但实现复杂</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">阶段二：向量化（Embedding）</h3>
+
+<p>把文本块转成<strong>向量</strong>（高维浮点数组），使语义相近的文本在向量空间中距离也近。</p>
+
+<div class="code-block">
+<span class="code-label">Python</span>
+<pre>from langchain_openai import OpenAIEmbeddings
+
+# 选择 Embedding 模型
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+# 单文本向量化
+vector = embeddings.embed_query("什么是 RAG？")
+# 返回 1536 维浮点数组，如 [0.012, -0.034, 0.056, ...]
+
+# 批量向量化（生产环境推荐批量操作）
+texts = [chunk for chunk in chunks]
+vectors = embeddings.embed_documents(texts)</pre>
+</div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">Embedding 模型</th>
+        <th style="text-align: left;">维度</th>
+        <th style="text-align: left;">特点</th>
+        <th style="text-align: left;">适合场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>text-embedding-3-small</strong></td><td>1536</td><td>OpenAI，性价比高</td><td>通用英文/中文</td></tr>
+      <tr><td><strong>text-embedding-3-large</strong></td><td>3072</td><td>精度更高，成本翻倍</td><td>高精度检索</td></tr>
+      <tr><td><strong>bge-large-zh-v1.5</strong></td><td>1024</td><td>开源，中文最强</td><td>中文场景/私有部署</td></tr>
+      <tr><td><strong>jina-embeddings-v3</strong></td><td>1024</td><td>开源，多语言</td><td>多语言混合</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">阶段三：向量数据库存储</h3>
+
+<p>向量数据库专门存储和检索高维向量，支持<strong>近似最近邻搜索（ANN）</strong>，比暴力遍历快几个数量级。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">向量数据库</th>
+        <th style="text-align: left;">类型</th>
+        <th style="text-align: left;">特点</th>
+        <th style="text-align: left;">适合场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Chroma</strong></td><td>嵌入式</td><td>零配置，Python 原生</td><td>原型/小项目</td></tr>
+      <tr><td><strong>Pinecone</strong></td><td>云服务</td><td>全托管，弹性扩展</td><td>生产环境/无运维</td></tr>
+      <tr><td><strong>Weaviate</strong></td><td>自部署</td><td>GraphQL API，混合检索</td><td>企业自建</td></tr>
+      <tr><td><strong>Milvus</strong></td><td>自部署</td><td>亿级向量，分布式</td><td>大规模生产</td></tr>
+      <tr><td><strong>pgvector</strong></td><td>PostgreSQL 插件</td><td>SQL 查询，事务支持</td><td>已有 PG 的项目</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · Chroma</span>
+<pre>import chromadb
+
+# 创建客户端（数据持久化到磁盘）
+client = chromadb.PersistentClient(path="./vector_db")
+
+# 创建集合（相当于数据库表）
+collection = client.get_or_create_collection(
+    name="knowledge_base",
+    metadata={"hnsw:space": "cosine"}  # 使用余弦相似度
+)
+
+# 写入向量
+collection.add(
+    documents=chunks,                    # 原始文本
+    embeddings=vectors,                  # 向量
+    metadatas=[{"source": "doc1"} for _ in chunks],  # 元数据
+    ids=[f"chunk_{i}" for i in range(len(chunks))]   # 唯一 ID
+)</pre>
+</div>
+
+<!-- ===== 17.3 检索策略 ===== -->
+<h2 class="section-heading">17.3 检索策略：不只是相似度搜索</h2>
+
+<p>最简单的 RAG 只做<strong>向量相似度搜索</strong>，但生产级 RAG 需要更复杂的检索策略。</p>
+
+<h3 class="sub-heading">17.3.1 基础：向量相似度搜索</h3>
+
+<div class="code-block">
+<span class="code-label">Python</span>
+<pre># 用户问题 → 向量 → 搜索最相似的文档块
+query = "Agent 的记忆系统有哪些类型？"
+query_vector = embeddings.embed_query(query)
+
+results = collection.query(
+    query_embeddings=[query_vector],
+    n_results=5,              # 返回 Top-5 最相似
+    include=["documents", "distances", "metadatas"]
+)
+
+# results['documents'][0] → ["记忆分为短期记忆和长期记忆...", ...]
+# results['distances'][0] → [0.12, 0.34, 0.45, ...] 越小越相似</pre>
+</div>
+
+<p><strong>三种相似度度量</strong>：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">度量</th>
+        <th style="text-align: left;">公式</th>
+        <th style="text-align: left;">特点</th>
+        <th style="text-align: left;">适合</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>余弦相似度</strong></td><td>cos(A,B) = A·B / (|A||B|)</td><td>只看方向，不看大小</td><td>文本检索（最常用）</td></tr>
+      <tr><td><strong>欧氏距离</strong></td><td>d = √Σ(Ai-Bi)²</td><td>看绝对距离</td><td>图像检索</td></tr>
+      <tr><td><strong>内积</strong></td><td>IP = A·B</td><td>考虑向量大小</td><td>归一化后的向量</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">17.3.2 进阶：混合检索（BM25 + 向量）</h3>
+
+<p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
+
+<div class="code-block">
+<span class="code-label">Python · 混合检索</span>
+<pre>from langchain.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.vectorstores import Chroma
+
+# 1. 向量检索器（语义匹配）
+vector_retriever = Chroma(
+    collection_name="knowledge_base",
+    embedding_function=embeddings
+).as_retriever(search_kwargs={"k": 10})
+
+# 2. BM25 检索器（关键词匹配）
+bm25_retriever = BM25Retriever.from_documents(chunks)
+bm25_retriever.k = 10
+
+# 3. 混合检索器（加权融合）
+ensemble_retriever = EnsembleRetriever(
+    retrievers=[bm25_retriever, vector_retriever],
+    weights=[0.4, 0.6]  # BM25 占 40%，向量占 60%
+)
+
+# 混合检索效果最好：语义匹配 + 关键词精准匹配
+docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</pre>
+</div>
+
+<h3 class="sub-heading">17.3.3 进阶：重排序（Reranker）</h3>
+
+<p>向量检索速度快但精度有限，返回 Top-20 中可能有噪声。<strong>重排序模型</strong>对这 20 条结果做精细打分，选出最相关的 Top-5。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📊 两阶段检索：快召回 + 精排序</div>
+  <ol style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li><strong>召回阶段</strong>：向量检索快速从百万文档中召回 Top-50（毫秒级）</li>
+    <li><strong>重排阶段</strong>：Cross-Encoder 模型对 50 条逐一精细打分，选 Top-5（百毫秒级）</li>
+  </ol>
+  <p style="font-size: 13px; color: var(--color-text-tertiary);">Cross-Encoder 比 Bi-Encoder（向量检索）精度高，但速度慢 100 倍，所以只用在小规模候选集上。</p>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · 使用 Cohere Reranker</span>
+<pre>from langchain.retrievers import ContextualCompressionRetriever
+from langchain_cohere import CohereRerank
+
+# 重排序模型
+reranker = CohereRerank(top_n=5)  # 从候选集中选 Top-5
+
+# 压缩检索器：先向量检索召回 → 再重排序
+compression_retriever = ContextualCompressionRetriever(
+    base_compressor=reranker,
+    base_retriever=vector_retriever  # 先召回 Top-20
+)
+
+# 最终结果：精度远超纯向量检索
+docs = compression_retriever.get_relevant_documents("Agent 如何管理长期记忆？")</pre>
+</div>
+
+<!-- ===== 17.4 RAG 高级优化 ===== -->
+<h2 class="section-heading">17.4 RAG 高级优化技巧</h2>
+
+<h3 class="sub-heading">17.4.1 Query 改写</h3>
+
+<p>用户提问往往模糊或口语化，直接检索效果差。先用 LLM <strong>改写 Query</strong>，提升检索质量。</p>
+
+<div class="code-block">
+<span class="code-label">Python · Query 改写</span>
+<pre>from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# 改写策略
+rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
+
+用户问题：{question}
+
+改写要求：
+1. 提取核心关键词
+2. 补充可能的同义词
+3. 生成 3 个不同角度的查询
+
+输出格式：JSON 数组，如 ["query1", "query2", "query3"]
+"""
+
+# 原始问题："Agent 怎么记住东西的？"
+# 改写后：["Agent 记忆系统架构", "Agent 短期记忆 长期记忆", "LLM memory management"]
+
+# 多查询并行检索，结果合并去重 → 召回率大幅提升</pre>
+</div>
+
+<h3 class="sub-heading">17.4.2 HyDE（假设性文档嵌入）</h3>
+
+<p>有时候用户的问题太短，向量化后语义信息不足。<strong>HyDE</strong> 的思路是：先让 LLM 生成一个"假回答"，用假回答去检索，再用检索结果生成真回答。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔄 HyDE 流程</div>
+  <p style="font-size: 13px;">
+    <strong>用户问题</strong>："RAG 怎么做？" →<br>
+    <strong>LLM 生成假回答</strong>："RAG 是检索增强生成技术，通过先检索相关文档再生成回答……" →<br>
+    <strong>用假回答向量检索</strong>（假回答比短问题语义更丰富）→<br>
+    <strong>用检索结果生成真回答</strong>
+  </p>
+</div>
+
+<h3 class="sub-heading">17.4.3 父子分块（Parent-Child Chunking）</h3>
+
+<p>检索时用<strong>小块</strong>（精确匹配），生成时用<strong>大块</strong>（上下文完整）。</p>
+
+<div class="code-block">
+<span class="code-label">策略说明</span>
+<pre># 大块（Parent Chunk）：512 字符 → 存储、生成时使用
+# 小块（Child Chunk）：128 字符 → 检索时使用
+
+# 流程：
+# 1. 文档先分成 512 字符的大块
+# 2. 每个大块再细分为 128 字符的小块
+# 3. 小块做 Embedding 并存储，但保留 parent_id
+# 4. 检索时匹配小块 → 找到对应的大块 → 用大块作为上下文
+
+# 优势：检索精度高（小块精确），上下文完整（大块信息丰富）</pre>
+</div>
+
+<!-- ===== 17.5 Agent + RAG 架构 ===== -->
+<h2 class="section-heading">17.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
+
+<p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
+
+<div class="code-block">
+<span class="code-label">Python · RAG as Tool</span>
+<pre>from langchain.tools import Tool
+from langchain.agents import create_react_agent, AgentExecutor
+
+def rag_search(query: str) -> str:
+    """检索知识库并返回相关文档"""
+    # 1. Query 改写
+    rewritten = llm.invoke(rewrite_prompt.format(question=query))
+    
+    # 2. 多查询并行检索
+    all_docs = []
+    for q in parse_queries(rewritten):
+        docs = ensemble_retriever.get_relevant_documents(q)
+        all_docs.extend(docs)
+    
+    # 3. 去重 + 重排序
+    unique_docs = deduplicate(all_docs)
+    ranked_docs = reranker.compress_documents(unique_docs, query)
+    
+    # 4. 返回拼接的上下文
+    return "\n\n".join([doc.page_content for doc in ranked_docs[:5]])
+
+# 将 RAG 注册为 Agent 工具
+tools = [
+    Tool(
+        name="knowledge_search",
+        description="搜索内部知识库，获取产品文档、技术文档、FAQ等信息。当需要查找具体信息时使用。",
+        func=rag_search
+    ),
+    # ... 其他工具
+]
+
+# Agent 自主决定何时检索
+agent = create_react_agent(llm, tools, prompt)
+executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+# 用户："你好" → Agent 不检索，直接回答
+# 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ Agent + RAG 的优势</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>智能路由</strong>：简单问题不检索，省 Token、降延迟</li>
+    <li><strong>多轮检索</strong>：复杂问题可以多次检索不同关键词</li>
+    <li><strong>结果验证</strong>：Agent 可以判断检索结果是否相关，不相关则换关键词重搜</li>
+    <li><strong>引用来源</strong>：Agent 可以在回答中标注"根据 [文档名] ..."</li>
+  </ul>
+</div>
+
+<!-- ===== 17.6 生产级 RAG 架构 ===== -->
+<h2 class="section-heading">17.6 生产级 RAG 架构</h2>
+
+<div class="card">
+  <div class="card-title">🏭 企业级 RAG 系统架构</div>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 12px; font-size: 13px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">数据接入层</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">文档加载器（PDF/Word/HTML/Confluence）→ 文档清洗 → 元数据提取</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">索引层</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">分块 → 向量化 → 写入向量数据库（增量更新、版本管理）</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">检索层</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">Query 改写 → 混合检索（BM25 + 向量）→ 重排序 → 上下文组装</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">生成层</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">Prompt 模板 → LLM 生成 → 回答后处理（去幻觉、加引用）</p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">评估层</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">检索准确率、回答忠实度、用户反馈 → 持续优化</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q1: RAG 的原理是什么？和微调有什么区别？</div>
+    <div class="qa-answer">
+      <strong>RAG 原理</strong>：在生成回答前，先从外部知识库检索相关文档，将检索结果作为上下文喂给 LLM 生成回答。<br><br>
+      <strong>与微调的区别</strong>：RAG 是"外挂知识库"，不改模型参数，知识实时更新，成本低；微调是"内化知识"，修改模型参数，适合定制风格/格式，成本高。最佳实践是两者结合：微调改善输出风格，RAG 提供最新知识。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q2: 向量数据库和传统数据库有什么区别？</div>
+    <div class="qa-answer">
+      传统数据库做精确匹配（WHERE id=123），向量数据库做<strong>相似度搜索</strong>（找到最接近的 K 个向量）。向量数据库使用 ANN（近似最近邻）算法索引，如 HNSW、IVF，能在百万级向量中毫秒返回结果。主流方案：Chroma（原型）、Pinecone（云托管）、Milvus（大规模自部署）、pgvector（PostgreSQL 插件）。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q3: 什么是混合检索？为什么要做重排序？</div>
+    <div class="qa-answer">
+      <strong>混合检索</strong>：BM25（关键词匹配）+ 向量检索（语义匹配）加权融合。BM25 擅长精确关键词（如"GPT-4o"），向量擅长语义（如"大语言模型"）。<br><br>
+      <strong>重排序</strong>：向量检索召回快但精度有限，用 Cross-Encoder 对候选集逐一精细打分。两阶段：先快召回 Top-50（毫秒级），再精排序 Top-5（百毫秒级），兼顾速度和精度。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q4: RAG 系统如何评估？</div>
+    <div class="qa-answer">
+      从两个阶段评估：<br>
+      <strong>检索质量</strong>：召回率（相关文档是否被检索到）、精确率（检索结果中有多少相关）、MRR（平均倒数排名）。<br>
+      <strong>生成质量</strong>：忠实度（回答是否基于检索内容，有没有幻觉）、相关性（回答是否切题）、完整性（是否覆盖了用户问题的所有方面）。可用 Ragas 框架自动化评估。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q5: 如何解决 RAG 检索不到相关文档的问题？</div>
+    <div class="qa-answer">
+      ① <strong>Query 改写</strong>：用 LLM 改写用户问题，生成多个角度的查询并行检索；<br>
+      ② <strong>HyDE</strong>：先让 LLM 生成假回答，用假回答去检索（语义更丰富）；<br>
+      ③ <strong>调整分块策略</strong>：chunk_size 太大不精确，太小语义不完整，尝试 512-1024；<br>
+      ④ <strong>混合检索</strong>：加入 BM25 关键词检索，弥补向量检索关键词匹配弱的缺陷；<br>
+      ⑤ <strong>增加召回量</strong>：先召回 Top-20，再用 Reranker 精选 Top-5。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch17Questions = [
+  {
+    type: 'single',
+    question: 'RAG 的核心思想是什么？',
+    options: [
+      '把知识微调进模型参数',
+      '在生成回答前先从外部知识库检索相关文档，作为上下文喂给 LLM',
+      '用更大的模型来提升回答质量',
+      '把所有文档都放进 Prompt'
+    ],
+    answer: [1],
+    explanation: 'RAG = Retrieval-Augmented Generation，先检索再生成。不改模型参数，知识实时更新。'
+  },
+  {
+    type: 'single',
+    question: '向量数据库检索使用什么算法？',
+    options: [
+      'B-Tree 索引',
+      '哈希索引',
+      '近似最近邻搜索（ANN）',
+      '全文倒排索引'
+    ],
+    answer: [2],
+    explanation: '向量数据库使用 ANN（Approximate Nearest Neighbor）算法，如 HNSW、IVF，在百万级向量中毫秒返回结果。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是 RAG 相比纯 LLM 的优势？（多选）',
+    options: [
+      '知识可以实时更新',
+      '回答可以引用来源',
+      '完全消除幻觉',
+      '无需重新训练模型'
+    ],
+    answer: [0, 1, 3],
+    explanation: 'RAG 减少幻觉但不能完全消除。其他三项都是 RAG 的优势。'
+  },
+  {
+    type: 'single',
+    question: '混合检索（BM25 + 向量检索）的优势是？',
+    options: [
+      '运行速度更快',
+      '同时具备关键词精准匹配和语义匹配能力',
+      '减少 Token 消耗',
+      '不需要 Embedding 模型'
+    ],
+    answer: [1],
+    explanation: 'BM25 擅长精确关键词匹配（如"GPT-4o"），向量检索擅长语义匹配。混合检索取两者之长。'
+  },
+  {
+    type: 'single',
+    question: '重排序（Reranker）的作用是？',
+    options: [
+      '加快检索速度',
+      '对召回的候选集做精细打分，提高检索精度',
+      '减少向量维度',
+      '压缩文档大小'
+    ],
+    answer: [1],
+    explanation: '两阶段检索：先快召回 Top-50，再用 Cross-Encoder 精排 Top-5。Reranker 精度高但慢，只用于小规模候选集。'
+  },
+  {
+    type: 'multiple',
+    question: 'RAG 高级优化技巧包括？（多选）',
+    options: [
+      'Query 改写（生成多个角度的查询）',
+      'HyDE（用假回答去检索）',
+      '父子分块（小块检索、大块生成）',
+      '增加 LLM 参数量'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Query改写、HyDE、父子分块都是 RAG 优化技巧。增加 LLM 参数量与 RAG 优化无关。'
+  },
+  {
+    type: 'single',
+    question: '在 Agent + RAG 架构中，Agent 的作用是？',
+    options: [
+      '替代 LLM 生成回答',
+      '自主决定何时检索、检索什么、是否需要重新检索',
+      '替代向量数据库存储文档',
+      '提高 Embedding 速度'
+    ],
+    answer: [1],
+    explanation: 'Agent 将 RAG 作为工具使用，自主判断：简单问题不检索，复杂问题多轮检索，检索结果不相关则换关键词重搜。'
+  },
+  {
+    type: 'single',
+    question: '文档分块时 chunk_overlap 的作用是？',
+    options: [
+      '减少存储空间',
+      '保持块间上下文连贯，避免在句子中间截断丢失语义',
+      '加快检索速度',
+      '提高 Embedding 质量'
+    ],
+    answer: [1],
+    explanation: 'chunk_overlap 让相邻块有重叠部分，保持上下文连贯。经验值是 chunk_size 的 10-15%。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch17Questions); }, 500);
+</script>

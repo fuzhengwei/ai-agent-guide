@@ -772,6 +772,152 @@ print(f"退化用例: {len(report['regressions'])}")</pre>
 
 <p>回归测试是 EDD 方法论的安全网。每次修改 Agent 的 prompt、工具或模型后，都跑一遍回归测试集，确保改动不会引入退化。建议将回归测试集成到 CI/CD 流水线中，在每次 PR 合并前自动运行，退化用例数必须为 0 才允许合并。</p>
 
+<!-- ===== 12.9 评估框架：Ragas / DeepEval ===== -->
+<h2 class="section-heading">12.9 评估框架：Ragas 与 DeepEval</h2>
+
+<p>手动评估效率低、不可重复。专业评估框架可以<strong>自动化</strong>评估流程，提供量化指标，让你像跑单元测试一样跑 Agent 评估。</p>
+
+<h3 class="sub-heading">12.9.1 Ragas：RAG 评估的事实标准</h3>
+
+<p><strong>Ragas</strong>（Retrieval Augmented Generation Assessment）是专为 RAG 系统设计的评估框架，提供 4 个核心指标：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">指标</th>
+        <th style="text-align: left;">评估什么</th>
+        <th style="text-align: left;">计算方式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Faithfulness（忠实度）</strong></td><td>回答是否基于检索内容？有没有编造？</td><td>将回答拆分语句，逐条验证是否可从上下文推导</td></tr>
+      <tr><td><strong>Answer Relevance（回答相关性）</strong></td><td>回答是否切题？</td><td>用 LLM 从回答反推可能的问题，与原问题比较相似度</td></tr>
+      <tr><td><strong>Context Precision（上下文精确率）</strong></td><td>检索到的文档中有多少是相关的？</td><td>判断每个检索文档是否包含答案，计算精确率</td></tr>
+      <tr><td><strong>Context Recall（上下文召回率）</strong></td><td>答案所需的信息是否都被检索到了？</td><td>将标准答案拆分，逐条验证是否在检索内容中</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · Ragas 评估</span>
+<pre>from ragas import evaluate
+from ragas.metrics import (
+    faithfulness,            # 忠实度
+    answer_relevancy,       # 回答相关性
+    context_precision,      # 上下文精确率
+    context_recall          # 上下文召回率
+)
+from datasets import Dataset
+
+# 准备评估数据集
+eval_data = {
+    "question": [
+        "Agent 的记忆系统有哪些类型？",
+        "MCP 协议解决了什么问题？",
+        "LangGraph 的 Checkpoint 机制有什么用？",
+    ],
+    "answer": [
+        "Agent 的记忆分为短期记忆和长期记忆……",  # Agent 的回答
+        "MCP 解决了工具定义不统一的问题……",
+        "Checkpoint 机制用于状态保存和人工干预……",
+    ],
+    "contexts": [
+        ["短期记忆存储对话历史……", "长期记忆使用向量数据库……"],  # 检索到的文档
+        ["MCP 之前每个框架有自己的工具格式……"],
+        ["LangGraph 的 Checkpoint 每步自动保存……"],
+    ],
+    "ground_truth": [
+        "记忆分为短期记忆（对话历史）和长期记忆（向量存储）",  # 标准答案
+        "MCP 统一了 Agent 与工具的连接标准",
+        "用于状态持久化、人工干预、错误恢复",
+    ],
+}
+
+dataset = Dataset.from_dict(eval_data)
+
+# 运行评估
+result = evaluate(
+    dataset=dataset,
+    metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+    llm=ChatOpenAI(model="gpt-4o"),        # 评估用的 LLM
+    embeddings=OpenAIEmbeddings(),           # 用于 answer_relevancy
+)
+
+print(result)
+# {'faithfulness': 0.85, 'answer_relevancy': 0.92, 
+#  'context_precision': 0.78, 'context_recall': 0.88}</pre>
+</div>
+
+<h3 class="sub-heading">12.9.2 DeepEval：通用 Agent 评估框架</h3>
+
+<p><strong>DeepEval</strong> 不局限于 RAG，提供更通用的 Agent 评估指标，支持单元测试风格的断言。</p>
+
+<div class="code-block">
+<span class="code-label">Python · DeepEval 评估</span>
+<pre>from deepeval import assert_test
+from deepeval.test_case import LLMTestCase
+from deepeval.metrics import (
+    AnswerRelevancyMetric,
+    FaithfulnessMetric,
+    HallucinationMetric,
+    ToxicityMetric,
+    GEval          # 自定义评估指标
+)
+
+# 定义评估指标
+answer_relevancy = AnswerRelevancyMetric(threshold=0.7)
+faithfulness = FaithfulnessMetric(threshold=0.8)
+hallucination = HallucinationMetric(threshold=0.5)  # 幻觉分数越低越好
+
+# 创建测试用例（类似单元测试）
+test_case = LLMTestCase(
+    input="什么是 ReAct 模式？",
+    actual_output="ReAct 是让 LLM 在推理和行动之间交替的框架……",  # Agent 回答
+    expected_output="ReAct 让 Agent 在推理(Thought)和行动(Action)之间循环",  # 期望
+    context=["ReAct 模式由 Yao 等人提出，核心是 Thought-Action-Observation 循环"],  # 上下文
+)
+
+# 运行评估 + 断言（CI/CD 友好）
+assert_test(test_case, [answer_relevancy, faithfulness, hallucination])
+# 如果任何指标低于阈值，测试失败 → CI 阻止发布
+
+# 自定义指标：用 G-Eval 定义你自己的评估标准
+correctness = GEval(
+    name="Correctness",
+    criteria="""判断回答是否在事实上正确，逻辑是否严密，
+    是否完整覆盖了用户问题的所有方面""",
+    threshold=0.7
+)</pre>
+</div>
+
+<h3 class="sub-heading">12.9.3 Ragas vs DeepEval 选型</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">对比维度</th>
+        <th style="text-align: left;">Ragas</th>
+        <th style="text-align: left;">DeepEval</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>专注领域</strong></td><td>RAG 评估（检索+生成）</td><td>通用 Agent 评估</td></tr>
+      <tr><td><strong>核心指标</strong></td><td>Faithfulness/Relevance/Context Precision/Recall</td><td>Relevance/Faithfulness/Hallucination/Toxicity/G-Eval</td></tr>
+      <tr><td><strong>测试风格</strong></td><td>数据集批量评估</td><td>单元测试 + 断言</td></tr>
+      <tr><td><strong>CI/CD 集成</strong></td><td>脚本式</td><td>pytest 原生（assert_test）</td></tr>
+      <tr><td><strong>自定义指标</strong></td><td>有限</td><td>G-Eval 灵活自定义</td></tr>
+      <tr><td><strong>推荐场景</strong></td><td>RAG 系统评估</td><td>Agent 全流程评估 + CI/CD</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 最佳实践：两者结合</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">如果你的 Agent 包含 RAG，用 <strong>Ragas 评估检索质量</strong>（Context Precision/Recall），用 <strong>DeepEval 评估生成质量和安全性</strong>（Hallucination/Toxicity）。两者互补，覆盖完整。</p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>

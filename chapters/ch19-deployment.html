@@ -1,0 +1,619 @@
+<!-- 第19章：Agent 部署与运维 -->
+<h1 class="chapter-title">第19章 Agent 部署与运维</h1>
+<p class="chapter-subtitle">从 Demo 到生产——部署、监控、灰度、CI/CD 全流程</p>
+
+<!-- ===== 19.1 Demo vs 生产 ===== -->
+<h2 class="section-heading">19.1 Demo 能跑 ≠ 生产能用</h2>
+
+<p>在 Jupyter Notebook 里跑通一个 Agent Demo 只需要 30 分钟。但把它放到生产环境，面对真实用户、真实流量、真实故障，需要解决完全不同的问题。</p>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title">🧪 Demo 级 Agent</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>单进程、单用户、无并发</li>
+      <li>API Key 硬编码在代码里</li>
+      <li>没有日志，出了问题靠 print</li>
+      <li>LLM 报错就直接崩溃</li>
+      <li>无限流、无重试、无超时</li>
+      <li>更新代码需要停机</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🏭 生产级 Agent</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>多实例、负载均衡、高可用</li>
+      <li>密钥管理（Vault / KMS）</li>
+      <li>全链路日志 + 可观测性</li>
+      <li>优雅降级 + 自动重试 + 超时控制</li>
+      <li>限流 + 熔断 + 步数控制</li>
+      <li>蓝绿部署 / 灰度发布 / 滚动更新</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== 19.2 部署架构 ===== -->
+<h2 class="section-heading">19.2 生产级 Agent 部署架构</h2>
+
+<div class="card">
+  <div class="card-title">🏗️ 推荐架构：API Gateway + Agent Service + LLM Proxy</div>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 12px; font-size: 13px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info); display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 24px;">🌐</span>
+      <div>
+        <strong style="color: var(--color-info);">API Gateway (Nginx / Kong)</strong>
+        <p style="color: var(--color-text-secondary); margin: 2px 0 0;">SSL 终止、限流、认证、请求路由</p>
+      </div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent); display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 24px;">🤖</span>
+      <div>
+        <strong style="color: var(--color-accent);">Agent Service (多实例)</strong>
+        <p style="color: var(--color-text-secondary); margin: 2px 0 0;">Python/Java 服务，处理 Agent 逻辑，无状态可水平扩展</p>
+      </div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning); display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 24px;">🔗</span>
+      <div>
+        <strong style="color: var(--color-warning);">LLM Proxy (自建网关)</strong>
+        <p style="color: var(--color-text-secondary); margin: 2px 0 0;">多模型路由、Key 轮换、缓存、降级、成本统计</p>
+      </div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success); display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 24px;">💾</span>
+      <div>
+        <strong style="color: var(--color-success);">数据层</strong>
+        <p style="color: var(--color-text-secondary); margin: 2px 0 0;">Redis（会话/缓存）+ PostgreSQL（持久化）+ 向量数据库（RAG）</p>
+      </div>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error); display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 24px;">📊</span>
+      <div>
+        <strong style="color: var(--color-error);">监控层</strong>
+        <p style="color: var(--color-text-secondary); margin: 2px 0 0;">Prometheus（指标）+ Grafana（大屏）+ LangSmith/Langfuse（Trace）</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 class="sub-heading">Dockerfile 模板</h3>
+
+<div class="code-block">
+<span class="code-label">Dockerfile</span>
+<pre>FROM python:3.11-slim
+
+# 时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 安装依赖
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制代码
+COPY . .
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# 启动
+EXPOSE 8080
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", \
+     "--timeout", "120", "--access-logfile", "-", "app:app"]</pre>
+</div>
+
+<h3 class="sub-heading">Docker Compose 部署</h3>
+
+<div class="code-block">
+<span class="code-label">docker-compose.yml</span>
+<pre>version: '3.8'
+
+services:
+  agent-app:
+    build: .
+    container_name: agent-app
+    restart: on-failure:3       # 最多重启 3 次
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DB_URL=postgresql://user:pass@postgres:5432/agent
+      - LLM_API_KEY=${LLM_API_KEY}   # 从 .env 读取
+      - ENV=production
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: agent
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: ["CMD", "pg_isready"]</pre>
+</div>
+
+<!-- ===== 19.3 CI/CD ===== -->
+<h2 class="section-heading">19.3 CI/CD：持续集成与持续部署</h2>
+
+<p>Agent 的 CI/CD 与传统软件不同，需要额外关注<strong>Prompt 版本管理</strong>和<strong>评估回归</strong>。</p>
+
+<div class="flowchart-container" id="cicdPipeline"></div>
+
+<script>
+setTimeout(() => {
+  const container = document.getElementById('cicdPipeline');
+  if (!container) return;
+  container.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; padding: 20px 0;">
+      <div style="padding: 12px 16px; border: 2px solid var(--color-info); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">📝</div>
+        <strong style="font-size: 12px; color: var(--color-info);">代码提交</strong>
+      </div>
+      <span style="font-size: 16px; color: var(--color-accent);">→</span>
+      <div style="padding: 12px 16px; border: 2px solid var(--color-accent); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">🧪</div>
+        <strong style="font-size: 12px; color: var(--color-accent);">单元测试</strong>
+      </div>
+      <span style="font-size: 16px; color: var(--color-accent);">→</span>
+      <div style="padding: 12px 16px; border: 2px solid var(--color-warning); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">📊</div>
+        <strong style="font-size: 12px; color: var(--color-warning);">评估回归</strong>
+      </div>
+      <span style="font-size: 16px; color: var(--color-accent);">→</span>
+      <div style="padding: 12px 16px; border: 2px solid var(--color-success); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">🐳</div>
+        <strong style="font-size: 12px; color: var(--color-success);">构建镜像</strong>
+      </div>
+      <span style="font-size: 16px; color: var(--color-accent);">→</span>
+      <div style="padding: 12px 16px; border: 2px solid var(--color-error); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">🚀</div>
+        <strong style="font-size: 12px; color: var(--color-error);">灰度发布</strong>
+      </div>
+      <span style="font-size: 16px; color: var(--color-accent);">→</span>
+      <div style="padding: 12px 16px; border: 2px solid var(--color-info); border-radius: 10px; background: var(--color-surface); text-align: center; min-width: 100px;">
+        <div style="font-size: 24px;">📈</div>
+        <strong style="font-size: 12px; color: var(--color-info);">全量上线</strong>
+      </div>
+    </div>
+  `;
+}, 100);
+</script>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔑 Agent CI/CD 的特殊环节：评估回归</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">传统 CI 只跑单元测试（assert x == y）。Agent CI 需要额外跑<strong>评估数据集</strong>（EDD），确保 Prompt 修改没有导致回答质量下降。如果评估分数低于阈值，CI 自动阻止发布。</p>
+</div>
+
+<div class="code-block">
+<span class="code-label">.github/workflows/agent-ci.yml</span>
+<pre>name: Agent CI/CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 1. 单元测试
+      - name: Run Unit Tests
+        run: |
+          pip install -r requirements.txt
+          pytest tests/ --cov=app --cov-report=xml
+      
+      # 2. Agent 评估回归（关键！）
+      - name: Run Evaluation Regression
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          python -m eval.run_eval \
+            --dataset eval/datasets/prod.json \
+            --threshold 0.85 \
+            --report eval/report.json
+          # 如果评估分数 < 0.85，CI 失败，阻止发布
+      
+      # 3. 构建 Docker 镜像
+      - name: Build Docker Image
+        run: |
+          docker build -t my-agent:${{ github.sha }} .
+          docker tag my-agent:${{ github.sha }} my-agent:latest
+      
+      # 4. 灰度部署（10% 流量）
+      - name: Deploy Canary
+        run: |
+          ./scripts/deploy.sh --canary --image my-agent:${{ github.sha }}
+      
+      # 5. 等待观察 5 分钟
+      - name: Canary Observation
+        run: sleep 300
+      
+      # 6. 检查灰度指标，决定全量 or 回滚
+      - name: Promote or Rollback
+        run: |
+          METRICS=$(./scripts/check_canary.sh)
+          if [ "$METRICS" = "healthy" ]; then
+            ./scripts/deploy.sh --full --image my-agent:${{ github.sha }}
+          else
+            ./scripts/rollback.sh
+            exit 1
+          fi</pre>
+</div>
+
+<!-- ===== 19.4 灰度发布 ===== -->
+<h2 class="section-heading">19.4 灰度发布策略</h2>
+
+<p>Agent 的输出有随机性，新版本可能有未知问题。灰度发布让你<strong>先给一小部分用户用新版本</strong>，观察指标正常后再全量。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">策略</th>
+        <th style="text-align: left;">方式</th>
+        <th style="text-align: left;">适合场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>蓝绿部署</strong></td><td>两套环境，一键切换</td><td>快速回滚、停机时间零</td></tr>
+      <tr><td><strong>金丝雀发布</strong></td><td>新版先承接 5%-10% 流量</td><td>Agent 版本升级</td></tr>
+      <tr><td><strong>A/B 测试</strong></td><td>按用户分组，对比指标</td><td>Prompt 效果对比</td></tr>
+      <tr><td><strong>影子发布</strong></td><td>新版处理真实请求但不返回结果</td><td>验证新 Agent 无副作用</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">金丝雀发布实现</h3>
+
+<div class="code-block">
+<span class="code-label">Nginx · 金丝雀路由</span>
+<pre># 10% 流量到新版本，90% 到旧版本
+upstream agent_v1 {
+    server agent-v1:8080;
+}
+
+upstream agent_v2 {
+    server agent-v2:8080;
+}
+
+# 按用户 ID 哈希分配，同一用户始终命中同一版本
+split_clients "${remote_addr}${http_user_id}" $agent_backend {
+    10%  agent_v2;      # 10% 用户走新版本
+    *    agent_v1;      # 90% 用户走旧版本
+}
+
+server {
+    listen 80;
+    
+    location /api/agent {
+        proxy_pass http://$agent_backend;
+        proxy_set_header X-Canary $agent_backend;
+        add_header X-Agent-Version $agent_backend;
+    }
+    
+    # 紧急回滚：把 10% 改成 0%
+}</pre>
+</div>
+
+<!-- ===== 19.5 监控告警 ===== -->
+<h2 class="section-heading">19.5 监控与告警体系</h2>
+
+<p>生产环境必须做到<strong>5 分钟发现、5 分钟定位、5 分钟恢复</strong>。没有监控的 Agent 就像闭眼开车。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">监控层</th>
+        <th style="text-align: left;">指标</th>
+        <th style="text-align: left;">工具</th>
+        <th style="text-align: left;">告警阈值</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>系统层</strong></td><td>CPU/内存/磁盘/网络</td><td>Prometheus + Node Exporter</td><td>CPU > 80%</td></tr>
+      <tr><td><strong>应用层</strong></td><td>QPS/延迟/错误率</td><td>Prometheus + Grafana</td><td>P99 > 10s</td></tr>
+      <tr><td><strong>Agent层</strong></td><td>成功率/步数/Token消耗</td><td>LangSmith / Langfuse</td><td>成功率 < 85%</td></tr>
+      <tr><td><strong>LLM层</strong></td><td>API延迟/配额/费用</td><td>自定义 LLM Proxy</td><td>费用 > 预算 80%</td></tr>
+      <tr><td><strong>业务层</strong></td><td>用户满意度/投诉率</td><td>反馈系统</td><td>差评率 > 5%</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · Prometheus 指标埋点</span>
+<pre>from prometheus_client import Counter, Histogram, Gauge
+
+# Agent 指标定义
+agent_requests = Counter(
+    'agent_requests_total', 
+    'Total agent requests',
+    ['chapter', 'status']  # 标签：章节、状态(success/fail)
+)
+
+agent_latency = Histogram(
+    'agent_latency_seconds',
+    'Agent response latency',
+    ['chapter'],
+    buckets=[0.5, 1, 2, 5, 10, 30, 60, 120]  # 延迟分桶
+)
+
+agent_tokens = Counter(
+    'agent_tokens_total',
+    'Total tokens consumed',
+    ['model', 'type']  # 模型、类型(input/output)
+)
+
+agent_steps = Histogram(
+    'agent_steps_count',
+    'Number of steps per request',
+    buckets=[1, 3, 5, 10, 15, 20]
+)
+
+# 在 Agent 执行流程中埋点
+def handle_request(user_input, chapter):
+    start = time.time()
+    try:
+        result = agent.invoke(user_input)
+        agent_requests.labels(chapter=chapter, status='success').inc()
+        return result
+    except Exception as e:
+        agent_requests.labels(chapter=chapter, status='fail').inc()
+        raise
+    finally:
+        agent_latency.labels(chapter=chapter).observe(time.time() - start)</pre>
+</div>
+
+<!-- ===== 19.6 成本优化 ===== -->
+<h2 class="section-heading">19.6 成本优化策略</h2>
+
+<p>Agent 的最大成本是 <strong>LLM API 调用费用</strong>。一个不加优化的 Agent，月账单可能从 $100 飙到 $10,000。</p>
+
+<div class="card">
+  <div class="card-title">💰 五大成本优化策略</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">1. 模型分级路由</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">简单问题用 mini 模型（$0.15/M），复杂问题才用旗舰模型（$5/M）。80% 问题用 mini 解决，成本降 5-10 倍。</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">2. 语义缓存</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">用向量相似度判断"是否问过类似问题"，命中缓存直接返回，不再调用 LLM。命中率 20-40%。</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">3. Prompt 压缩</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">精简 System Prompt，去掉不必要的示例和说明。每省 1000 Token = 每次省 $0.01-0.05。</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
+      <strong style="color: var(--color-accent);">4. 步数控制</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">限制 Agent 最大步数（如 10 步），避免无限循环烧 Token。每多一步 = 一次完整 LLM 调用。</p>
+    </div>
+    <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">5. 批量处理</strong>
+      <p style="color: var(--color-text-secondary); margin: 4px 0 0;">多个独立任务合并为一次 LLM 调用（batch）。OpenAI Batch API 半价，适合非实时场景。</p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · 模型分级路由</span>
+<pre>def route_model(query: str, has_tools: bool) -> str:
+    """根据问题复杂度选择模型"""
+    
+    # 简单问答 → mini 模型（便宜 30 倍）
+    if not has_tools and len(query) < 100:
+        return "gpt-4o-mini"
+    
+    # 需要工具调用 → 标准模型
+    if has_tools and not is_complex_task(query):
+        return "gpt-4o"
+    
+    # 复杂推理 → 旗舰模型
+    return "claude-3.5-sonnet"
+
+# 成本对比（每百万 Token）：
+# gpt-4o-mini:  $0.15  ← 80% 请求用这个
+# gpt-4o:       $2.50  ← 15% 请求用这个
+# claude-3.5:   $3.00  ← 5% 请求用这个
+# 
+# 不分级：100% 用 gpt-4o = $2.50/M
+# 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
+# 节省 77%！</pre>
+</div>
+
+<div class="code-block">
+<span class="code-label">Python · 语义缓存</span>
+<pre>import numpy as np
+
+class SemanticCache:
+    """基于向量相似度的缓存"""
+    
+    def __init__(self, threshold=0.95):
+        self.cache = {}  # {query_vector: response}
+        self.threshold = threshold  # 相似度阈值
+    
+    def get(self, query: str) -> str | None:
+        query_vec = embeddings.embed_query(query)
+        
+        for cached_vec, response in self.cache.items():
+            similarity = cosine_similarity(query_vec, cached_vec)
+            if similarity > self.threshold:
+                return response  # 缓存命中
+        
+        return None  # 未命中
+    
+    def set(self, query: str, response: str):
+        vec = embeddings.embed_query(query)
+        self.cache[vec] = response
+
+# 使用
+cache = SemanticCache(threshold=0.95)
+
+def chat(query):
+    # 先查缓存
+    cached = cache.get(query)
+    if cached:
+        return cached  # 命中，不调用 LLM
+    
+    # 未命中，调用 LLM
+    response = llm.invoke(query)
+    cache.set(query, response)
+    return response</pre>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q1: Demo 级 Agent 和生产级 Agent 的区别是什么？</div>
+    <div class="qa-answer">
+      Demo 关注功能跑通：单进程、无并发、无监控、无重试。生产级关注可靠运行：多实例高可用、限流熔断、全链路监控、优雅降级、灰度发布、成本控制。<strong>面试关键</strong>：能说出 Demo 的 5 个缺陷和对应的生产级解决方案（密钥管理、日志监控、错误重试、超时控制、资源限制）。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q2: Agent 的 CI/CD 和传统软件有什么不同？</div>
+    <div class="qa-answer">
+      最大的区别是<strong>评估回归</strong>。传统 CI 跑单元测试（assert），Agent CI 额外要跑评估数据集（EDD），确保 Prompt 修改没有导致回答质量下降。如果评估分数低于阈值（如 0.85），CI 自动阻止发布。这是因为 Agent 输出有随机性，代码逻辑没变但 Prompt 变了可能导致行为退化。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q3: 什么是金丝雀发布？Agent 为什么需要它？</div>
+    <div class="qa-answer">
+      金丝雀发布：新版本先承接 5-10% 流量，观察指标正常后再全量。Agent 需要它因为：① LLM 输出有随机性，测试集无法覆盖所有情况；② Prompt 微调可能有副作用；③ 新工具可能有未知的失败模式。金丝雀发布让问题影响范围最小化，发现问题可以快速回滚。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q4: Agent 的监控体系应该包含哪些层面？</div>
+    <div class="qa-answer">
+      五层监控：① <strong>系统层</strong>（CPU/内存/磁盘）；② <strong>应用层</strong>（QPS/延迟/错误率）；③ <strong>Agent层</strong>（成功率/步数/Token消耗，用 LangSmith/Langfuse）；④ <strong>LLM层</strong>（API延迟/配额/费用）；⑤ <strong>业务层</strong>（用户满意度/投诉率）。每层设定告警阈值，实现 5 分钟发现-定位-恢复。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q5: 如何优化 Agent 的 LLM API 成本？</div>
+    <div class="qa-answer">
+      ① <strong>模型分级路由</strong>：80% 简单问题用 mini 模型（$0.15/M），复杂问题才用旗舰模型，成本降 5-10 倍；② <strong>语义缓存</strong>：相似问题命中缓存直接返回，命中率 20-40%；③ <strong>Prompt 压缩</strong>：精简 System Prompt；④ <strong>步数控制</strong>：限制最大步数防止烧 Token；⑤ <strong>批量处理</strong>：非实时任务用 Batch API（半价）。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch19Questions = [
+  {
+    type: 'single',
+    question: 'Agent CI/CD 相比传统软件 CI/CD 最大的区别是？',
+    options: [
+      '需要构建 Docker 镜像',
+      '需要跑评估回归（EDD），确保 Prompt 修改没有降低回答质量',
+      '需要单元测试',
+      '需要代码审查'
+    ],
+    answer: [1],
+    explanation: 'Agent CI/CD 额外需要评估回归（EDD），用评估数据集验证回答质量。代码逻辑没变但 Prompt 变了可能导致行为退化，传统的 assert 测试无法覆盖。'
+  },
+  {
+    type: 'single',
+    question: '金丝雀发布的策略是？',
+    options: [
+      '一次性全量切换到新版本',
+      '新版本先承接 5-10% 流量，观察指标正常后再全量',
+      '两套环境同时运行，手动切换',
+      '新版本处理请求但不返回结果给用户'
+    ],
+    answer: [1],
+    explanation: '金丝雀发布：新版先承接小比例流量（5-10%），观察指标正常后逐步扩大到全量。问题影响范围最小化，发现异常可快速回滚。'
+  },
+  {
+    type: 'multiple',
+    question: '生产级 Agent 监控体系应该包含哪些层面？（多选）',
+    options: [
+      '系统层（CPU/内存/磁盘）',
+      '应用层（QPS/延迟/错误率）',
+      'Agent层（成功率/步数/Token消耗）',
+      '代码注释覆盖率'
+    ],
+    answer: [0, 1, 2],
+    explanation: '五层监控：系统层、应用层、Agent层、LLM层、业务层。代码注释覆盖率不是运维监控指标。'
+  },
+  {
+    type: 'single',
+    question: '模型分级路由如何降低成本？',
+    options: [
+      '所有请求都用最便宜的模型',
+      '80% 简单问题用 mini 模型，复杂问题才用旗舰模型，成本降 5-10 倍',
+      '不使用 LLM，改用规则引擎',
+      '只在夜间调用 LLM API'
+    ],
+    answer: [1],
+    explanation: '分级路由：简单问题用 mini（$0.15/M），复杂问题用旗舰（$5/M）。80% 请求用 mini，综合成本可降 5-10 倍。'
+  },
+  {
+    type: 'single',
+    question: '语义缓存的作用是？',
+    options: [
+      '缓存 LLM 模型参数，加快推理',
+      '用向量相似度判断"是否问过类似问题"，命中则直接返回不调 LLM',
+      '压缩 Prompt 减少 Token',
+      '缓存工具调用结果'
+    ],
+    answer: [1],
+    explanation: '语义缓存：将用户问题的向量化后比对，相似度超过阈值（如 0.95）则返回缓存的回答，不再调用 LLM。命中率 20-40%，直接省掉对应的 API 费用。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent 的成本优化策略包括？（多选）',
+    options: [
+      '模型分级路由（简单问题用 mini）',
+      '语义缓存（相似问题不重复调 LLM）',
+      '步数控制（限制最大步数防烧 Token）',
+      '增加 LLM 参数量'
+    ],
+    answer: [0, 1, 2],
+    explanation: '模型分级、语义缓存、步数控制都是有效成本优化策略。增加 LLM 参数量反而增加成本。'
+  },
+  {
+    type: 'single',
+    question: 'Docker Compose 中 restart: on-failure:3 的含义是？',
+    options: [
+      '容器每天重启 3 次',
+      '容器失败时自动重启，最多重试 3 次',
+      '运行 3 个容器副本',
+      '容器 3 秒后自动重启'
+    ],
+    answer: [1],
+    explanation: 'on-failure:3 表示容器因错误退出时自动重启，最多重试 3 次。超过 3 次不再重启，防止无限重启循环。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch19Questions); }, 500);
+</script>
