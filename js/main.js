@@ -39,6 +39,11 @@ const App = {
     { id: 'ch14', num: 14, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
     { id: 'ch15', num: 15, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
 
+    // 第六篇：工程化
+    { id: 'ch17', num: 17, title: 'RAG：检索增强生成', section: '⚙️ 第六篇：工程化', file: 'chapters/ch17-rag.html' },
+    { id: 'ch18', num: 18, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
+    { id: 'ch19', num: 19, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
+
     // 终章
     { id: 'ch16', num: 16, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
   ],
@@ -149,34 +154,36 @@ const App = {
    */
   toggleTOC() {
     const layout = document.querySelector('.app-layout');
-    if (layout) {
-      layout.classList.toggle('toc-collapsed');
-      const btn = document.getElementById('toolbarTocBtn');
-      if (btn) {
-        btn.classList.toggle('active', !layout.classList.contains('toc-collapsed'));
-      }
+    const tocBtn = document.getElementById('toolbarTocBtn');
+    if (!layout) return;
+    
+    layout.classList.toggle('toc-collapsed');
+    const isCollapsed = layout.classList.contains('toc-collapsed');
+    if (tocBtn) {
+      tocBtn.classList.toggle('active', !isCollapsed);
     }
   },
 
   /**
-   * 设置 AI 助手默认展开（收藏到侧边栏）
-   * 首次访问时自动展开，用户手动关闭后保持关闭状态
+   * 设置 AI 助手默认收起（点击后展开）
+   * 首次访问时默认收起，用户手动展开后记住状态
    */
   setDefaultChatVisible() {
     const layout = document.querySelector('.app-layout');
     const chatBtn = document.getElementById('toolbarChatBtn');
     if (!layout) return;
     
-    // 检查用户是否曾经手动关闭过AI助手
-    const chatHidden = localStorage.getItem('ai-agent-guide-chat-hidden');
+    // 检查用户是否曾经手动展开过AI助手
+    const chatShown = localStorage.getItem('ai-agent-guide-chat-shown');
     
-    if (chatHidden === 'true') {
-      // 用户之前关闭过，保持关闭状态
+    if (chatShown === 'true') {
+      // 用户之前展开过，保持展开状态
+      layout.classList.remove('chat-collapsed');
+      if (chatBtn) chatBtn.classList.add('active');
+    } else {
+      // 默认收起AI助手（用户点击按钮后再展开）
       layout.classList.add('chat-collapsed');
       if (chatBtn) chatBtn.classList.remove('active');
-    } else {
-      // 默认展开AI助手
-      if (chatBtn) chatBtn.classList.add('active');
     }
   },
 
@@ -195,13 +202,13 @@ const App = {
       layout.classList.remove('chat-collapsed');
       if (chatBtn) chatBtn.classList.add('active');
       // 记住用户选择了展开
-      localStorage.removeItem('ai-agent-guide-chat-hidden');
+      localStorage.setItem('ai-agent-guide-chat-shown', 'true');
     } else {
       // 收起
       layout.classList.add('chat-collapsed');
       if (chatBtn) chatBtn.classList.remove('active');
       // 记住用户选择了收起
-      localStorage.setItem('ai-agent-guide-chat-hidden', 'true');
+      localStorage.removeItem('ai-agent-guide-chat-shown');
     }
   },
 
@@ -210,7 +217,14 @@ const App = {
    */
   showCover() {
     const contentArea = document.getElementById('contentBody');
+    const layout = document.querySelector('.app-layout');
     if (!contentArea) return;
+
+    // 首页不显示目录：收起目录面板
+    if (layout) layout.classList.add('toc-collapsed');
+    // 清空 tocNav 内容
+    const tocNav = document.getElementById('tocNav');
+    if (tocNav) tocNav.innerHTML = '';
 
     const chaptersMap = this.chapters.map(ch => 
       `<div class="hero-map-card" onclick="App.loadChapter('${ch.id}')">
@@ -471,58 +485,49 @@ const App = {
   },
 
   /**
-   * 生成右侧目录 (TOC)
-   * 智能显示：如果当前章节没有 h2/h3 标题，则隐藏 TOC 面板
+   * 生成内联目录 (TOC)
+   * 智能显示：如果当前章节没有 h2/h3 标题，则不展示目录。
+   * 目录以 content-body 的子元素身份在章节内容右侧内联展示 (CSS Grid 右侧 sticky 列)，
+   * 配色与章节正文 (section-heading / sub-heading) 保持一致。
    */
   generateTOC() {
-    const tocNav = document.getElementById('tocNav');
-    if (!tocNav) return;
-    
     const contentBody = document.getElementById('contentBody');
-    if (!contentBody) return;
-    
+    const layout = document.querySelector('.app-layout');
+    if (!contentBody || !layout) return;
+
     // 查找所有标题 (h2.section-heading, h3.sub-heading)
     const headings = contentBody.querySelectorAll('h2.section-heading, h3.sub-heading');
-    
-    // 智能显示：没有标题时隐藏 TOC 面板
-    const tocPanel = document.getElementById('tocPanel');
+
+    // 获取 toc-panel 中的 tocNav 元素
+    const tocNav = document.getElementById('tocNav');
+    if (tocNav) tocNav.innerHTML = ''; // 清空旧内容
+
     if (headings.length === 0) {
-      if (tocPanel) {
-        tocPanel.style.display = 'none';
-      }
+      // 没有标题：收起目录面板，不显示任何目录栏效果
+      layout.classList.add('toc-collapsed');
       return;
     }
-    
-    // 有标题时显示 TOC 面板
-    if (tocPanel) {
-      tocPanel.style.display = '';
-    }
-    
-    // 清空现有目录
-    tocNav.innerHTML = '';
-    
-    if (headings.length === 0) {
-      tocNav.innerHTML = '<div style="padding: 20px; color: var(--color-text-tertiary); font-size: 12px; text-align: center;">暂无目录</div>';
-      return;
-    }
-    
+
+    // 有标题：展开目录面板
+    layout.classList.remove('toc-collapsed');
+
     // 按 section 分组
     let currentSection = null;
-    
+
     headings.forEach((heading, index) => {
       const fullText = heading.textContent.trim();
       const isH2 = heading.tagName === 'H2';
-      
+
       if (isH2) {
         // 新的大节 (h2)
         currentSection = document.createElement('div');
         currentSection.className = 'toc-section';
-        
+
         // 提取节号 (如 "0.1"、"1.1")
         const sectionMatch = fullText.match(/^(\d+\.\d+)\s*(.+)$/);
         const sectionNum = sectionMatch ? sectionMatch[1] : '';
         const sectionTitle = sectionMatch ? sectionMatch[2] : fullText;
-        
+
         // 创建大节标题
         const sectionHeader = document.createElement('div');
         sectionHeader.className = 'toc-section-header';
@@ -533,12 +538,12 @@ const App = {
           this.highlightTOCItem(index);
         });
         currentSection.appendChild(sectionHeader);
-        
+
         // 创建子项容器
         const subContainer = document.createElement('div');
         subContainer.className = 'toc-sub-items';
         currentSection.appendChild(subContainer);
-        
+
         tocNav.appendChild(currentSection);
       } else {
         // 小节 (h3) - 添加到当前大节的子项中
@@ -549,7 +554,7 @@ const App = {
             const subMatch = fullText.match(/^(\d+\.\d+\.\d+)\s*(.+)$/);
             const subNum = subMatch ? subMatch[1] : '';
             const subTitle = subMatch ? subMatch[2] : fullText;
-            
+
             const subItem = document.createElement('div');
             subItem.className = 'toc-sub-item';
             subItem.innerHTML = `<span class="toc-num">${subNum}</span><span class="toc-title">${subTitle}</span>`;
@@ -563,7 +568,7 @@ const App = {
         }
       }
     });
-    
+
     // 滚动监听：自动高亮当前章节
     this.setupTOCScrollSpy(headings);
   },
