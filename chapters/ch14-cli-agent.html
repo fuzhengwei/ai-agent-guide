@@ -1038,10 +1038,12 @@ const ch15Questions = [
 setTimeout(() => { Quiz.render('quizArea', ch15Questions); }, 500);
 </script>
 
-<!-- 章节导航 -->
-<div class="chapter-nav">
-<!-- ===== 13.9 企业级Agent架构设计 ===== -->
-<h2 class="section-heading">13.7 企业级 Agent 架构设计</h2>
+<!-- ===== CLI-Anything：让所有软件变成 Agent 的手脚 ===== -->
+<h3 class="sub-heading">CLI-Anything：让所有软件变成 Agent 的手脚</h3>
+
+<p>上面的框架对比聚焦于<strong>Agent 本身的架构</strong>——Agent 如何安全地执行 Shell 命令。但 CLI Agent 还有一个更深层的问题：<strong>Agent 的"手脚"够不够多？</strong>一个只会跑 Shell 命令的 Agent，能操作数据库、能调用 API，但如果你让它打开 GIMP 处理一张图片、用 Blender 渲染一个 3D 场景、在 LibreOffice 里生成报表——这些软件只有 GUI，没有 API，Agent 就"没手"了。</p>
+
+<p>港大 HKUDS 团队开源的 <strong>CLI-Anything</strong> 解决的正是这个问题：用自动化的方式，为<strong>任何软件</strong>生成一套 Agent 可直接调用的 CLI 接口。项目口号 "Making ALL Software Agent-Native"——今天的软件服务于人类👨‍💻，明天的用户将是 Agent 🤖。</p>
 
 <p>面试高频问题：<strong>"如果让你做一个企业级 Agent，你会如何设计架构？"</strong>——这道题考的不是你会不会写 LangChain 代码，而是你能不能区分 Demo 和 Production。一个能跑 Demo 的架构，放到生产环境可能处处漏水。本节从 Demo 级 Agent 的五大缺陷出发，逐模块构建一个能扛住真实业务压力的企业级架构。</p>
 
