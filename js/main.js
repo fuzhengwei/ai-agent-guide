@@ -44,9 +44,10 @@ const App = {
     { id: 'ch17', num: 17, title: 'Agent 评估与可观测性', section: '⚙️ 第六篇：工程化', file: 'chapters/ch13-evaluation.html' },
     { id: 'ch18', num: 18, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
     { id: 'ch19', num: 19, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
+    { id: 'ch20', num: 20, title: '推理框架与模型服务化', section: '⚙️ 第六篇：工程化', file: 'chapters/ch20-inference-framework.html' },
 
     // 终章
-    { id: 'ch20', num: 20, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
+    { id: 'ch21', num: 21, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
   ],
 
   /**
@@ -752,12 +753,31 @@ const App = {
 
     // 面试题目数：从 quizArea 内的 quiz-question 统计，或从题库 JSON 预估
     if (quizStartEl) {
-      // quizArea 初始为空，Quiz.render 后才有内容，延迟统计
-      setTimeout(() => {
+      // quizArea 初始为空，Quiz.render 后才有内容
+      // 使用 MutationObserver 监听 quizArea 内容变化，题目渲染后更新 badge
+      const updateQuizBadge = () => {
         const quizQs = quizStartEl.querySelectorAll('.quiz-question').length;
         const badge = navDiv.querySelector('[data-tab="quiz"] .tab-badge');
-        if (badge && quizQs > 0) badge.textContent = quizQs;
-      }, 800);
+        if (badge && quizQs > 0) {
+          badge.textContent = quizQs;
+        } else {
+          // 如果题目还没渲染，继续轮询（最多3次，间隔500ms）
+          let retries = 3;
+          const poll = () => {
+            const qs = quizStartEl.querySelectorAll('.quiz-question').length;
+            const b = navDiv.querySelector('[data-tab="quiz"] .tab-badge');
+            if (b && qs > 0) {
+              b.textContent = qs;
+            } else if (retries > 0) {
+              retries--;
+              setTimeout(poll, 500);
+            }
+          };
+          setTimeout(poll, 500);
+        }
+      };
+      // Quiz.render 在 requestAnimationFrame + 500ms 后执行，所以 1200ms 后开始检查
+      setTimeout(updateQuizBadge, 1200);
     }
 
     // 创建标签页导航栏

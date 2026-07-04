@@ -90,7 +90,7 @@ const Progress = {
    */
   getOverallProgress() {
     const data = this.getAll();
-    const total = 20; // 20章
+    const total = App.chapters ? App.chapters.length : 22; // 序章+21章
     const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
     return Math.round((completed / total) * 100);
   },

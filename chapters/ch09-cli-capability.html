@@ -722,7 +722,7 @@ setTimeout(() => {
 <div id="quizArea"></div>
 
 <script>
-const ch9Questions = [
+var ch09Questions = [
   {
     question: "CLI Agent 操作本地工具的核心技术挑战是什么？",
     options: ["LLM 调用 HTTP API 的速度", "Shell 命令生成 + 安全执行 + 错误自愈", "前端界面的渲染性能", "数据库的查询优化"],
@@ -757,7 +757,7 @@ const ch9Questions = [
 
 setTimeout(() => {
   if (typeof Quiz !== 'undefined' && Quiz.render) {
-    Quiz.render('quizArea', ch9Questions);
+    Quiz.render('quizArea', ch09Questions);
   }
 }, 500);
 </script>

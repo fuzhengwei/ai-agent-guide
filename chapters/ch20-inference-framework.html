@@ -1,0 +1,972 @@
+<!-- 第20章：推理框架与模型服务化 -->
+<h1 class="chapter-title">第20章 推理框架与模型服务化</h1>
+<p class="chapter-subtitle">从开源模型到可用服务，Ollama/vLLM/SGLang 实战</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🧭 本章先抓住这条主线</div>
+  <p>第1章我们学过：开源模型的优势是数据隐私、可微调、无 API 依赖、成本低。但有一个前提——<strong>你得先让模型跑起来</strong>。</p>
+  <p>本章回答的核心问题：拿到一个开源模型（Qwen2、Llama3、DeepSeek），怎么把它变成 Agent 能调用的推理服务？从一台 Mac 本地调试，到企业级 GPU 集群高并发部署，<strong>推理框架是中间那层关键的桥梁</strong>。</p>
+  <p style="margin-top: 12px;">读完本章的最低目标：能回答"选 Ollama 还是 vLLM"，能独立部署一个本地推理服务并让 Agent 代码接入。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">🎤 面试官更爱这样追问</div>
+  <p>比起问"什么是 Ollama"，更真实的问法通常是：</p>
+  <ul style="margin: 10px 0 0 20px; color: var(--color-text-secondary);">
+    <li>为什么 Agent 从 GPT 切换到本地模型只需要改一行 base_url？</li>
+    <li>PagedAttention 解决了什么问题？为什么 vLLM 的显存利用率能达到 90%？</li>
+    <li>INT4 量化后精度损失多少？什么场景下量化不可接受？</li>
+    <li>多 GPU 推理时，模型怎么切分？通信开销怎么优化？</li>
+  </ul>
+</div>
+
+<!-- ===== 20.1 为什么需要推理框架 ===== -->
+<h2 class="section-heading">20.1 为什么需要推理框架？</h2>
+
+<p>很多小白的误区是：以为下载了一个模型文件（.bin / .safetensors），就可以直接用了。事实是——<strong>模型文件只是一个权重矩阵，你还需要推理框架把它变成一个可调用的服务</strong>。</p>
+
+<p>类比理解：模型文件像一张蓝图，推理框架像工厂。蓝图再好，没有工厂也造不出产品。推理框架负责：加载模型到 GPU/CPU、处理输入 Token、执行矩阵运算、解码输出 Token、提供 API 接口。</p>
+
+<div class="card">
+  <div class="card-title">🧱 推理框架的五层职责</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">层级</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">职责</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">类比</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">① 模型加载</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">读取权重文件、分配 GPU/CPU 显存/内存、初始化计算图</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">把蓝图交给车间</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">② Token 处理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">输入分词、Embedding 编码、输出解码、采样策略</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">原材料加工</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">③ 计算调度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">KV Cache 管理、PagedAttention、连续批处理、多 GPU 分布式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">生产线调度</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">④ API 服务</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">提供 OpenAI-compatible API、HTTP 服务、并发管理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">成品展示厅</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">⑤ 辅助能力</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">量化转换、模型管理、健康检查、日志监控</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">质检+后勤</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>没有推理框架，你面临的困境：</p>
+<ul>
+<li><strong>手动加载模型</strong>：需要写 PyTorch/Transformers 代码，处理显存分配、模型分片、dtype 转换</li>
+<li><strong>没有 API 接口</strong>：Agent 只能用 Python 函数调用，不能像 OpenAI 一样用 HTTP API</li>
+<li><strong>无法并发</strong>：一次只能处理一个请求，多个 Agent 同时调用就会排队</li>
+<li><strong>显存浪费</strong>：KV Cache 重复存储，同一段文本的 Cache 无法共享，显存利用率只有 20-40%</li>
+</ul>
+
+<p>推理框架把这些工程问题全部解决了，让你<strong>专注在 Agent 逻辑上</strong>，而不是推理基础设施上。</p>
+
+<!-- ===== 20.2 Ollama ===== -->
+<h2 class="section-heading">20.2 Ollama：轻量易用的本地推理</h2>
+
+<p>Ollama 是最简单的本地 LLM 运行方案。一条命令下载模型，一条命令启动服务，API 接口兼容 OpenAI 格式。适合<strong>个人开发、快速验证、学习实验</strong>。</p>
+
+<h3 class="sub-heading">核心特性</h3>
+
+<ul>
+<li><strong>一键部署</strong>：<code>ollama run llama3</code> — 模型自动下载、自动量化、自动服务</li>
+<li><strong>OpenAI兼容</strong>：API 格式和 OpenAI 一样，Agent 代码零改动切换，只需改 <code>base_url</code></li>
+<li><strong>模型丰富</strong>：支持 Llama 3/4、Qwen 2/3、Mistral、DeepSeek、Gemma 等主流开源模型</li>
+<li><strong>Mac/PC 即可</strong>：4GB 内存起步，Apple Silicon 优化，无需 NVIDIA GPU</li>
+<li><strong>GGUF 量化</strong>：自动下载量化版本（Q4_K_M），显存占用降低 4 倍</li>
+</ul>
+
+<h3 class="sub-heading">安装与运行</h3>
+
+<div class="code-block">
+  <span class="code-label">Shell</span>
+<pre># === 安装 ===
+# macOS: brew install ollama
+# Linux: curl -fsSL https://ollama.com/install.sh | sh
+# Windows: 下载安装包 https://ollama.com/download
+
+# === 启动服务 ===
+ollama serve    # 启动后台服务（默认端口 11434）
+
+# === 下载并运行模型 ===
+ollama pull qwen2:7b       # 下载模型（自动量化为 GGUF Q4_K_M）
+ollama run qwen2:7b        # 运行模型（进入交互式对话）
+
+# === 查看已安装模型 ===
+ollama list
+
+# === 模型管理 ===
+ollama rm llama3            # 删除模型
+ollama cp qwen2:7b my-agent # 复制模型（用于自定义 Modelfile）
+</pre>
+</div>
+
+<h3 class="sub-heading">Agent 代码接入</h3>
+
+<p>Ollama 最强大的地方在于<strong>API 兼容 OpenAI 格式</strong>。你原来用 GPT-4 的 Agent 代码，只需要改一行配置就能切换到本地模型：</p>
+
+<div class="code-block">
+  <span class="code-label">Python — Agent 代码切换本地模型</span>
+<pre>from openai import OpenAI
+
+# ========== 方案A：云端 API ==========
+# client = OpenAI(
+#     base_url="https://api.openai.com/v1",
+#     api_key="sk-xxx"
+# )
+# model = "gpt-4o"
+
+# ========== 方案B：本地 Ollama — 只改这两行 ==========
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"  # Ollama 不需要真密钥
+)
+model = "qwen2:7b"  # 改为本地模型名
+
+# ========== 以下代码完全不变 ==========
+
+# 1. 简单对话
+response = client.chat.completions.create(
+    model=model,
+    messages=[
+        {"role": "system", "content": "你是客服Agent，帮助用户解决问题"},
+        {"role": "user", "content": "我的订单还没到，订单号ORD123"}
+    ]
+)
+print(response.choices[0].message.content)
+
+# 2. Function Calling（Ollama 从 v0.5 起支持）
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "query_order",
+            "description": "查询订单状态",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {"type": "string", "description": "订单号"}
+                },
+                "required": ["order_id"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model=model,
+    messages=[{"role": "user", "content": "查一下ORD123"}],
+    tools=tools
+)
+
+if response.choices[0].message.tool_calls:
+    for tool_call in response.choices[0].message.tool_calls:
+        print(f"调用函数: {tool_call.function.name}")
+        print(f"参数: {tool_call.function.arguments}")
+</pre>
+</div>
+
+<h3 class="sub-heading">Ollama Modelfile：自定义模型行为</h3>
+
+<p>Ollama 支持通过 Modelfile 自定义模型参数，类似 Dockerfile 的概念：</p>
+
+<div class="code-block">
+  <span class="code-label">Modelfile — 自定义 Agent 专用模型</span>
+<pre># 基于基础模型
+FROM qwen2:7b
+
+# 设置系统提示词（Agent 角色定义）
+SYSTEM """
+你是智能客服 Agent，帮助用户查询订单、处理退货、推荐商品。
+回答要简洁、专业、有温度。
+"""
+
+# 设置生成参数
+PARAMETER temperature 0.3     # 低温度 = 更稳定输出
+PARAMETER top_p 0.9           # 保留前 90% 概率的词
+PARAMETER num_ctx 4096        # 上下文窗口大小
+PARAMETER repeat_penalty 1.1  # 防止重复输出
+
+# 创建自定义模型
+# ollama create my-customer-agent -f Modelfile
+
+# 运行自定义模型
+# ollama run my-customer-agent
+</pre>
+</div>
+
+<!-- ===== 20.3 vLLM ===== -->
+<h2 class="section-heading">20.3 vLLM：企业级高吞吐推理引擎</h2>
+
+<p>vLLM 是工业级推理引擎，核心优势是<strong>PagedAttention</strong>技术——像操作系统管理虚拟内存一样管理 GPU 显存，极大提升并发吞吐量。适合<strong>高并发生产环境、企业级部署</strong>。</p>
+
+<h3 class="sub-heading">PagedAttention：核心突破</h3>
+
+<p>传统推理中，每个请求的 KV Cache（注意力计算的中间结果）需要<strong>连续的显存空间</strong>。问题是：</p>
+<ul>
+<li>请求长度不可预知——预分配多了浪费，少了溢出要重新分配</li>
+<li>不同请求的 Cache 不能共享——同样的 prompt 前缀被反复存储</li>
+<li>显存碎片化——频繁的分配/释放导致大量碎片，利用率只有 20-40%</li>
+</ul>
+
+<p>PagedAttention 的解决方案：把 KV Cache 切成<strong>固定大小的页（Page）</strong>，像 OS 的虚拟内存一样管理：</p>
+<ul>
+<li><strong>按需分配</strong>：不需要预分配连续空间，用到多少页就分配多少</li>
+<li><strong>跨请求共享</strong>：相同 prompt 前缀的 KV Cache 页可以跨请求复用（copy-on-write）</li>
+<li><strong>消除碎片</strong>：页式管理天然避免碎片，显存利用率从 20-40% 提升到 90%+</li>
+</ul>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"old","label":"传统推理\n预分配连续显存\n碎片化 20-40%","type":"start"},{"id":"page","label":"PagedAttention\n固定页式管理\n按需分配","type":"process"},{"id":"share","label":"KV Cache 共享\nCopy-on-Write\n相同前缀复用","type":"process"},{"id":"result","label":"显存利用率 90%+\n并发吞吐 2-4x\n延迟不变","type":"end"}],"edges":[{"from":"old","to":"page"},{"from":"page","to":"share"},{"from":"share","to":"result"}]}'></div>
+
+<h3 class="sub-heading">安装与运行</h3>
+
+<div class="code-block">
+  <span class="code-label">Shell — vLLM 安装与启动</span>
+<pre># === 安装（需要 NVIDIA GPU + CUDA） ===
+pip install vllm
+
+# === 启动 OpenAI-compatible API 服务 ===
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2-7B-Instruct \
+  --served-model-name qwen2-7b \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --gpu-memory-utilization 0.9 \   # 显存利用率目标 90%
+  --max-model-len 8192 \           # 最大上下文长度
+  --tensor-parallel-size 2          # 2卡并行推理（可选）
+
+# === 验证服务 ===
+curl http://localhost:8000/v1/models
+
+# === 调用模型 ===
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen2-7b",
+    "messages": [
+      {"role": "user", "content": "解释PagedAttention"}
+    ]
+  }'
+</pre>
+</div>
+
+<h3 class="sub-heading">vLLM 核心特性详解</h3>
+
+<div class="card">
+  <div class="card-title">⚡ vLLM 四大核心技术</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">技术</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">收益</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">PagedAttention</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">KV Cache 页式管理，按需分配，跨请求共享</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">显存利用率 90%+，并发吞吐提升 2-4 倍</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">连续批处理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">动态组 batch，新请求随时加入，完成的请求立即退出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">吞吐最大化，不同请求不等齐</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">分布式推理</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Tensor Parallel 模型分片，多 GPU 并行计算</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">百亿级模型也能跑，支持多节点扩展</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Prefix Caching</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自动缓存相同 prompt 前缀的 KV Cache，后续请求直接复用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">相同 System Prompt 的请求首 Token 延迟降低 80%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 20.4 SGLang 与其他推理框架 ===== -->
+<h2 class="section-heading">20.4 SGLang 与其他推理框架</h2>
+
+<p>除了 Ollama 和 vLLM，推理框架生态还有几个重要成员：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-success);">SGLang ✨ 新秀</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        2024 年新推出的推理引擎，主打<strong>结构化生成</strong>（RadixAttention + 压缩有限状态机）。<br><br>
+        <strong>适合</strong>：需要精确约束输出格式的场景（JSON、SQL、代码）<br>
+        <strong>优势</strong>：结构化输出速度比 vLLM 快 3-7 倍，显存效率接近 vLLM<br>
+        <strong>特点</strong>：RadixAttention 自动共享公共前缀树，比 vLLM 的 Prefix Caching 更细粒度
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">llama.cpp 经典</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        最早的本地推理方案，C++ 实现，纯 CPU/GPU 混合推理。<br><br>
+        <strong>适合</strong>：无 GPU 环境、嵌入式设备、极致轻量<br>
+        <strong>优势</strong>：跨平台（CPU-only 可跑）、GGUF 格式生态丰富<br>
+        <strong>特点</strong>：Ollama 的底层引擎就是 llama.cpp
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">TGI 企业级</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        HuggingFace 的 Text Generation Inference，Docker 一键部署。<br><br>
+        <strong>适合</strong>：需要快速搭建企业推理服务的团队<br>
+        <strong>优势</strong>：HuggingFace 生态天然集成、Flash Attention、水印检测<br>
+        <strong>特点</strong>：Docker 部署最简单，量化支持完善（GPTQ/AWQ/bitsandbytes）
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📊 五大推理框架全景对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">维度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">Ollama 🦙</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">vLLM ⚡</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">SGLang ✨</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">llama.cpp</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">TGI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">部署难度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐ 极简</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐ 中等</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐ 中等</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐ 简单</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐ Docker</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">硬件要求</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Mac/PC 4GB起</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">NVIDIA 16GB+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">NVIDIA 16GB+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">CPU/GPU均可</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">NVIDIA 16GB+</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">并发吞吐</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低 (~5 QPS)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高 (100+ QPS)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高 (100+ QPS)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">低 (~3 QPS)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">中 (30+ QPS)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">显存效率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">20-40%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">90%+ (PagedAtt)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">90%+ (RadixAtt)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">30-50%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">70-80%</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">结构化输出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐ 一般</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐ 一般</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐⭐⭐ 极快</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐ 一般</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">⭐⭐⭐ 良好</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">OpenAI兼容</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 完整</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 完整</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 完整</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">❌ 需自建</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 完整</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">适用场景</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发/学习</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">企业生产</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">结构化输出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">轻量/嵌入式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">HuggingFace生态</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 20.5 量化：让大模型跑在小机器上 ===== -->
+<h2 class="section-heading">20.5 量化：让大模型跑在小机器上</h2>
+
+<p>7B 参数的模型 FP16 精度需要 14GB 显存，70B 需要 140GB——大部分企业没有这么多 GPU。量化（Quantization）是让大模型跑在小机器上的核心技术：<strong>降低参数精度（FP16 → INT8 → INT4），用更少的显存装更大的模型</strong>。</p>
+
+<h3 class="sub-heading">量化原理与精度损失</h3>
+
+<p>模型参数本质上是一堆浮点数矩阵。FP16 每个参数占 2 字节（16bit），INT8 占 1 字节（8bit），INT4 占 0.5 字节（4bit）。量化就是把这些高精度浮点数"压缩"到低精度整数：</p>
+
+<div class="card">
+  <div class="card-title">📊 量化精度与显存对比（7B 参数模型为例）</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">精度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">每参数字节</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">7B 显存需求</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">推理速度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">精度损失</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">FP16（原始）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2 bytes</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">14 GB</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">基准</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPU 集群生产部署</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">INT8 (GPTQ/AWQ)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1 byte</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">7 GB</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-3x 加速</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-green">~1-2%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">生产部署首选</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">INT4 (Q4_K_M)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0.5 byte</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">3.5 GB</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">3-4x 加速</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-orange">~3-5%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">个人开发/学习</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 量化的精度损失怎么理解？</h4>
+<p>INT8 量化精度损失约 1-2%，几乎不影响对话质量。INT4 损失约 3-5%，在简单对话场景下完全可用，但在以下场景可能不可接受：</p>
+<ul>
+<li><strong>数学推理</strong>：精度损失可能导致计算错误</li>
+<li><strong>代码生成</strong>：变量名、逻辑细微差异可能影响正确性</li>
+<li><strong>多语言混合</strong>：中文+英文混合场景下精度损失更明显</li>
+<li><strong>Function Calling</strong>：参数格式错误率可能升高</li>
+</ul>
+<p><strong>实用原则</strong>：对话型 Agent 用 INT4 没问题，工具调用型 Agent 优先用 INT8 或 FP16。</p>
+</div>
+
+<h3 class="sub-heading">主流量化格式</h3>
+
+<div class="card">
+  <div class="card-title">🔧 GGUF vs GPTQ vs AWQ — 三种量化格式对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">格式</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">支持框架</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">量化方法</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">精度级别</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">特点</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">GGUF</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Ollama / llama.cpp</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">基于 k-quant 的混合量化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Q2_K 到 Q8_0 多档可选</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">CPU/GPU 混合推理、单文件分发</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">GPTQ</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM / TGI / AutoGPTQ</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">基于校准数据集的一阶量化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">INT4 / INT8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPU-only、精度好、vLLM原生支持</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">AWQ</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM / TGI</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">激活感知的加权量化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">INT4 / INT8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">保留重要通道权重、精度优于GPTQ</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 20.6 选型决策 ===== -->
+<h2 class="section-heading">20.6 推理框架选型决策</h2>
+
+<p>选推理框架不是"Ollama vs vLLM"的二元选择，而是根据你的场景匹配最合适的方案：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"start","label":"选推理框架","type":"start"},{"id":"q1","label":"你的场景？","type":"process"},{"id":"dev","label":"个人开发/学习","type":"process"},{"id":"prod","label":"企业生产部署","type":"process"},{"id":"struct","label":"需要精确结构化输出","type":"process"},{"id":"embed","label":"嵌入式/无GPU","type":"process"},{"id":"ollama","label":"→ Ollama\n一键部署\nMac/PC即可","type":"tool"},{"id":"vllm","label":"→ vLLM\nPagedAttention\n高并发100+QPS","type":"tool"},{"id":"sglang","label":"→ SGLang\n结构化输出3-7x加速\nRadixAttention","type":"tool"},{"id":"llamacpp","label":"→ llama.cpp\n纯CPU可跑\n极致轻量","type":"tool"}],"edges":[{"from":"start","to":"q1"},{"from":"q1","to":"dev"},{"from":"q1","to":"prod"},{"from":"q1","to":"struct"},{"from":"q1","to":"embed"},{"from":"dev","to":"ollama"},{"from":"prod","to":"vllm"},{"from":"struct","to":"sglang"},{"from":"embed","to":"llamacpp"}]}'></div>
+
+<div class="card">
+  <div class="card-title">🎯 Agent 场景与推理框架匹配</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">Agent 场景</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">推荐框架</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">推荐精度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">理由</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">对话型 Agent（客服/FAQ）</td>
+        <td style="padding: 10px 8px;">Ollama</td>
+        <td style="padding: 10px 8px;">Q4_K_M</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">对话场景 INT4 精度够用，Ollama 一键部署最快</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">工具调用型 Agent（API 路由）</td>
+        <td style="padding: 10px 8px;">vLLM</td>
+        <td style="padding: 10px 8px;">GPTQ-AWQ INT8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Function Calling 需要更高精度，INT8 + 高并发</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">数据提取型 Agent（JSON/SQL）</td>
+        <td style="padding: 10px 8px;">SGLang</td>
+        <td style="padding: 10px 8px;">FP16/INT8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">结构化输出速度极快，精度约束严格</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">隐私合规型 Agent（金融/医疗）</td>
+        <td style="padding: 10px 8px;">vLLM + TGI</td>
+        <td style="padding: 10px 8px;">FP16</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">合规场景精度不可妥协，FP16 + GPU 集群</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 20.7 多 GPU 分布式推理 ===== -->
+<h2 class="section-heading">20.7 多 GPU 分布式推理</h2>
+
+<p>70B+ 参数模型单卡跑不了，需要多 GPU 分布式推理。核心挑战：<strong>模型怎么切分？GPU 之间怎么通信？通信开销怎么优化？</strong></p>
+
+<h3 class="sub-heading">Tensor Parallel：模型分片并行</h3>
+
+<p>Tensor Parallel（张量并行）是最常用的多 GPU 推理方案：把模型的每一层矩阵<strong>按列切分</strong>到不同 GPU 上，每个 GPU 只算一部分，然后通过 AllReduce 操作汇总结果。</p>
+
+<div class="code-block">
+  <span class="code-label">vLLM 多 GPU 启动</span>
+<pre># === 2卡并行推理（单节点） ===
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --tensor-parallel-size 2 \     # 2张GPU切分模型
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 8192
+
+# === 4卡并行推理（单节点） ===
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --tensor-parallel-size 4      # 4张GPU切分模型
+
+# === 多节点推理（跨机器） ===
+# 需要先启动 Ray 集群
+ray start --head --port=6379          # 主节点
+ray start --address=主节点IP:6379     # 工作节点
+
+# 启动 vLLM 多节点服务
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --tensor-parallel-size 8 \     # 8张GPU（跨2台机器）
+  --pipeline-parallel-size 2     # 2台机器流水线并行
+</pre>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 Tensor Parallel vs Pipeline Parallel</h4>
+<ul>
+<li><strong>Tensor Parallel（TP）</strong>：同一层内按列切分，GPU 间每步都需要 AllReduce 通信。适合<strong>同一台机器内的多卡</strong>（NVLink 通信带宽高）</li>
+<li><strong>Pipeline Parallel（PP）</strong>：按层切分，不同 GPU 负责不同层，像流水线一样接力。适合<strong>跨机器</strong>（网络带宽有限，减少通信次数）</li>
+<li><strong>混合并行（TP+PP）</strong>：大模型常用方案——先在同一机器内做 TP，再跨机器做 PP</li>
+</ul>
+<p>vLLM 同时支持 TP 和 PP，SGLang 也支持 TP。Ollama 目前不支持分布式推理。</p>
+</div>
+
+<!-- ===== 20.8 模型服务化与 Agent 接入 ===== -->
+<h2 class="section-heading">20.8 模型服务化与 Agent 接入</h2>
+
+<p>推理框架把模型跑起来了，但 Agent 怎么接入？核心原则：<strong>所有主流推理框架都兼容 OpenAI API 格式</strong>，Agent 代码只需改 base_url 和 model 名。</p>
+
+<h3 class="sub-heading">统一接入架构</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"Agent 代码\n（OpenAI SDK）","type":"start"},{"id":"router","label":"模型路由层\n（base_url切换）","type":"process"},{"id":"cloud","label":"GPT-4o\napi.openai.com","type":"tool"},{"id":"ollama","label":"Qwen2:7b\nlocalhost:11434","type":"tool"},{"id":"vllm","label":"DeepSeek-V3\ngpu-server:8000","type":"tool"},{"id":"sglang","label":"Llama3\nsglang-server:30000","type":"tool"}],"edges":[{"from":"agent","to":"router"},{"from":"router","to":"cloud"},{"from":"router","to":"ollama"},{"from":"router","to":"vllm"},{"from":"router","to":"sglang"}]}'></div>
+
+<div class="code-block">
+  <span class="code-label">Python — 模型路由器：动态切换推理后端</span>
+<pre>from openai import OpenAI
+from enum import Enum
+
+class ModelBackend(Enum):
+    OPENAI = "https://api.openai.com/v1"
+    OLLAMA = "http://localhost:11434/v1"
+    VLLM = "http://gpu-server:8000/v1"
+    SGLANG = "http://sglang-server:30000/v1"
+
+class AgentModelRouter:
+    """Agent 模型路由器：根据任务类型自动选择推理后端"""
+
+    BACKEND_CONFIG = {
+        ModelBackend.OPENAI: {"api_key": "sk-xxx", "model": "gpt-4o"},
+        ModelBackend.OLLAMA: {"api_key": "ollama", "model": "qwen2:7b"},
+        ModelBackend.VLLM:  {"api_key": "EMPTY", "model": "deepseek-v3"},
+        ModelBackend.SGLANG: {"api_key": "EMPTY", "model": "llama3-8b"},
+    }
+
+    def __init__(self, backend: ModelBackend = ModelBackend.OLLAMA):
+        config = self.BACKEND_CONFIG[backend]
+        self.client = OpenAI(
+            base_url=backend.value,
+            api_key=config["api_key"]
+        )
+        self.model = config["model"]
+
+    def chat(self, messages, tools=None, **kwargs):
+        """统一调用接口，代码不变只切换后端"""
+        params = {"model": self.model, "messages": messages, **kwargs}
+        if tools:
+            params["tools"] = tools
+        return self.client.chat.completions.create(**params)
+
+    def switch_backend(self, backend: ModelBackend):
+        """运行时动态切换后端"""
+        config = self.BACKEND_CONFIG[backend]
+        self.client = OpenAI(
+            base_url=backend.value,
+            api_key=config["api_key"]
+        )
+        self.model = config["model"
+
+# ===== 使用示例 =====
+
+# 开发阶段用 Ollama
+router = AgentModelRouter(ModelBackend.OLLAMA)
+
+# 简单对话
+result = router.chat([
+    {"role": "user", "content": "帮我查北京天气"}
+])
+print(result.choices[0].message.content)
+
+# Function Calling
+result = router.chat(
+    messages=[{"role": "user", "content": "查一下ORD123"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "query_order",
+            "description": "查询订单状态",
+            "parameters": {
+                "type": "object",
+                "properties": {"order_id": {"type": "string"}},
+                "required": ["order_id"]
+            }
+        }
+    }]
+)
+
+# 上线切换到 vLLM（一行代码）
+router.switch_backend(ModelBackend.VLLM)
+result = router.chat([{"role": "user", "content": "帮我查北京天气"}])
+</pre>
+</div>
+
+<h3 class="sub-heading">混合策略：关键场景用旗舰，辅助场景用开源</h3>
+
+<p>生产环境中最务实的方案是<strong>混合部署</strong>——不是所有任务都需要旗舰模型：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🎯 混合部署：成本降 70%，质量不掉</div>
+  <ul>
+    <li><strong>80% 简单任务</strong>（FAQ、分类、简单提取）→ 本地模型 Qwen2:7b (Ollama/vLLM)，成本 ≈ 0</li>
+    <li><strong>15% 中等任务</strong>（多轮对话、工具调用）→ 本地模型 DeepSeek-V3 (vLLM INT8)，成本 ≈ GPU 电费</li>
+    <li><strong>5% 复杂任务</strong>（复杂推理、关键决策）→ 云端 GPT-4o，按量付费，但只有 5% 的调用</li>
+  </ul>
+  <p style="margin-top: 12px; font-size: 14px;">总成本 ≈ 5% × GPT-4o 价格 + GPU 运维费，比纯云端方案节省 70%+。</p>
+</div>
+
+<!-- ===== 20.9 生产级部署 ===== -->
+<h2 class="section-heading">20.9 生产级推理服务部署</h2>
+
+<p>推理框架跑起来只是第一步，生产级部署还需要：高可用、自动扩缩容、监控告警、安全加固。</p>
+
+<h3 class="sub-heading">vLLM 生产部署模板</h3>
+
+<div class="code-block">
+  <span class="code-label">Docker Compose — vLLM 生产部署</span>
+<pre># docker-compose.yml
+version: '3.8'
+
+services:
+  vllm-server:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-server
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0,1          # 使用GPU 0和1
+      - MODEL=Qwen/Qwen2.5-7B-Instruct
+      - TENSOR_PARALLEL_SIZE=2
+      - GPU_MEMORY_UTILIZATION=0.9
+      - MAX_MODEL_LEN=8192
+    ports:
+      - "8000:8000"
+    volumes:
+      - /data/models:/models                 # 模型缓存目录
+    command: >
+      --model Qwen/Qwen2.5-7B-Instruct
+      --served-model-name qwen2-7b
+      --tensor-parallel-size 2
+      --gpu-memory-utilization 0.9
+      --max-model-len 8192
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 可选：负载均衡（多实例）
+  nginx-lb:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - vllm-server
+
+  # 可选：监控
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+</pre>
+</div>
+
+<h3 class="sub-heading">关键监控指标</h3>
+
+<div class="card">
+  <div class="card-title">📊 推理服务必须监控的 6 个指标</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">指标</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">含义</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">告警阈值</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">优化方向</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">TTFT（首 Token 延迟）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用户发送请求到收到第一个Token的时间</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">> 2s</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Prefix Caching、Prefill 批处理</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">TPS（每秒 Token 数）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">单请求的生成速度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">< 20 tok/s</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">量化、Batch 优化</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">QPS（每秒请求数）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">并发吞吐量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">排队率 > 50%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">扩容 GPU、连续批处理</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">GPU 显存利用率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">已用显存 / 总显存</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">< 70% 或 > 95%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">调整 PagedAttention 参数</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">请求成功率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">成功请求数 / 总请求数</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">< 99%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">超时兜底、降级策略</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">KV Cache 命中率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">复用 KV Cache 的比例</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">< 30%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Prefix Caching、System Prompt 共享</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q1：为什么需要推理框架？模型文件不能直接用吗？</strong></div>
+    <div class="qa-a">模型文件只是权重矩阵，还需要推理框架把它变成可调用服务：加载到 GPU、处理 Token、执行矩阵运算、解码输出、提供 API 接口、管理并发和显存。没有推理框架，你需要手动写 PyTorch 代码处理显存分配和并发调度。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q2：Ollama 和 vLLM 的核心区别？各自适合什么场景？</strong></div>
+    <div class="qa-a"><strong>Ollama</strong>：极简部署，Mac/PC 即可，一条命令启动，适合个人开发/学习/小规模使用。<strong>vLLM</strong>：工业级引擎，PagedAttention 显存利用率 90%+，连续批处理吞吐最大化，适合企业生产/高并发。核心区别在于：Ollama 追求易用，vLLM 追求性能。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q3：PagedAttention 解决了什么问题？</strong></div>
+    <div class="qa-a">传统推理中每个请求的 KV Cache 需要连续显存空间，预分配浪费+碎片化导致显存利用率只有 20-40%。PagedAttention 把 KV Cache 切成固定大小的页，像 OS 的虚拟内存一样按需分配、跨请求共享（Copy-on-Write），消除碎片，显存利用率提升到 90%+。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q4：INT4 量化精度损失多少？什么场景下量化不可接受？</strong></div>
+    <div class="qa-a">INT4 量化精度损失约 3-5%，对话场景下完全可用。但以下场景不可接受：① 数学推理——精度损失可能导致计算错误；② 代码生成——细微差异影响正确性；③ Function Calling——参数格式错误率升高；④ 金融/医疗合规——精度不可妥协。实用原则：对话型 Agent 用 INT4，工具调用型 Agent 用 INT8，合规型 Agent 用 FP16。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q5：Agent 从 GPT 切换到本地模型为什么只需改一行？</strong></div>
+    <div class="qa-a">因为所有主流推理框架（Ollama/vLLM/SGLang/TGI）都兼容 OpenAI API 格式。Agent 代码用的是 OpenAI SDK，只需把 base_url 从 api.openai.com 改为 localhost:11434（Ollama）或 gpu-server:8000（vLLM），model 从 gpt-4o 改为本地模型名，其余代码完全不变。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q6：Tensor Parallel 和 Pipeline Parallel 的区别？</strong></div>
+    <div class="qa-a">TP 在同一层内按列切分模型矩阵，GPU 间每步都需要 AllReduce 通信，适合同一机器内的多卡（NVLink 高带宽）。PP 按层切分，不同 GPU 负责不同层像流水线接力，通信少，适合跨机器（网络带宽有限）。大模型常用混合方案 TP+PP：先同机器内 TP，再跨机器 PP。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q7：SGLang 的核心优势是什么？什么场景比 vLLM 更好？</strong></div>
+    <div class="qa-a">SGLang 的核心优势是<strong>结构化生成</strong>——通过 RadixAttention（更细粒度的前缀共享）+ 压缩有限状态机，在需要精确约束输出格式（JSON、SQL、代码）的场景下，结构化输出速度比 vLLM 快 3-7 倍。数据提取型 Agent（输出 JSON/SQL）首选 SGLang。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q8：混合部署策略为什么能节省 70% 成本？</strong></div>
+    <div class="qa-a">核心逻辑：80% 简单任务（FAQ/分类/提取）用本地开源模型（成本≈GPU运维费），15% 中等任务用本地 INT8 量化模型，只有 5% 复杂推理任务才调用 GPT-4o。总成本 = 5%×GPT价格 + GPU费，远低于 100% 用 GPT。关键是 Agent 框架要支持动态模型路由。</div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+var ch20Questions = [
+  {
+    type: 'single',
+    question: '推理框架的核心作用是什么？',
+    options: [
+      '训练新模型',
+      '把模型权重文件变成可调用的 API 服务，管理 GPU 显存、并发和 Token 处理',
+      '优化 Prompt 效果',
+      '提供向量数据库服务'
+    ],
+    answer: [1],
+    explanation: '推理框架负责加载模型、处理输入输出、管理并发和显存、提供 API 接口。模型文件只是权重，推理框架是让它跑起来的"工厂"。'
+  },
+  {
+    type: 'single',
+    question: 'PagedAttention 的核心突破是什么？',
+    options: [
+      '让推理速度翻倍',
+      '把 KV Cache 切成固定大小的页，按需分配+跨请求共享，显存利用率从 20-40% 提升到 90%+',
+      '支持多 GPU 分布式推理',
+      '让模型支持更长上下文'
+    ],
+    answer: [1],
+    explanation: 'PagedAttention 用页式管理替代连续预分配，消除碎片+支持 Copy-on-Write 跨请求共享 KV Cache，显存利用率从 20-40% 提升到 90%+。'
+  },
+  {
+    type: 'multiple',
+    question: 'INT4 量化可能不可接受的场景有哪些？（多选）',
+    options: [
+      '数学推理任务',
+      '简单 FAQ 对话',
+      'Function Calling 工具调用',
+      '金融合规场景'
+    ],
+    answer: [0, 2, 3],
+    explanation: 'INT4 量化精度损失 3-5%，在数学推理、Function Calling 和合规场景可能不可接受。简单 FAQ 对话用 INT4 完全没问题。'
+  },
+  {
+    type: 'single',
+    question: 'Agent 从 GPT-4o 切换到本地 Ollama，最少需要改几行代码？',
+    options: [
+      '需要改全部代码重新适配',
+      '2行：base_url 和 model 名',
+      '需要重写 Function Calling 部分',
+      '10行以上'
+    ],
+    answer: [1],
+    explanation: '因为 Ollama/vLLM/SGLang/TGI 都兼容 OpenAI API 格式，只需把 base_url 改为 localhost:11434，model 改为 qwen2:7b，其余代码不变。'
+  },
+  {
+    type: 'single',
+    question: 'SGLang 比 vLLM 的核心优势是？',
+    options: [
+      '部署更简单',
+      '结构化输出速度快 3-7 倍（RadixAttention + 压缩有限状态机）',
+      '支持 CPU 推理',
+      '并发吞吐更高'
+    ],
+    answer: [1],
+    explanation: 'SGLang 的核心优势是结构化生成——通过 RadixAttention + 压缩 FSM，需要精确约束输出格式（JSON/SQL）的场景下比 vLLM 快 3-7 倍。'
+  },
+  {
+    type: 'single',
+    question: '混合部署策略能节省 70% 成本的逻辑是？',
+    options: [
+      '全部用免费开源模型',
+      '80% 简单任务用本地模型，只有 5% 复杂任务才调用 GPT-4o',
+      '量化到 INT2',
+      '减少 GPU 数量'
+    ],
+    answer: [1],
+    explanation: '80% 简单任务（FAQ/分类）成本≈0（本地），15% 中等任务用 INT8（成本≈GPU费），5% 复杂任务用 GPT-4o。总成本远低于纯云端。'
+  },
+  {
+    type: 'multiple',
+    question: 'vLLM 的四大核心技术包括哪些？（多选）',
+    options: [
+      'PagedAttention（KV Cache 页式管理）',
+      '连续批处理（动态组 batch）',
+      'Prefix Caching（前缀缓存复用）',
+      'Transformer 架构优化'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'vLLM 的四大核心技术是 PagedAttention、连续批处理、分布式推理和 Prefix Caching。选项 D 不是 vLLM 的特有技术。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch20Questions); }, 500);
+</script>

@@ -879,7 +879,7 @@ scheduler.dispatch(SubTask(type="verify", requires_verification=True))
 
 <script>
 // 加载考试题目
-const ch01Questions = [
+var ch02Questions = [
   {
     type: 'single',
     question: 'AI Agent 与传统 ChatBot 最核心的区别是什么？',
@@ -1015,6 +1015,6 @@ const ch01Questions = [
 ];
 
 setTimeout(() => {
-  Quiz.render('quizArea', ch01Questions);
+  Quiz.render('quizArea', ch02Questions);
 }, 500);
 </script>

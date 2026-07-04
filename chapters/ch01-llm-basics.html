@@ -1,12 +1,12 @@
 <!-- 第1章：大模型与 Agent 基础概念 -->
 <h1 class="chapter-title">第1章 大模型与 Agent 基础概念</h1>
-<p class="chapter-subtitle">理解 Token、Prompt、Embedding 与思维框架</p>
+<p class="chapter-subtitle">理解 LLM 的核心概念，把握从 ChatBot 到 Agent 的跃迁路径</p>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">🧭 本章先抓住这条主线</div>
   <p>很多小白一上来就被 Token、Prompt、Embedding、Function Calling 这些词绕晕。其实你只要按一条线理解就够了：</p>
-  <p><strong>Token</strong> 解释模型如何看文本，<strong>Prompt</strong> 解释你如何对模型下指令，<strong>Embedding</strong> 解释模型如何找回知识，<strong>Function Calling</strong> 解释模型如何把"会说"变成"会做"。</p>
-  <p style="margin-top: 12px;">读完本章的最低目标不是背概念，而是能回答这四个问题：模型怎么计费、为什么 Prompt 会影响结果、RAG 为什么要 Embedding、为什么工具调用比字符串解析更可靠。</p>
+  <p><strong>Token</strong> 解释模型如何看文本，<strong>Prompt</strong> 解释你如何对模型下指令，<strong>Embedding</strong> 解释模型如何找回知识，<strong>Function Calling</strong> 和<strong>思维框架</strong>解释模型如何从"只会说话"变成"能办事情"。</p>
+  <p style="margin-top: 12px;">读完本章的最低目标不是背概念，而是能回答这些核心问题：模型怎么计费、为什么 Prompt 会影响结果、RAG 为什么要 Embedding、Function Calling 的作用是什么、四种思维框架的递进关系是什么。<strong>本章只讲核心概念，工程细节在后续章节展开</strong>。</p>
 </div>
 
 <div class="card">
@@ -548,195 +548,24 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 1.4 Function Calling ===== -->
-<h2 class="section-heading">1.4 Function Calling：工具调用基础</h2>
+<h2 class="section-heading">1.4 Function Calling：从聊天到执行</h2>
 
 <p>如果说 Prompt 让 LLM 有了"语言能力"，Function Calling 让它有了"行动能力"。<strong>Function Calling 是 LLM 根据用户意图，自动生成结构化函数调用（函数名+参数 JSON）的能力</strong>。这是 Agent 能使用工具的技术基石——没有 Function Calling，Agent 就只是一个更聪明的 ChatBot。</p>
 
-<p>Function Calling 的核心突破在于：模型不再输出自然语言文本让你解析，而是直接输出符合 JSON Schema 的结构化数据。这意味着你可以让 LLM 准确地调用 `get_weather(city="北京", date="2026-07-01")`，而不是输出"我觉得你应该查一下北京天气"这样的自然语言。这个跨越是从"聊天"到"执行"的关键。</p>
+<p>核心突破在于：模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化数据。你可以让 LLM 准确地调用 <code>get_weather(city="北京", date="2026-07-01")</code>，而不是输出"我觉得你应该查一下北京天气"这样的模糊建议。<strong>这个跨越是从"聊天"到"执行"的关键</strong>。</p>
 
-<p>需要注意的是，<strong>LLM 本身不执行任何函数</strong>。它只是"决定"调用哪个函数、传什么参数，真正的执行由你的代码完成。模型的角色像一个"调度员"——告诉你要打什么电话，但电话本身是你打的。理解这一点非常重要：Function Calling 的安全性完全在你的代码控制范围内。</p>
+<p>需要注意：<strong>LLM 本身不执行任何函数</strong>。它只是"决定"调用哪个函数、传什么参数，真正的执行由你的代码完成。模型的角色像一个"调度员"——告诉你要打什么电话，但电话本身是你打的。</p>
 
-<h3 class="sub-heading">Tool 定义规范</h3>
-
-<p>定义一个工具需要四个关键字段：<strong>name</strong>（函数名，唯一标识）、<strong>description</strong>（自然语言描述，LLM 靠这个决定是否调用）、<strong>parameters</strong>（JSON Schema 格式的参数定义）、<strong>strict</strong>（是否严格模式，开启后模型必须 100% 遵守 Schema）。</p>
-
-<div class="code-block">
-  <span class="code-label">Python</span>
-<pre># OpenAI Function Calling 工具定义示例
-
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "查询指定城市的天气信息",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {
-                        "type": "string",
-                        "description": "城市名称，如'北京'"
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "日期，格式 YYYY-MM-DD"
-                    }
-                },
-                "required": ["city"],
-                "additionalProperties": False
-            },
-            "strict": True  # 严格模式：必须100%遵守Schema
-        }
-    }
-]
-
-# 模型输出：
-# {"name": "get_weather", 
-#  "arguments": '{"city": "北京", "date": "2026-07-01"}'}
-</pre>
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">🔗 Function Calling 的完整详解在后续章节</h4>
+<p>本章只介绍了 Function Calling 的核心概念。关于工具定义规范、五步闭环流程、常见错误与解决方案、JSON Schema 设计等<strong>工程细节</strong>，请参见：</p>
+<ul>
+<li><strong>第3章</strong>「你的第一个 Agent」—— 手写第一个 Function Calling 工具，亲身体验调用流程</li>
+<li><strong>第6章</strong>「Function Calling 与工具设计」—— 深入工具定义、意图识别与路由、上下文工程、并发控制等工程实践</li>
+</ul>
+<p>如果你是第一次接触 Function Calling，现在只需记住一句话：<strong>它让 LLM 从"只会说话"变成"能办事情"</strong>。具体怎么办，后面会手把手教你。</p>
 </div>
 
-<h3 class="sub-heading">调用流程：五步闭环</h3>
-
-<p>Function Calling 的完整流程分五步，理解这个流程是掌握 Agent 工具调用的基础：</p>
-
-<div class="card">
-  <div class="card-title">🔄 Function Calling 五步流程</div>
-  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-    <thead>
-      <tr style="border-bottom: 2px solid var(--color-border);">
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">步骤</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">动作</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">执行者</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">输入</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">输出</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">1. 定义</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">注册可用工具列表</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者代码</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">函数签名 + Schema</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">tools 数组</td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">2. 触发</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM 判断是否调用工具</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用户消息 + tools</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">tool_calls 或文本</td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">3. 解析</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">提取函数名和参数</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者代码</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">tool_calls JSON</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">函数名 + 参数对象</td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">4. 执行</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实际调用函数</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开发者代码</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">参数对象</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">执行结果</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px 8px; font-weight: 500;">5. 注入</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">将结果返回给 LLM 继续</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">tool_result</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">最终回复</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<h3 class="sub-heading">常见问题与解决方案</h3>
-
-<p>Function Calling 在实际开发中会踩不少坑。最常见的是<strong>JSON 格式错误</strong>（模型输出的 JSON 不合规，缺引号或类型不对）、<strong>参数缺失</strong>（required 字段没传值）、<strong>幻觉调用</strong>（模型调用了不存在的函数）。每个问题都有对应的防御措施。</p>
-
-<div class="card">
-  <div class="card-title">⚠️ Function Calling 常见错误与解决方案</div>
-  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-    <thead>
-      <tr style="border-bottom: 2px solid var(--color-border);">
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">错误类型</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">表现</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">原因</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">解决方案</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">严重程度</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">JSON 格式错误</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">解析 arguments 时报错</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模型输出不规范的 JSON</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用 json_repair 修复 + strict 模式</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-red">高</span></td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">参数缺失</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">required 字段值为 null</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">description 不够清晰</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">优化 description + 参数校验</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-orange">中</span></td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">幻觉调用</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">调用了未定义的函数</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模型"发明"了不存在的工具</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">校验函数名 + 错误兜底</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-red">高</span></td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">参数类型错误</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">传了 string 但期望 int</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Schema 类型约束不够</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">开启 strict 模式 + 类型转换</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-orange">中</span></td>
-      </tr>
-      <tr>
-        <td style="padding: 10px 8px; font-weight: 500;">无限循环调用</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不断重复调用同一工具</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">未设置最大调用次数</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">限制 max_iterations</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-blue">低</span></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- SVG 动画：Function Calling 完整流程 -->
-<div class="flowchart-container" id="funcCallChart"></div>
-
-<script>
-setTimeout(() => {
-  FlowChart.render('funcCallChart', {
-    nodes: [
-      { id: 'user', label: '用户: "北京明天天气"', type: 'start' },
-      { id: 'llm', label: 'LLM 分析意图', type: 'process' },
-      { id: 'decide', label: '需要调用工具?', type: 'process' },
-      { id: 'call', label: '生成函数调用\nget_weather("北京")', type: 'tool' },
-      { id: 'exec', label: '执行函数\n→ 返回 "晴, 28°C"', type: 'tool' },
-      { id: 'inject', label: '结果注入 LLM', type: 'process' },
-      { id: 'reply', label: '最终回复: "北京明天晴, 28°C"', type: 'end' }
-    ],
-    edges: [
-      { from: 'user', to: 'llm' },
-      { from: 'llm', to: 'decide' },
-      { from: 'decide', to: 'call', label: '是' },
-      { from: 'call', to: 'exec' },
-      { from: 'exec', to: 'inject' },
-      { from: 'inject', to: 'reply' }
-    ],
-    animate: true
-  });
-}, 600);
-</script>
-
-<!-- ===== 1.5 开源 vs 闭源 LLM ===== -->
 <h2 class="section-heading">1.5 开源 vs 闭源 LLM</h2>
 
 <p>2025-2026 年的大模型格局已经从"OpenAI 一家独大"变成了"群雄并起"。闭源阵营有 OpenAI GPT 系列、Anthropic Claude、Google Gemini；开源阵营有 Meta Llama、DeepSeek、Qwen（通义千问）、Mistral 等。选择开源还是闭源，不再是"能力差距"问题，而是"成本、隐私、可控性"的权衡。</p>
@@ -855,145 +684,46 @@ setTimeout(() => {
 }, 700);
 </script>
 
-<!-- ===== 1.6 Agent 核心思维框架 ===== -->
-<h2 class="section-heading">1.6 Agent 核心思维框架</h2>
+<!-- ===== 1.6 Agent 思维框架 ===== -->
+<h2 class="section-heading">1.6 Agent 的思维框架：从 ChatBot 到 Agent</h2>
 
-<p>前面讲了 Token、Prompt、Embedding、Function Calling 这些"零件"，现在来看怎么把它们组装成 Agent。核心在于<strong>思维框架</strong>——决定 Agent 如何思考、何时行动、如何纠错的顶层设计。目前主流的框架有四种：ReAct、Plan & Execute、Reflection，以及它们的递进关系 CoT → ReAct → ToT。</p>
+<p>前面讲了 Token、Prompt、Embedding、Function Calling 这些"零件"，现在来看怎么把它们组装成 Agent。核心在于<strong>思维框架</strong>——决定 Agent 如何思考、何时行动、如何纠错的顶层设计。</p>
 
-<p>这些框架不是互斥的，而是可以组合使用的。一个成熟的 Agent 系统可能同时使用 Plan & Execute 做整体规划、ReAct 做单步执行、Reflection 做结果校验。理解每种框架的适用边界，是 Agent 架构设计的关键能力。</p>
-
-<p>需要特别强调的是：这些框架不是"算法"，而是<strong>Prompt 策略</strong>。它们通过特定的 Prompt 模式引导 LLM 按照指定框架思考和行动。框架的好坏不取决于复杂度，而取决于是否匹配你的任务特点。简单任务用 CoT 就够了，复杂任务才需要 ReAct 甚至 ToT。</p>
-
-<h3 class="sub-heading">四种核心框架详解</h3>
-
-<p><strong>ReAct（Reasoning + Acting）</strong>是 Agent 最经典的框架，核心思想是"边想边做"——LLM 先推理（Thought）应该做什么，然后行动（Action）调用工具，观察（Observation）结果后再推理下一步。这个循环反复执行，直到任务完成。ReAct 的伟大之处在于把"推理"和"行动"统一到了一个循环里，让 LLM 不仅能想，还能做。</p>
-
-<p><strong>Plan & Execute</strong>强调"先计划后执行"——先把复杂任务拆解为一个计划列表，然后逐个执行。与 ReAct 的区别是：ReAct 是"走一步看一步"，Plan & Execute 是"先想好再动手"。Plan & Execute 更适合步骤明确、可以预先规划的任务，但计划可能不够灵活，中途发现问题需要重新规划。</p>
-
-<p><strong>Reflection（反思）</strong>是让 Agent 对自己的输出进行自我审查和修正。先生成一个初始答案，然后让 LLM 以"审查者"的身份检查答案是否有误、是否遗漏，最后根据审查意见修正。这个机制能显著提升输出质量，代价是额外的 LLM 调用。</p>
+<p>目前主流框架有四种，它们是<strong>递进的</strong>，而非互斥的：</p>
 
 <div class="card">
-  <div class="card-title">🧠 四种 Agent 思维框架对比</div>
-  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-    <thead>
-      <tr style="border-bottom: 2px solid var(--color-border);">
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">框架</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">核心思想</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">适用任务</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">优点</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">缺点</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">Token 消耗</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">CoT<br>思维链</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">逐步推理得出答案</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">数学、逻辑推理</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单有效，提升准确率</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不能调用工具</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-green">低</span></td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">ReAct<br>推理+行动</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Thought→Action→Observation 循环</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要工具的复杂任务</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">能调用工具，灵活适应</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">可能陷入循环</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-orange">中</span></td>
-      </tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">Plan & Execute<br>先计划后执行</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">先生成计划，再逐步执行</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">步骤明确的多步任务</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">全局视角，执行有序</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">计划僵化，中途难调整</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-orange">中</span></td>
-      </tr>
-      <tr>
-        <td style="padding: 10px 8px; font-weight: 500;">Reflection<br>反思</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自我审查并修正输出</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高质量要求的任务</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">显著提升输出质量</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">额外调用，延迟增加</td>
-        <td style="padding: 10px 8px;"><span class="tag tag-red">高</span></td>
-      </tr>
-    </tbody>
-  </table>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; text-align: center;">
+      <strong style="color: var(--color-info);">CoT<br>思维链</strong>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 6px 0 0;">逐步推理<br>纯思考，不行动<br><span class="tag tag-green">低消耗</span></p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; text-align: center; background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.01));">
+      <strong style="color: var(--color-success);">ReAct<br>推理+行动</strong>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 6px 0 0;">边想边做<br>思考→调工具→观察<br><span class="tag tag-orange">中消耗</span></p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; text-align: center;">
+      <strong style="color: var(--color-accent);">Plan & Execute<br>先计划后执行</strong>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 6px 0 0;">先想好再动手<br>全局规划，有序执行<br><span class="tag tag-orange">中消耗</span></p>
+    </div>
+    <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; text-align: center;">
+      <strong style="color: var(--color-error);">Reflection<br>反思</strong>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 6px 0 0;">自我审查<br>先生成，再检查修正<br><span class="tag tag-red">高消耗</span></p>
+    </div>
+  </div>
 </div>
 
-<h3 class="sub-heading">CoT → ReAct → ToT 递进关系</h3>
+<p>递进关系：<strong>CoT</strong>（学会一步步推理）→ <strong>ReAct</strong>（在 CoT 上加了"行动"——推理+工具调用）→ <strong>ToT</strong>（在 ReAct 上加了"探索"——多路径推理+最优选择）。框架不是越复杂越好，而是<strong>越匹配越好</strong>。简单推理任务用 CoT 就够，需要工具的任务才用 ReAct，探索型任务才需要 ToT。</p>
 
-<p>这三种框架不是平行的，而是递进的：<strong>CoT</strong> 是基础（学会一步步推理），<strong>ReAct</strong> 在 CoT 上加了"行动"能力（推理 + 工具调用），<strong>ToT</strong> 在 ReAct 上加了"探索"能力（多路径推理 + 最优选择）。理解这个递进关系，就能根据任务复杂度选择合适的框架。</p>
-
-<div class="code-block">
-  <span class="code-label">Python</span>
-<pre># ReAct 框架的 Prompt 模板示例
-
-react_prompt = """你是一个能使用工具的 AI Agent。
-请使用以下格式回答问题：
-
-Thought: 思考下一步该做什么
-Action: 工具名称
-Action Input: 工具参数（JSON格式）
-Observation: 工具返回的结果
-... (重复 Thought/Action/Observation 直到得出答案)
-Thought: 我现在知道答案了
-Final Answer: 最终答案
-
-可用工具：
-- search(query): 搜索网页
-- calculator(expression): 计算数学表达式
-- weather_api(city): 查询天气
-
-问题：北京和上海明天的温差是多少？
-
-Thought: 我需要先查两个城市的天气
-Action: weather_api
-Action Input: {"city": "北京"}
-Observation: 晴, 28°C
-Thought: 现在查上海
-Action: weather_api
-Action Input: {"city": "上海"}
-Observation: 多云, 32°C
-Thought: 温差 = 32 - 28 = 4°C
-Final Answer: 北京和上海明天的温差是 4°C（上海比北京高 4°C）
-"""
-</pre>
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">🔗 思维框架的深入讲解在后续章节</h4>
+<p>本章只介绍了四种框架的核心思想和递进关系。关于每种框架的详细 Prompt 模板、实战代码、优缺点分析、生产级主循环设计等<strong>工程细节</strong>，请参见：</p>
+<ul>
+<li><strong>第4章</strong>「ReAct：让 Agent 学会思考」—— ReAct 模式详解、Prompt 模板、ReWOO / LLM Compiler / Reflexion 等进阶变体、生产级主循环设计</li>
+<li><strong>第5章</strong>「Agent 的记忆系统」—— 记忆如何与思维框架配合，上下文压缩与反思机制</li>
+</ul>
+<p>如果你是第一次接触这些概念，现在只需记住：<strong>CoT 学推理，ReAct 加行动，ToT 加探索，Reflection 加审查</strong>。具体怎么用，后面会一步步带你实践。</p>
 </div>
 
-<!-- SVG 动画：CoT → ReAct → ToT 递进图 -->
-<div class="flowchart-container" id="frameworkProgressChart"></div>
-
-<script>
-setTimeout(() => {
-  FlowChart.render('frameworkProgressChart', {
-    nodes: [
-      { id: 'cot', label: 'CoT\n逐步推理', type: 'start' },
-      { id: 'react', label: 'ReAct\n推理 + 行动', type: 'process' },
-      { id: 'tot', label: 'ToT\n多路径探索', type: 'process' },
-      { id: 'cot_detail', label: '适合：纯推理任务\n无工具调用', type: 'tool' },
-      { id: 'react_detail', label: '适合：需要工具的任务\n边想边做', type: 'tool' },
-      { id: 'tot_detail', label: '适合：复杂规划任务\n探索多条路径取最优', type: 'tool' }
-    ],
-    edges: [
-      { from: 'cot', to: 'react', label: '+工具调用' },
-      { from: 'react', to: 'tot', label: '+多路径探索' },
-      { from: 'cot', to: 'cot_detail' },
-      { from: 'react', to: 'react_detail' },
-      { from: 'tot', to: 'tot_detail' }
-    ],
-    animate: true
-  });
-}, 800);
-</script>
-
-<div class="quote">
-  "框架不是越复杂越好，而是越匹配越好。简单任务用 CoT，工具任务用 ReAct，探索任务用 ToT。选对框架，事半功倍。"
-</div>
-
-<!-- ===== 八股总结 ===== -->
-<div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
   <div class="qa-item">
@@ -1017,13 +747,13 @@ setTimeout(() => {
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q5：Function Calling 比让模型输出 JSON 字符串有什么优势？</strong></div>
-    <div class="qa-a">Function Calling 的核心优势：① <strong>结构化保证</strong>——模型通过专门的 function_call 通道输出参数，不依赖字符串解析，避免了 JSON 格式错误；② <strong>安全隔离</strong>——函数定义中有类型约束和参数校验，模型不会输出非法字段；③ <strong>多轮协作</strong>——模型可以调用多个函数、观察返回结果、再决定下一步，形成 Agent 闭环；④ <strong>原生支持</strong>——模型在训练时就学过 function calling 格式，准确率远高于 prompt 工程。</div>
+    <div class="qa-q"><strong>Q5：Function Calling 的核心作用是什么？</strong></div>
+    <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第6章「Function Calling 与工具设计」。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q6：CoT、ReAct、ToT 三种思维框架的区别和适用场景？</strong></div>
-    <div class="qa-a">① <strong>CoT（Chain of Thought）</strong>：逐步推理，适合纯推理任务（数学题、逻辑题），无需工具调用；② <strong>ReAct（Reasoning + Acting）</strong>：推理+行动交替执行，先思考再调工具再观察结果，适合需要工具调用的任务（查天气、查数据库）；③ <strong>ToT（Tree of Thought）</strong>：多路径探索+回溯，适合复杂规划任务（迷宫、博弈），可以探索多条路径取最优。递进关系：CoT（纯推理）→ ReAct（+工具）→ ToT（+多路径探索）。</div>
+    <div class="qa-q"><strong>Q6：CoT、ReAct、ToT 三种思维框架的递进关系是什么？</strong></div>
+    <div class="qa-a">递进关系：① <strong>CoT</strong>（纯推理）——学会一步步思考，适合数学、逻辑推理；② <strong>ReAct</strong>（推理+行动）——在 CoT 上加了工具调用，边想边做；③ <strong>ToT</strong>（推理+行动+探索）——在 ReAct 上加了多路径探索和回溯，适合复杂规划。此外还有 <strong>Reflection</strong>（反思）机制——自我审查并修正输出。框架不是越复杂越好，而是越匹配任务越好。详细内容见第4章「ReAct 模式详解」。</div>
   </div>
 
   <div class="qa-item">
@@ -1036,7 +766,7 @@ setTimeout(() => {
 <div id="quizArea"></div>
 
 <script>
-const ch01Questions = [
+var ch01Questions = [
   {
     type: 'single',
     question: '关于 Token 的说法，正确的是？',
@@ -1099,15 +829,15 @@ const ch01Questions = [
   },
   {
     type: 'multiple',
-    question: 'Function Calling 相比让模型输出 JSON 字符串的优势有哪些？（多选）',
+    question: 'Function Calling 的核心作用是什么？',
     options: [
-      '通过 function_call 通道输出参数，不依赖字符串解析，避免格式错误',
-      '函数定义中有类型约束和参数校验',
-      '模型可以调用多个函数、观察结果、再决定下一步，形成 Agent 闭环',
-      '完全不需要写 Prompt 就能自动调用'
+      '让 LLM 能自动执行函数并返回结果',
+      '让 LLM 从自然语言输出跨越到结构化函数调用，实现从"聊天"到"执行"的转变',
+      '让 LLM 不需要 Prompt 就能调用任何工具',
+      '让 LLM 的推理能力变得更强'
     ],
-    answer: [0, 1, 2],
-    explanation: 'Function Calling 的优势是结构化保证、安全隔离、多轮协作和原生支持。选项 D 错误，仍然需要通过 Prompt 描述可用函数和用户意图。'
+    answer: [1],
+    explanation: 'Function Calling 让 LLM 能生成结构化的函数调用（函数名+参数 JSON），而非输出自然语言。LLM 本身不执行函数，只决定"调用哪个、传什么参数"——执行由开发者代码完成。详细内容见第6章。'
   },
   {
     type: 'single',
@@ -1119,7 +849,7 @@ const ch01Questions = [
       'ReAct → CoT → ToT，先行动再推理再探索'
     ],
     answer: [1],
-    explanation: '递进关系：CoT 是纯推理（逐步思考），ReAct 在 CoT 基础上加入了工具调用（推理+行动），ToT 在 ReAct 基础上加入了多路径探索和回溯。'
+    explanation: '递进关系：CoT 学推理（逐步思考），ReAct 加行动（推理+工具调用），ToT 加探索（多路径推理+回溯取最优）。详细内容见第4章。'
   },
   {
     type: 'multiple',
