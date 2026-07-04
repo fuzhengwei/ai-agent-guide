@@ -147,6 +147,22 @@ const App = {
     if (chatToggleBtn) {
       chatToggleBtn.addEventListener('click', () => this.toggleChat());
     }
+
+    // 回到顶部按钮
+    const backToTopBtn = document.getElementById('backToTop');
+    const contentArea = document.querySelector('.content-area');
+    if (backToTopBtn && contentArea) {
+      backToTopBtn.addEventListener('click', () => {
+        contentArea.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      contentArea.addEventListener('scroll', () => {
+        if (contentArea.scrollTop > 400) {
+          backToTopBtn.classList.add('visible');
+        } else {
+          backToTopBtn.classList.remove('visible');
+        }
+      }, { passive: true });
+    }
   },
   
   /**
@@ -406,6 +422,8 @@ const App = {
         if (typeof Quiz !== 'undefined' && Quiz.loadChapterQuiz) {
           Quiz.loadChapterQuiz(chapterId);
         }
+        // 后处理：让宽内容（流程图、SVG架构图）突破 max-width 限制
+        this.expandWideContent();
       } else {
         contentArea.innerHTML = this.getPlaceholderContent(chapter);
       }
@@ -441,6 +459,30 @@ const App = {
       }
     };
     contentArea.addEventListener('scroll', checkScroll, { passive: true });
+  },
+
+  /**
+   * 让宽内容（流程图、SVG 架构图）突破 content-body 的 max-width 限制
+   * 动态计算 content-area 的实际宽度，给超宽元素设置负 margin 撑满
+   */
+  expandWideContent() {
+    const contentBody = document.querySelector('.content-body');
+    if (!contentBody) return;
+
+    // 查找包含宽 SVG 的 div（排除卡片等容器），标记为可横向滚动
+    const svgContainers = contentBody.querySelectorAll('div');
+    svgContainers.forEach(div => {
+      if (div.querySelector(':scope > svg[width]') && 
+          !div.classList.contains('card') && 
+          !div.classList.contains('qa-item') && 
+          !div.classList.contains('summary-box') &&
+          !div.classList.contains('tab-content') &&
+          !div.classList.contains('chapter-tabs-nav') &&
+          !div.dataset.wideMarked) {
+        div.dataset.wideMarked = '1';
+        div.classList.add('wide-svg-container');
+      }
+    });
   },
 
   /**
@@ -808,6 +850,25 @@ const App = {
         child.classList.add('tab-hidden');
       }
     });
+
+    // 监听滚动，Tab 栏吸顶时添加 is-stuck 样式
+    const contentArea = document.querySelector('.content-area');
+    if (contentArea) {
+      const checkStuck = () => {
+        const navRect = navDiv.getBoundingClientRect();
+        const headerRect = document.querySelector('.content-header')?.getBoundingClientRect();
+        const headerBottom = headerRect ? headerRect.bottom : 57;
+        // Tab 栏顶部紧贴或低于 header 底部时即为吸顶状态
+        if (Math.abs(navRect.top - headerBottom) < 2) {
+          navDiv.classList.add('is-stuck');
+        } else {
+          navDiv.classList.remove('is-stuck');
+        }
+      };
+      contentArea.addEventListener('scroll', checkStuck, { passive: true });
+      // 初始检查一次
+      checkStuck();
+    }
   },
 
   /**

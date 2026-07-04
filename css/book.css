@@ -369,6 +369,7 @@ body {
 /* ===== 中间内容区 ===== */
 .content-area {
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--color-surface);
   position: relative;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
@@ -454,6 +455,24 @@ body {
   margin: 0 auto;
   padding: var(--space-xl) var(--space-xl) var(--space-2xl);
 }
+
+/* 宽内容容器：限宽100%并允许内部横向滚动 */
+.content-body .flowchart-container,
+.content-body .comparison-table,
+.content-body .wide-svg-container {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* flowchart SVG 优先自适应容器宽度，内容超宽时可横向滚动 */
+.content-body .flowchart-svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 手写的宽 SVG（带 width 属性的）也允许在容器内滚动 */
 
 /* ===== 书籍封面 ===== */
 .book-cover {
@@ -2541,13 +2560,28 @@ code[class*="language-"] {
 .chapter-tabs-nav {
   display: flex;
   gap: 2px;
-  padding: 0;
+  padding: 10px 0 0;
   margin-bottom: 24px;
+  margin-left: auto;
+  margin-right: auto;
   border-bottom: 2px solid var(--color-border);
   position: sticky;
-  top: 0;
-  z-index: 20;
+  top: 57px;
+  z-index: 9;
   background: var(--color-surface);
+  transition: box-shadow 0.2s ease;
+  max-width: var(--content-max);
+}
+
+/* 吸顶时增加阴影和背景毛玻璃效果，视觉分隔更清晰 */
+.chapter-tabs-nav.is-stuck {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="dark"] .chapter-tabs-nav.is-stuck {
+  background: rgba(30, 41, 59, 0.92);
 }
 
 /* 单个 Tab 按钮 */
@@ -2772,5 +2806,58 @@ code[class*="language-"] {
   .content-header {
     flex-wrap: wrap;
     gap: 8px;
+  }
+}
+
+/* ===== 回到顶部按钮 ===== */
+.back-to-top {
+  position: fixed;
+  bottom: 40px;
+  right: 420px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  z-index: 100;
+  font-size: 20px;
+}
+
+.back-to-top:hover {
+  background: var(--color-accent-dark);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(0) scale(1.08);
+}
+
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+[data-theme="dark"] .back-to-top {
+  background: var(--color-accent-light);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="dark"] .back-to-top:hover {
+  background: var(--color-accent);
+}
+
+/* 响应式：小屏调整位置 */
+@media (max-width: 1200px) {
+  .back-to-top {
+    right: 30px;
+    bottom: 30px;
   }
 }
