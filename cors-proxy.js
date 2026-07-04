@@ -12,7 +12,7 @@
 const http = require('http');
 const https = require('https');
 
-const PORT = parseInt(process.argv[2] || '8091', 10);
+const PORT = parseInt(process.argv[2] || '8092', 10);
 
 const server = http.createServer((req, res) => {
   // CORS 头

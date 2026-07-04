@@ -37,13 +37,13 @@ const AIChat = {
     }
     
     if (this.configs.length === 0) {
-      // 默认配置模板
+      // 默认配置：内置免费 API Key，开箱即用
       this.configs = [{
         id: 'default',
-        name: '默认配置',
-        baseUrl: '',
-        apiKey: '',
-        model: 'gpt-4o'
+        name: 'Agnes AI（免费）',
+        baseUrl: 'https://apihub.agnes-ai.com/v1',
+        apiKey: 'sk-Jf7Ly1k9EccTEHy6rbMLFjgfWLFeDBpwSdIs3MPc2UARHfrK',
+        model: 'agnes-2.0-flash'
       }];
     }
     
@@ -139,7 +139,7 @@ const AIChat = {
     if (!text || this.isLoading) return;
     
     const config = this.getActiveConfig();
-    if (!config || !config.apiKey) {
+    if (!config || (!config.apiKey && !config.baseUrl)) {
       this.addMessage('assistant', '请先点击右上角设置按钮，配置你的 API Key。');
       this.openSettings();
       return;
@@ -192,19 +192,17 @@ const AIChat = {
 
   /**
    * 流式调用 OpenAI 兼容 API（SSE）
+   * 直接请求用户配置的 API 地址，无需 Nginx 代理
    */
   async callAPIStream(config, messages, signal) {
-    // 使用本地 CORS Proxy 绕过浏览器 CORS 限制
-    const PROXY_PORT = 8091;
-    const proxyUrl = `http://${window.location.hostname}:${PROXY_PORT}/proxy/chat/completions`;
     const baseUrl = config.baseUrl.replace(/\/$/, '');
+    const apiUrl = `${baseUrl}/chat/completions`;
     
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
-        'X-Base-URL': baseUrl
+        'Authorization': `Bearer ${config.apiKey}`
       },
       body: JSON.stringify({
         model: config.model,
@@ -397,7 +395,12 @@ const AIChat = {
    * 渲染设置表单
    */
   renderSettingsForm() {
-    let html = '<div id="apiConfigList">';
+    let html = `<div style="background: #f0f7ff; border: 1px solid #b3d4fc; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+      <div style="font-weight: 600; color: #1a56db; margin-bottom: 4px;">💡 免费 API Key 获取</div>
+      <div>内置默认 Key 可直接使用。如需自己的 Key，请访问：<a href="https://platform.agnes-ai.com/settings/apiKeys" target="_blank" style="color: #1a56db; text-decoration: underline;">platform.agnes-ai.com</a></div>
+    </div>`;
+    
+    html += '<div id="apiConfigList">';
     
     this.configs.forEach((config, i) => {
       html += this.renderConfigItem(config, i);
@@ -481,9 +484,9 @@ const AIChat = {
     this.configs.push({
       id: `config_${Date.now()}`,
       name: '新配置',
-      baseUrl: '',
+      baseUrl: 'https://apihub.agnes-ai.com/v1',
       apiKey: '',
-      model: 'gpt-4o'
+      model: 'agnes-2.0-flash'
     });
     
     const body = document.getElementById('modalBody');
