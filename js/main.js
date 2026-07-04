@@ -1,6 +1,6 @@
 /* ========================================
    AI Agent 百科全书 - 主控制器
-   16章 · 翻页导航 · 主题切换 · 随机考试
+   20章 · 翻页导航 · 主题切换 · 随机考试
    ======================================== */
 
 const App = {
@@ -25,27 +25,28 @@ const App = {
     { id: 'ch06', num: 6, title: 'Function Calling 与工具设计', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch06-tools.html' },
     { id: 'ch07', num: 7, title: 'MCP：工具的标准化接口', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch07-mcp.html' },
     { id: 'ch08', num: 8, title: 'Skills：工具的组合与复用', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch08-skills.html' },
+    { id: 'ch09', num: 9, title: 'CLI 能力：Agent 操作本地工具', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch09-cli-capability.html' },
 
     // 第三篇：多 Agent 协作
-    { id: 'ch09', num: 9, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch09-multi-agent.html' },
-    { id: 'ch10', num: 10, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch10-langgraph.html' },
+    { id: 'ch10', num: 10, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch09-multi-agent.html' },
+    { id: 'ch11', num: 11, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch10-langgraph.html' },
 
     // 第四篇：框架与平台
-    { id: 'ch11', num: 11, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch11-framework-comparison.html' },
-    { id: 'ch12', num: 12, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-dify-coze.html' },
-    { id: 'ch13', num: 13, title: 'Agent 评估与可观测性', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch13-evaluation.html' },
+    { id: 'ch12', num: 12, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch11-framework-comparison.html' },
+    { id: 'ch13', num: 13, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-dify-coze.html' },
+    { id: 'ch14', num: 14, title: 'Agent 评估与可观测性', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch13-evaluation.html' },
 
     // 第五篇：综合实战
-    { id: 'ch14', num: 14, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
-    { id: 'ch15', num: 15, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
+    { id: 'ch15', num: 15, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
+    { id: 'ch16', num: 16, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
 
     // 第六篇：工程化
-    { id: 'ch17', num: 17, title: 'RAG：检索增强生成', section: '⚙️ 第六篇：工程化', file: 'chapters/ch17-rag.html' },
-    { id: 'ch18', num: 18, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
-    { id: 'ch19', num: 19, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
+    { id: 'ch18', num: 18, title: 'RAG：检索增强生成', section: '⚙️ 第六篇：工程化', file: 'chapters/ch17-rag.html' },
+    { id: 'ch19', num: 19, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
+    { id: 'ch20', num: 20, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
 
     // 终章
-    { id: 'ch16', num: 16, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
+    { id: 'ch17', num: 17, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
   ],
 
   /**
@@ -282,7 +283,7 @@ const App = {
 
           <div class="cover-badge">2026 · 渐进式可视化教程</div>
           <h1 class="hero-title">AI Agent 百科全书</h1>
-          <p class="hero-subtitle">从基础认知到面试通关 · 16章渐进式可视化教程</p>
+          <p class="hero-subtitle">从基础认知到面试通关 · 20章渐进式可视化教程</p>
           
           <div class="hero-btn-group">
             <button class="hero-btn primary" onclick="App.loadChapter('ch00')">
