@@ -1,9 +1,9 @@
-<!-- 第17章：RAG 检索增强生成 -->
-<h1 class="chapter-title">第17章 RAG：检索增强生成</h1>
-<p class="chapter-subtitle">让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
+<!-- 第16章：RAG 检索增强生成 -->
+<h1 class="chapter-title">第16章 RAG：检索增强生成</h1>
+<p class="chapter-subtitle">第五篇：综合实战 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
 
-<!-- ===== 17.1 什么是 RAG ===== -->
-<h2 class="section-heading">17.1 为什么 Agent 需要 RAG？</h2>
+<!-- ===== 16.1 为什么 Agent 需要 RAG？ ===== -->
+<h2 class="section-heading">16.1 为什么 Agent 需要 RAG？</h2>
 
 <p>大模型有两个硬伤：<strong>知识截止日期</strong>（训练数据有时效性）和<strong>领域知识不足</strong>（通用模型不懂你的业务）。微调可以解决一部分，但成本高、周期长、更新慢。<strong>RAG（Retrieval-Augmented Generation，检索增强生成）</strong>提供了更灵活的方案：<strong>先检索，再生成</strong>。</p>
 
@@ -57,8 +57,8 @@
   </table>
 </div>
 
-<!-- ===== 17.2 RAG 完整流程 ===== -->
-<h2 class="section-heading">17.2 RAG 的完整流程</h2>
+<!-- ===== 16.2 RAG 完整流程 ===== -->
+<h2 class="section-heading">16.2 RAG 的完整流程</h2>
 
 <p>RAG 不是简单的"搜索 + 拼接"，一个生产级 RAG 系统包含<strong>五个阶段</strong>：</p>
 
@@ -233,12 +233,12 @@ collection.add(
 )</pre>
 </div>
 
-<!-- ===== 17.3 检索策略 ===== -->
-<h2 class="section-heading">17.3 检索策略：不只是相似度搜索</h2>
+<!-- ===== 16.3 检索策略 ===== -->
+<h2 class="section-heading">16.3 检索策略：不只是相似度搜索</h2>
 
 <p>最简单的 RAG 只做<strong>向量相似度搜索</strong>，但生产级 RAG 需要更复杂的检索策略。</p>
 
-<h3 class="sub-heading">17.3.1 基础：向量相似度搜索</h3>
+<h3 class="sub-heading">16.3.1 基础：向量相似度搜索</h3>
 
 <div class="code-block">
 <span class="code-label">Python</span>
@@ -276,7 +276,7 @@ results = collection.query(
   </table>
 </div>
 
-<h3 class="sub-heading">17.3.2 进阶：混合检索（BM25 + 向量）</h3>
+<h3 class="sub-heading">16.3.2 进阶：混合检索（BM25 + 向量）</h3>
 
 <p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
 
@@ -306,7 +306,7 @@ ensemble_retriever = EnsembleRetriever(
 docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</pre>
 </div>
 
-<h3 class="sub-heading">17.3.3 进阶：重排序（Reranker）</h3>
+<h3 class="sub-heading">16.3.3 进阶：重排序（Reranker）</h3>
 
 <p>向量检索速度快但精度有限，返回 Top-20 中可能有噪声。<strong>重排序模型</strong>对这 20 条结果做精细打分，选出最相关的 Top-5。</p>
 
@@ -337,10 +337,10 @@ compression_retriever = ContextualCompressionRetriever(
 docs = compression_retriever.get_relevant_documents("Agent 如何管理长期记忆？")</pre>
 </div>
 
-<!-- ===== 17.4 RAG 高级优化 ===== -->
-<h2 class="section-heading">17.4 RAG 高级优化技巧</h2>
+<!-- ===== 16.4 RAG 高级优化 ===== -->
+<h2 class="section-heading">16.4 RAG 高级优化技巧</h2>
 
-<h3 class="sub-heading">17.4.1 Query 改写</h3>
+<h3 class="sub-heading">16.4.1 Query 改写</h3>
 
 <p>用户提问往往模糊或口语化，直接检索效果差。先用 LLM <strong>改写 Query</strong>，提升检索质量。</p>
 
@@ -369,7 +369,7 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
 # 多查询并行检索，结果合并去重 → 召回率大幅提升</pre>
 </div>
 
-<h3 class="sub-heading">17.4.2 HyDE（假设性文档嵌入）</h3>
+<h3 class="sub-heading">16.4.2 HyDE（假设性文档嵌入）</h3>
 
 <p>有时候用户的问题太短，向量化后语义信息不足。<strong>HyDE</strong> 的思路是：先让 LLM 生成一个"假回答"，用假回答去检索，再用检索结果生成真回答。</p>
 
@@ -383,7 +383,7 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
   </p>
 </div>
 
-<h3 class="sub-heading">17.4.3 父子分块（Parent-Child Chunking）</h3>
+<h3 class="sub-heading">16.4.3 父子分块（Parent-Child Chunking）</h3>
 
 <p>检索时用<strong>小块</strong>（精确匹配），生成时用<strong>大块</strong>（上下文完整）。</p>
 
@@ -401,8 +401,8 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
 # 优势：检索精度高（小块精确），上下文完整（大块信息丰富）</pre>
 </div>
 
-<!-- ===== 17.5 Agent + RAG 架构 ===== -->
-<h2 class="section-heading">17.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
+<!-- ===== 16.5 Agent + RAG 架构 ===== -->
+<h2 class="section-heading">16.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
 
 <p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
 
@@ -457,8 +457,8 @@ executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
   </ul>
 </div>
 
-<!-- ===== 17.6 生产级 RAG 架构 ===== -->
-<h2 class="section-heading">17.6 生产级 RAG 架构</h2>
+<!-- ===== 16.6 生产级 RAG 架构 ===== -->
+<h2 class="section-heading">16.6 生产级 RAG 架构</h2>
 
 <div class="card">
   <div class="card-title">🏭 企业级 RAG 系统架构</div>
@@ -538,7 +538,7 @@ executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 <div id="quizArea"></div>
 
 <script>
-const ch17Questions = [
+const ch16Questions = [
   {
     type: 'single',
     question: 'RAG 的核心思想是什么？',
@@ -637,5 +637,5 @@ const ch17Questions = [
   }
 ];
 
-setTimeout(() => { Quiz.render('quizArea', ch17Questions); }, 500);
+setTimeout(() => { Quiz.render('quizArea', ch16Questions); }, 500);
 </script>

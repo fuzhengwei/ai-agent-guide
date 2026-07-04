@@ -41,7 +41,7 @@
 <!-- ===== 3.2 准备工作 ===== -->
 <h2 class="section-heading">3.2 准备工作</h2>
 
-<h3 class="sub-heading">2.2.1 安装 Python 环境</h3>
+<h3 class="sub-heading">3.2.1 安装 Python 环境</h3>
 
 <div class="code-block"><pre># 安装 OpenAI SDK
 pip install openai
@@ -49,7 +49,7 @@ pip install openai
 # 确认 Python 版本（需要 3.8+）
 python --version</pre></div>
 
-<h3 class="sub-heading">2.2.2 获取 API Key</h3>
+<h3 class="sub-heading">3.2.2 获取 API Key</h3>
 
 <p>你需要一个 LLM API Key。本章用 OpenAI 兼容接口为例（支持 OpenAI、DeepSeek、Qwen 等）：</p>
 
@@ -322,7 +322,7 @@ run_agent_loop()</pre></div>
 </ul>
 </div>
 
-<h3 class="sub-heading">2.8.1 三种异常处理策略</h3>
+<h3 class="sub-heading">3.8.1 三种异常处理策略</h3>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"call","label":"调用工具","type":"start"},{"id":"ok","label":"成功返回","type":"end"},{"id":"err","label":"捕获异常","type":"decision"},{"id":"retry","label":"重试（指数退避）","type":"process"},{"id":"fallback","label":"优雅降级\n返回默认/提示","type":"process"},{"id":"maxretry","label":"超过最大重试","type":"process"}],"edges":[{"from":"call","to":"ok","label":"成功"},{"from":"call","to":"err","label":"异常"},{"from":"err","to":"retry","label":"可重试（超时/限流）"},{"from":"retry","to":"call","label":"重试"},{"from":"err","to":"fallback","label":"不可重试（参数错误）"},{"from":"err","to":"maxretry","label":"重试次数耗尽"},{"from":"maxretry","to":"fallback"}]}'></div>
 
@@ -338,7 +338,7 @@ run_agent_loop()</pre></div>
 <p>不要吞掉异常！把错误信息作为 tool result 返回给 AI，AI 会根据错误信息调整策略。比如：如果 city 参数不被支持，AI 可能换一个城市名再试；如果 API 超时，AI 可能直接用已有信息回答。</p>
 </div>
 
-<h3 class="sub-heading">2.8.2 完整异常处理代码</h3>
+<h3 class="sub-heading">3.8.2 完整异常处理代码</h3>
 
 <div class="code-block"><pre>import json
 import time
@@ -522,7 +522,7 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 <p>指数退避（Exponential Backoff）的等待时间是 <code>2^attempt</code>：第1次等1秒，第2次等2秒，第3次等4秒……这比固定间隔重试更友好——给服务恢复的时间，避免雪崩。生产环境通常还会加入随机 jitter（抖动），避免所有客户端同时重试。</p>
 </div>
 
-<h3 class="sub-heading">2.8.3 重试 vs 降级的决策表</h3>
+<h3 class="sub-heading">3.8.3 重试 vs 降级的决策表</h3>
 
 <p>哪些错误应该重试？哪些应该直接降级？这是工程决策，不是拍脑袋：</p>
 
@@ -550,7 +550,7 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 
 <p>这一节我们给天气助手加一个新伙伴：<strong>行程规划工具</strong>。然后看看 Agent 如何让两个工具协作。</p>
 
-<h3 class="sub-heading">2.9.1 定义行程规划工具</h3>
+<h3 class="sub-heading">3.9.1 定义行程规划工具</h3>
 
 <div class="code-block"><pre>def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
     """
@@ -614,7 +614,7 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 print(plan_trip("北京", "雷阵雨", 2))
 # {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}</pre></div>
 
-<h3 class="sub-heading">2.9.2 扩展工具 Schema</h3>
+<h3 class="sub-heading">3.9.2 扩展工具 Schema</h3>
 
 <p>现在有两个工具，Schema 也需要扩展：</p>
 
@@ -669,7 +669,7 @@ print(plan_trip("北京", "雷阵雨", 2))
     }
 ]</pre></div>
 
-<h3 class="sub-heading">2.9.3 多工具 Agent 循环</h3>
+<h3 class="sub-heading">3.9.3 多工具 Agent 循环</h3>
 
 <p>Agent 循环的结构不变——AI 自己决定先查天气还是先规划行程：</p>
 
@@ -764,7 +764,7 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
 <p>我们没有写"先查天气再规划行程"的逻辑——AI 自己推理出了这个顺序。这就是 Agent 的核心优势：<strong>你不需要硬编码流程，AI 会根据目标和工具描述自行编排</strong>。但这也有代价——AI 有可能编错顺序，这正是 2.10 节要分析的问题。</p>
 </div>
 
-<h3 class="sub-heading">2.9.4 多工具 vs 单工具的成本对比</h3>
+<h3 class="sub-heading">3.9.4 多工具 vs 单工具的成本对比</h3>
 
 <p>多工具协作的代价是什么？</p>
 
@@ -790,7 +790,7 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
 
 <p>这一节我们给 Agent 加上<strong>调用链追踪</strong>——打印每次循环的 token 消耗、调用次数、延迟，让你看清 Agent 的真实运行过程。</p>
 
-<h3 class="sub-heading">2.10.1 什么是调用链？</h3>
+<h3 class="sub-heading">3.10.1 什么是调用链？</h3>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"loop1","label":"循环 1\nAI 决策 → 调 get_weather\ntokens: 500 | 延迟: 1.2s","type":"process"},{"id":"loop2","label":"循环 2\nAI 决策 → 调 plan_trip\ntokens: 800 | 延迟: 1.5s","type":"process"},{"id":"loop3","label":"循环 3\nAI 综合回答\ntokens: 200 | 延迟: 0.3s","type":"end"},{"id":"total","label":"总计\n3次循环 | 1500 tokens | 3.0s","type":"start"}],"edges":[{"from":"loop1","to":"loop2"},{"from":"loop2","to":"loop3"},{"from":"loop3","to":"total"}]}'></div>
 
@@ -801,7 +801,7 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
 <li><strong>消息累积</strong>：历史越来越长，token 消耗递增</li>
 </ul>
 
-<h3 class="sub-heading">2.10.2 带追踪的 Agent</h3>
+<h3 class="sub-heading">3.10.2 带追踪的 Agent</h3>
 
 <div class="code-block"><pre>import time
 import json
@@ -954,7 +954,7 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 北京明天多云23°C，适合逛博物馆和胡同，室内外活动均可。</pre></div>
 
-<h3 class="sub-heading">2.10.3 关键发现：token 递增现象</h3>
+<h3 class="sub-heading">3.10.3 关键发现：token 递增现象</h3>
 
 <p>注意循环 2 的 prompt_tokens (532) > 循环 1 的 prompt_tokens (385)。为什么？因为<strong>每次循环都把上一次的消息加入历史</strong>：</p>
 
@@ -980,7 +980,7 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 </ul>
 </div>
 
-<h3 class="sub-heading">2.10.4 不同任务的调用链对比</h3>
+<h3 class="sub-heading">3.10.4 不同任务的调用链对比</h3>
 
 <table class="data-table">
 <thead><tr><th>用户问题</th><th>循环次数</th><th>工具调用</th><th>总 tokens</th><th>耗时</th><th>成本</th></tr></thead>
@@ -1001,7 +1001,7 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 <p>Agent 很酷，但不是万能药。理解 Agent 的<strong>能力边界</strong>，比理解它的能力更重要——这样你才不会在应该写普通程序的场景里强行用 Agent。</p>
 
-<h3 class="sub-heading">2.11.1 什么时候 Agent 不如传统程序？</h3>
+<h3 class="sub-heading">3.11.1 什么时候 Agent 不如传统程序？</h3>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"task","label":"需要完成一个任务","type":"start"},{"id":"rule","label":"规则明确？\n步骤固定？","type":"decision"},{"id":"traditional","label":"用传统程序\n更快、更稳、更便宜","type":"process"},{"id":"ambiguous","label":"需要理解意图？\n需要灵活决策？","type":"decision"},{"id":"agent","label":"用 Agent\nAI 自主编排流程","type":"process"},{"id":"both","label":"混合架构\n确定性部分 → 传统程序\n不确定性部分 → Agent","type":"end"}],"edges":[{"from":"task","to":"rule"},{"from":"rule","to":"traditional","label":"是"},{"from":"rule","to":"ambiguous","label":"否"},{"from":"ambiguous","to":"agent","label":"是"},{"from":"ambiguous","to":"both","label":"部分"}]}'></div>
 
@@ -1020,7 +1020,7 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 <p>核心原因：<strong>确定性任务不需要决策，而决策是 Agent 的核心价值</strong>。给一个不需要决策的任务加 Agent，就像给计算器装个大脑——费钱还更慢。</p>
 
-<h3 class="sub-heading">2.11.2 什么时候必须用 Agent？</h3>
+<h3 class="sub-heading">3.11.2 什么时候必须用 Agent？</h3>
 
 <p>反过来，以下场景 Agent 完胜传统程序：</p>
 
@@ -1037,7 +1037,7 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 <p>核心原因：<strong>不确定性任务需要决策，而 AI 的推理能力远超硬编码规则</strong>。</p>
 
-<h3 class="sub-heading">2.11.3 混合架构：最佳实践</h3>
+<h3 class="sub-heading">3.11.3 混合架构：最佳实践</h3>
 
 <p>最聪明的做法不是"全用 Agent"或"全不用 Agent"，而是<strong>混合架构</strong>：</p>
 
@@ -1165,7 +1165,7 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 <p>问自己三个问题：(1) 步骤是否固定？→ 固定用传统程序。(2) 输入是否结构化？→ 结构化用传统程序。(3) 是否需要理解自然语言？→ 需要就用 Agent。如果部分固定部分灵活 → 混合架构。</p>
 </div>
 
-<h3 class="sub-heading">2.11.4 Agent 的成本陷阱</h3>
+<h3 class="sub-heading">3.11.4 Agent 的成本陷阱</h3>
 
 <p>即使该用 Agent 的场景，也要警惕成本陷阱：</p>
 
@@ -1202,6 +1202,7 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 <p><strong>多工具协作</strong>：AI 自行编排工具调用顺序——先查天气再规划行程，不需要硬编码流程。</p>
 <p><strong>调用链分析</strong>：每次循环都消耗 token，历史递增导致成本递增。量化分析是优化 Agent 的前提。</p>
 <p><strong>Agent 的边界</strong>：确定性任务用传统程序，不确定性任务用 Agent，混合架构是最佳实践。</p>
+<p><strong>本章局限性</strong>：我们的天气 Agent 用的是简单的"用户问→调用工具→回答"模式。它没有在调用工具前<strong>思考为什么要调用</strong>，也没有在观察结果后<strong>反思是否需要进一步行动</strong>。比如用户问"北京明天适合户外运动吗？"，简单 Agent 只查天气就回答了，但更聪明的 Agent 应该先推理（"适合户外需要看天气+空气质量+温度"），再分别调用工具，最后综合判断——这就是<strong>ReAct 模式</strong>的价值。</p>
 <p><strong>下一步</strong>：第4章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
 </div>
 
@@ -1209,13 +1210,13 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 <div class="summary-title">📊 本章知识图谱</div>
 <p>从简单到复杂的递进路径：</p>
 <ul>
-<li><strong>2.1-2.4</strong>：理解问题 → 准备环境 → 定义工具 → 设计 Schema（<em>入门</em>）</li>
-<li><strong>2.5-2.6</strong>：组装 Agent → 理解循环（<em>核心</em>）</li>
-<li><strong>2.7</strong>：多轮对话 → Agent 有记忆（<em>增强</em>）</li>
-<li><strong>2.8</strong>：异常处理 → Agent 不崩溃（<em>健壮性</em>）</li>
-<li><strong>2.8</strong>：多工具协作 → Agent 自主编排（<em>进化</em>）</li>
-<li><strong>2.8</strong>：调用链分析 → 量化成本（<em>工程化</em>）</li>
-<li><strong>2.8</strong>：Agent 边界 → 理性选择架构（<em>工程智慧</em>）</li>
+<li><strong>3.1-3.4</strong>：理解问题 → 准备环境 → 定义工具 → 设计 Schema（<em>入门</em>）</li>
+<li><strong>3.5-3.6</strong>：组装 Agent → 理解循环（<em>核心</em>）</li>
+<li><strong>3.7</strong>：多轮对话 → Agent 有记忆（<em>增强</em>）</li>
+<li><strong>3.8</strong>：异常处理 → Agent 不崩溃（<em>健壮性</em>）</li>
+<li><strong>3.9</strong>：多工具协作 → Agent 自主编排（<em>进化</em>）</li>
+<li><strong>3.10</strong>：调用链分析 → 量化成本（<em>工程化</em>）</li>
+<li><strong>3.11</strong>：Agent 边界 → 理性选择架构（<em>工程智慧</em>）</li>
 </ul>
 </div>
 

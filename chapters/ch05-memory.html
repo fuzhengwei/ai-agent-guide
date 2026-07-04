@@ -136,7 +136,7 @@ document.getElementById('memPrev').addEventListener('click', () => MemAnim.prev(
 window.MemAnim = MemAnim;
 </script>
 
-<!-- ===== 4.4 长期记忆与向量检索 ===== -->
+<!-- ===== 5.4 长期记忆与向量检索 ===== -->
 <h2 class="section-heading">5.4 长期记忆：向量数据库</h2>
 
 <p>长期记忆让 Agent 能回忆起几天前甚至几个月前的交互。核心技术是<strong>向量数据库 + 语义检索</strong>。</p>
@@ -215,7 +215,7 @@ setTimeout(() => {
   </table>
 </div>
 
-<!-- ===== 4.5 上下文压缩实战 ===== -->
+<!-- ===== 5.5 上下文压缩实战 ===== -->
 <h2 class="section-heading">5.5 上下文压缩实战</h2>
 
 <p>在长任务中，Agent 的上下文窗口会不断膨胀——每次工具调用返回结果、每次推理步骤、每次对话轮次都在累积 token。这种现象称为<strong>上下文膨胀</strong>（Context Bloat），也叫<strong>上下文腐烂</strong>（Context Rot）。</p>
@@ -391,7 +391,7 @@ public class AiConfig {
   压缩不是删减，而是蒸馏。好的压缩策略就像化学蒸馏——把混合物中的精华提取出来，丢弃的是杂质而非有效成分。
 </div>
 
-<!-- ===== 4.6 记忆架构实战 ===== -->
+<!-- ===== 5.6 记忆架构实战 ===== -->
 <h2 class="section-heading">5.6 记忆架构实战</h2>
 
 <p>选择合适的向量数据库和 Embedding 模型是构建记忆系统的关键决策。本节提供完整的选型对比和架构实现。</p>
@@ -747,7 +747,7 @@ print(answer)</pre>
   </ul>
 </div>
 
-<!-- ===== 4.7 反思记忆与情景记忆 ===== -->
+<!-- ===== 5.7 反思记忆与情景记忆 ===== -->
 <h2 class="section-heading">5.7 反思记忆与情景记忆</h2>
 
 <p>前面介绍的三层记忆架构解决了<strong>存储和检索</strong>问题，但记忆系统还有更高阶的能力：<strong>从经验中学习</strong>（反思记忆）和<strong>记录完整事件</strong>（情景记忆）。</p>
@@ -979,7 +979,7 @@ setTimeout(() => {
   反思记忆让 Agent 从"重复犯错的傻瓜"进化为"从失败中学习的聪明人"。每次失败都是一次学习机会，关键是把教训提炼出来，而不是简单地丢掉失败记录。
 </div>
 
-<!-- ===== 4.8 记忆治理与上下文工程 ===== -->
+<!-- ===== 5.8 记忆治理与上下文工程 ===== -->
 <h2 class="section-heading">5.8 记忆治理与上下文工程</h2>
 
 <p>记忆系统的终极问题不是"怎么存"，而是<strong>怎么管</strong>。本节从工程视角讨论记忆的完整生命周期治理，以及从 Prompt Engineering 到 Context Engineering 的范式转变。</p>
@@ -1286,7 +1286,7 @@ governor.evict()</pre>
   </ul>
 </div>
 
-<!-- ===== 4.9 长期记忆的静态与动态分类 ===== -->
+<!-- ===== 5.9 长期记忆的静态与动态分类 ===== -->
 <h2 class="section-heading">5.9 长期记忆的静态与动态分类</h2>
 
 <p>长期记忆不是铁板一块。仔细观察就会发现，有些记忆<strong>几乎不变</strong>，有些记忆<strong>持续更新</strong>。把长期记忆分为<strong>静态长期记忆</strong>和<strong>动态长期记忆</strong>，是面试中的高频考点，也是工程落地时的关键设计决策。</p>
@@ -1427,7 +1427,7 @@ setTimeout(() => {
   </p>
 </div>
 
-<!-- ===== 4.10 记忆存储触发链路 ===== -->
+<!-- ===== 5.10 记忆存储触发链路 ===== -->
 <h2 class="section-heading">5.10 记忆存储触发链路</h2>
 
 <p>一个常见误解是：<strong>"每轮对话都触发长期记忆写入"</strong>。如果真的每轮都写，长期记忆库会变成完整对话日志的备份——噪音爆炸，检索失效。</p>
@@ -1641,7 +1641,7 @@ result = trigger.process_turn("你好，今天天气不错")
   </p>
 </div>
 
-<!-- ===== 4.11 记忆召回决策与上下文污染防控 ===== -->
+<!-- ===== 5.11 记忆召回决策与上下文污染防控 ===== -->
 <h2 class="section-heading">5.11 记忆召回决策与上下文污染防控</h2>
 
 <p>记忆召回的核心问题不是"能不能找到"，而是<strong>"该不该注入"</strong>。召回太多无关记忆，比没有记忆更危险——这就是<strong>上下文污染</strong>。</p>
@@ -1925,12 +1925,12 @@ results = engine.recall("分析上个季度的销售趋势并给出优化建议"
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<!-- ===== 4.12 工程深度：生产级上下文压缩系统 ===== -->
+<!-- ===== 5.12 工程深度：生产级上下文压缩系统 ===== -->
 <h2 class="section-heading">5.12 工程深度：生产级上下文压缩系统</h2>
 
 <p>4.5 节介绍了上下文压缩的概念，但生产级系统远比概念复杂：什么时候压缩？用什么策略压缩？压缩后如何避免频繁重复压缩？压缩失败怎么办？本节基于 WaLiCode 项目的 contextCompressor.ts 和 ChatContextManager.ts 真实实现，讲解生产级上下文压缩系统的六大设计。</p>
 
-<h3 class="sub-heading">4.12.1 轮次分割算法</h3>
+<h3 class="sub-heading">5.12.1 轮次分割算法</h3>
 
 <p>压缩的第一步是理解对话的结构。对话不是扁平的消息列表，而是由多个"轮次"组成——每个轮次以 user message 开始，包含后续的所有 assistant/tool 消息。WaLiCode 的 splitIntoRounds 算法实现了这个分割：</p>
 
@@ -1991,7 +1991,7 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <p>关键细节：<strong>inline tool_result 不开新轮次</strong>。Anthropic 格式中，工具结果以 <code>{ role: 'user', content: [{ type: 'tool_result', ... }] }</code> 形式出现。如果把它当新轮次，会把一个完整的"AI 调工具→获取结果→继续推理"轮次错误地拆成两半。</p>
 
-<h3 class="sub-heading">4.12.2 三种压缩触发模式</h3>
+<h3 class="sub-heading">5.12.2 三种压缩触发模式</h3>
 
 <p>什么时候该压缩？WaLiCode 设计了三种触发模式，形成三层防线：</p>
 
@@ -2010,7 +2010,7 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"check","label":"每轮结束检查","type":"start"},{"id":"80","label":"token &gt; 80%?","type":"decision"},{"id":"60","label":"token &gt; 60%?","type":"decision"},{"id":"413","label":"收到 413 错误?","type":"decision"},{"id":"active","label":"主动压缩\n(同步, 保留3-5轮)","type":"process"},{"id":"bg","label":"后台压缩\n(异步, 不阻塞)","type":"process"},{"id":"reactive","label":"反应式压缩\n(紧急, 保留1-2轮)","type":"process"},{"id":"continue","label":"继续对话","type":"end"}],"edges":[{"from":"check","to":"80"},{"from":"80","to":"active","label":"是"},{"from":"80","to":"60","label":"否"},{"from":"60","to":"bg","label":"是"},{"from":"60","to":"continue","label":"否"},{"from":"active","to":"continue"},{"from":"bg","to":"continue"},{"from":"413","to":"reactive","label":"是"}]}'></div>
 
-<h3 class="sub-heading">4.12.3 AI 摘要 vs 规则摘要</h3>
+<h3 class="sub-heading">5.12.3 AI 摘要 vs 规则摘要</h3>
 
 <p>压缩的核心是生成摘要。WaLiCode 支持两种摘要方式：</p>
 
@@ -2061,7 +2061,7 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
 
 <p><strong>降级策略</strong>：AI 摘要失败（API 错误、超时、返回空）时自动降级为规则摘要。为什么不直接报错？因为压缩是基础设施——如果压缩本身都能失败，那对话就没法继续了。规则摘要虽然质量低，但至少保留了基本信息，让对话能继续。</p>
 
-<h3 class="sub-heading">4.12.4 增量压缩</h3>
+<h3 class="sub-heading">5.12.4 增量压缩</h3>
 
 <p>问题：如果每次 token 超过 80% 就压缩，压缩后降到 50%，用户继续对话又涨到 80%，又要压缩……这会导致频繁压缩，每次压缩都消耗 token（AI 摘要本身也要花 token）。</p>
 
@@ -2092,7 +2092,7 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
   }
 }</pre></div>
 
-<h3 class="sub-heading">4.12.5 Provider/Reducer 可插拔架构</h3>
+<h3 class="sub-heading">5.12.5 Provider/Reducer 可插拔架构</h3>
 
 <p>WaLiCode 的上下文管理采用<strong>Provider/Reducer 可插拔架构</strong>，这是生产级系统与 Demo 级系统的核心区别：</p>
 
@@ -2189,7 +2189,7 @@ class PriorityReducer implements MessageReducer {
 
 <p>为什么用可插拔设计？因为不同场景需要不同的 Provider 和 Reducer 组合。编码场景需要 FileProvider + TaskProvider + PriorityReducer；聊天场景可能只需要 MemoryProvider + SlidingWindowReducer。写死在代码里意味着每次改需求都要改核心代码，可插拔意味着只需注册新组件。</p>
 
-<h3 class="sub-heading">4.12.6 双作用域记忆系统</h3>
+<h3 class="sub-heading">5.12.6 双作用域记忆系统</h3>
 
 <p>WaLiCode 的记忆系统分为两个作用域：</p>
 
@@ -2246,7 +2246,7 @@ class PriorityReducer implements MessageReducer {
 }</pre></div>
 
 <div class="summary-box">
-<div class="summary-title">🔗 4.12 核心要点</div>
+<div class="summary-title">🔗 5.12 核心要点</div>
 <p><strong>轮次分割</strong>：按 user message 分割对话为多个轮次，inline tool_result 不开新轮次。</p>
 <p><strong>三层压缩触发</strong>：主动（80%）→ 后台（60%）→ 反应式（413），层层递进。</p>
 <p><strong>AI 摘要 vs 规则摘要</strong>：AI 质量高但贵，规则零成本但糙，AI 失败降级为规则。</p>

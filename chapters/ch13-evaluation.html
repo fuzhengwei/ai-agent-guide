@@ -1,9 +1,9 @@
-<!-- 第14章：Agent 评估与可观测性 -->
-<h1 class="chapter-title">第12章 Agent 评估与可观测性</h1>
-<p class="chapter-subtitle">怎么知道你的 Agent 好不好？</p>
+<!-- 第17章：Agent 评估与可观测性 -->
+<h1 class="chapter-title">第17章 Agent 评估与可观测性</h1>
+<p class="chapter-subtitle">第六篇：工程化 — 怎么知道你的 Agent 好不好？</p>
 
-<!-- ===== 14.1 为什么需要评估 ===== -->
-<h2 class="section-heading">12.1 Agent 评估的挑战</h2>
+<!-- ===== 17.1 为什么需要评估 ===== -->
+<h2 class="section-heading">17.1 Agent 评估的挑战</h2>
 
 <p>传统软件有明确的对错——单元测试通过就行。但 Agent 的输出是自然语言，"好不好"变得模糊：</p>
 
@@ -30,8 +30,8 @@
   </div>
 </div>
 
-<!-- ===== 14.2 评估维度 ===== -->
-<h2 class="section-heading">12.2 Agent 评估的六个维度</h2>
+<!-- ===== 17.2 评估维度 ===== -->
+<h2 class="section-heading">17.2 Agent 评估的六个维度</h2>
 
 <div class="flowchart-container" id="evalDimensions"></div>
 
@@ -81,8 +81,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<!-- ===== 14.3 评估方法 ===== -->
-<h2 class="section-heading">12.3 四种评估方法</h2>
+<!-- ===== 17.3 评估方法 ===== -->
+<h2 class="section-heading">17.3 四种评估方法</h2>
 
 <div class="card">
   <div class="card-title">🔬 怎么评估 Agent？</div>
@@ -165,8 +165,8 @@ for sample in test_dataset:
     scores.append(parse_json(result))</pre>
 </div>
 
-<!-- ===== 14.4 可观测性 ===== -->
-<h2 class="section-heading">12.4 Agent 可观测性</h2>
+<!-- ===== 17.4 可观测性 ===== -->
+<h2 class="section-heading">17.4 Agent 可观测性</h2>
 
 <p>评估是离线的——测试集跑完看分数。可观测性是<strong>在线的</strong>——生产环境中实时监控 Agent 行为。</p>
 
@@ -230,8 +230,8 @@ for sample in test_dataset:
   </table>
 </div>
 
-<!-- ===== 14.5 黄金指标 ===== -->
-<h2 class="section-heading">12.5 Agent 监控的黄金指标</h2>
+<!-- ===== 17.5 黄金指标 ===== -->
+<h2 class="section-heading">17.5 Agent 监控的黄金指标</h2>
 
 <div class="card">
   <div class="card-title">📈 生产环境必须监控的指标</div>
@@ -275,8 +275,8 @@ for sample in test_dataset:
   </div>
 </div>
 
-<!-- ===== 14.6 Agent 评估指标体系 ===== -->
-<h2 class="section-heading">12.6 Agent 评估指标体系</h2>
+<!-- ===== 17.6 Agent 评估指标体系 ===== -->
+<h2 class="section-heading">17.6 Agent 评估指标体系</h2>
 
 <p>评估 Agent 不能只靠直觉和感觉，需要建立一套量化指标体系。下面从任务完成率、步数效率、Token 成本、准确率、鲁棒性五个核心维度展开，每个指标都有明确的计算公式和适用场景，帮助你建立可度量、可对比、可追踪的评估体系。</p>
 
@@ -399,8 +399,8 @@ for sample in test_dataset:
   </div>
 </div>
 
-<!-- ===== 14.7 LangSmith 完整实战 ===== -->
-<h2 class="section-heading">12.7 LangSmith 完整实战</h2>
+<!-- ===== 17.7 LangSmith 完整实战 ===== -->
+<h2 class="section-heading">17.7 LangSmith 完整实战</h2>
 
 <p>LangSmith 是 LangChain 官方推出的 Agent 评估与可观测性平台，提供了从 Trace 收集、数据分析到评估数据集管理的完整工具链。下面通过一个完整的实战案例，演示如何将 LangSmith 集成到 Agent 项目中，实现全链路追踪和自动化评估。</p>
 
@@ -580,8 +580,8 @@ for run in failed_runs:
     print(f"[ERROR] {run.name}: {run.error}")</pre>
 </div>
 
-<!-- ===== 14.8 评估驱动开发（EDD）方法论 ===== -->
-<h2 class="section-heading">12.8 评估驱动开发（EDD）方法论</h2>
+<!-- ===== 17.8 评估驱动开发（EDD）方法论 ===== -->
+<h2 class="section-heading">17.8 评估驱动开发（EDD）方法论</h2>
 
 <p>评估驱动开发（Evaluation-Driven Development，简称 EDD）是一种以评估为核心的 Agent 开发方法论。它的核心理念是：先定义评估标准和数据集，再开发 Agent 逻辑。这类似于测试驱动开发（TDD），但评估集替代了单元测试，LLM 评估器替代了断言。</p>
 
@@ -772,12 +772,12 @@ print(f"退化用例: {len(report['regressions'])}")</pre>
 
 <p>回归测试是 EDD 方法论的安全网。每次修改 Agent 的 prompt、工具或模型后，都跑一遍回归测试集，确保改动不会引入退化。建议将回归测试集成到 CI/CD 流水线中，在每次 PR 合并前自动运行，退化用例数必须为 0 才允许合并。</p>
 
-<!-- ===== 12.9 评估框架：Ragas / DeepEval ===== -->
-<h2 class="section-heading">12.9 评估框架：Ragas 与 DeepEval</h2>
+<!-- ===== 17.9 评估框架：Ragas / DeepEval ===== -->
+<h2 class="section-heading">17.9 评估框架：Ragas 与 DeepEval</h2>
 
 <p>手动评估效率低、不可重复。专业评估框架可以<strong>自动化</strong>评估流程，提供量化指标，让你像跑单元测试一样跑 Agent 评估。</p>
 
-<h3 class="sub-heading">12.9.1 Ragas：RAG 评估的事实标准</h3>
+<h3 class="sub-heading">17.9.1 Ragas：RAG 评估的事实标准</h3>
 
 <p><strong>Ragas</strong>（Retrieval Augmented Generation Assessment）是专为 RAG 系统设计的评估框架，提供 4 个核心指标：</p>
 
@@ -849,7 +849,7 @@ print(result)
 #  'context_precision': 0.78, 'context_recall': 0.88}</pre>
 </div>
 
-<h3 class="sub-heading">12.9.2 DeepEval：通用 Agent 评估框架</h3>
+<h3 class="sub-heading">17.9.2 DeepEval：通用 Agent 评估框架</h3>
 
 <p><strong>DeepEval</strong> 不局限于 RAG，提供更通用的 Agent 评估指标，支持单元测试风格的断言。</p>
 
@@ -891,7 +891,7 @@ correctness = GEval(
 )</pre>
 </div>
 
-<h3 class="sub-heading">12.9.3 Ragas vs DeepEval 选型</h3>
+<h3 class="sub-heading">17.9.3 Ragas vs DeepEval 选型</h3>
 
 <div class="comparison-table">
   <table>
@@ -1027,7 +1027,7 @@ correctness = GEval(
 <div id="quizArea"></div>
 
 <script>
-const ch14Questions = [
+const ch17Questions = [
   {
     type: 'single',
     question: 'Agent 评估相比传统软件评估的最大挑战是？',

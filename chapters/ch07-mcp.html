@@ -1,9 +1,9 @@
 <!-- 第13章：MCP 协议 -->
-<h1 class="chapter-title">第6章 MCP：工具的标准化接口</h1>
+<h1 class="chapter-title">第7章 MCP：工具的标准化接口</h1>
 <p class="chapter-subtitle">Model Context Protocol — Agent 的 USB-C 接口</p>
 
-<!-- ===== 6.1 MCP 是什么 ===== -->
-<h2 class="section-heading">6.1 为什么需要 MCP？</h2>
+<!-- ===== 7.1 MCP 是什么 ===== -->
+<h2 class="section-heading">7.1 为什么需要 MCP？</h2>
 
 <p>在 MCP 出现前，每个 Agent 框架有自己的工具定义方式。LangChain 用 @tool 装饰器，AutoGen 用 register_function，CrewAI 用 BaseTool 类……工具开发者要为每个框架写一遍适配代码。</p>
 
@@ -21,8 +21,8 @@
   <strong>解决：</strong>工具开发者只需实现一次 MCP Server，所有支持 MCP 的 Agent 框架都能用。N×M 变成 N+M。
 </div>
 
-<!-- ===== 6.2 MCP 架构 ===== -->
-<h2 class="section-heading">6.2 MCP 架构</h2>
+<!-- ===== 7.2 MCP 架构 ===== -->
+<h2 class="section-heading">7.2 MCP 架构</h2>
 
 <div class="flowchart-container" id="mcpArch"></div>
 
@@ -73,13 +73,13 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 6.3 通信协议 ===== -->
-<h2 class="section-heading">6.3 MCP 的通信机制</h2>
+<!-- ===== 7.3 通信协议 ===== -->
+<h2 class="section-heading">7.3 MCP 的通信机制</h2>
 
-<p>MCP 基于 <strong>JSON-RPC 2.0</strong> 协议，支持两种传输方式：</p>
+<p>MCP 基于 <strong>JSON-RPC 2.0</strong> 协议，支持三种传输方式：</p>
 
 <div class="card">
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
       <strong style="color: var(--color-info);">stdio（标准输入输出）</strong>
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
@@ -90,12 +90,22 @@ setTimeout(() => {
       </p>
     </div>
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
-      <strong style="color: var(--color-accent);">SSE（Server-Sent Events）</strong>
+      <strong style="color: var(--color-accent);">SSE（Server-Sent Events）<span style="font-size:11px;color:var(--color-text-secondary);">— 即将废弃</span></strong>
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        通过 HTTP + SSE 双向通信。Client 发 HTTP 请求，Server 通过 SSE 推送响应。<br><br>
-        <strong>适合</strong>：远程工具、云服务<br>
-        <strong>优点</strong>：跨机器、可扩展<br>
-        <strong>缺点</strong>：有网络延迟
+        通过 HTTP + SSE 双向通信。Client 发 POST，Server 通过 SSE 控道推送响应。<br><br>
+        <strong>适合</strong>：远程工具（旧方案）<br>
+        <strong>优点</strong>：跨机器<br>
+        <strong>缺点</strong>：需维持长连接、断线不可恢复<br>
+        <span style="color: var(--color-error);">⚠ 已被 Streamable HTTP 替代</span>
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));">
+      <strong style="color: var(--color-success);">Streamable HTTP<span style="font-size:11px;color:var(--color-success);">✨ 推荐</span></strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        2025-03-26 新增。以普通 HTTP 为基础，可选升级 SSE 流式响应。<br><br>
+        <strong>适合</strong>：远程工具、云服务、Serverless<br>
+        <strong>优点</strong>：无需长连接、断线可恢复、兼容基础设施<br>
+        <strong>缺点</strong>：无（取代 SSE 的所有优势）
       </p>
     </div>
   </div>
@@ -143,8 +153,126 @@ setTimeout(() => {
 }</pre>
 </div>
 
-<!-- ===== 6.4 MCP Server 实现 ===== -->
-<h2 class="section-heading">6.4 编写一个 MCP Server</h2>
+<h3 class="sub-heading">Streamable HTTP：为什么 SSE 被取代？</h3>
+
+<p>2025 年 3 月 26 日，MCP 协议引入了 <strong>Streamable HTTP</strong> 传输方式，替代原有的 HTTP+SSE。这不是一个全新的协议——它是 SSE 的<strong>渐进式升级</strong>，在保留流式响应优势的同时，解决了 SSE 的三个硬伤：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">❌ SSE 的三个硬伤</div>
+  <p><strong>① 断线不可恢复</strong>：SSE 连接中断后，无法从断点继续，只能重建连接，之前的上下文丢失。</p>
+  <p><strong>② 服务端必须维持长连接</strong>：服务器必须一直保持稳定的 SSE 长连接，否则通信就中断。这对 Serverless 和弹性扩缩容场景是灾难。</p>
+  <p><strong>③ 服务器只能通过 SSE 通道发送</strong>：服务端无法在已有请求之外主动推送消息，通信是"单向被动响应"。</p>
+</div>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"old","label":"HTTP+SSE（旧）","type":"start"},{"id":"fix1","label":"断线不可恢复\n→ 可恢复","type":"process"},{"id":"fix2","label":"必须长连接\n→ 无状态可选","type":"process"},{"id":"fix3","label":"只能/Sse发送\n →灵活推送","type":"process"},{"id":"new","label":"Streamable HTTP（新）","type":"end"}],"edges":[{"from":"old","to":"fix1"},{"from":"fix1","to":"fix2"},{"from":"fix2","to":"fix3"},{"from":"fix3","to":"new"}]}'></div>
+
+<p>Streamable HTTP 的核心设计理念：</p>
+<ul>
+<li><strong>以普通 HTTP 为基础</strong>：客户端用 POST/GET 发请求，和调用普通 REST API 一样</li>
+<li><strong>可选升级为 SSE 流</strong>：当需要流式响应时（如进度通知、长耗时工具），服务器<strong>可选</strong>地将响应升级为 SSE 流——但不强制</li>
+<li><strong>统一端点</strong>：不再需要单独的 <code>/sse</code> 端点，一切通过 <code>/mcp</code>（或 <code>/message</code>) 端点处理</li>
+<li><strong>会话 ID 可选</strong>：服务器可以选择分配 <code>Mcp-Session-Id</code> 来维护状态，也可以完全无状态运行</li>
+</ul>
+
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>stdio</th><th>SSE（旧）</th><th>Streamable HTTP（新 ✨）</th></tr>
+</thead>
+<tbody>
+<tr><td>连接模型</td><td>子进程长连接</td><td>HTTP+SSE 双通道长连接</td><td><strong>普通 HTTP + 可选 SSE 流</strong></td></tr>
+<tr><td>端点</td><td>stdin/stdout</td><td>/sse + /message 两个端点</td><td><strong>单一 /mcp 端点</strong></td></tr>
+<tr><td>断线恢复</td><td>N/A（本地）</td><td>❌ 不支持</td><td><strong>✅ 通过 Session-Id 恢复</strong></td></tr>
+<tr><td>服务端状态</td><td>有状态</td><td>必须有状态（长连接）</td><td><strong>可选：无状态 or 有状态</strong></td></tr>
+<tr><td>Serverless 友好</td><td>❌</td><td>❌（长连接不适合）</td><td><strong>✅ 无状态模式天然适配</strong></td></tr>
+<tr><td>中间件兼容</td><td>❌</td><td>部分</td><td><strong>✅ 纯 HTTP，CDN/WAF/API Gateway 全兼容</strong></td></tr>
+<tr><td>向后兼容</td><td>N/A</td><td>—</td><td><strong>✅ 是 SSE 的渐进升级</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="sub-heading">Streamable HTTP 的三种运行模式</h3>
+
+<p>Streamable HTTP 不是"要么流式要么非流式"的二元选择，它支持<strong>三种运行模式</strong>，覆盖从最简单到最复杂的所有场景：</p>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-info);">① 无状态</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        不分配 Session-Id。每个请求独立处理。<br><br>
+        <strong>适合</strong>：简单工具服务（如查天气）<br>
+        <strong>运行</strong>：Client POST → Server 直接返回 JSON 结果<br>
+        <strong>部署</strong>：完美适配 Serverless / 容器弹性扩缩
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
+      <strong style="color: var(--color-accent);">② 无状态 + 流式</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        不分配 Session-Id，但响应升级为 SSE 流。<br><br>
+        <strong>适合</strong>：需要进度反馈的工具<br>
+        <strong>运行</strong>：Client POST → Server 返回 SSE 流 → 发送进度通知 → 发送最终结果 → 关闭流<br>
+        <strong>部署</strong>：仍然适配 Serverless
+      </p>
+    </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));">
+      <strong style="color: var(--color-success);">③ 有状态</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        分配 Session-Id，维护会话上下文。<br><br>
+        <strong>适合</strong>：需要多轮交互的复杂工具<br>
+        <strong>运行</strong>：Client POST → Server 返回 Session-Id → 后续请求携带该 Id<br>
+        <strong>部署</strong>：通过 Redis 等中间件实现会话路由，支持水平扩展
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Streamable HTTP 交互示例（无状态 + 流式模式）</span>
+<pre>// ===== 1. Client 发起工具调用 =====
+POST /mcp
+Content-Type: application/json
+Accept: text/event-stream  // 声明接受 SSE 流式响应
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_code",
+    "arguments": { "file": "main.py" }
+  }
+}
+
+// ===== 2. Server 返回 SSE 流（响应头声明） =====
+HTTP/1.1 200 OK
+Content-Type: text/event-stream  // 响应升级为 SSE
+
+// ===== 3. SSE 流中逐步推送 =====
+data: {"jsonrpc":"2.0","method":"notifications/progress","params":{"progress":30,"message":"正在分析代码结构..."}}
+
+data: {"jsonrpc":"2.0","method":"notifications/progress","params":{"progress":70,"message":"正在检查安全漏洞..."}}
+
+// ===== 4. 最终结果 =====
+data: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"分析完成：发现3个潜在问题"}]}}
+
+// ===== 5. Server 关闭 SSE 流 =====
+（流结束，HTTP 连接关闭）</pre>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 为什么不用 WebSocket？</h4>
+<p>MCP 官方曾认真评估过 WebSocket，但最终选择了 Streamable HTTP，原因有三：</p>
+<ul>
+<li><strong>无状态 RPC 场景</strong>：如果每次调用都依赖 WebSocket 长连接，无状态服务就失去了意义——Streamable HTTP 让简单工具只需一次 HTTP POST 就搞定</li>
+<li><strong>浏览器限制</strong>：WebSocket 无法像普通 HTTP 一样附加 Authorization 等请求头，且只有 GET 请求可升级为 WebSocket，POST 需要额外两步</li>
+<li><strong>兼容性简洁</strong>：避免在 MCP 规范中引入 WebSocket 可选支持，减少客户端与服务器间的兼容性组合爆炸</li>
+</ul>
+<p>官方态度：<em>如果将来实践中发现 SSE 确实不够理想，会重新评估 WebSocket</em>。但目前 Streamable HTTP 已经足够好用。</p>
+</div>
+
+<!-- ===== 7.4 MCP Server 实现 ===== -->
+<h2 class="section-heading">7.4 编写一个 MCP Server</h2>
 
 <div class="code-block">
   <span class="code-label">Python: 最简 MCP Server</span>
@@ -191,8 +319,8 @@ if __name__ == "__main__":
   <strong>关键点</strong>：这个 MCP Server 可以被任何支持 MCP 的 Agent 使用——Claude Desktop、Cursor、LangChain、OpenClaw 等。写一次，到处用。
 </div>
 
-<!-- ===== 6.5 MCP 生态 ===== -->
-<h2 class="section-heading">6.5 MCP 生态现状</h2>
+<!-- ===== 7.5 MCP 生态 ===== -->
+<h2 class="section-heading">7.5 MCP 生态现状</h2>
 
 <div class="card">
   <div class="card-title">🌐 谁在支持 MCP？</div>
@@ -229,8 +357,8 @@ if __name__ == "__main__":
   </table>
 </div>
 
-<!-- ===== 6.6 MCP 客户端完整实现 ===== -->
-<h2 class="section-heading">6.6 MCP 客户端完整实现</h2>
+<!-- ===== 7.6 MCP 客户端完整实现 ===== -->
+<h2 class="section-heading">7.6 MCP 客户端完整实现</h2>
 
 <p>上一节我们写了一个最简版的 MCP Server，但要让 Agent 真正使用 MCP Server 的能力，还需要一个完整的 MCP 客户端来发起连接、发现能力、调用工具。本节展示如何使用官方 <code>mcp</code> Python 库编写一个功能完整的 MCP 客户端，覆盖工具调用、资源读取和提示词获取三大场景。</p>
 
@@ -293,8 +421,8 @@ asyncio.run(main())</pre>
   <strong>注意</strong>：<code>session.initialize()</code> 是必须的第一步，它会完成 JSON-RPC 握手和能力协商。跳过这一步直接调用工具会报错。客户端和服务器端必须使用相同的传输方式（stdio 或 SSE）。
 </div>
 
-<!-- ===== 6.7 MCP Server 完整实现 ===== -->
-<h2 class="section-heading">6.7 MCP Server 完整实现</h2>
+<!-- ===== 7.7 MCP Server 完整实现 ===== -->
+<h2 class="section-heading">7.7 MCP Server 完整实现</h2>
 
 <p>6.4 节展示了一个最简版的 Server，但生产级的 MCP Server 需要同时实现资源（Resources）、工具（Tools）和提示词（Prompts）三类能力，并正确处理生命周期。本节展示一个完整的天气数据 MCP Server，包含资源定义、工具注册和错误处理。</p>
 
@@ -386,8 +514,8 @@ asyncio.run(main())</pre>
   <strong>架构要点</strong>：Server 使用装饰器模式注册处理器，每个处理器对应一个 JSON-RPC 方法。<code>app.run()</code> 启动事件循环后，所有通信通过 stdio 流自动完成。Client 不需要知道 Server 内部实现，只需通过标准协议调用即可。
 </div>
 
-<!-- ===== 6.8 MCP 协议深度解析 ===== -->
-<h2 class="section-heading">6.8 MCP 协议深度解析</h2>
+<!-- ===== 7.8 MCP 协议深度解析 ===== -->
+<h2 class="section-heading">7.8 MCP 协议深度解析</h2>
 
 <p>理解 MCP 不能只停留在 API 使用层面，还需要深入协议底层。本节从 JSON-RPC 2.0 报文格式、能力协商流程、协议栈分层架构三个维度，带你彻底理解 MCP 的通信本质。</p>
 
@@ -645,8 +773,8 @@ asyncio.run(main())</pre>
   <strong>握手三阶段</strong>：<strong>初始化阶段</strong>（① ②）—— Client 发送 <code>initialize</code> 请求，携带自己支持的协议版本和能力；Server 返回自己支持的能力集合。<strong>确认阶段</strong>（③）—— Client 发送 <code>notifications/initialized</code> 通知，表示握手完成。<strong>调用阶段</strong>（④ ⑤）—— 双方开始正常的方法调用，如 <code>tools/list</code>、<code>tools/call</code>、<code>resources/read</code> 等。
 </div>
 
-<!-- ===== 6.9 MCP Gateway与路由 ===== -->
-<h2 class="section-heading">6.9 MCP Gateway 与路由</h2>
+<!-- ===== 7.9 MCP Gateway与路由 ===== -->
+<h2 class="section-heading">7.9 MCP Gateway 与路由</h2>
 
 <p>当 Agent 需要同时连接多个 MCP Server 时，直接管理每个连接会变得复杂：不同 Server 的健康状态、版本兼容、负载分布都需要逐一处理。<strong>MCP Gateway</strong> 正是为了解决这个问题而诞生的——它作为统一入口，代理所有 MCP Server 的连接和调度。</p>
 
@@ -810,8 +938,8 @@ gateway:
   <strong>关键设计</strong>：Gateway 配置支持三种路由策略可组合使用——先按工具类型分流到对应 Server 组，再在组内按优先级或负载均衡选择具体实例。健康检查确保自动剔除不可用 Server，重试机制保障请求成功率。
 </div>
 
-<!-- ===== 6.10 MCP市场与Skills生态 ===== -->
-<h2 class="section-heading">6.10 MCP 市场与 Skills 生态</h2>
+<!-- ===== 7.10 MCP市场与Skills生态 ===== -->
+<h2 class="section-heading">7.10 MCP 市场与 Skills 生态</h2>
 
 <p>MCP 不仅仅是技术协议，它催生了一个完整的<strong>工具生态系统</strong>。截至 2025-2026 年，MCP Server 的月下载量已突破 <strong>9700 万至 1.1 亿</strong>次，Skills（技能包）生态超过 <strong>8.5 万个</strong>。这意味着 MCP 正在从技术标准走向产业生态——就像 USB-C 不只是接口规格，更催生了整个配件市场。</p>
 
@@ -974,8 +1102,8 @@ setTimeout(() => {
   <strong>本质区别</strong>：App Store 卖的是<strong>产品</strong>——用户直接使用的完整应用；Skills 市场卖的是<strong>能力</strong>——Agent 组合使用的专业技能包。前者面向终端用户，后者面向 Agent（代理用户）。这意味着 Skills 市场更注重<strong>可组合性</strong>和<strong>标准化接口</strong>，而非独立的用户体验。
 </div>
 
-<!-- ===== 6.11 MCP安全与权限管理 ===== -->
-<h2 class="section-heading">6.11 MCP 安全与权限管理</h2>
+<!-- ===== 7.11 MCP安全与权限管理 ===== -->
+<h2 class="section-heading">7.11 MCP 安全与权限管理</h2>
 
 <p>MCP Server 拥有强大的能力——读取文件、访问数据库、调用 API、发送邮件。这些能力如果不受管控，可能成为安全漏洞的入口。<strong>MCP 安全与权限管理</strong>的核心目标是：在赋予 Agent 能力的同时，划定明确的安全边界，确保每一次工具调用都在可控范围内。</p>
 
@@ -1229,207 +1357,13 @@ confirmation:
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<!-- ===== 6.12 CLI 工具：被忽视的 Agent 手脚 ===== -->
-<h2 class="section-heading">6.12 CLI 工具：被忽视的 Agent 手脚</h2>
-
-<p>讲到 Agent 的工具系统，大多数教程只提两种：Function Calling（自定义工具）和 MCP（标准化协议）。但生产环境中还有第三种——<strong>CLI 工具</strong>。你系统中已安装的 git、docker、kubectl、curl、jq……这些都可以成为 Agent 的手脚，零开发成本。</p>
-
-<h3 class="sub-heading">6.12.1 三种手脚的对比</h3>
-
-<div class="comparison-table">
-<table>
-<thead>
-<tr><th>维度</th><th>Function Calling</th><th>MCP Server</th><th>CLI 工具</th></tr>
-</thead>
-<tbody>
-<tr><td>开发成本</td><td>中（写函数 + Schema）</td><td>高（写 Server + 协议）</td><td><strong>零</strong>（系统已有）</td></tr>
-<tr><td>发现机制</td><td>手动注册</td><td>手动注册</td><td><strong>自动扫描 PATH</strong></td></tr>
-<tr><td>安全控制</td><td>函数级权限</td><td>协议内置权限</td><td>依赖权限系统（五层递进）</td></tr>
-<tr><td>调用方式</td><td>结构化函数调用</td><td>JSON-RPC 2.0</td><td>通过 Shell 执行</td></tr>
-<tr><td>适用场景</td><td>自定义业务工具</td><td>标准化跨平台工具</td><td>已有系统工具</td></tr>
-<tr><td>典型示例</td><td>send_email(to, subject)</td><td>database.query(sql)</td><td>git, docker, kubectl, curl</td></tr>
-</tbody>
-</table>
-</div>
-
-<p>一个生产级 Agent 通常同时使用三种手脚：Function Calling 处理业务逻辑，MCP 连接标准化服务，CLI 工具操作基础设施。三者互补，不是替代关系。</p>
-
-<h3 class="sub-heading">6.12.2 CLI 工具注册系统设计</h3>
-
-<p>WaLiCode 的 cliRegistryService 实现了 CLI 工具的自动发现和管理：</p>
-
-<div class="code-block"><pre>interface CLIRegistryEntry {
-  name: string;          // 工具名，如 'git'
-  command: string;       // 实际命令，如 'git'
-  description: string;   // 描述，用于 Prompt 注入
-  category: string;      // 分类：version-control, container, network...
-  enabled: boolean;      // 用户可启用/禁用
-  keywords: string[];    // 关键词，用于工具搜索
-  safeSubcommands: string[]; // 安全子命令白名单
-  dangerousSubcommands: string[]; // 危险子命令黑名单
-}
-
-class CLIRegistryService {
-  private registry: Map&lt;string, CLIRegistryEntry&gt; = new Map();
-
-  // 扫描 PATH 发现已安装的 CLI 工具
-  async scanAndRegister() {
-    const knownTools = [
-      { name: 'git', category: 'version-control',
-        description: '版本控制工具',
-        safeSubcommands: ['status', 'log', 'diff', 'show', 'branch'],
-        dangerousSubcommands: ['push', 'reset --hard', 'clean -fd'] },
-      { name: 'docker', category: 'container',
-        description: '容器管理工具',
-        safeSubcommands: ['ps', 'logs', 'inspect', 'images'],
-        dangerousSubcommands: ['rm', 'rmi', 'system prune'] },
-      { name: 'kubectl', category: 'container',
-        description: 'Kubernetes 集群管理',
-        safeSubcommands: ['get', 'describe', 'logs', 'top'],
-        dangerousSubcommands: ['delete', 'apply', 'exec'] },
-      { name: 'curl', category: 'network',
-        description: 'HTTP 请求工具',
-        safeSubcommands: [],
-        dangerousSubcommands: [] },
-      { name: 'jq', category: 'text-processing',
-        description: 'JSON 处理工具',
-        safeSubcommands: [],
-        dangerousSubcommands: [] },
-    ];
-
-    for (const tool of knownTools) {
-      // 检查工具是否安装
-      const installed = await checkCommandExists(tool.name);
-      if (installed) {
-        this.registry.set(tool.name, { ...tool, enabled: true });
-      }
-    }
-  }
-
-  async checkCommandExists(cmd: string): Promise&lt;boolean&gt; {
-    try {
-      await exec(`which ${cmd}`);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}</pre></div>
-
-<p>关键设计：</p>
-<ul>
-<li><strong>分类管理</strong>：version-control、container、network、text-processing 等分类，便于按类别启用/禁用</li>
-<li><strong>子命令级安全</strong>：不是简单地放行或拒绝整个工具，而是区分安全子命令（git status）和危险子命令（git push --force）</li>
-<li><strong>用户可控</strong>：每个工具可独立启用/禁用，用户可以禁用不希望 Agent 使用的工具</li>
-</ul>
-
-<h3 class="sub-heading">6.12.3 Prompt 注入机制</h3>
-
-<p>CLI 工具注册后，如何让 AI 知道这些工具的存在？答案是<strong>Prompt 注入</strong>——把工具列表注入 AI 的 system prompt：</p>
-
-<div class="code-block"><pre>function getCLIPromptText(registry: CLIRegistryService): string {
-  const tools = registry.getEnabledTools();
-  if (tools.length === 0) return '';
-
-  const toolList = tools.map(t =&gt; {
-    const safe = t.safeSubcommands.length &gt; 0
-      ? ` (安全子命令: ${t.safeSubcommands.join(', ')})`
-      : '';
-    return `- ${t.name}: ${t.description}${safe}`;
-  }).join('\n');
-
-  return `你可以使用以下 CLI 工具（通过 run_terminal_cmd 调用）：
-${toolList}
-
-调用示例：使用 run_terminal_cmd(command="git status") 查看 Git 状态。
-注意：危险操作（如 git push, docker rm）需要用户确认。`;
-}
-
-// 注入到 system prompt
-const systemPrompt = basePrompt + '\n\n' + getCLIPromptText(registry);
-</pre></div>
-
-<p>AI 看到 Prompt 后，在需要时自然会调用这些工具。比如用户说"看看当前有哪些容器在运行"，AI 会调用 <code>run_terminal_cmd(command="docker ps")</code>。</p>
-
-<h3 class="sub-heading">6.12.4 工具懒加载三层策略</h3>
-
-<p>CLI 工具越多，Prompt 越长，token 消耗越大。WaLiCode 用<strong>三层懒加载策略</strong>解决这个矛盾：</p>
-
-<div class="comparison-table">
-<table>
-<thead>
-<tr><th>层级</th><th>策略</th><th>触发条件</th><th>示例</th><th>Token 消耗</th></tr>
-</thead>
-<tbody>
-<tr><td><strong>第一层</strong></td><td>始终加载</td><td>alwaysLoad = true</td><td>read_file, GrepTool, AskUserQuestionTool</td><td>始终消耗</td></tr>
-<tr><td><strong>第二层</strong></td><td>条件激活</td><td>shouldActivate() 返回 true</td><td>SSH 工具（有连接时才加载）</td><td>满足条件时消耗</td></tr>
-<tr><td><strong>第三层</strong></td><td>按需唤醒</td><td>AI 主动搜索并激活</td><td>罕见工具（Java 反编译等）</td><td>仅使用时消耗</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="code-block"><pre>// 三层懒加载示例
-const toolRegistry = [
-  // 第一层：始终加载（核心工具）
-  { name: 'read_file', alwaysLoad: true,
-    shouldActivate: () =&gt; true,
-    keywords: ['read', 'file', 'open'],
-    briefDescription: '读取文件内容' },
-
-  // 第二层：条件激活（按需加载）
-  { name: 'ssh_execute_command', alwaysLoad: false,
-    shouldActivate: () =&gt; {
-      // 只在有 SSH 连接时激活
-      const sshStore = useSshConnectionStore.getState();
-      return sshStore.sessions.length &gt; 0;
-    },
-    keywords: ['ssh', 'remote', 'execute'],
-    briefDescription: '执行远程命令' },
-
-  // 第三层：按需唤醒（AI 搜索激活）
-  { name: 'read_class_file', alwaysLoad: false,
-    shouldActivate: () =&gt; false, // 默认不激活
-    keywords: ['java', 'class', 'decompile'],
-    briefDescription: '读取 Java .class 文件' },
-];
-
-// AI 通过 ToolSearchTool 搜索并激活第三层工具
-// ToolSearchTool 搜索关键词匹配 toolRegistry 中的 keywords 字段
-// 匹配后激活工具，加入当前可用工具列表</pre></div>
-
-<p>懒加载解决了"工具越多越聪明但越混乱"的悖论：</p>
-<ul>
-<li><strong>第一层</strong>保证核心能力始终可用（约 10-15 个工具，固定消耗）</li>
-<li><strong>第二层</strong>根据上下文动态扩展（如打开 SSH 连接后自动加载 SSH 工具）</li>
-<li><strong>第三层</strong>按需唤醒，只有 AI 主动搜索时才加载（如用户问 Java 反编译才加载 read_class_file）</li>
-</ul>
-
-<h3 class="sub-heading">6.12.5 决策框架：何时用 CLI vs MCP vs Function Calling</h3>
-
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"q","label":"需要新工具","type":"start"},{"id":"exists","label":"系统中已有\nCLI 工具?","type":"decision"},{"id":"cli","label":"用 CLI 工具\n(零开发, 注册即可)","type":"end"},{"id":"standard","label":"需要跨平台\n标准化?","type":"decision"},{"id":"mcp","label":"用 MCP Server\n(标准化, 可复用)","type":"end"},{"id":"custom","label":"用 Function Calling\n(自定义, 灵活)","type":"end"}],"edges":[{"from":"q","to":"exists"},{"from":"exists","to":"cli","label":"是"},{"from":"exists","to":"standard","label":"否"},{"from":"standard","to":"mcp","label":"是"},{"from":"standard","to":"custom","label":"否"}]}'></div>
-
-<p>决策原则：</p>
-<ul>
-<li><strong>优先用 CLI</strong>：如果系统已有对应工具（git/docker/kubectl），零成本直接用</li>
-<li><strong>跨平台用 MCP</strong>：如果工具需要在不同 Agent 框架间共享，MCP 提供标准化协议</li>
-<li><strong>业务逻辑用 Function Calling</strong>：如果是自定义业务工具（发邮件、查订单），直接写函数</li>
-</ul>
-
+<!-- ===== CLI 工具内容已移至第9章「CLI 能力」===== -->
 <div class="info-box">
-<h4 style="color: var(--color-primary); margin-top: 0;">💡 实践建议</h4>
-<p>很多团队一上来就给 Agent 写 MCP Server，但其实大部分需求用 CLI 工具就能满足。先检查系统中是否已有对应工具，再考虑开发新的。CLI 工具的另一个优势是<strong>经过充分测试</strong>——git、docker 这些工具有千万级用户验证，比你新写的 MCP Server 可靠得多。</p>
+<h4 style="color: var(--color-primary); margin-top: 0;">🔗 关于 CLI 工具与 MCP 的关系</h4>
+<p>除了 Function Calling 和 MCP，Agent 还有第三种手脚——<strong>CLI 工具</strong>（git、docker、kubectl 等）。CLI vs MCP vs Function Calling 的对比、注册系统、懒加载策略等详细内容，请参见<strong>第9章「CLI 能力：Agent 操作本地工具」</strong>，那里有更完整的讲解。</p>
 </div>
 
-<div class="summary-box">
-<div class="summary-title">🔗 6.12 核心要点</div>
-<p><strong>CLI 是第三种手脚</strong>：与 Function Calling、MCP 并列，零开发成本利用已有工具。</p>
-<p><strong>自动发现</strong>：扫描 PATH → 注册表 → Prompt 注入，AI 自动知道可用工具。</p>
-<p><strong>三层懒加载</strong>：始终加载 → 条件激活 → 按需唤醒，平衡能力和 token 消耗。</p>
-<p><strong>决策框架</strong>：优先 CLI → 跨平台用 MCP → 业务逻辑用 Function Calling。</p>
-</div>
-
-<div class="summary-box">
-  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+<div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
   <div class="qa-item">
     <div class="qa-question">Q1: MCP 解决了什么问题？</div>

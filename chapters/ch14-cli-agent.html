@@ -1,9 +1,9 @@
-<!-- 第15章：CLI 命令行 Agent -->
-<h1 class="chapter-title">第13章 CLI Agent：命令行智能助手</h1>
-<p class="chapter-subtitle">终端里的智能助手：用自然语言驱动命令行</p>
+<!-- 第14章：CLI 命令行 Agent -->
+<h1 class="chapter-title">第14章 CLI Agent：命令行智能助手</h1>
+<p class="chapter-subtitle">第五篇：综合实战 — 终端里的智能助手：用自然语言驱动命令行</p>
 
-<!-- ===== 15.1 CLI Agent 概述 ===== -->
-<h2 class="section-heading">13.1 CLI Agent 概述</h2>
+<!-- ===== 14.1 CLI Agent 概述 ===== -->
+<h2 class="section-heading">14.1 CLI Agent 概述</h2>
 
 <p>命令行是程序员的母语。每天我们在终端里敲入 <code>git</code>、<code>docker</code>、<code>kubectl</code>、<code>ssh</code> 等命令来完成工作。但这些命令的参数繁多、语法复杂，即使是经验丰富的工程师也经常需要查文档。CLI Agent 的出现，让我们可以用自然语言与命令行交互——你告诉它"查看最近5次提交记录并找出改动最多的文件"，它自动翻译成 <code>git log --oneline -5</code> 加上一系列管道命令，然后执行并返回结果。</p>
 
@@ -204,8 +204,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<!-- ===== 15.2 CLI Agent 架构设计 ===== -->
-<h2 class="section-heading">13.2 CLI Agent 架构设计</h2>
+<!-- ===== 14.2 CLI Agent 架构设计 ===== -->
+<h2 class="section-heading">14.2 CLI Agent 架构设计</h2>
 
 <p>一个成熟的 CLI Agent 不是简单的"自然语言转命令"翻译器，而是一个多层协作的智能系统。它需要理解用户意图、选择正确的执行路径、在安全环境中运行命令、并将结果以友好的方式呈现。这一过程涉及四个核心架构层：输入解析层、命令路由层、执行沙箱层和输出格式化层。</p>
 
@@ -298,8 +298,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<!-- ===== 15.3 Shell 命令执行与安全沙箱 ===== -->
-<h2 class="section-heading">13.3 Shell 命令执行与安全沙箱</h2>
+<!-- ===== 14.3 Shell 命令执行与安全沙箱 ===== -->
+<h2 class="section-heading">14.3 Shell 命令执行与安全沙箱</h2>
 
 <p>安全是 CLI Agent 的生命线。与 Web Agent 不同，CLI Agent 直接操作操作系统——它可以读写文件、启动进程、访问网络、修改配置。一条错误的命令可能导致数据丢失、服务中断甚至系统崩溃。因此，构建一个可靠的安全沙箱是 CLI Agent 设计中最关键的环节。</p>
 
@@ -512,8 +512,8 @@ result = executor.execute("rm -rf /")
 
 <p>上面的安全命令执行器实现了四层防御：① 正则匹配拦截已知危险模式；② 命令白名单限制可执行范围；③ 链式命令分段验证；④ 运行时权限降级和环境隔离。在实际生产环境中，还需要加入命令审计日志（记录谁在什么时候执行了什么命令）和实时告警（检测到异常命令模式时通知管理员）。</p>
 
-<!-- ===== 15.4 自然语言转命令（NL2Shell） ===== -->
-<h2 class="section-heading">13.4 自然语言转命令（NL2Shell）</h2>
+<!-- ===== 14.4 自然语言转命令（NL2Shell） ===== -->
+<h2 class="section-heading">14.4 自然语言转命令（NL2Shell）</h2>
 
 <p>NL2Shell（Natural Language to Shell）是 CLI Agent 的核心技术能力。它将用户的自然语言描述转化为可执行的 Shell 命令。这不仅仅是简单的翻译——同一条命令在不同操作系统上语法不同，同一意图可以用多种命令实现，用户描述可能模糊或省略关键信息。NL2Shell 需要结合操作系统上下文、用户历史命令和常识推理来生成正确的命令。</p>
 
@@ -626,7 +626,7 @@ print(f"生成的命令：{cmd}")
 
 <svg class="flowchart-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <marker id="arrow-15-4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <marker id="arrow-14-4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
       <path d="M0,0 L0,6 L9,3 z" fill="#4a90d9"/>
     </marker>
   </defs>
@@ -656,8 +656,8 @@ print(f"生成的命令：{cmd}")
   <line x1="620" y1="180" x2="620" y2="220" stroke="#e8a87c" stroke-width="2" marker-end="url(#arrow-15-4)"/>
 </svg>
 
-<!-- ===== 15.5 场景化对接能力 ===== -->
-<h2 class="section-heading">13.5 场景化对接能力</h2>
+<!-- ===== 14.5 场景化对接能力 ===== -->
+<h2 class="section-heading">14.5 场景化对接能力</h2>
 
 <p>CLI Agent 的真正价值不在于单条命令的执行，而在于它能将自然语言意图串联成完整的运维流程。一个"部署回滚"的指令背后，可能涉及版本查询、健康检查、镜像回退、流量切换和通知发送五个步骤。CLI Agent 需要理解每个场景的上下文和依赖关系，自动编排命令序列。</p>
 
@@ -730,8 +730,8 @@ print(json.dumps(result, indent=2, ensure_ascii=False))
 </pre>
 </div>
 
-<!-- ===== 15.6 主流 CLI Agent 框架实战 ===== -->
-<h2 class="section-heading">13.6 主流 CLI Agent 框架实战</h2>
+<!-- ===== 14.6 主流 CLI Agent 框架实战 ===== -->
+<h2 class="section-heading">14.6 主流 CLI Agent 框架实战</h2>
 
 <p>CLI Agent 领域已经涌现出多个成熟框架，各有侧重。OpenClaw CLI 强调安全沙箱和多模态对接；Claude Code 专注于代码理解和编辑；Aider 走 Git 原生路线；Cursor CLI 则将 IDE 体验搬到了终端。理解这些框架的设计理念，有助于选择合适的工具或自建框架。</p>
 
@@ -836,7 +836,7 @@ print(agent.chat("git log --oneline -5"))
 
 <svg class="flowchart-svg" viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <marker id="arrow-15-6" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <marker id="arrow-14-6" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
       <path d="M0,0 L0,6 L9,3 z" fill="#4a90d9"/>
     </marker>
   </defs>
@@ -1300,8 +1300,8 @@ agent = EnterpriseAgent(
 # → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)</pre>
 </div>
 
-<!-- ===== 13.10 核心模块拆分与职责边界 ===== -->
-<h2 class="section-heading">13.8 核心模块拆分与职责边界</h2>
+<!-- ===== 14.10 核心模块拆分与职责边界 ===== -->
+<h2 class="section-heading">14.8 核心模块拆分与职责边界</h2>
 
 <p>面试高频问题：<strong>"一个 Agent 系统应该拆分成哪些核心模块？每个模块分别负责什么？"</strong>——模块拆分不是"拆得越细越好"，而是<strong>拆得越清晰越好</strong>。每个模块的职责边界必须明确——只负责A，不负责B。如果边界模糊，模块间就会互相耦合，改一个模块牵连三个模块。</p>
 
@@ -1585,6 +1585,6 @@ class SafetyGuard(Protocol):
 </div>
 
 
-  <a href="ch14-evaluation.html" class="prev">← 第14章 Agent评估</a>
+  <a href="ch17-evaluation.html" class="prev">← 第17章 Agent评估</a>
   <a href="ch16-build-from-scratch.html" class="next">第16章 从零搭建 →</a>
 </div>

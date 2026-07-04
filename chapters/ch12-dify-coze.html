@@ -1,9 +1,9 @@
 <!-- 第10章：Dify 与 Coze 平台 -->
-<h1 class="chapter-title">第11章 Dify、Coze 与可视化编排</h1>
+<h1 class="chapter-title">第13章 Dify、Coze 与可视化编排</h1>
 <p class="chapter-subtitle">低代码 Agent 构建平台的两种路线</p>
 
-<!-- ===== 10.1 为什么需要平台 ===== -->
-<h2 class="section-heading">11.1 代码框架 vs 低代码平台</h2>
+<!-- ===== 13.1 为什么需要平台 ===== -->
+<h2 class="section-heading">13.1 代码框架 vs 低代码平台</h2>
 
 <p>前面几章学的 LangGraph、AutoGen、CrewAI 都是<strong>代码框架</strong>——灵活但门槛高。不是所有团队都有工程师来写代码。低代码平台让非技术人员也能搭建 Agent：</p>
 
@@ -32,8 +32,8 @@
   </div>
 </div>
 
-<!-- ===== 10.2 Dify ===== -->
-<h2 class="section-heading">11.2 Dify：开源 LLMOps 平台</h2>
+<!-- ===== 13.2 Dify ===== -->
+<h2 class="section-heading">13.2 Dify：开源 LLMOps 平台</h2>
 
 <p><strong>Dify</strong> 是国内最火的开源 LLMOps 平台。它不仅是一个 Agent 构建工具，更是一个完整的 LLM 应用生命周期管理平台。</p>
 
@@ -115,8 +115,8 @@
   </table>
 </div>
 
-<!-- ===== 10.3 Coze ===== -->
-<h2 class="section-heading">11.3 Coze：字节跳动的 Bot 工厂</h2>
+<!-- ===== 13.3 Coze ===== -->
+<h2 class="section-heading">13.3 Coze：字节跳动的 Bot 工厂</h2>
 
 <p><strong>Coze（扣子）</strong> 是字节跳动推出的 AI Bot 构建平台。与 Dify 的"开发者工具"定位不同，Coze 更偏向"人人可用"：</p>
 
@@ -180,8 +180,8 @@
 }</pre>
 </div>
 
-<!-- ===== 10.4 对比 ===== -->
-<h2 class="section-heading">11.4 Dify vs Coze vs 代码框架</h2>
+<!-- ===== 13.4 对比 ===== -->
+<h2 class="section-heading">13.4 Dify vs Coze vs 代码框架</h2>
 
 <div class="card">
   <div class="card-title">📊 三种路线全面对比</div>
@@ -248,8 +248,8 @@
   • 要最快上线、面向消费者 → <strong>Coze</strong>
 </div>
 
-<!-- ===== 10.5 Dify 实战：工作流编排 ===== -->
-<h2 class="section-heading">11.5 Dify 实战：工作流编排全流程</h2>
+<!-- ===== 13.5 Dify 实战：工作流编排 ===== -->
+<h2 class="section-heading">13.5 Dify 实战：工作流编排全流程</h2>
 
 <p>前面几节介绍了 Dify 和 Coze 的核心概念与对比，但真正上手搭建一个完整的 Agent 应用时，需要理解具体的操作步骤和配置细节。本节将以一个<strong>智能客服 Bot</strong> 为例，从知识库创建到 Chatflow 编排，再到 API 集成，完整走通 Dify 的开发全流程。</p>
 
@@ -475,8 +475,8 @@ if __name__ == "__main__":
     print(f"\n\n完整回复: {result}")</pre>
 </div>
 
-<!-- ===== 10.6 Coze 实战：Bot 开发 ===== -->
-<h2 class="section-heading">11.6 Coze 实战：Bot 开发与多 Agent 编排</h2>
+<!-- ===== 13.6 Coze 实战：Bot 开发 ===== -->
+<h2 class="section-heading">13.6 Coze 实战：Bot 开发与多 Agent 编排</h2>
 
 <p>Coze 作为字节跳动的 Bot 工厂，在多端发布和插件生态方面有独特优势。本节将详细介绍如何在 Coze 上创建一个功能完整的 Bot，包括插件配置、工作流编排，以及使用 Coze 的多 Agent 模式实现复杂的协作场景。</p>
 
@@ -649,8 +649,8 @@ multi_agent:
   fallback: "通用回复: 抱歉，我无法处理此类问题，已为您转接人工客服。"</pre>
 </div>
 
-<!-- ===== 10.7 Dify vs Coze vs n8n 三方对比 ===== -->
-<h2 class="section-heading">11.7 Dify vs Coze vs n8n 三方对比</h2>
+<!-- ===== 13.7 Dify vs Coze vs n8n 三方对比 ===== -->
+<h2 class="section-heading">13.7 Dify vs Coze vs n8n 三方对比</h2>
 
 <p>在低代码自动化平台领域，除了 Dify 和 Coze 之外，<strong>n8n</strong> 也是一个经常被提及的工具。n8n 是一个开源的工作流自动化平台，虽然不是专门为 AI Agent 设计，但通过集成 LLM 节点也可以实现 Agent 工作流。三者各有定位和优势，理解它们的差异对于技术选型至关重要。</p>
 
