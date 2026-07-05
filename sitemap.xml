@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- 首页 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 第0章 序章 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <link>#ch00</link>
+  </url>
+
+  <!-- 第1章 大模型与Agent基础 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <link>#ch01</link>
+  </url>
+
+  <!-- 第2章 什么是AI Agent -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <link>#ch02</link>
+  </url>
+
+  <!-- 第3章 第一个Agent -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <link>#ch03</link>
+  </url>
+
+  <!-- 第4章 ReAct -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <link>#ch04</link>
+  </url>
+
+  <!-- 第5章 记忆系统 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <link>#ch05</link>
+  </url>
+
+  <!-- 第6章 Function Calling -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch06</link>
+  </url>
+
+  <!-- 第7章 MCP -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch07</link>
+  </url>
+
+  <!-- 第8章 Skills -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch08</link>
+  </url>
+
+  <!-- 第9章 CLI Agent -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch09</link>
+  </url>
+
+  <!-- 第10章 多Agent系统 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch10</link>
+  </url>
+
+  <!-- 第11章 LangGraph -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch11</link>
+  </url>
+
+  <!-- 第12章 框架对比 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch12</link>
+  </url>
+
+  <!-- 第13章 Dify/Coze -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch13</link>
+  </url>
+
+  <!-- 第14章 CLI Agent实战 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch14</link>
+  </url>
+
+  <!-- 第15章 GUI Agent -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch15</link>
+  </url>
+
+  <!-- 第16章 RAG -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch16</link>
+  </url>
+
+  <!-- 第17章 Agent评估 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch17</link>
+  </url>
+
+  <!-- 第18章 Agent安全 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch18</link>
+  </url>
+
+  <!-- 第19章 Agent部署 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch19</link>
+  </url>
+
+  <!-- 第20章 推理框架 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch20</link>
+  </url>
+
+  <!-- 第21章 技术展望 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch21</link>
+  </url>
+
+</urlset>

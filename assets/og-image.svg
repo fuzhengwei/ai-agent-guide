@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="50%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d4a574"/>
+      <stop offset="100%" style="stop-color:#c8960c"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- 顶部装饰线 -->
+  <rect x="0" y="0" width="1200" height="4" fill="url(#accent)"/>
+  
+  <!-- 标题 -->
+  <text x="600" y="220" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="64" font-weight="700" fill="#f1f5f9">AI Agent 百科全书</text>
+  
+  <!-- 副标题 -->
+  <text x="600" y="300" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="32" fill="#94a3b8">从基础认知到面试通关 · 21章渐进式教程</text>
+  
+  <!-- 亮点标签 -->
+  <text x="600" y="380" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="22" fill="#d4a574">📚 21章体系  ·  🎬 动画拆解  ·  📝 130+面试题  ·  💬 AI助教</text>
+  
+  <!-- 底部装饰 -->
+  <text x="600" y="480" text-anchor="middle" font-family="monospace" font-size="16" fill="#475569">ai-agent-guide.xiaofuge.cn</text>
+  <rect x="400" y="500" width="400" height="2" fill="#334155"/>
+</svg>

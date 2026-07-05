@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /chapters/
+Disallow: /data/
+
+# 站点地图
+Sitemap: https://ai-agent-guide.xiaofuge.cn/sitemap.xml
