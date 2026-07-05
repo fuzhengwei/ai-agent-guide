@@ -60,6 +60,11 @@ const App = {
     Progress.updateUI();
     AIChat.init();
     
+    // 首页统计
+    if (typeof BaiduAnalytics !== 'undefined') {
+      BaiduAnalytics.trackPageView('首页');
+    }
+    
     // AI助手默认展开（收藏到侧边栏）
     this.setDefaultChatVisible();
     
@@ -593,6 +598,11 @@ const App = {
     if (contentMain) contentMain.scrollTop = 0;
 
     this.updateNavButtons();
+
+    // 百度统计：章节切换上报
+    if (typeof BaiduAnalytics !== 'undefined') {
+      BaiduAnalytics.trackPageView('第' + chapter.num + '章 ' + chapter.title);
+    }
 
     // 滚动到底部时标记章节完成（替代原来的 5 秒自动完成）
     this.setupScrollCompletion(chapterId);
