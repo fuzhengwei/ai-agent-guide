@@ -182,6 +182,7 @@ const App = {
    * 初始化对话栏拖拽调整宽度
    */
   initChatResize() {
+    const root = document.documentElement;
     const chatPanel = document.getElementById('chatPanel');
     const resizeHandle = document.getElementById('chatResizeHandle');
     if (!chatPanel || !resizeHandle) return;
@@ -190,10 +191,14 @@ const App = {
     let startX = 0;
     let startWidth = 0;
     
+    const getMinWidth = () => parseInt(getComputedStyle(root).getPropertyValue('--chat-width-min'));
+    const getMaxWidth = () => parseInt(getComputedStyle(root).getPropertyValue('--chat-width-max'));
+    const getCurrentWidth = () => parseInt(getComputedStyle(root).getPropertyValue('--chat-width'));
+    
     const onMouseDown = (e) => {
       isResizing = true;
       startX = e.clientX;
-      startWidth = chatPanel.offsetWidth;
+      startWidth = getCurrentWidth();
       resizeHandle.classList.add('active');
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
@@ -203,16 +208,17 @@ const App = {
     const onMouseMove = (e) => {
       if (!isResizing) return;
       
-      const deltaX = startX - e.clientX;
+      const deltaX = e.clientX - startX;
       const newWidth = Math.max(
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-width-min')),
+        getMinWidth(),
         Math.min(
           startWidth + deltaX,
-          parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-width-max'))
+          getMaxWidth()
         )
       );
       
-      chatPanel.style.width = newWidth + 'px';
+      // 修改 CSS 变量，让 grid-template-columns 响应式变化
+      root.style.setProperty('--chat-width', newWidth + 'px');
     };
     
     const onMouseUp = () => {
@@ -222,7 +228,8 @@ const App = {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
         // 保存宽度到 localStorage
-        localStorage.setItem('ai-agent-guide-chat-width', chatPanel.style.width);
+        const current = getCurrentWidth();
+        localStorage.setItem('ai-agent-guide-chat-width', current);
       }
     };
     
@@ -233,7 +240,10 @@ const App = {
     // 恢复保存的宽度
     const savedWidth = localStorage.getItem('ai-agent-guide-chat-width');
     if (savedWidth) {
-      chatPanel.style.width = savedWidth;
+      const w = parseInt(savedWidth);
+      if (w >= getMinWidth() && w <= getMaxWidth()) {
+        root.style.setProperty('--chat-width', w + 'px');
+      }
     }
   },
   
