@@ -550,6 +550,17 @@ async def call_tool_async(tool_name, args, prev_results):
     return f"{tool_name} 结果: {args}"
 
 # ===== Step 3: Solver 综合答案 =====
+async def solve_with_results(question, plan, results):
+    """Solver：根据工具调用结果综合最终答案"""
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
+            {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
+        ]
+    )
+    return resp.choices[0].message.content
+
 async def llm_compiler_agent(question):
     """LLM Compiler 完整流程"""
     plan = await compile_plan(question)
@@ -683,6 +694,20 @@ REFLECT_PROMPT = """你刚刚完成了一个任务，但结果不够好。
 
 输出格式:
 Reflection: 你的反思内容"""
+
+def react_agent_with_context(question, context=""):
+    """带上下文的 ReAct Agent（复用 react_agent 逻辑，注入额外上下文）"""
+    messages = [{"role": "system", "content": REACT_PROMPT + context}]
+    messages.append({"role": "user", "content": question})
+    trajectory = []
+    for step in range(10):
+        resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+        thought = resp.choices[0].message.content
+        trajectory.append(thought)
+        if "finish" in thought.lower():
+            return {"answer": thought, "trajectory": "\n".join(trajectory)}
+        messages.append({"role": "assistant", "content": thought})
+    return {"answer": thought, "trajectory": "\n".join(trajectory)}
 
 def reflexion_agent(question, max_trials=3):
     """Reflexion: 执行→评估→反思→重试"""

@@ -746,6 +746,12 @@ bwrap \
         设置超时上限和重试上限。如果一个 Agent 重试3次仍失败，编排者放弃该子任务，用部分结果继续推进，而非无限等待。
       </p>
     </div>
+    <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-top: 3px solid var(--color-info);">
+      <strong style="color: var(--color-info);">④ 任务完成标准</strong>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
+        提前定义清晰的任务完成标准（如输出格式校验、关键信息完整性检查），满足条件立即终止任务，避免无效迭代。配合最大迭代次数和状态机控制，从机制上杜绝无限循环。
+      </p>
+    </div>
   </div>
 </div>
 
@@ -964,7 +970,7 @@ class ProductionOrchestrator:
         self.total_tokens = 0
         self.trace_log = []
 
-    async def run_workflow(self, user_request: str) -> dict:
+    async def run_workflow(self, user_request: str, max_revisions: int = 2) -> dict:
         """完整的调研+分析+写作工作流"""
         # Step 1: 编排者拆分任务
         self._log("orchestrator", "task_split", user_request)
@@ -1003,10 +1009,16 @@ class ProductionOrchestrator:
                     "report": writer_result.content,
                     "trace": self.trace_log}
         else:
-            # 审核未通过 → 修改后重新提交写作
+            # 审核未通过 → 修改后重新提交写作（限制修改次数，防止无限递归）
             self._log("review_agent", "revision_needed",
                       review_result.content.get("issues"))
-            return await self.run_workflow(user_request)  # 重新执行
+            if max_revisions > 0:
+                return await self.run_workflow(user_request, max_revisions - 1)
+            else:
+                return {"status": "completed_with_issues",
+                        "report": writer_result.content,
+                        "trace": self.trace_log,
+                        "note": "达到最大修改次数，返回当前版本"}
 
     def _split_task(self, request: str) -> dict:
         """编排者拆分任务"""

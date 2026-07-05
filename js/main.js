@@ -165,6 +165,110 @@ const App = {
         }
       }, { passive: true });
     }
+    
+    // ========== 对话栏拖拽调整宽度 ==========
+    this.initChatResize();
+    
+    // ========== 对话栏滚动到底部按钮 ==========
+    this.initChatScrollButton();
+  },
+  
+  /**
+   * 初始化对话栏拖拽调整宽度
+   */
+  initChatResize() {
+    const chatPanel = document.getElementById('chatPanel');
+    const resizeHandle = document.getElementById('chatResizeHandle');
+    if (!chatPanel || !resizeHandle) return;
+    
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+    
+    const onMouseDown = (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = chatPanel.offsetWidth;
+      resizeHandle.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    };
+    
+    const onMouseMove = (e) => {
+      if (!isResizing) return;
+      
+      const deltaX = startX - e.clientX;
+      const newWidth = Math.max(
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-width-min')),
+        Math.min(
+          startWidth + deltaX,
+          parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-width-max'))
+        )
+      );
+      
+      chatPanel.style.width = newWidth + 'px';
+    };
+    
+    const onMouseUp = () => {
+      if (isResizing) {
+        isResizing = false;
+        resizeHandle.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // 保存宽度到 localStorage
+        localStorage.setItem('ai-agent-guide-chat-width', chatPanel.style.width);
+      }
+    };
+    
+    resizeHandle.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    
+    // 恢复保存的宽度
+    const savedWidth = localStorage.getItem('ai-agent-guide-chat-width');
+    if (savedWidth) {
+      chatPanel.style.width = savedWidth;
+    }
+  },
+  
+  /**
+   * 初始化对话栏滚动到底部按钮
+   */
+  initChatScrollButton() {
+    const chatMessages = document.getElementById('chatMessages');
+    const scrollBtn = document.getElementById('chatScrollBottomBtn');
+    if (!chatMessages || !scrollBtn) return;
+    
+    // 监听滚动，显示/隐藏按钮
+    chatMessages.addEventListener('scroll', () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatMessages;
+      // 距离底部超过 100px 时显示按钮
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      scrollBtn.classList.toggle('visible', !isNearBottom);
+    }, { passive: true });
+    
+    // 点击按钮回到底部
+    scrollBtn.addEventListener('click', () => {
+      chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+      });
+    });
+    
+    // 新消息到达时自动滚动到底部
+    const observer = new MutationObserver(() => {
+      const { scrollTop, scrollHeight, clientHeight } = chatMessages;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+      if (isNearBottom) {
+        // 用户在底部，新消息时自动滚动
+        setTimeout(() => {
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 100);
+      }
+    });
+    
+    observer.observe(chatMessages, { childList: true, subtree: true });
   },
   
   /**
@@ -231,6 +335,37 @@ const App = {
   },
 
   /**
+   * 回到首页
+   */
+  goHome() {
+    // 显示封面
+    this.showCover();
+    
+    // 更新导航状态
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    const breadcrumb = document.getElementById('breadcrumb');
+    if (breadcrumb) breadcrumb.textContent = '首页';
+    
+    // 更新按钮状态
+    const prevBtn = document.getElementById('prevChapter');
+    if (prevBtn) prevBtn.disabled = true;
+    const nextBtn = document.getElementById('nextChapter');
+    if (nextBtn) nextBtn.disabled = false;
+    
+    // 清空 AI 助手章节上下文
+    AIChat.chapterContext = { id: '', title: '', num: 0, section: '', contentText: '' };
+    AIChat.updateQuickPrompts();
+    
+    // 隐藏章节上下文徽章
+    const chatContextBadge = document.getElementById('chatContextBadge');
+    if (chatContextBadge) chatContextBadge.style.display = 'none';
+    
+    // 收起目录面板
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.add('toc-collapsed');
+  },
+
+  /**
    * 显示书籍封面（首页） - 漫入式设计
    */
   showCover() {
@@ -282,8 +417,8 @@ const App = {
             </div>
           </div>
 
-          <div class="cover-badge">2026 · 渐进式可视化教程</div>
-          <h1 class="hero-title">AI Agent 百科全书</h1>
+          <div class="cover-badge">2026 · 21章渐进式可视化教程</div>
+          <h1 class="hero-title">AI Agent Guide</h1>
           <p class="hero-subtitle">从基础认知到面试通关 · 21章渐进式可视化教程</p>
           
           <div class="hero-btn-group">
@@ -297,20 +432,20 @@ const App = {
           
           <div class="hero-stats">
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="16">0</span>
+              <span class="stat-num" data-target="21">0</span>
               <span class="stat-label">章节</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="60">0</span>
-              <span class="stat-label">动画演示</span>
+              <span class="stat-num" data-target="74">0</span>
+              <span class="stat-label">交互动画</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="130">0</span>
-              <span class="stat-label">面试题</span>
+              <span class="stat-num" data-target="233">0</span>
+              <span class="stat-label">面试八股</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="8">0</span>
-              <span class="stat-label">主流框架</span>
+              <span class="stat-num" data-target="164">0</span>
+              <span class="stat-label">模拟考题</span>
             </div>
           </div>
 
@@ -330,6 +465,12 @@ const App = {
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const breadcrumb = document.getElementById('breadcrumb');
     if (breadcrumb) breadcrumb.textContent = '首页';
+
+    // 清空 AI 助手章节上下文（回到首页）
+    const chatContextBadge = document.getElementById('chatContextBadge');
+    if (chatContextBadge) chatContextBadge.style.display = 'none';
+    AIChat.chapterContext = { id: '', title: '', num: 0, section: '', contentText: '' };
+    AIChat.updateQuickPrompts();
 
     const prevBtn = document.getElementById('prevChapter');
     if (prevBtn) prevBtn.disabled = true;
@@ -351,7 +492,7 @@ const App = {
         const progress = Math.min(elapsed / duration, 1);
         // easeOutCubic
         const value = Math.round(target * (1 - Math.pow(1 - progress, 3)));
-        el.textContent = value + (target >= 60 ? '+' : '');
+        el.textContent = value + (target >= 200 ? '+' : '');
         if (progress < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
@@ -388,8 +529,15 @@ const App = {
     const chatContextBadge = document.getElementById('chatContextBadge');
     if (chatContextTitle && chatContextBadge) {
       chatContextTitle.textContent = `第${chapter.num}章 ${chapter.title}`;
-      chatContextBadge.style.display = 'block';
+      chatContextBadge.style.display = 'flex';
     }
+    
+    // 更新 AIChat 的章节上下文（标题、编号等，内容在加载完成后更新）
+    AIChat.chapterContext.id = chapterId;
+    AIChat.chapterContext.title = chapter.title;
+    AIChat.chapterContext.num = chapter.num;
+    AIChat.chapterContext.section = chapter.section;
+    AIChat.updateQuickPrompts();
 
     const contentArea = document.getElementById('contentBody');
     
@@ -426,6 +574,14 @@ const App = {
         }
         // 后处理：让宽内容（流程图、SVG架构图）突破 max-width 限制
         this.expandWideContent();
+        
+        // 更新 AI 助手的章节内容上下文（内容加载完成后提取文本）
+        AIChat.updateChapterContext({
+          id: chapterId,
+          title: chapter.title,
+          num: chapter.num,
+          section: chapter.section
+        });
       } else {
         contentArea.innerHTML = this.getPlaceholderContent(chapter);
       }

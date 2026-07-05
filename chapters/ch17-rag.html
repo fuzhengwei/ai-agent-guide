@@ -486,6 +486,333 @@ executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
   </div>
 </div>
 
+<!-- ===== 16.7 GraphRAG ===== -->
+<h2 class="section-heading">16.7 GraphRAG：知识图谱增强检索</h2>
+
+<p>传统向量 RAG 有一个致命弱点：<strong>只能检索局部相似片段，无法回答全局性问题</strong>。比如"整个系统架构包含哪些模块？"这样的问题需要跨文档、跨段落的全局视角。<strong>GraphRAG</strong> 通过构建知识图谱，让 RAG 具备"关联推理"的能力。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 GraphRAG 的核心思想</div>
+  <p>不只是把文档切成块存向量库，而是先从文档中<strong>抽取实体和关系</strong>，构建一张知识图谱。检索时不是做向量相似度搜索，而是在图上进行<strong>子图检索和图遍历</strong>，找到与问题相关的实体及其关联信息。</p>
+</div>
+
+<h3 class="sub-heading">16.7.1 GraphRAG 的四步流程</h3>
+
+<div class="flowchart-container" id="graphRagFlow"></div>
+
+<script>
+setTimeout(() => {
+  const container = document.getElementById('graphRagFlow');
+  if (!container) return;
+  container.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 20px 0;">
+      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">📄</div>
+        <strong style="font-size: 13px; color: var(--color-accent);">1. 实体抽取</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">LLM 识别实体</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🔗</div>
+        <strong style="font-size: 13px; color: var(--color-info);">2. 关系构建</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">实体间连边</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🕸️</div>
+        <strong style="font-size: 13px; color: var(--color-success);">3. 子图检索</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">定位相关子图</p>
+      </div>
+      <span style="font-size: 20px; color: var(--color-accent);">→</span>
+      <div style="padding: 16px 20px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🤖</div>
+        <strong style="font-size: 13px; color: var(--color-warning);">4. 图遍历生成</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">沿边扩展上下文</p>
+      </div>
+    </div>
+  `;
+}, 100);
+</script>
+
+<div class="code-block">
+<span class="code-label">Python · GraphRAG 核心流程（基于 LlamaIndex）</span>
+<pre>from llama_index.core import KnowledgeGraphIndex
+from llama_index.core.graph_stores import SimpleGraphStore
+from llama_index.llms.openai import OpenAI
+
+# 1. 实体抽取 + 关系构建（LLM 自动完成）
+llm = OpenAI(model="gpt-4o-mini")
+
+# KnowledgeGraphIndex 自动从文档中抽取实体和关系
+kg_index = KnowledgeGraphIndex.from_documents(
+    documents,
+    llm=llm,
+    max_triplets_per_chunk=5,  # 每个块最多抽取 5 个三元组
+    include_embeddings=True     # 同时生成实体嵌入
+)
+
+# 抽取的三元组示例：
+# ("RAG", "属于", "检索增强生成技术")
+# ("向量数据库", "用于", "RAG")
+# ("Agent", "调用", "RAG")
+
+# 2. 子图检索：从问题实体出发，沿关系边遍历
+query_engine = kg_index.as_query_engine(
+    include_text=True,     # 同时返回原文片段
+    similarity_top_k=5,    # 返回 Top-5 相关子图
+    graph_depth=2          # 图遍历深度 2 跳
+)
+
+# 3. 生成回答时，上下文 = 子图结构 + 原文片段
+response = query_engine.query("Agent 和 RAG 是什么关系？")
+# → 沿 "Agent" → "调用" → "RAG" → "属于" → "检索增强生成技术" 遍历
+# → 上下文包含完整关系链，而非孤立的文本块</pre>
+</div>
+
+<h3 class="sub-heading">16.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">对比维度</th>
+        <th style="text-align: left; padding: 12px 8px;">向量 RAG</th>
+        <th style="text-align: left; padding: 12px 8px;">GraphRAG</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>检索方式</strong></td><td>语义相似度搜索</td><td>实体关系图遍历</td></tr>
+      <tr><td><strong>擅长问题</strong></td><td>事实性问答（"X 是什么？"）</td><td>关联性问答（"X 和 Y 什么关系？"）</td></tr>
+      <tr><td><strong>全局视角</strong></td><td>❌ 只看局部相似片段</td><td>✅ 跨文档关联推理</td></tr>
+      <tr><td><strong>多跳推理</strong></td><td>❌ 最多 1 跳（检索到的片段）</td><td>✅ 多跳图遍历（A→B→C→D）</td></tr>
+      <tr><td><strong>构建成本</strong></td><td>低（分块 + Embedding）</td><td>高（LLM 抽取实体关系）</td></tr>
+      <tr><td><strong>更新成本</strong></td><td>低（增量加向量）</td><td>中（需更新图谱边）</td></tr>
+      <tr><td><strong>延迟</strong></td><td>毫秒级</td><td>百毫秒~秒级</td></tr>
+      <tr><td><strong>最佳实践</strong></td><td colspan="2" style="text-align: center;"><strong>混合使用</strong>：向量 RAG 做日常问答，GraphRAG 做复杂关联分析</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ GraphRAG 的代价</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>构建成本高</strong>：需要用 LLM 从每篇文档中抽取实体和关系，Token 消耗大</li>
+    <li><strong>维护复杂</strong>：文档更新时需要同步更新图谱结构，比加向量复杂得多</li>
+    <li><strong>实体歧义</strong>："苹果"是公司还是水果？需要实体消歧（Entity Disambiguation）</li>
+    <li><strong>不适合简单问答</strong>：杀鸡用牛刀，"RAG 是什么"用向量检索就够了</li>
+  </ul>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ GraphRAG 的黄金场景</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>多跳推理问答</strong>："A 公司的 CEO 毕业于哪所大学？" → 需要跨文档追溯</li>
+    <li><strong>关系分析</strong>："这个故障影响了哪些下游服务？" → 微服务依赖图</li>
+    <li><strong>全局摘要</strong>："整个系统架构包含哪些模块？" → 需要全局视角</li>
+    <li><strong>因果追溯</strong>："为什么这个指标下降了？" → 因果链路遍历</li>
+  </ul>
+</div>
+
+<!-- ===== 16.8 Agentic RAG ===== -->
+<h2 class="section-heading">16.8 Agentic RAG：Agent 驱动的自适应检索</h2>
+
+<p>传统 RAG 是一个<strong>固定流水线</strong>：用户提问 → 检索 → 拼接上下文 → LLM 生成。无论问题难易，流程都一样。但这不合理——有些问题不需要检索，有些需要检索多次，有些需要先检索再反思再检索。<strong>Agentic RAG</strong> 把 Agent 引入检索循环，让 Agent 动态决策<strong>是否检索、检索几次、何时停止</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 Agentic RAG 的核心思想</div>
+  <p>不再是一条固定的"检索→生成"流水线，而是让 Agent 作为<strong>检索编排者</strong>，根据问题难度动态决定检索策略：简单问题直接回答，复杂问题多轮检索+反思，检索不充分则换角度重搜，直到信息充分才生成最终回答。</p>
+</div>
+
+<h3 class="sub-heading">16.8.1 传统 RAG vs Agentic RAG</h3>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title">🔴 传统 RAG Pipeline</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>固定流程：Query → Retrieve → Generate</li>
+      <li>每次提问都检索，不管是否需要</li>
+      <li>只检索一次，不管结果够不够</li>
+      <li>检索结果直接拼接，不做质量判断</li>
+      <li>无法根据结果调整检索策略</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🟢 Agentic RAG</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>动态流程：Agent 自主决策每一步</li>
+      <li>判断是否需要检索（简单问题跳过）</li>
+      <li>支持多轮检索，直到信息充分</li>
+      <li>每次检索后反思：结果是否相关？</li>
+      <li>可以改写 Query 换角度重新检索</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">16.8.2 Agentic RAG 的核心循环</h3>
+
+<div class="flowchart-container" id="agenticRagLoop"></div>
+
+<script>
+setTimeout(() => {
+  const container = document.getElementById('agenticRagLoop');
+  if (!container) return;
+  container.innerHTML = `
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0;">
+      <div style="padding: 14px 28px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
+        <strong style="font-size: 14px; color: var(--color-accent);">👤 用户提问</strong>
+      </div>
+      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓</span>
+      <div style="padding: 14px 28px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
+        <strong style="font-size: 14px; color: var(--color-info);">🧠 Agent 判断：需要检索吗？</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">不需要 → 直接回答</p>
+      </div>
+      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓ 需要</span>
+      <div style="padding: 14px 28px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
+        <strong style="font-size: 14px; color: var(--color-warning);">🔍 执行检索</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">Query 改写 + 混合检索 + 重排序</p>
+      </div>
+      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓</span>
+      <div style="padding: 14px 28px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
+        <strong style="font-size: 14px; color: var(--color-success);">🤔 反思：信息充分吗？</strong>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">不充分 → 改写 Query 重新检索（循环）</p>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 2px 0 0;">充分 → 生成最终回答</p>
+      </div>
+      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓ 充分</span>
+      <div style="padding: 14px 28px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
+        <strong style="font-size: 14px; color: var(--color-accent);">✅ 生成回答 + 引用来源</strong>
+      </div>
+    </div>
+  `;
+}, 100);
+</script>
+
+<div class="code-block">
+<span class="code-label">Python · Agentic RAG 实现（LangGraph）</span>
+<pre>from langgraph.graph import StateGraph, END
+from typing import TypedDict, List
+
+class RAGState(TypedDict):
+    question: str
+    retrieved_docs: List[str]
+    answer: str
+    reflection: str       # 反思结果
+    search_count: int     # 检索次数
+    sufficient: bool      # 信息是否充分
+
+def decide_to_search(state: RAGState) -> str:
+    """Agent 决策：是否需要检索"""
+    question = state["question"]
+    # 简单问题不检索（如打招呼、算术题）
+    if is_simple_question(question):
+        return "generate_direct"
+    # 已有文档是否充分？
+    if state.get("sufficient", False):
+        return "generate"
+    # 最多检索 3 轮，防止死循环
+    if state.get("search_count", 0) >= 3:
+        return "generate"
+    return "search"
+
+def search(state: RAGState) -> RAGState:
+    """执行检索：Query 改写 + 混合检索 + 重排序"""
+    question = state["question"]
+    count = state.get("search_count", 0)
+    
+    # 第 2 轮起，根据反思结果改写 Query
+    if count > 0:
+        question = llm_rewrite_query(question, state.get("reflection", ""))
+    
+    docs = hybrid_search(question, top_k=10)
+    ranked_docs = reranker.rerank(docs, question, top_n=5)
+    
+    state["retrieved_docs"] = state.get("retrieved_docs", []) + ranked_docs
+    state["search_count"] = count + 1
+    return state
+
+def reflect(state: RAGState) -> RAGState:
+    """反思：检索结果是否足以回答问题？"""
+    prompt = f"""问题：{state['question']}
+已有文档：{state['retrieved_docs']}
+判断：当前文档是否足以完整回答问题？
+如果不足，指出缺少什么信息。"""
+    result = llm.invoke(prompt)
+    state["reflection"] = result
+    state["sufficient"] = "信息充分" in result
+    return state
+
+def generate(state: RAGState) -> RAGState:
+    """生成最终回答"""
+    context = "\n\n".join(state["retrieved_docs"])
+    state["answer"] = llm.invoke(f"基于以下信息回答问题：\n{context}\n\n问题：{state['question']}")
+    return state
+
+# 构建工作流图
+workflow = StateGraph(RAGState)
+workflow.add_node("decide", decide_to_search)
+workflow.add_node("search", search)
+workflow.add_node("reflect", reflect)
+workflow.add_node("generate", generate)
+
+workflow.set_entry_point("decide")
+workflow.add_conditional_edges("decide", decide_to_search, {
+    "search": "search",
+    "generate": "generate",
+    "generate_direct": "generate"
+})
+workflow.add_edge("search", "reflect")
+workflow.add_conditional_edges("reflect", lambda s: "search" if not s["sufficient"] and s["search_count"] < 3 else "generate")
+workflow.add_edge("generate", END)
+
+agent_rag = workflow.compile()
+
+# 用户："你好" → decide 判断简单问题 → 直接生成
+# 用户："我们系统的限流策略和降级策略分别是什么？" →
+#   第1轮检索限流策略 → 反思：缺少降级策略 →
+#   第2轮检索降级策略 → 反思：信息充分 → 生成完整回答</pre>
+</div>
+
+<h3 class="sub-heading">16.8.3 Agentic RAG 什么时候触发检索？</h3>
+
+<p>这是面试高频追问点。Agent 通过以下信号判断是否触发检索：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">触发信号</th>
+        <th style="text-align: left; padding: 12px 8px;">说明</th>
+        <th style="text-align: left; padding: 12px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>问题类型判断</strong></td><td>事实性问题 → 检索；闲聊/算术 → 跳过</td><td>"今天天气" → 检索；"1+1" → 跳过</td></tr>
+      <tr><td><strong>知识边界检测</strong></td><td>问题涉及模型训练截止后的信息 → 检索</td><td>"2025年新发布模型" → 检索</td></tr>
+      <tr><td><strong>领域关键词匹配</strong></td><td>问题包含企业专有名词 → 检索内部知识库</td><td>"我们的SLA策略" → 检索</td></tr>
+      <tr><td><strong>反思触发再检索</strong></td><td>已有文档不足以回答 → 改写Query重搜</td><td>第1轮只有限流，缺降级 → 第2轮搜降级</td></tr>
+      <tr><td><strong>用户显式要求</strong></td><td>用户要求查证或引用来源 → 检索</td><td>"帮我查一下文档" → 检索</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📊 Agentic RAG 的关键设计：防止死循环</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>最大检索次数限制</strong>：通常设 3 轮，超过则用已有信息生成（宁可答案不完美，也不能死循环）</li>
+    <li><strong>反思质量评估</strong>：反思模型判断信息充分性，避免无意义的重复检索</li>
+    <li><strong>Query 改写递进</strong>：每轮检索改写 Query，避免相同查询返回相同结果</li>
+    <li><strong>成本控制</strong>：每轮检索消耗 Token，Agent 需要在质量和成本间权衡</li>
+  </ul>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔥 2026 面试视角：Agentic RAG vs 传统 RAG</div>
+  <p style="font-size: 13px;">
+    <strong>传统 RAG</strong>是"流水线工人"——固定流程，不管实际情况。<br>
+    <strong>Agentic RAG</strong>是"调研员"——先判断要不要查资料，查了一轮发现不够再查，查到够为止。<br><br>
+    <strong>核心区别</strong>：Agentic RAG 引入了<strong>决策环节（是否检索）</strong> + <strong>反思环节（够不够）</strong> + <strong>迭代能力（换角度重搜）</strong>，这是从"工具"升级为<strong>智能体</strong>的关键。
+  </p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -532,6 +859,79 @@ executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
       ⑤ <strong>增加召回量</strong>：先召回 Top-20，再用 Reranker 精选 Top-5。
     </div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: RAG 检索出的内容相互冲突，Agent 该怎么取舍？</div>
+    <div class="qa-answer">
+      企业知识库文档版本多、来源杂，冲突是常态。三种策略：<br><br>
+      <strong>① 元数据加权排序</strong>：根据文档的发布时间、权威等级赋予不同权重，优先采信<strong>高权威 + 最新</strong>的内容。时间维度和权威维度双重保障。<br><br>
+      <strong>② 多智能体辩论（Multi-Agent Debate）</strong>：让不同 Agent 分别对应冲突的文档内容，相互对比论证，梳理出矛盾点，筛选出逻辑最通顺的答案。用"辩论"机制替代"单点裁决"。<br><br>
+      <strong>③ 强制溯源</strong>：要求 Agent 输出答案必须附带检索来源，方便用户最终校验核对。把最终裁决权交给人类。<br><br>
+      面试要点：不能只说"取最新的"，要展示元数据加权+多Agent辩论+溯源三重保障的组合思维。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 企业 RAG 怎么解决权限隔离问题？会不会泄露涉密数据？</div>
+    <div class="qa-answer">
+      这是企业落地 RAG 的硬性安全要求，面试高频追问。我的解决方案是<strong>RAG权限对齐</strong>：<br><br>
+      <strong>存入阶段</strong>：在向量数据库存入数据时，给每一条向量绑定对应的访问控制权限元数据（如部门、角色、保密等级）。<br><br>
+      <strong>检索阶段</strong>：用户发起检索请求时，系统自动带入当前用户的身份权限做过滤。<br><br>
+      <strong>关键点</strong>：不是在"结果返回后"做过滤（可能已泄露敏感信息到上下文），而是<strong>在向量检索的源头就完成数据隔离</strong>。从根本上杜绝普通用户查到高管敏感数据的问题。<br><br>
+      面试要点：强调"源头过滤"而非"事后过滤"，体现对数据安全闭环的理解。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 面对新闻/股价等实时更新知识库，RAG 怎么适配？</div>
+    <div class="qa-answer">
+      实时性是 RAG 落地的关键挑战。三种机制：<br><br>
+      <strong>① 动态路由 Agent</strong>：先判断用户问题是否需要实时数据。需要实时 → 优先调用搜索/实时 API，不检索静态向量库；不需要 → 正常走向量库检索。类似"先思考再行动"的智能分发。<br><br>
+      <strong>② 流式增量更新</strong>：通过消息队列监听知识库的实时变动，动态新增/更新向量数据，不用全量重构。增量更新效率高。<br><br>
+      <strong>③ 缓存失效机制</strong>：给高频问题设置缓存时效，元数据更新后立刻清空旧缓存，保存答案的时效性，避免返回过期信息。<br><br>
+      面试要点：三机制覆盖"判断要不要实时"（路由）、"怎么更新"（增量）、"怎么保证不过期"（缓存失效），体现全链路思维。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 怎么系统提升 RAG 问答准确率？三层体系是什么？</div>
+    <div class="qa-answer">
+      这是最综合的一道题，需要展示"从解析到检索到生成全链路"的完整体系思维：<br><br>
+      <strong>第一层：深度解析层——解决文档拆分错乱</strong><br>
+      传统按字符切分会打断表格/标题/正文的关联。我用<strong>布局感知解析模型</strong>，把文档识别成标题、正文、表格、列表等完整模块，<strong>按标题层级切块</strong>，保证每一段内容语义完整不会断裂。核心思路：先理解文档结构，再按结构切。<br><br>
+      <strong>第二层：检索增强层——多阶段精准检索</strong><br>
+      ① <strong>向量检索 + BM25 关键词检索混合模式</strong>：兼顾语义匹配和专有名词匹配。单一向量检索会丢掉精确关键词匹配能力。<br>
+      ② <strong>重排序模型对初筛内容精排</strong>：这是提升准确率<strong>性价比最高</strong>的操作。初筛粗选 → 精排精选，二次提纯。<br>
+      ③ <strong>扩展 Query 生成多个同义问题并行检索</strong>：解决用户提问太简短、信息不全的问题。一个问题变成多个角度同时检索。<br><br>
+      <strong>第三层：生成校验层——实现自我纠错</strong><br>
+      答案生成前，Agent 做两次自检：<br>
+      <strong>第一检</strong>：判断检索内容是否足够回答问题 → 不足就重新检索。<br>
+      <strong>第二检</strong>：核对答案内容是否全部来自检索结果 → 杜绝无依据的幻觉输出。<br><br>
+      面试要点：三层体系覆盖解析（输入端）、检索（中间端）、生成（输出端），体现全链路精度提升而非单点优化。
+    </div>
+  </div>
+  <div class="qa-item">
+    <div class="qa-question">Q10: GraphRAG 和向量 RAG 的区别是什么？各自适合什么场景？</div>
+    <div class="qa-answer">
+      <strong>核心区别在检索方式</strong>：向量 RAG 做语义相似度搜索，检索的是"像"的文本块；GraphRAG 从文档中抽取实体和关系构建知识图谱，检索时做图遍历，找到的是"有关联"的信息。<br><br>
+      <strong>向量 RAG 擅长</strong>：事实性问答（"RAG 是什么？"），单点查询，毫秒级响应，构建成本低。<br>
+      <strong>GraphRAG 擅长</strong>：多跳推理（"A 公司 CEO 毕业于哪所大学？"需要跨文档追溯），关系分析（"这个故障影响哪些下游服务？"），全局摘要，跨文档关联。<br><br>
+      <strong>GraphRAG 的代价</strong>：构建成本高（LLM 抽取实体关系消耗大量 Token），维护复杂（文档更新需同步更新图谱），有实体歧义问题（"苹果"是公司还是水果）。<br><br>
+      <strong>最佳实践</strong>：混合使用。向量 RAG 做日常问答（90% 场景），GraphRAG 做复杂关联分析（10% 场景）。面试要点是展示"不是 GraphRAG 替代向量 RAG，而是互补"的思维。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: Agentic RAG 什么时候触发检索？和传统 RAG pipeline 有什么本质区别？</div>
+    <div class="qa-answer">
+      <strong>本质区别</strong>：传统 RAG 是固定流水线（Query → Retrieve → Generate），每次提问都检索且只检索一次；Agentic RAG 引入 Agent 做动态决策，具备三个传统 RAG 没有的能力：<br><br>
+      <strong>① 决策能力（是否检索）</strong>：Agent 判断问题类型——简单问题（"你好"、"1+1"）直接回答不检索，事实性问题才触发检索。触发信号包括：问题类型判断、知识边界检测（超出训练数据）、领域关键词匹配、用户显式要求。<br><br>
+      <strong>② 反思能力（够不够）</strong>：每轮检索后，Agent 评估已有文档是否足以完整回答问题。不足则指出缺什么，触发再检索。<br><br>
+      <strong>③ 迭代能力（换角度重搜）</strong>：根据反思结果改写 Query，换角度重新检索。比如第 1 轮搜"限流策略"，反思发现还缺"降级策略"，第 2 轮改搜"降级策略"。<br><br>
+      <strong>防止死循环</strong>：设最大检索次数（通常 3 轮），超过则用已有信息生成。面试要点：强调"决策+反思+迭代"三重能力，这是从"工具"升级为"智能体"的关键。
+    </div>
+  </div>
+
 </div>
 
 <!-- ===== 考试 ===== -->
@@ -634,7 +1034,55 @@ var ch16Questions = [
     ],
     answer: [1],
     explanation: 'chunk_overlap 让相邻块有重叠部分，保持上下文连贯。经验值是 chunk_size 的 10-15%。'
-  }
+  },
+  {
+    type: 'single',
+    question: 'GraphRAG 相比向量 RAG 的核心优势是什么？',
+    options: [
+      '检索速度更快',
+      '支持多跳推理和跨文档关联分析',
+      '构建成本更低',
+      '不需要 LLM 参与'
+    ],
+    answer: [1],
+    explanation: 'GraphRAG 通过知识图谱的实体关系遍历，支持多跳推理（A→B→C→D）和跨文档关联分析，这是向量 RAG 做不到的。但 GraphRAG 构建成本更高、速度更慢。'
+  },
+  {
+    type: 'single',
+    question: 'Agentic RAG 中，Agent 什么时候决定不检索？',
+    options: [
+      '问题包含关键词时',
+      '简单问题如闲聊或算术题，或已有文档信息充分时',
+      '每次提问都不检索',
+      '用户没有明确要求时'
+    ],
+    answer: [1],
+    explanation: 'Agent 通过问题类型判断（闲聊/算术跳过）、知识边界检测、信息充分性评估来决定是否检索。简单问题直接回答，已有文档充分也不再检索。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agentic RAG 防止死循环的关键设计包括哪些？（多选）',
+    options: [
+      '最大检索次数限制（通常 3 轮）',
+      '每轮检索后反思评估信息充分性',
+      '每轮改写 Query 避免重复结果',
+      '使用更大的 LLM 模型'
+    ],
+    answer: [0, 1, 2],
+    explanation: '防止死循环三要素：最大检索次数限制（硬兜底）、反思评估（避免无意义重复）、Query 改写递进（避免相同查询返回相同结果）。使用更大模型与防死循环无关。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个场景最适合用 GraphRAG 而非向量 RAG？',
+    options: [
+      '"RAG 是什么？"——事实性问答',
+      '"我们系统中 A 服务的故障影响了哪些下游服务？"——关系分析',
+      '"今天天气怎么样？"——实时查询',
+      '"帮我总结这篇文章"——单文档摘要'
+    ],
+    answer: [1],
+    explanation: '关系分析需要遍历服务依赖图（A→B→C），是 GraphRAG 的黄金场景。事实性问答、实时查询、单文档摘要用向量 RAG 即可。'
+  },
 ];
 
 setTimeout(() => { Quiz.render('quizArea', ch16Questions); }, 500);

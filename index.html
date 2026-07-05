@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Agent 百科全书 —— 从基础认知到面试通关（21章）</title>
   <meta name="description" content="21章渐进式可视化教程 — 从基础认知到面试通关，动画拆解 AI Agent 核心概念，覆盖 LangGraph、Ollama、vLLM、Dify、Coze、MCP、Spring AI 等主流框架与推理引擎">
-  <link rel="stylesheet" href="css/book.css?v=12">
+  <link rel="stylesheet" href="css/book.css?v=13">
   <link rel="stylesheet" href="css/animations.css?v=2">
   <!-- Prism.js 语法高亮 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" integrity="sha384-wFjoQjtV1y5jVHbt0p35Ui8aV8GVpEZkyF99OXWqP/eNJDU93D3Ugxkoyh6Y2I4A" crossorigin="anonymous">
@@ -15,6 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <!-- Marked.js - Markdown 渲染 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body>
   <div class="app-layout">
@@ -22,7 +24,7 @@
     <!-- ===== 左侧目录栏 ===== -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h1>📚 AI Agent</h1>
+        <h1 class="sidebar-logo" onclick="App.goHome()" title="点击回到首页">📚 AI Agent</h1>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
@@ -64,7 +66,10 @@
     </aside>
     
     <!-- ===== 右侧 AI 对话栏 ===== -->
-    <aside class="chat-panel">
+    <aside class="chat-panel" id="chatPanel">
+      <!-- 拖拽手柄 -->
+      <div class="chat-resize-handle" id="chatResizeHandle" title="拖拽调整宽度"></div>
+      
       <div class="chat-header">
         <div class="chat-title">
           <span class="dot"></span>
@@ -78,12 +83,23 @@
         <select id="modelSelector"></select>
         <button class="settings-btn" id="chatSettingsBtn" title="API 配置">⚙</button>
       </div>
+      <!-- 章节上下文徽章 -->
+      <div class="chat-context-badge" id="chatContextBadge" style="display:none;">
+        <span class="context-icon">📖</span>
+        <span id="chatContextTitle">未选择章节</span>
+      </div>
       <div class="chat-messages" id="chatMessages">
         <!-- 消息由 JS 动态生成 -->
       </div>
+      <!-- 回到最新消息按钮 -->
+      <button class="chat-scroll-bottom-btn" id="chatScrollBottomBtn" title="回到最新消息">最新消息</button>
       <div class="chat-input-area">
+        <!-- 快捷提示词（紧贴输入框上方） -->
+        <div class="chat-quick-prompts" id="chatQuickPrompts">
+          <!-- 由 JS 动态生成 -->
+        </div>
         <div class="chat-input-wrapper">
-          <textarea id="chatInput" placeholder="提问关于 AI Agent 的问题..." rows="1"></textarea>
+          <textarea id="chatInput" placeholder="输入你的问题..." rows="2"></textarea>
           <button class="send-btn" id="chatSendBtn" title="发送">↑</button>
         </div>
       </div>
@@ -128,7 +144,7 @@
   <script src="js/flowchart.js?v=3"></script>
   <script src="js/progress.js"></script>
   <script src="js/quiz.js"></script>
-  <script src="js/chat.js?v=2"></script>
-  <script src="js/main.js?v=22"></script>
+  <script src="js/chat.js?v=6"></script>
+  <script src="js/main.js?v=25"></script>
 </body>
 </html>

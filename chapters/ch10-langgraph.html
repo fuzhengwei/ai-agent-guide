@@ -805,6 +805,18 @@ setTimeout(() => {
       <strong>一句话标准</strong>：能用 LangChain Agent 在 10 分钟跑通的简单场景就用它，但凡需要「控制力」就上 LangGraph。
     </div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: LangGraph 的节点和边，和传统工作流有什么区别？</div>
+    <div class="qa-answer">
+      <strong>核心区别 = 灵活性 + 循环能力</strong>：<br><br>
+      <strong>传统工作流</strong>：节点和跳转边都是固定写死的，一步错就全盘卡壳，也不支持循环执行。适用于流程确定、场景固定的简单业务。<br><br>
+      <strong>LangGraph</strong>：<br>
+      ① 支持<strong>条件边</strong>——下一个执行节点不是固定的，由大模型的推理结果动态决定。类似 if-else 但决策者是 LLM 而非硬编码逻辑。<br>
+      ② 支持<strong>循环执行</strong>——Agent 可以自主反复试错、迭代优化，直到完成任务。这是 Agent 能自主完成复杂任务的核心原因。<br><br>
+      <strong>一句话话术</strong>：传统工作流是确定性流水线，LangGraph是不确定性自主推理链。条件边让 Agent 能"自主决策"下一步，循环执行让 Agent 能"试错优化"直到完成。
+    </div>
+  </div>
 </div>
 
 <!-- ===== 课后考试 ===== -->

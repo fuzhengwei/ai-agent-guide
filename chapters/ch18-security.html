@@ -406,6 +406,17 @@ response = llm.invoke(sanitized)</pre>
       <strong>步数限制</strong>（防无限循环）、<strong>Token限制</strong>（防成本失控）、<strong>时间限制</strong>（防长时间运行）、<strong>工具调用频率</strong>（防API滥用）、<strong>并发限制</strong>（防资源耗尽）。这些限制确保 Agent 即使出现 bug 或被攻击，也不会造成不可挽回的损失（成本爆炸、服务不可用）。
     </div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: 企业 RAG 的权限隔离怎么实现？向量数据库会不会泄露涉密数据？</div>
+    <div class="qa-answer">
+      企业落地 RAG 的硬性安全要求，核心方案是<strong>RAG权限对齐</strong>：<br><br>
+      <strong>存入阶段</strong>：在向量数据库存入数据时，给每一条向量绑定对应的访问控制权限元数据（如部门、角色、保密等级）。<br><br>
+      <strong>检索阶段</strong>：用户发起检索请求时，系统自动带入当前用户的身份权限做过滤。<br><br>
+      <strong>关键原则</strong>：不是在"结果返回后"做过滤（敏感信息可能已泄露到 LLM 上下文），而是<strong>在向量检索的源头就完成数据隔离</strong>。从根本上杜绝普通用户查到高管敏感数据的问题。<br><br>
+      与 Agent 三层权限模型的关系：RAG权限对齐是 Layer 2（运行时拦截）的<strong>数据层面特化</strong>——在向量库的 pre-filter 阶段注入身份权限，比 post-filter 更安全。面试要点：强调"源头过滤"而非"事后过滤"。
+    </div>
+  </div>
 </div>
 
 <!-- ===== 考试 ===== -->

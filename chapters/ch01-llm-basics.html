@@ -250,6 +250,803 @@ setTimeout(() => {
 }, 300);
 </script>
 
+<!-- ===== 1.1.5 Token 消耗实战估算 ===== -->
+<h3 class="sub-heading">Token 消耗实战估算：1000 行代码 ≈ 多少 Token？</h3>
+
+<p>面试中常被追问：<strong>"写一千行代码大概消耗多少 token？一次 Agent 对话大概花多少钱？"</strong>很多人只知道"按 token 计费"，但给不出具体数字。这节帮你建立直觉。</p>
+
+<h4 style="color: var(--color-primary); margin-top: 16px;">📏 代码行 → Token 换算规则</h4>
+
+<p>不同语言的代码，Token 密度差异很大。核心换算公式：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">📊 代码 Token 密度对照表</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">语言/内容</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">1行 ≈ Token数</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">1000行 ≈ Token数</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4o 输入成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Python（简洁风格）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~15 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~15,000 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.038</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Java（冗长风格）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~25 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~25,000 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.063</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">中文文档/注释</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~20 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~20,000 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.050</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">英文文档/注释</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~10 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~10,000 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.025</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;">JSON/配置文件</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~12 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~12,000 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.030</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">估算公式：Token 数 ≈ 字符数 ÷ 4（英文）或 字符数 ÷ 2（中文）。Python代码偏英文密度，1行≈15 Token；Java冗长1行≈25 Token。</p>
+</div>
+
+<p><strong>关键结论</strong>：1000 行 Python 代码大约消耗 15,000 Token，在 GPT-4o 上输入成本约 $0.038（不到4美分）。但如果模型需要<strong>生成</strong>1000行代码（输出Token），成本约 $0.15（输出价格是输入的4倍）。</p>
+
+<h4 style="color: var(--color-primary); margin-top: 16px;">💰 典型 Agent 场景 Token 消耗案例</h4>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🎯 五种典型场景的 Token 消耗与成本</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">场景</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-info);">输入Token</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-warning);">输出Token</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4o 总成本</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4o-mini 总成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">简单问答（1轮）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~500</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~200</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.003</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.0002</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">代码解释（读+解读）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~3,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~1,500</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.023</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.0014</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">代码修改（定位+改+输出）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~8,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~4,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.060</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.0036</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">复杂开发（5轮工具调用）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~50,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~15,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.275</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.0165</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;">全项目重构（20轮+）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~200,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~60,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$1.100</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.066</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">成本计算公式：总成本 = 输入Token×输入单价 + 输出Token×输出单价。GPT-4o: $2.5/M输入 + $10/M输出；GPT-4o-mini: $0.15/M输入 + $0.60/M输出。</p>
+</div>
+
+<div class="quote">
+  面试回答 Token 消耗时，<strong>记住三个锚点</strong>：①简单问答≈500 Token ≈ $0.003；②代码修改≈8000 Token ≈ $0.06；③复杂Agent任务≈50K Token ≈ $0.27。然后说"具体取决于对话轮数和工具调用次数"，这就够了。
+</div>
+
+<h4 style="color: var(--color-primary); margin-top: 16px;">📜 百万 Token 计费规则详解</h4>
+
+<p>主流 API 的计费不是简单的"每千字多少钱"，而是有精细的规则：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">📋 计费规则五条核心</div>
+  <ol style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+    <li><strong>输入和输出分别计费</strong>：输入Token（你发给模型的）和输出Token（模型返回的）价格不同，输出通常是输入的3-5倍。如GPT-4o输入$2.5/M、输出$10/M（4倍）。</li>
+    <li><strong>缓存Token半价</strong>：OpenAI 和 Anthropic 都支持 Prompt Caching——重复出现的输入前缀可以缓存，缓存命中的Token价格约为正常输入的50%。如GPT-4o缓存输入$1.25/M（正常的一半）。</li>
+    <li><strong>按实际消耗计费，不按字符</strong>：计费单位是Token而非字符。同样1000字符，中文比英文消耗更多Token，所以中文费用更高。</li>
+    <li><strong>工具调用的Token也算</strong>：Function Calling返回的JSON参数是输出Token，工具执行结果是输入Token（下次发给模型）。一个5轮工具调用的Agent任务，Token消耗是累积的。</li>
+    <li><strong>流式输出不省钱</strong>：Streaming模式只是"边生成边返回"让用户感觉更快，Token总数和费用与非流式完全相同。</li>
+  </ol>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python — Token 消耗估算工具</span>
+<pre>def estimate_agent_cost(
+    system_prompt_tokens: int = 500,
+    tool_schemas_tokens: int = 2000,
+    memory_inject_tokens: int = 3000,
+    rounds: int = 5,
+    avg_input_per_round: int = 1000,
+    avg_output_per_round: int = 800,
+    model: str = "gpt-4o"
+):
+    """估算 Agent 任务的 Token 消耗和成本"""
+    pricing = {
+        "gpt-4o":      {"input": 2.50,  "output": 10.00, "cached": 1.25},
+        "gpt-4o-mini": {"input": 0.15,  "output": 0.60,  "cached": 0.075},
+        "claude-3.5":  {"input": 3.00,  "output": 15.00, "cached": 1.50},
+    }
+    p = pricing[model]
+    
+    # 第一轮：System Prompt + 工具Schema + 记忆注入 + 用户输入
+    first_input = system_prompt_tokens + tool_schemas_tokens + memory_inject_tokens + avg_input_per_round
+    # 后续轮次：缓存System Prompt前缀 + 新增内容 + 工具返回
+    later_input = avg_input_per_round * (rounds - 1)  # 每轮工具返回也算输入
+    
+    total_input = first_input + later_input
+    total_output = avg_output_per_round * rounds
+    
+    # 假设50%的输入可命中缓存
+    cached_input = int(total_input * 0.5)
+    fresh_input = total_input - cached_input
+    
+    cost = (fresh_input * p["input"] / 1_000_000
+          + cached_input * p["cached"] / 1_000_000
+          + total_output * p["output"] / 1_000_000)
+    
+    return {
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "cached_tokens": cached_input,
+        "estimated_cost_usd": round(cost, 4),
+        "per_round_avg": round(total_input + total_output / rounds),
+    }
+
+# 示例：5轮代码修改任务，GPT-4o
+result = estimate_agent_cost(rounds=5, model="gpt-4o")
+# → {"total_input": 11500, "total_output": 4000, "cost": "$0.059"}
+
+# 示例：20轮全项目重构，GPT-4o-mini
+result = estimate_agent_cost(rounds=20, model="gpt-4o-mini")
+# → {"total_input": 24500, "total_output": 16000, "cost": "$0.014"}</pre>
+</div>
+
+<!-- ===== 1.1.6 上下文窗口 Token 经济学 ===== -->
+<h3 class="sub-heading">上下文窗口 Token 经济学：分配、缓存与优化</h3>
+
+<p>面试追问：<strong>"上下文窗口128K，系统提示词占了多少？剩下的怎么分配？怎么设计才能更有效命中缓存？"</strong>这节从经济学视角拆解上下文窗口的每一份 Token 预算。</p>
+
+<h4 style="color: var(--color-primary); margin-top: 16px;">📊 上下文窗口的 Token 分配策略</h3>
+
+<p>一个 128K 的上下文窗口，看起来很大，但在 Agent 场景下很快就会被填满。来看一个典型的分配：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🧮 128K 上下文窗口的典型 Token 分配</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">组成部分</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">典型Token数</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">占比</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">性质</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">缓存友好度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">System Prompt（角色+规则）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">500~2,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0.4~1.6%</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">🔒固定不变</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">✅ 最易命中缓存</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">工具Schema（Function Calling定义）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1,000~5,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0.8~4%</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">🔒固定不变</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">✅ 最易命中缓存</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Skill触发词（available_skills列表）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">500~3,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0.4~2.3%</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">⚠️缓慢变化</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">⚠️ 多轮后命中</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">记忆注入（长期记忆召回片段）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1,000~5,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">0.8~4%</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">⚠️按需动态</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">❌ 不可缓存</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">对话历史（多轮交互记录）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">5,000~50,000+</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">4~39%</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">🔄逐轮增长</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">❌ 不可缓存（新内容）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">工具返回结果（Action输出）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">2,000~20,000</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1.6~16%</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">🔄每轮新增</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">❌ 不可缓存</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">模型输出预留</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">剩余空间</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">30~50%</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">📝模型生成用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">—</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">关键发现：System Prompt + 工具Schema + Skill触发词合计仅占 2~8%，但每次请求都要发送。缓存命中这部分可以节省 50%+ 的输入成本。</p>
+</div>
+
+<div class="quote">
+  面试中回答"上下文窗口怎么分配"时，<strong>先说固定部分再说动态部分</strong>："System Prompt + 工具Schema + Skill触发词是固定的（2~8%），缓存命中后半价；记忆注入和对话历史是动态的（20~55%），不可缓存但可以通过压缩和召回控制。预留30~50%给模型输出。"然后强调：固定前缀放最前面，最大化缓存命中率。
+</div>
+
+<h4 style="color: var(--color-primary); margin-top: 16px;">🎯 Prompt Cache：如何更有效命中缓存</h4>
+
+<p>OpenAI 的 <strong>Prompt Caching</strong>（前缀缓存）机制：当多个请求的 Prompt 前缀相同时，系统会缓存前缀的 KV 计算结果，后续请求只需计算新增部分。缓存命中的 Token 价格约为正常的<strong>50%</strong>。</p>
+
+<p>缓存命中条件：<strong>前缀完全相同</strong>。任何一字之差都会导致缓存失效，从零开始计算。所以设计的关键是<strong>把不变的放前面，变化的放后面</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🏗️ 缓存友好的 Prompt 结构设计</div>
+  <div style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
+    <p><strong>✅ 正确顺序（最大化缓存命中）：</strong></p>
+    <pre style="background: var(--color-bg-code); padding: 12px; border-radius: 8px; font-size: 13px; margin: 8px 0;">System Prompt（角色+规则）        ← 🔒每次相同，缓存100%命中
+工具Schema（Function定义）      ← 🔒每次相同，缓存100%命中
+Skill触发词（available_skills）  ← ⚠️同会话内相同，缓存命中
+记忆注入（长期记忆片段）        ← ❌每轮可能不同，不命中
+对话历史（多轮记录）            ← ❌逐轮增长，旧部分可命中
+用户当前输入                    ← ️每次不同，不命中</pre>
+    <p style="margin-top: 12px;"><strong>❌ 错误顺序（缓存命中率低）：</strong></p>
+    <pre style="background: var(--color-bg-code); padding: 12px; border-radius: 8px; font-size: 13px; margin: 8px 0;">用户当前输入                    ← ❌放最前面，每轮都不同
+对话历史                        ← ❌紧随用户输入，缓存难命中
+工具Schema                      ← 🔒被挤到后面，前缀变了缓存失效
+System Prompt                    ← 🔒放最后面，缓存完全失效</pre>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python — 缓存友好的 Prompt 组装</span>
+<pre>def build_cache_friendly_prompt(system_msg, tools_schema, skills_desc, 
+                                memory_chunks, chat_history, user_input):
+    """按缓存友好顺序组装 Prompt
+    原则：固定前缀放最前面，动态内容放后面"""
+    messages = []
+    
+    # Layer 1: 固定层（100%缓存命中）
+    # System Prompt + 工具定义放最前面
+    system_content = f"{system_msg}\n\n# Available Tools\n{tools_schema}\n\n# Available Skills\n{skills_desc}"
+    messages.append({"role": "system", "content": system_content})
+    
+    # Layer 2: 半固定层（同会话内缓存命中）
+    # 长期记忆注入（同会话内召回策略变化不频繁）
+    if memory_chunks:
+        memory_block = "\n".join([f"- {m}" for m in memory_chunks])
+        messages.append({"role": "system", "content": f"# Recalled Memory\n{memory_block}"})
+    
+    # Layer 3: 动态层（不命中缓存但旧部分可命中）
+    # 对话历史 + 工具返回结果
+    for msg in chat_history:
+        messages.append(msg)
+    
+    # Layer 4: 当前请求（完全不命中缓存）
+    messages.append({"role": "user", "content": user_input})
+    
+    return messages
+
+# 缓存命中率估算
+# 假设: 固定层2000token + 半固定层2000token + 10轮对话8000token + 当前500token
+# 第5轮请求: 前缀(2000固定+8000对话旧部分)可缓存 ≈ 50%命中率
+# 第10轮请求: 前缀(2000固定+16000对话旧部分)可缓存 ≈ 70%命中率
+# 成本节省: 50%~70%的输入Token按半价计费</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ 面试要点</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
+    回答"如何更有效命中缓存"时，三句话搞定：<br><br>
+    <strong>① 固定前缀放最前</strong>——System Prompt + 工具Schema + Skill描述放在Prompt开头，保证每轮前缀一致，缓存100%命中。<br>
+    <strong>② 动态内容放后面</strong>——对话历史、记忆召回、用户输入放末尾，不影响前缀缓存。<br>
+    <strong>③ 合并固定层</strong>——把System Prompt和工具定义合并为一个system消息，减少消息数量，增加前缀连续性。OpenAI缓存最低5个消息才触发，合并后更容易达标。<br><br>
+    关联面试题 → Q12（上下文窗口设计）<br>
+    关联章节 → 第5章 记忆系统（上下文压缩）、第4章 ReAct模式（Token Budget）
+  </p>
+</div>
+
+<!-- ===== 1.2 Transformer 架构概览 ===== -->
+<h2 class="section-heading">1.2 Transformer 架构概览</h2>
+
+<p>面试中被问到"大模型底层是什么架构"，90% 的人会回答"Transformer"，但能讲清楚 Transformer 到底怎么工作的却不到 10%。这一节不深入数学推导，而是帮你建立<strong>足够应对面试的架构直觉</strong>。</p>
+
+<p>Transformer 是 2017 年 Google 论文《Attention Is All You Need》提出的架构，核心创新是<strong>完全抛弃 RNN 和 CNN，仅用 Attention 机制处理序列</strong>。所有现代大模型（GPT、Claude、Gemini、DeepSeek、Qwen）都基于 Transformer，区别在于细节变体（Decoder-Only、RoPE 位置编码、GQA 注意力等）。</p>
+
+<h3 class="sub-heading">为什么要用 Attention？——RNN 的致命缺陷</h3>
+
+<p>在 Transformer 之前，NLP 的主力架构是 RNN（循环神经网络）及其变体 LSTM/GRU。RNN 的核心问题是<strong>顺序依赖</strong>：必须先处理第 1 个词，才能处理第 2 个词，依次递推。这带来两个致命缺陷：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ RNN 的两大致命缺陷</div>
+  <ul style="margin: 10px 0 0 20px; color: var(--color-text-secondary); line-height: 1.8;">
+    <li><strong>长距离依赖丢失</strong>——当句子有 100 个词时，第 1 个词的信息传到第 100 个词时已经几乎消失。LSTM 通过门控机制缓解了这个问题，但没根本解决。这就是为什么 RNN 难以处理长文本。</li>
+    <li><strong>无法并行计算</strong>——因为必须按顺序处理，GPU 的并行能力完全浪费。训练一个 RNN 语言模型可能需要几周，而 Transformer 可以并行处理所有位置，训练时间缩短到几天。</li>
+  </ul>
+</div>
+
+<p>Attention 机制直接解决了这两个问题：<strong>每个词可以直接"看到"序列中所有其他词</strong>，不需要信息逐步传递；而且所有位置的计算可以<strong>同时并行</strong>执行。这就是论文标题"Attention Is All You Need"的底气——有了 Attention，就不再需要 RNN。</p>
+
+<h3 class="sub-heading">Self-Attention：让每个词"看到"所有其他词</h3>
+
+<p>Self-Attention（自注意力）是 Transformer 的灵魂。直觉上理解：对于句子中的每个词，Self-Attention 让它和句子中<strong>所有词</strong>（包括自己）计算一个"注意力分数"，分数越高表示越关注那个词。然后根据分数对其他词的信息加权求和，得到这个词的"新表示"。</p>
+
+<p>具体机制是通过<strong>Query（查询）、Key（键）、Value（值）</strong>三个向量实现的。每个词经过三个不同的线性变换，分别生成 Q、K、V。计算过程如下：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔧 Self-Attention 计算四步走</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">步骤</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">操作</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">直觉理解</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">① 生成 Q/K/V</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个词向量 × 三个权重矩阵 W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个词生成"我在找什么"(Q)、"我有什么信息"(K)、"我的实际内容"(V)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">② 计算注意力分数</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Q × K<sup>T</sup>，再除以 √d<sub>k</sub></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">计算每对词之间的"相关度"。除以 √d<sub>k</sub> 是为了防止点积过大导致梯度消失</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">③ Softmax 归一化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">对分数做 Softmax，使所有分数和为 1</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">把分数变成概率分布，表示"应该把多少注意力分配给每个词"</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">④ 加权求和</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">注意力权重 × V，求和得到输出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">按关注度把所有词的信息混合起来，得到这个词的"新表示"</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">公式：Attention(Q, K, V) = Softmax(Q × K<sup>T</sup> / √d<sub>k</sub>) × V。面试中能写出这个公式就能过关。</p>
+</div>
+
+<p>举个例子：句子"<strong>The cat sat on the mat because it was tired</strong>"，当处理"it"这个词时，Self-Attention 会让"it"和所有词计算注意力分数。结果会是"it"对"cat"的注意力分数最高（因为"it"指代"cat"），所以"it"的新表示会包含大量"cat"的信息。这就是 Attention 捕捉上下文依赖的方式。</p>
+
+<h3 class="sub-heading">Multi-Head Attention：从多个角度同时关注</h3>
+
+<p>单个 Self-Attention 只能学到一种"关注模式"。但语言中的关系是多维的——一个词可能同时需要关注语法关系（主谓宾）、语义关系（同义反义）、指代关系（it 指代谁）等。<strong>Multi-Head Attention（多头注意力）</strong>就是同时运行多组 Self-Attention（即多个"头"），每组学习不同的关注模式，最后拼接起来。</p>
+
+<div class="card">
+  <div class="card-title">🎯 Multi-Head Attention 直觉示意</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">头 (Head)</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">可能学到的关注模式</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">例子</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Head 1</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">语法关系（主谓宾）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"sat" 关注 "cat"（主语）和 "mat"（宾语）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Head 2</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">指代消解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"it" 关注 "cat"（指代目标）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Head 3</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">因果关系</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"tired" 关注 "sat"（因为坐着所以累了）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">Head 4</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">位置邻接</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个词关注前一个词（类似 n-gram）</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">...更多头</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">其他模式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-tertiary);">模型自动学习，人类不一定能解释</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">GPT-4 使用 96 个头，每个头独立学习一种关注模式。头数越多，模型能捕捉的关系越丰富，但计算量也线性增长。</p>
+</div>
+
+<p>实际实现中，Multi-Head Attention 把 Q、K、V 分成 h 份（如 8 头、96 头），每份独立做 Self-Attention，最后拼接后做一次线性变换输出。计算量与单头相同（因为每个头的维度缩小了），但表达能力大幅提升。</p>
+
+<h3 class="sub-heading">位置编码：让模型知道"谁在前谁在后"</h3>
+
+<p>Self-Attention 有一个先天缺陷：<strong>它是位置无关的</strong>。把句子"猫追狗"和"狗追猫"输入 Self-Attention，如果不加位置信息，模型看到的结果是完全一样的——因为 Attention 只看词与词之间的关系，不看顺序。但语言中顺序显然很重要。位置编码（Positional Encoding）就是用来解决这个问题的。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">📍 主流位置编码方案对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">方案</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">原理</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">代表模型</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">优缺点</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">正弦/余弦编码</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用不同频率的 sin/cos 函数生成位置向量，加到词向量上</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">原始 Transformer</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 可泛化到更长序列 ❌ 只能加在输入层</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">可学习位置编码</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个位置一个可训练的向量参数，随训练优化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-2 / BERT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 简单有效 ❌ 无法外推到训练时没见过的长度</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">ALiBi</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不编码位置，而是在 Attention 分数上加一个与距离成正比的偏置（越远越小）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">BLOOM / MPT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 天然支持外推 ❌ 表达能力相对弱</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">RoPE（旋转位置编码）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用旋转矩阵编码相对位置，在 Q/K 上施加旋转变换</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 / Llama / Qwen / DeepSeek</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 相对位置+外推性强 ✅ 当前主流 ❌ 实现稍复杂</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">2026年面试重点：RoPE（旋转位置编码）是当前主流方案，几乎所有现代大模型都用它。核心思想是用旋转矩阵在 Q 和 K 上编码相对位置，使得注意力分数自然反映两个词的距离。</p>
+</div>
+
+<p><strong>RoPE 怎么工作？</strong>直觉上：把 Q 和 K 向量看作二维平面上的点，根据它们的位置旋转不同角度。两个词的距离越远，旋转角度差越大，它们的点积（注意力分数）就越小。这巧妙地让 Attention 分数自然包含了位置信息，不需要额外加位置向量。RoPE 的最大优势是<strong>外推性</strong>——训练时只见过 4K 位置，推理时可以扩展到 128K 甚至更长。</p>
+
+<h3 class="sub-heading">Encoder-Decoder 结构与 Decoder-Only</h3>
+
+<p>原始 Transformer 是 Encoder-Decoder 结构：Encoder 把输入序列编码成一组向量，Decoder 根据这些向量逐词生成输出。但现代大模型几乎都采用<strong>Decoder-Only</strong>架构——去掉 Encoder，只用 Decoder 堆叠。为什么？</p>
+
+<div class="card">
+  <div class="card-title">🏗️ 三种 Transformer 架构对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">架构</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">结构</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">代表模型</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">适用任务</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Encoder-Only</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">只有 Encoder，双向注意力（每个词能看到前后所有词）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">BERT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文本分类、NER、句子理解</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Encoder-Decoder</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Encoder 编码输入 + Decoder 自回归生成输出</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">原始 Transformer / T5 / BART</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">翻译、摘要等 Seq2Seq 任务</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Decoder-Only</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">只有 Decoder，单向注意力（每个词只看到前面的词）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT / Claude / Llama / DeepSeek / Qwen</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">文本生成、对话、Agent（几乎所有生成任务）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Decoder-Only 胜出的原因有三：① <strong>生成任务通用性强</strong>——所有 LLM 任务（问答、对话、代码生成、Agent）本质上都是"给上文、续下文"，Decoder-Only 天然契合；② <strong>Scaling Law 友好</strong>——研究发现 Decoder-Only 架构在扩大参数量时收益更明显；③ <strong>工程简洁</strong>——只有一种模块，训练和推理管线更简单。代价是 Decoder-Only 只能看到上文（单向注意力），但实践证明这不是问题。</p>
+
+<!-- SVG 动画：Transformer 架构示意 -->
+<div class="flowchart-container" id="transformerArchChart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('transformerArchChart', {
+    nodes: [
+      { id: 'input', label: '输入 Token 序列', type: 'start' },
+      { id: 'embed', label: 'Embedding + 位置编码\n(RoPE)', type: 'process' },
+      { id: 'mha', label: 'Multi-Head\nSelf-Attention', type: 'process' },
+      { id: 'ffn', label: 'Feed-Forward\nNetwork (MLP)', type: 'process' },
+      { id: 'layer', label: '残差连接 + LayerNorm', type: 'process' },
+      { id: 'repeat', label: '× N 层堆叠\n(GPT-4: 120层)', type: 'tool' },
+      { id: 'output', label: '输出概率分布\n(下一个 Token)', type: 'end' }
+    ],
+    edges: [
+      { from: 'input', to: 'embed' },
+      { from: 'embed', to: 'mha' },
+      { from: 'mha', to: 'ffn' },
+      { from: 'ffn', to: 'layer' },
+      { from: 'layer', to: 'repeat' },
+      { from: 'repeat', to: 'output' }
+    ],
+    animate: true
+  });
+}, 350);
+</script>
+
+<div class="quote">
+  面试回答"Transformer 架构"时，抓住<strong>三句话框架</strong>：① 输入先做 Embedding + 位置编码（RoPE）；② 核心是 Multi-Head Self-Attention（Q/K/V 计算 + 多头并行）；③ 堆叠 N 层（每层 = Attention + MLP + 残差 + LayerNorm），最后输出下一个 Token 的概率分布。然后补一句"现代大模型都是 Decoder-Only 架构"，这就够了。
+</div>
+
+<!-- ===== 1.3 模型训练流程 ===== -->
+<h2 class="section-heading">1.3 模型训练流程：从海量文本到智能对话</h2>
+
+<p>面试官问"GPT 是怎么训练出来的"，如果你只回答"用大数据训练"，基本就凉了。大模型训练是一个<strong>三阶段流水线</strong>：预训练（Pre-training）→ 监督微调（SFT）→ 人类反馈强化学习（RLHF）。每个阶段的目标、数据、方法都不同，理解三者的区别是面试核心考点。</p>
+
+<h3 class="sub-heading">阶段一：预训练（Pre-training）——"读万卷书"</h3>
+
+<p>预训练是大模型训练的<strong>第一阶段，也是消耗资源最多的阶段</strong>（占整个训练成本的 99% 以上）。核心目标：让模型从海量无标注文本中学习语言的统计规律和世界知识。</p>
+
+<p>训练方式非常简单粗暴：<strong>Next Token Prediction（预测下一个词）</strong>。给模型一段文本的前 N 个词，让它预测第 N+1 个词，预测错了就调整参数。在数万亿 Token 的语料上重复这个过程，模型就学会了语法、常识、推理、代码等能力。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📚 预训练关键数据</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">指标</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">典型值</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">说明</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">训练数据量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">10~15 万亿 Token</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 级别模型约 13T Token，包括网页、书籍、代码、论文</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">GPU 消耗</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">数万张 H100 × 数月</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 预训练估算 ~$63M，Llama 3 70B ~$30M</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">数据来源</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Common Crawl、书籍、代码库、学术论文</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需清洗去重、过滤低质量内容、去除有害信息</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;">训练目标</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Next Token Prediction（交叉熵损失）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">唯一目标：给定上文，预测下一个 Token 的概率分布</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>预训练后的模型叫<strong>基座模型（Base Model）</strong>。它能力很强但"不会对话"——你问它"你好"，它可能续写"你好，欢迎来到本店"而不是回答你。因为它学到的是"续写文本"，不是"回答问题"。这就是为什么需要下一步——微调。</p>
+
+<h3 class="sub-heading">阶段二：监督微调（SFT）——"学规矩"</h3>
+
+<p>SFT（Supervised Fine-Tuning，监督微调）的核心目标：让基座模型从"只会续写文本"变成"能听指令、会对话"。方法是用<strong>高质量的"指令-回答"对</strong>来微调模型，让它学会按人类期望的格式和风格回答问题。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🎯 SFT 训练数据示例</div>
+  <div style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
+    <pre style="background: var(--color-bg-code); padding: 12px; border-radius: 8px; font-size: 13px; margin: 8px 0;"># SFT 训练样本格式（指令-回答对）
+{
+  "instruction": "请用一句话解释什么是递归。",
+  "input": "",
+  "output": "递归是函数在执行过程中调用自身的编程技巧，\n通常用于将复杂问题分解为同类的更小问题。"
+}
+
+{
+  "instruction": "将以下代码从 Python 翻译为 Java",
+  "input": "def add(a, b):\n    return a + b",
+  "output": "public static int add(int a, int b) {\n    return a + b;\n}"
+}</pre>
+    <p>SFT 数据量通常在 <strong>1万~10万条</strong>（远小于预训练的万亿级），但质量要求极高——每条数据都由人工标注员精心编写。LIMA 论文证明仅 1000 条高质量数据就能显著提升模型对话能力。</p>
+  </div>
+</div>
+
+<p>SFT 的本质是<strong>行为模仿</strong>——让模型模仿人类专家的回答方式。它不改模型的底层知识（那些是预训练学的），而是教模型<strong>什么时候该用什么知识、以什么格式输出</strong>。SFT 后的模型已经能正常对话了，但还有一个问题：模型不知道什么是"好的回答"。它只会模仿训练数据中的回答风格，但不一定能产出人类真正偏好的内容。这就是 RLHF 要解决的。</p>
+
+<h3 class="sub-heading">阶段三：RLHF / RLAIF——"对齐人类偏好"</h3>
+
+<p>RLHF（Reinforcement Learning from Human Feedback，人类反馈强化学习）是大模型训练的<strong>最后一步，也是让模型"好用"的关键一步</strong>。核心思想：用人类的偏好来训练一个奖励模型（Reward Model），然后用强化学习（PPO/DPO）优化大模型，让它生成人类更喜欢的回答。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚙️ RLHF 三步流程</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">步骤</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">名称</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">做什么</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Step 1</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">训练奖励模型（RM）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">让人类标注员对模型生成的多个回答排序，用排序数据训练一个"打分器"（Reward Model）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Step 2</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">PPO 强化学习</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用 Reward Model 对模型输出打分，通过 PPO 算法优化模型参数，让模型生成高分回答</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Step 3</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">DPO（替代方案）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Direct Preference Optimization——跳过 RM，直接用偏好数据优化模型。更简单稳定，2024年起主流</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">2026年趋势：DPO 逐渐取代 PPO 成为 RLHF 的首选方法。Llama 3、DeepSeek-V3、Qwen 2.5 都使用 DPO 或其变体。RLAIF 则用 AI 代替人类做偏好标注，降低成本。</p>
+</div>
+
+<h3 class="sub-heading">SFT vs RLHF：核心区别</h3>
+
+<p>面试高频题：<strong>"SFT 和 RLHF 有什么区别？"</strong>很多人答不好。核心区别如下：</p>
+
+<div class="card">
+  <div class="card-title">⚡ SFT vs RLHF 核心对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">维度</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-info);">SFT（监督微调）</th>
+      <th style="text-align: left; padding: 12px 8px; color: var(--color-warning);">RLHF（强化学习）</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">训练目标</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">模仿标准答案（学到"怎么回答"）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">优化人类偏好（学到"什么回答更好"）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">数据形式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">指令-回答对（有标准答案）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">偏好排序（回答A比回答B好，无标准答案）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">学习信号</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">交叉熵损失（逐 Token 对齐标准答案）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">奖励信号（整个回答的质量打分）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">数据量</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">1万~10万条</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">5万~50万条偏好对</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">能解决的问题</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">教模型理解指令、学会对话格式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">提升回答质量、安全性、减少幻觉、对齐人类价值观</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">不能解决</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无法教模型"什么是好的回答"（只能模仿）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无法教模型新知识（只能优化已有能力的表达方式）</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>一句话总结</strong>：SFT 教模型"<strong>怎么回答</strong>"（格式、风格、指令遵循），RLHF 教模型"<strong>怎么回答得更好</strong>"（质量、安全、人类偏好）。两者互补，缺一不可。SFT 是"学会说话"，RLHF 是"说得好听"。</p>
+
+<!-- SVG 动画：三阶段训练流程 -->
+<div class="flowchart-container" id="trainingPipelineChart"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('trainingPipelineChart', {
+    nodes: [
+      { id: 'corpus', label: '海量无标注文本\n(10T+ Token)', type: 'start' },
+      { id: 'pretrain', label: '预训练\nPre-training\n(Next Token Prediction)', type: 'process' },
+      { id: 'base', label: '基座模型\n(Base Model)\n会续写但不会对话', type: 'tool' },
+      { id: 'sft_data', label: '指令-回答对\n(1万~10万条)', type: 'start' },
+      { id: 'sft', label: '监督微调\nSFT\n(行为模仿)', type: 'process' },
+      { id: 'chat', label: '对话模型\n(Chat Model)\n能对话但质量有限', type: 'tool' },
+      { id: 'pref_data', label: '人类偏好数据\n(回答排序)', type: 'start' },
+      { id: 'rlhf', label: 'RLHF / DPO\n(奖励优化)', type: 'process' },
+      { id: 'final', label: '最终模型\n(Aligned Model)\n安全、有用、诚实', type: 'end' }
+    ],
+    edges: [
+      { from: 'corpus', to: 'pretrain' },
+      { from: 'pretrain', to: 'base' },
+      { from: 'base', to: 'sft' },
+      { from: 'sft_data', to: 'sft' },
+      { from: 'sft', to: 'chat' },
+      { from: 'chat', to: 'rlhf' },
+      { from: 'pref_data', to: 'rlhf' },
+      { from: 'rlhf', to: 'final' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<div class="quote">
+  面试回答"大模型训练流程"时，用<strong>三句话框架</strong>：① 预训练——用万亿级无标注文本做 Next Token Prediction，让模型学会语言和世界知识（占 99% 算力）；② SFT——用几万条高质量指令-回答对微调，让模型从"续写"变成"对话"；③ RLHF/DPO——用人类偏好数据优化，让模型"回答得更好、更安全"。然后补一句"SFT 教格式，RLHF 教质量"，面试官会觉得你理解到位。
+</div>
+
+<!-- ===== 补充八股题 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 补充八股题 — Transformer 架构与模型训练</div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q10：为什么要用 Attention 机制而不是 RNN？Self-Attention 的计算公式是什么？</strong></div>
+    <div class="qa-a">RNN 有两个致命缺陷：① <strong>长距离依赖丢失</strong>——信息需要逐步传递，远距离的词之间信息几乎消失；② <strong>无法并行计算</strong>——必须按顺序处理，GPU 并行能力被浪费。Attention 机制解决了这两个问题：每个词可以直接"看到"所有其他词（解决长距离依赖），且所有位置的计算可以同时进行（支持并行）。<br><br>Self-Attention 公式：Attention(Q, K, V) = Softmax(Q × K<sup>T</sup> / √d<sub>k</sub>) × V。其中 Q、K、V 分别是输入经过三个线性变换得到的查询矩阵、键矩阵、值矩阵；除以 √d<sub>k</sub> 是为了防止点积过大导致 Softmax 梯度消失。直觉上：Q × K<sup>T</sup> 计算每对词的相关度，Softmax 归一化为权重，再乘 V 得到加权信息混合。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q11：Multi-Head Attention 为什么要用多个头？头数越多越好吗？</strong></div>
+    <div class="qa-a">Multi-Head Attention 用多个头的目的是让模型<strong>从不同维度同时关注不同的关系模式</strong>。不同头可能分别学到语法关系、指代关系、因果关系等，拼接后得到更丰富的表示。<br><br>头数不是越多越好。头数增加时，每个头的维度相应减小（总维度不变），单个头的表达能力下降。如果头数过多，每个头维度太小，反而学不到有意义的模式。实践中的经验值：d_model=4096 时用 32 头（每头 128 维）比较合适。GPT-4 使用 96 头。另外，近年 GQA（Grouped Query Attention）和 MQA（Multi-Query Attention）通过共享 K/V 头来减少推理时的 KV Cache 内存占用，是在头数和效率之间的权衡。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q12：位置编码的作用是什么？RoPE（旋转位置编码）怎么工作？为什么现在主流模型都用 RoPE？</strong></div>
+    <div class="qa-a"><strong>作用</strong>：Self-Attention 本身是位置无关的（打乱词序结果不变），位置编码给每个词注入位置信息，让模型知道"谁在前谁在后"。<br><br><strong>RoPE 原理</strong>：把 Q 和 K 向量看作二维平面上的点，根据词的位置旋转不同角度。两个词距离越远，旋转角度差越大，点积（注意力分数）越小。这巧妙地让 Attention 分数自然包含了<strong>相对位置</strong>信息。<br><br><strong>RoPE 成为主流的原因</strong>：① <strong>外推性强</strong>——训练时只见过 4K 位置，推理时可扩展到 128K+（配合 YaRN 等缩放技术）；② <strong>编码相对位置</strong>——不像绝对位置编码那样需要学习固定向量；③ <strong>不增加参数</strong>——旋转矩阵是计算时施加的，不引入额外可训练参数。GPT-4、Llama、Qwen、DeepSeek 等所有主流模型都使用 RoPE。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q13：为什么现代大模型都用 Decoder-Only 架构而不是 Encoder-Decoder？</strong></div>
+    <div class="qa-a">Decoder-Only 胜出的三个原因：<br>① <strong>任务通用性强</strong>——所有 LLM 任务（问答、对话、代码生成、Agent）本质上都是"给上文、续下文"，Decoder-Only 的自回归生成天然契合；<br>② <strong>Scaling Law 友好</strong>——研究发现 Decoder-Only 在扩大参数量时收益更明显，同样参数量下性能更好；<br>③ <strong>工程简洁</strong>——只有一种模块（Decoder Block），训练和推理管线更简单，KV Cache 管理更容易。<br><br>代价是 Decoder-Only 只能看到上文（单向注意力），但实践证明这不是问题——模型通过预训练学会了从上文提取所需信息。Encoder-Decoder 在翻译等 Seq2Seq 任务上理论上有优势，但实际效果差异不大，而 Decoder-Only 的工程优势更明显。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q14：预训练、SFT、RLHF 三个阶段的区别是什么？SFT 和 RLHF 能互相替代吗？</strong></div>
+    <div class="qa-a"><strong>三阶段对比</strong>：<br>• <strong>预训练</strong>：用万亿级无标注文本做 Next Token Prediction，学语言和世界知识。产出基座模型（会续写但不会对话）。算力消耗 99%。<br>• <strong>SFT</strong>：用几万条指令-回答对微调，学对话格式和指令遵循。产出对话模型（能对话但质量有限）。<br>• <strong>RLHF/DPO</strong>：用人类偏好数据优化，学回答质量和安全对齐。产出最终模型（安全、有用、诚实）。<br><br><strong>不能互相替代</strong>。SFT 和 RLHF 解决不同问题：SFT 教模型"<strong>怎么回答</strong>"（格式、风格），学习信号是<strong>逐 Token 模仿</strong>（交叉熵损失）；RLHF 教模型"<strong>回答得更好</strong>"（质量、安全），学习信号是<strong>整体偏好打分</strong>（奖励信号）。SFT 不能教模型区分好回答和差回答（只能模仿），RLHF 不能教模型新知识（只能优化已有能力的表达）。两者互补，缺一不可。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q15：什么是 DPO？它和 PPO 有什么区别？为什么 2026 年趋势是 DPO 取代 PPO？</strong></div>
+    <div class="qa-a"><strong>DPO（Direct Preference Optimization，直接偏好优化）</strong>是一种简化版的 RLHF 方法。传统 RLHF 用 PPO 算法，需要先训练一个奖励模型（RM），再用 RM 的打分通过强化学习优化大模型，流程复杂、训练不稳定、超参敏感。<br><br><strong>DPO 的创新</strong>：跳过 RM 训练，直接用偏好数据（回答A比回答B好）通过一个简化的目标函数优化模型。数学上证明了 DPO 和 PPO 在最优解上等价，但工程上简单得多。<br><br><strong>DPO 优势</strong>：① 不需要训练和加载额外的 RM（省一个模型）；② 训练稳定，不需要复杂的 PPO 超参调优；③ 计算成本低，训练速度快。Llama 3、DeepSeek-V3、Qwen 2.5 等主流模型都已转向 DPO 或其变体。PPO 在某些需要在线采样的场景仍有优势，但离线训练场景 DPO 是首选。</div>
+  </div>
+</div>
+
 <!-- ===== 1.2 Prompt ===== -->
 <h2 class="section-heading">1.2 Prompt：与 AI 对话的语言</h2>
 
@@ -762,6 +1559,16 @@ setTimeout(() => {
     <div class="qa-q"><strong>Q7：开源模型和闭源模型怎么选？</strong></div>
     <div class="qa-a">选择维度：① <strong>数据隐私</strong>——金融、医疗等敏感场景必须选开源模型私有化部署；② <strong>成本</strong>——高频调用场景开源模型长期更划算，低频场景闭源模型按量付费更省；③ <strong>能力上限</strong>——闭源模型（GPT-4、Claude）在推理能力和工具调用上通常领先；④ <strong>可控性</strong>——需要微调或定制行为时选开源；⑤ <strong>生态</strong>——闭源模型 API 更稳定，开源模型需要自己维护推理服务。实际项目中常见混合策略：关键场景用闭源，辅助场景用开源。</div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q8：1000行代码大概消耗多少Token？百万Token计费规则是什么？</strong></div>
+    <div class="qa-a"><strong>Token消耗估算</strong>：Python 1000行≈15,000 Token（GPT-4o输入约$0.038），Java≈25,000 Token。中文内容Token密度更高，1行≈20 Token。<br><br><strong>百万Token计费规则</strong>：<br>① 输入和输出分别计费，输出通常是输入的3-5倍（GPT-4o: $2.5/M输入, $10/M输出）<br>② 缓存Token半价——Prompt Caching命中时输入价格约50%（GPT-4o缓存输入$1.25/M）<br>③ 按Token计费不按字符，中文比英文更贵<br>④ 工具调用Token也累积，5轮Agent任务≈50K Token<br>⑤ 流式输出不省钱，Token总数与非流式相同<br><br><strong>典型场景锚点</strong>：简单问答≈500 Token≈$0.003，代码修改≈8K Token≈$0.06，复杂Agent≈50K Token≈$0.27。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q9：上下文窗口的Token怎么分配？如何更有效命中缓存？</strong></div>
+    <div class="qa-a"><strong>Token分配</strong>：128K窗口中，System Prompt+工具Schema+Skill触发词≈2-8%（固定不变），记忆注入≈1-4%（动态），对话历史≈4-39%（逐轮增长），工具结果≈2-16%（每轮新增），模型输出预留≈30-50%。<br><br><strong>缓存命中策略</strong>：<br>① 固定前缀放最前——System Prompt+工具Schema+Skill触发词放在Prompt开头，100%命中缓存<br>② 动态内容放后面——对话历史、记忆召回、用户输入放末尾，不影响前缀缓存<br>③ 合并固定层——把System Prompt和工具定义合并为一个system消息，增加前缀连续性<br>④ OpenAI缓存最低5个消息才触发，合并后更容易达标<br><br>缓存命中的Token价格约为正常的50%，设计好Prompt顺序可节省50%+输入成本。</div>
+  </div>
 </div>
 
 <!-- ===== 课后考试 ===== -->
@@ -864,6 +1671,55 @@ var ch01Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '选择维度包括数据隐私、成本、能力上限、可控性和生态。品牌知名度不是技术决策依据。'
+  }
+  },
+  {
+    type: 'single',
+    question: '1000 行 Python 代码大约消耗多少 Token？在 GPT-4o 上的输入成本约是多少？',
+    options: [
+      '约 5,000 Token，成本约 $0.013',
+      '约 15,000 Token，成本约 $0.038',
+      '约 50,000 Token，成本约 $0.125',
+      '约 100,000 Token，成本约 $0.250'
+    ],
+    answer: [1],
+    explanation: 'Python代码1行≈15 Token，1000行≈15,000 Token。GPT-4o输入价格$2.5/M Token，所以15,000 Token的输入成本≈15,000×2.5/1,000,000=$0.038。'
+  },
+  {
+    type: 'single',
+    question: '关于 Token 计费规则，以下说法错误的是？',
+    options: [
+      '输入和输出分别计费，输出价格通常是输入的3-5倍',
+      '缓存命中的 Token 价格约为正常的50%',
+      '按字符计费，1000字符=$0.001',
+      '流式输出不省钱，Token总数与非流式相同'
+    ],
+    answer: [2],
+    explanation: '计费单位是Token而非字符。同样1000字符，中文比英文消耗更多Token，所以中文费用更高。不是简单的"按字符计费"。'
+  },
+  {
+    type: 'single',
+    question: '上下文窗口中，为什么要把 System Prompt 放在最前面？',
+    options: [
+      '模型对前面的内容注意力更强',
+      'System Prompt 放最前面可最大化缓存命中率，因为前缀不变100%命中缓存',
+      'OpenAI API 要求 System Prompt 必须放在第一个',
+      '放在后面会导致模型忽略 System Prompt'
+    ],
+    answer: [1],
+    explanation: 'Prompt Caching是前缀缓存，只有Prompt开头的不变部分才能命中缓存。System Prompt+工具Schema放在最前面确保每轮前缀一致，100%命中缓存，节省50%输入成本。'
+  },
+  {
+    type: 'multiple',
+    question: '上下文窗口128K的Token分配中，哪些是固定不变可命中缓存的？（多选）',
+    options: [
+      'System Prompt（角色+规则）',
+      '对话历史（多轮交互记录）',
+      '工具Schema（Function Calling定义）',
+      '记忆召回片段（长期记忆检索结果）'
+    ],
+    answer: [0, 2],
+    explanation: 'System Prompt和工具Schema整个会话内不变，放在Prompt前缀处可100%命中缓存。对话历史逐轮增长不可缓存，记忆召回每轮可能变化不可缓存。'
   }
 ];
 

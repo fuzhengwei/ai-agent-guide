@@ -662,7 +662,7 @@ class AgentModelRouter:
             base_url=backend.value,
             api_key=config["api_key"]
         )
-        self.model = config["model"
+        self.model = config["model"]
 
 # ===== 使用示例 =====
 
@@ -832,6 +832,313 @@ services:
   </table>
 </div>
 
+<!-- ===== 20.10 2026 推理优化前沿技术 ===== -->
+<h2 class="section-heading">20.10 2026 推理优化前沿技术</h2>
+
+<p>前面的章节覆盖了推理框架的基础选型与部署。但 2025-2026 年，随着 DeepSeek-V3、Qwen3-MoE 等模型的爆发，<strong>推理优化技术本身成了面试高频考点</strong>。这一节聚焦三个前沿方向：MoE 推理优化、投机解码、以及 KV Cache 量化等工程加速技术。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🧭 为什么这一节重要？</div>
+  <p>2026 年面试官不再只问"vLLM 和 Ollama 区别"，而是追问：</p>
+  <ul style="margin: 10px 0 0 20px; color: var(--color-text-secondary);">
+    <li>MoE 模型参数量 671B，为什么推理成本却能和 70B Dense 模型差不多？</li>
+    <li>投机解码的加速比取决于什么？为什么不是无限制加速？</li>
+    <li>KV Cache 量化有哪些方案？FP8 vs INT8 vs INT4 各有什么取舍？</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">20.10.1 MoE（Mixture of Experts）推理优化</h3>
+
+<p>MoE（混合专家模型）是 2025-2026 年大模型的主流架构趋势。DeepSeek-V3（671B 参数）、Qwen3-MoE、Mixtral 8x22B 都采用 MoE 架构。核心思想：<strong>不是所有参数都参与每次推理，而是动态激活一部分"专家"子网络</strong>。</p>
+
+<div class="card">
+  <div class="card-title">🧠 MoE 核心原理：稀疏激活</div>
+  <p>传统 Dense 模型（如 Llama3-70B）：每次推理，700 亿参数全部参与矩阵运算。</p>
+  <p>MoE 模型（如 DeepSeek-V3 671B）：每次推理，只有<strong>约 37B 参数被激活</strong>——因为每个 Token 只路由到 Top-K 个专家（通常 K=8），其余专家不参与计算。</p>
+  <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"input","label":"输入 Token","type":"start"},{"id":"router","label":"门控路由器\n(Gate Network)\n计算每个专家的分数","type":"process"},{"id":"select","label":"Top-K 选择\n(例如 K=8)\n选出得分最高的8个专家","type":"process"},{"id":"experts","label":"专家网络\nExpert 1...N\n只有被选中的8个参与计算","type":"process"},{"id":"output","label":"加权融合输出\n(按路由分数加权)","type":"end"}],"edges":[{"from":"input","to":"router"},{"from":"router","to":"select"},{"from":"select","to":"experts"},{"from":"experts","to":"output"}]}'></div>
+</div>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 MoE 为什么能降低推理成本？</h4>
+<p><strong>关键公式</strong>：推理计算量 ∝ 激活参数量，而非总参数量。</p>
+<ul>
+<li>DeepSeek-V3：总参数 671B，激活参数 ≈ 37B → <strong>推理计算量相当于 37B Dense 模型</strong></li>
+<li>对比 Dense 671B 模型：计算量降低 <strong>18 倍</strong></li>
+<li>对比 Llama3-70B Dense：参数量大了 10 倍，但推理计算量只多了 ~50%</li>
+</ul>
+<p><strong>代价</strong>：显存占用仍然需要装下全部 671B 参数（因为不知道哪个专家会被选中），这是 MoE 推理的主要挑战——<strong>计算便宜了，但显存更贵了</strong>。</p>
+</div>
+
+<h3 class="sub-heading">专家路由与负载均衡</h3>
+
+<p>MoE 推理的核心挑战是<strong>专家负载均衡</strong>——如果某些专家被频繁选中而其他专家闲置，会导致：</p>
+<ul>
+<li><strong>GPU 利用率不均</strong>：热门专家所在的 GPU 成为瓶颈，冷门专家的 GPU 空转</li>
+<li><strong>显存浪费</strong>：所有专家都要常驻显存，但使用频率差异巨大</li>
+<li><strong>推理延迟波动</strong>：负载不均导致不同请求的延迟差异大</li>
+</ul>
+
+<div class="card">
+  <div class="card-title">🔧 负载均衡策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">策略</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">适用场景</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">辅助损失（Aux Loss）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">训练时加入负载均衡损失项，惩罚专家选择不均匀</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">训练阶段（DeepSeek-V3 采用）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">专家并行（Expert Parallel）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">把不同专家分布到不同 GPU 上，每个 GPU 负责一部分专家</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">推理阶段，多 GPU 部署</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">动态专家分配</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">运行时监控专家负载，动态迁移热门专家到空闲 GPU</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">长尾负载不均场景</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">共享专家（Shared Expert）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">设置一个始终激活的共享专家处理通用特征，路由专家只处理 specialized 部分</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">DeepSeek-V3 的创新设计</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🔬 DeepSeek-V3 MoE 架构实践</div>
+  <p>DeepSeek-V3 是 2025 年 MoE 推理优化的标杆案例：</p>
+  <ul>
+    <li><strong>总参数 671B，激活参数仅 37B</strong>——用 Dense 模型的推理成本跑出接近 GPT-4o 的效果</li>
+    <li><strong>256 个路由专家 + 1 个共享专家</strong>，每个 Token 选 Top-8 路由专家</li>
+    <li><strong>共享专家始终激活</strong>，处理通用语言知识；路由专家处理 specialized 领域能力</li>
+    <li><strong>无辅助损失的负载均衡</strong>：创新性地用偏置项动态调整路由概率，避免 aux loss 对主任务的干扰</li>
+    <li><strong>多 Token 预测（MTP）</strong>：训练时同时预测多个未来 Token，推理时可配合投机解码加速</li>
+  </ul>
+  <p style="margin-top: 12px; font-size: 14px;">实际推理成本：DeepSeek-V3 的每百万 Token 价格约为 GPT-4o 的 1/10，这就是 MoE 架构的威力。</p>
+</div>
+
+<h3 class="sub-heading">20.10.2 Speculative Decoding（投机解码）</h3>
+
+<p>投机解码是 2025-2026 年推理加速的明星技术。核心思想：<strong>用小模型快速生成草稿，大模型验证修正，实现超越大模型自身的推理速度</strong>。</p>
+
+<div class="card">
+  <div class="card-title">🎯 投机解码原理：Draft Model + Target Model 协作</div>
+  <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"draft","label":"Draft Model (小模型)\n快速生成 K 个候选 Token\n例如 Qwen2-0.5B","type":"start"},{"id":"target","label":"Target Model (大模型)\n并行验证 K 个 Token\n例如 Qwen2-72B","type":"process"},{"id":"accept","label":"接受阶段\n逐个比较: 小模型预测 == 大模型预测?\n匹配则接受, 不匹配则拒绝","type":"process"},{"id":"result","label":"输出\n接受的 Token + 大模型修正的 Token\n一轮生成多个 Token","type":"end"}],"edges":[{"from":"draft","to":"target"},{"from":"target","to":"accept"},{"from":"accept","to":"result"}]}'></div>
+</div>
+
+<p>传统自回归解码每生成一个 Token 需要一次完整的前向传播。投机解码的巧妙之处在于：</p>
+<ul>
+<li><strong>Draft Model（草稿模型）</strong>：参数量小（如 0.5B），生成速度快，一次生成 K 个候选 Token（如 K=4）</li>
+<li><strong>Target Model（目标模型）</strong>：参数量大（如 72B），精度高，<strong>并行验证</strong>这 K 个 Token（只需一次前向传播）</li>
+<li><strong>接受/拒绝采样</strong>：逐个比较 Draft 和 Target 的输出分布。如果 Draft 预测的 Token 在 Target 的分布中也有较高概率，则接受；否则拒绝，并用 Target 的分布重新采样</li>
+</ul>
+
+<div class="info-box">
+<h4 style="color: var(--color-primary); margin-top: 0;">💡 为什么投机解码能加速？</h4>
+<p><strong>关键洞察</strong>：大模型验证 K 个 Token 的成本 ≈ 生成 1 个 Token 的成本（因为可以并行计算）。</p>
+<ul>
+<li>如果 K=4 个候选全部被接受 → 一次前向传播输出了 5 个 Token（4 个接受 + 1 个修正），<strong>等效加速 5 倍</strong></li>
+<li>如果只有 2 个被接受 → 等效加速 3 倍</li>
+<li>如果全部被拒绝 → 退化为正常解码，无加速但也无损失</li>
+</ul>
+<p><strong>加速比取决于 Draft Model 的预测准确率（接受率）</strong>，这是投机解码的核心瓶颈。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">📊 投机解码加速比的影响因素</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">因素</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">影响</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">优化方向</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Draft Model 与 Target Model 的相似度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">两个模型输出分布越接近，接受率越高，加速比越大</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用同系列小模型（如 Qwen2-0.5B → Qwen2-72B）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">草稿长度 K</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">K 太小→加速不够；K 太大→后面的 Token 接受率下降</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">动态调整 K（通常 4-8）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">任务类型</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">重复性高的任务（代码、模板文本）接受率高；创造性任务接受率低</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码生成、结构化输出场景收益最大</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Draft Model 的推理速度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">小模型太慢会抵消加速收益</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Draft Model 应至少比 Target 快 5-10 倍</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python — vLLM 投机解码启用</span>
+<pre># === vLLM 启用投机解码（需要 vLLM v0.6+） ===
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --speculative-model Qwen/Qwen2.5-0.5B-Instruct \  # Draft Model
+  --num-speculative-tokens 5 \                        # 草稿长度 K=5
+  --speculative-draft-tensor-parallel-size 1 \        # Draft Model 单卡
+  --tensor-parallel-size 4 \                          # Target Model 4卡
+  --gpu-memory-utilization 0.9
+
+# === 效果对比 ===
+# 不开投机解码：72B 模型 ~40 tok/s
+# 开启投机解码：~100-120 tok/s（接受率 ~70% 时）
+# 代码生成场景：~150 tok/s（接受率更高）
+</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔬 2026 前沿：Self-Speculative Decoding</div>
+  <p>传统投机解码需要两个模型（Draft + Target）。2025-2026 年的新趋势是<strong>单模型投机解码</strong>：</p>
+  <ul>
+    <li><strong>Layer Skip</strong>：用同一个模型的前几层当"Draft Model"（跳过部分中间层），完整模型当"Target Model"</li>
+    <li><strong>Medusa Heads</strong>：在模型上额外训练多个预测头，一次预测多个未来 Token，无需独立 Draft Model</li>
+    <li><strong>EAGLE</strong>：用轻量级头网络预测大模型的隐藏状态，接受率比传统投机解码高 20%+</li>
+    <li><strong>DeepSeek-V3 MTP</strong>：训练时就内置多 Token 预测能力，推理时天然支持投机解码</li>
+  </ul>
+  <p style="margin-top: 12px; font-size: 14px;">优势：无需维护两个模型，显存占用更低，部署更简单。</p>
+</div>
+
+<h3 class="sub-heading">20.10.3 其他推理优化技术</h3>
+
+<p>除了 MoE 和投机解码，2026 年生产环境还有三个高频使用的优化技术：</p>
+
+<div class="card">
+  <div class="card-title">⚡ 三大工程加速技术</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">技术</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">收益</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">支持框架</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">KV Cache 量化</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">把 KV Cache 从 FP16 压缩到 FP8/INT8/INT4，减少显存占用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">显存占用降低 2-4 倍，可服务更多并发</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM、SGLang、TGI</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Prefix Caching</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">缓存相同 prompt 前缀的 KV Cache，后续请求直接复用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">首 Token 延迟降低 80%，System Prompt 场景效果显著</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM、SGLang</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Continuous Batching</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">动态组 batch，新请求随时加入，完成的请求立即退出，不等齐</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPU 利用率最大化，吞吐量提升 2-4 倍</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM、SGLang、TGI</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h4 style="color: var(--color-primary); margin: 20px 0 10px;">KV Cache 量化方案详解</h4>
+
+<p>KV Cache 是推理时显存占用的大头——上下文越长，KV Cache 越大。对于一个 72B 模型、32K 上下文的请求，KV Cache 可能占到总显存的 50%+。量化 KV Cache 是提升并发的关键手段：</p>
+
+<div class="card">
+  <div class="card-title">📊 KV Cache 量化方案对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">方案</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">精度</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">显存节省</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">精度损失</th>
+      <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">特点</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">FP8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">8-bit 浮点</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~2x</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-green">&lt;1%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">NVIDIA H100 原生支持，精度最佳，硬件要求高</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">INT8</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">8-bit 整数</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~2x</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-green">~1%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通用性好，大多数 GPU 支持，生产首选</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">INT4</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">4-bit 整数</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~4x</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-orange">~3-5%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">显存节省最大，但长上下文场景精度损失明显</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">混合精度</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">FP8+INT4</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">~3x</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><span class="tag tag-green">~1-2%</span></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">重要层用 FP8，次要层用 INT4，精度与显存兼顾</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Shell — vLLM 启用 KV Cache 量化 + Prefix Caching</span>
+<pre># === vLLM 启用 KV Cache FP8 量化 ===
+python -m vllm.entrypoints.openai.api_server \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --kv-cache-dtype fp8 \                    # KV Cache 量化为 FP8
+  --enable-prefix-caching \                 # 启用 Prefix Caching
+  --tensor-parallel-size 4 \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 32768                     # 支持更长上下文
+
+# === 效果对比 ===
+# 不开 KV Cache 量化：72B 模型 32K 上下文，最多并发 ~10 请求
+# 开启 FP8 量化：并发提升到 ~20 请求（2x）
+# 开启 INT4 量化：并发提升到 ~40 请求（4x），但精度有一定损失
+# + Prefix Caching：相同 System Prompt 的请求首 Token 延迟降低 80%
+</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔗 技术组合效果</div>
+  <p>这些优化技术不是互斥的，可以叠加使用：</p>
+  <ul>
+    <li><strong>基线</strong>：72B Dense 模型，FP16，无优化 → ~40 tok/s，并发 ~10</li>
+    <li><strong>+ Continuous Batching</strong> → 并发 ~30（吞吐 3x）</li>
+    <li><strong>+ PagedAttention</strong> → 显存利用率 90%+，并发 ~50</li>
+    <li><strong>+ KV Cache FP8</strong> → 显存再降 2x，并发 ~100</li>
+    <li><strong>+ Prefix Caching</strong> → 首 Token 延迟降低 80%</li>
+    <li><strong>+ 投机解码</strong> → 生成速度提升 2-3x</li>
+    <li><strong>换成 MoE 模型（DeepSeek-V3）</strong> → 计算量降低 18x，推理成本骤降</li>
+  </ul>
+  <p style="margin-top: 12px; font-size: 14px;"><strong>2026 年的生产级推理服务，通常是以上技术的组合，而非单选。</strong></p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -874,6 +1181,21 @@ services:
   <div class="qa-item">
     <div class="qa-q"><strong>Q8：混合部署策略为什么能节省 70% 成本？</strong></div>
     <div class="qa-a">核心逻辑：80% 简单任务（FAQ/分类/提取）用本地开源模型（成本≈GPU运维费），15% 中等任务用本地 INT8 量化模型，只有 5% 复杂推理任务才调用 GPT-4o。总成本 = 5%×GPT价格 + GPU费，远低于 100% 用 GPT。关键是 Agent 框架要支持动态模型路由。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q9：MoE 模型参数量 671B，为什么推理成本却能和 70B Dense 模型差不多？</strong></div>
+    <div class="qa-a">MoE 的核心是<strong>稀疏激活</strong>：虽然总参数 671B，但每个 Token 只路由到 Top-K 个专家（如 K=8），激活参数仅 ~37B。推理计算量 ∝ 激活参数量而非总参数量，所以计算成本相当于 37B Dense 模型。<strong>代价是显存</strong>——所有 671B 参数都要常驻显存（因为不知道哪个专家会被选中），所以 MoE 是"计算便宜、显存贵"。DeepSeek-V3 通过共享专家 + 无辅助损失负载均衡进一步优化，实际推理成本约为 GPT-4o 的 1/10。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q10：投机解码的加速比取决于什么？为什么不能无限制加速？</strong></div>
+    <div class="qa-a">加速比取决于 <strong>Draft Model 的预测接受率</strong>和<strong>草稿长度 K</strong>。大模型并行验证 K 个 Token 的成本 ≈ 生成 1 个 Token，如果全部接受则等效加速 K+1 倍。不能无限制加速的原因：① K 越大，后面的 Token 接受率越低（小模型预测越远越不准）；② Draft Model 本身也有推理开销，K 太大时小模型的生成时间不可忽略；③ 接受率取决于两个模型输出分布的相似度，创造性任务接受率天然较低。实际加速比通常在 2-3x，代码生成等高重复场景可达 4-5x。</div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-q"><strong>Q11：KV Cache 量化有哪些方案？生产环境怎么选？</strong></div>
+    <div class="qa-a">主要有四种方案：① <strong>FP8</strong>（精度损失 <1%，显存节省 2x，需 H100+ 硬件，精度最佳）；② <strong>INT8</strong>（精度损失 ~1%，显存节省 2x，通用性好，生产首选）；③ <strong>INT4</strong>（精度损失 3-5%，显存节省 4x，长上下文场景精度损失明显）；④ <strong>混合精度</strong>（重要层 FP8 + 次要层 INT4，精度与显存兼顾）。生产环境选择原则：有 H100 选 FP8，通用 GPU 选 INT8，极端显存约束选 INT4，追求均衡选混合精度。</div>
   </div>
 </div>
 
@@ -965,6 +1287,42 @@ var ch20Questions = [
     ],
     answer: [0, 1, 2],
     explanation: 'vLLM 的四大核心技术是 PagedAttention、连续批处理、分布式推理和 Prefix Caching。选项 D 不是 vLLM 的特有技术。'
+  },
+  {
+    type: 'single',
+    question: 'MoE 模型（如 DeepSeek-V3 671B）为什么推理成本能和 70B Dense 模型差不多？',
+    options: [
+      'MoE 模型参数量其实很小',
+      '稀疏激活：每个 Token 只路由到 Top-K 个专家，激活参数仅 ~37B，推理计算量 ∝ 激活参数量',
+      'MoE 模型不需要 GPU',
+      'MoE 模型使用了 INT2 量化'
+    ],
+    answer: [1],
+    explanation: 'MoE 的核心是稀疏激活。虽然总参数 671B，但每个 Token 只激活 ~37B 参数。推理计算量取决于激活参数量而非总参数量，所以计算成本接近 37B Dense 模型。代价是显存需要装下全部 671B 参数。'
+  },
+  {
+    type: 'single',
+    question: '投机解码的加速比主要取决于什么？',
+    options: [
+      'GPU 数量',
+      'Draft Model 的预测接受率和草稿长度 K',
+      '模型的参数量',
+      '上下文长度'
+    ],
+    answer: [1],
+    explanation: '投机解码的加速比取决于 Draft Model 的预测接受率和草稿长度 K。大模型并行验证 K 个 Token 的成本 ≈ 生成 1 个 Token，接受率越高、K 越大，加速比越大。但 K 太大会导致后面 Token 接受率下降，且 Draft Model 生成时间不可忽略。'
+  },
+  {
+    type: 'multiple',
+    question: 'KV Cache 量化的方案有哪些？生产环境如何选择？（多选）',
+    options: [
+      'FP8（精度最佳，需 H100+ 硬件）',
+      'INT8（通用性好，生产首选）',
+      'INT4（显存节省最大，但精度损失明显）',
+      '混合精度（重要层 FP8 + 次要层 INT4）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四种方案各有适用场景：FP8 精度最佳但需 H100+；INT8 通用性好是生产首选；INT4 显存节省最大但精度损失明显；混合精度兼顾精度与显存。生产环境根据硬件和精度需求选择。'
   }
 ];
 

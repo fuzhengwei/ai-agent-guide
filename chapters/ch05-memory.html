@@ -1,29 +1,29 @@
-<!-- 第5章：记忆系统 -->
+<!-- 第5章:记忆系统 -->
 <h1 class="chapter-title">第5章 记忆系统</h1>
 <p class="chapter-subtitle">让 Agent 拥有短期的专注和长期的经验</p>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">📝 先看一个最小记忆例子</div>
-  <p>如果用户第一轮说"我喜欢简洁风格"，第二轮说"帮我写周报"，没有记忆的 Agent 会重新追问风格；有记忆的 Agent 会直接按简洁风格输出。</p>
-  <p style="margin-top: 12px;">所以你可以把本章先简单理解成一句话：<strong>记忆不是为了存很多内容，而是为了让 Agent 在下一轮做出更一致、更省心的决定。</strong></p>
+  <p>如果用户第一轮说"我喜欢简洁风格",第二轮说"帮我写周报",没有记忆的 Agent 会重新追问风格;有记忆的 Agent 会直接按简洁风格输出。</p>
+  <p style="margin-top: 12px;">所以你可以把本章先简单理解成一句话:<strong>记忆不是为了存很多内容,而是为了让 Agent 在下一轮做出更一致、更省心的决定。</strong></p>
 </div>
 
 <!-- ===== 5.1 为什么 Agent 需要记忆 ===== -->
-<h2 class="section-heading">5.1 没有记忆的 Agent 会怎样？</h2>
+<h2 class="section-heading">5.1 没有记忆的 Agent 会怎样?</h2>
 
-<p>想象一个失忆的助手：你上午告诉他你喜欢简洁的报告，下午他又问你"你需要什么风格？"；你刚给了他一份资料，下一秒他就忘了。</p>
+<p>想象一个失忆的助手:你上午告诉他你喜欢简洁的报告,下午他又问你"你需要什么风格?";你刚给了他一份资料,下一秒他就忘了。</p>
 
-<p>这就是没有记忆的 Agent。它只能处理<strong>单轮、即时</strong>的请求，无法积累经验、无法保持一致性、无法处理需要跨轮引用的复杂任务。</p>
+<p>这就是没有记忆的 Agent。它只能处理<strong>单轮、即时</strong>的请求,无法积累经验、无法保持一致性、无法处理需要跨轮引用的复杂任务。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div class="card-title">💡 记忆的本质</div>
-  <p>记忆让 Agent 从"活在当下"变成"有过去、有经验"。它影响 Agent 的<strong>连贯性</strong>（同一对话内的一致性）、<strong>个性化</strong>（记住用户偏好）和<strong>学习进化</strong>（从历史中优化）。</p>
+  <p>记忆让 Agent 从"活在当下"变成"有过去、有经验"。它影响 Agent 的<strong>连贯性</strong>(同一对话内的一致性)、<strong>个性化</strong>(记住用户偏好)和<strong>学习进化</strong>(从历史中优化)。</p>
 </div>
 
 <!-- ===== 5.2 三层记忆架构 ===== -->
 <h2 class="section-heading">5.2 三层记忆架构</h2>
 
-<p>人类有感觉记忆、短期记忆、长期记忆三层结构。Agent 也有类似的设计：</p>
+<p>人类有感觉记忆、短期记忆、长期记忆三层结构。Agent 也有类似的设计:</p>
 
 <div class="flowchart-container" id="memoryArch"></div>
 
@@ -89,7 +89,7 @@ setTimeout(() => {
 <!-- ===== 5.3 短期记忆管理 ===== -->
 <h2 class="section-heading">5.3 短期记忆的管理策略</h2>
 
-<p>短期记忆 = LLM 上下文窗口。对话越长，上下文越大。但窗口有上限，必须管理：</p>
+<p>短期记忆 = LLM 上下文窗口。对话越长,上下文越大。但窗口有上限,必须管理:</p>
 
 <h3 class="sub-heading">四种管理策略</h3>
 
@@ -97,8 +97,8 @@ setTimeout(() => {
   <div class="step-canvas">
     <div class="step-content" id="memStepContent">
       <div class="step-number">1</div>
-      <div class="step-title">滑窗截断（Sliding Window）</div>
-      <div class="step-desc">保留最近 N 轮对话，丢弃最旧的消息。简单粗暴，但可能丢失关键早期信息。</div>
+      <div class="step-title">滑窗截断(Sliding Window)</div>
+      <div class="step-desc">保留最近 N 轮对话,丢弃最旧的消息。简单粗暴,但可能丢失关键早期信息。</div>
     </div>
   </div>
   <div class="step-controls">
@@ -113,10 +113,10 @@ setTimeout(() => {
 const MemAnim = {
   current: 0,
   steps: [
-    { num: 1, title: '滑窗截断（Sliding Window）', desc: '保留最近 N 轮对话，丢弃最旧的消息。优点：实现最简单。缺点：可能丢失关键早期信息，如用户在第一轮提到的约束条件。' },
-    { num: 2, title: '摘要压缩（Summarization）', desc: '当上下文超过阈值时，用 LLM 对旧对话生成摘要，用摘要替代原始内容。优点：保留关键信息。缺点：每次压缩消耗额外 token，摘要可能丢失细节。' },
-    { num: 3, title: '选择性保留（Selective Retention）', desc: '用 LLM 判断哪些消息重要（包含事实、决策、用户偏好），只保留重要消息。优点：信息密度高。缺点：判断逻辑复杂，可能误判。' },
-    { num: 4, title: '分层压缩（Hierarchical）', desc: '结合以上策略：最近几轮完整保留，中期做摘要，最旧的存入长期记忆。类似人类的记忆机制——刚发生的事记得清楚，旧事只记大概。' }
+    { num: 1, title: '滑窗截断(Sliding Window)', desc: '保留最近 N 轮对话,丢弃最旧的消息。优点:实现最简单。缺点:可能丢失关键早期信息,如用户在第一轮提到的约束条件。' },
+    { num: 2, title: '摘要压缩(Summarization)', desc: '当上下文超过阈值时,用 LLM 对旧对话生成摘要,用摘要替代原始内容。优点:保留关键信息。缺点:每次压缩消耗额外 token,摘要可能丢失细节。' },
+    { num: 3, title: '选择性保留(Selective Retention)', desc: '用 LLM 判断哪些消息重要(包含事实、决策、用户偏好),只保留重要消息。优点:信息密度高。缺点:判断逻辑复杂,可能误判。' },
+    { num: 4, title: '分层压缩(Hierarchical)', desc: '结合以上策略:最近几轮完整保留,中期做摘要,最旧的存入长期记忆。类似人类的记忆机制--刚发生的事记得清楚,旧事只记大概。' }
   ],
   render() {
     const s = this.steps[this.current];
@@ -137,7 +137,7 @@ window.MemAnim = MemAnim;
 </script>
 
 <!-- ===== 5.4 长期记忆与向量检索 ===== -->
-<h2 class="section-heading">5.4 长期记忆：向量数据库</h2>
+<h2 class="section-heading">5.4 长期记忆:向量数据库</h2>
 
 <p>长期记忆让 Agent 能回忆起几天前甚至几个月前的交互。核心技术是<strong>向量数据库 + 语义检索</strong>。</p>
 
@@ -218,15 +218,15 @@ setTimeout(() => {
 <!-- ===== 5.5 上下文压缩实战 ===== -->
 <h2 class="section-heading">5.5 上下文压缩实战</h2>
 
-<p>在长任务中，Agent 的上下文窗口会不断膨胀——每次工具调用返回结果、每次推理步骤、每次对话轮次都在累积 token。这种现象称为<strong>上下文膨胀</strong>（Context Bloat），也叫<strong>上下文腐烂</strong>（Context Rot）。</p>
+<p>在长任务中,Agent 的上下文窗口会不断膨胀--每次工具调用返回结果、每次推理步骤、每次对话轮次都在累积 token。这种现象称为<strong>上下文膨胀</strong>(Context Bloat),也叫<strong>上下文腐烂</strong>(Context Rot)。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">⚠️ Context Rot 的典型症状</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>行为漂移</strong>：Agent 早期遵循的规则（如"用中文回答"），在 50 轮对话后可能被遗忘</li>
-    <li><strong>注意力稀释</strong>：上下文中有太多无关历史，LLM 的注意力被分散，输出质量下降</li>
-    <li><strong>成本飙升</strong>：每次调用都要处理全部历史 token，费用随对话长度线性增长</li>
-    <li><strong>窗口溢出</strong>：超过模型最大上下文长度后，被迫截断或报错</li>
+    <li><strong>行为漂移</strong>:Agent 早期遵循的规则(如"用中文回答"),在 50 轮对话后可能被遗忘</li>
+    <li><strong>注意力稀释</strong>:上下文中有太多无关历史,LLM 的注意力被分散,输出质量下降</li>
+    <li><strong>成本飙升</strong>:每次调用都要处理全部历史 token,费用随对话长度线性增长</li>
+    <li><strong>窗口溢出</strong>:超过模型最大上下文长度后,被迫截断或报错</li>
   </ul>
 </div>
 
@@ -236,8 +236,8 @@ setTimeout(() => {
   <div class="step-canvas">
     <div class="step-content" id="compressStepContent">
       <div class="step-number">1</div>
-      <div class="step-title">截断（Truncation）</div>
-      <div class="step-desc">最简单的方案：超过窗口上限时，直接丢弃最早的消息。实现成本为零，但会导致行为不一致——Agent 可能忘记用户在第一轮设定的约束条件。</div>
+      <div class="step-title">截断(Truncation)</div>
+      <div class="step-desc">最简单的方案:超过窗口上限时,直接丢弃最早的消息。实现成本为零,但会导致行为不一致--Agent 可能忘记用户在第一轮设定的约束条件。</div>
     </div>
   </div>
   <div class="step-controls">
@@ -252,11 +252,11 @@ setTimeout(() => {
 const CompressAnim = {
   current: 0,
   steps: [
-    { num: 1, title: '截断（Truncation）', desc: '最简单的方案：超过窗口上限时，直接丢弃最早的消息。优点：实现成本为零，性能开销最小。缺点：可能导致行为不一致——Agent 可能忘记用户在第一轮设定的约束条件。截断不考虑内容重要性，一刀切地丢弃历史。' },
-    { num: 2, title: '摘要（Summarization）', desc: '有损压缩：用 LLM 对旧对话生成摘要，用摘要替代原始内容。优点：保留了关键信息的"精华"。缺点：压缩质量依赖摘要模型的能力；每次压缩消耗额外 token 和时间；二次摘要会进一步损失细节（信息蒸馏的熵增问题）。' },
-    { num: 3, title: '滑动窗口（Sliding Window）', desc: '按时间维度丢弃：始终保留最近 N 轮对话，超出的部分自动淘汰。优点：简单可控，上下文长度恒定。缺点：只考虑时间远近，不考虑重要性——可能丢掉关键决策但保留了无关闲聊。' },
-    { num: 4, title: '选择性保留（Selective Retention）', desc: '按类型分别设定保留策略：系统指令全量保留、用户偏好标记后保留、工具调用结果压缩后保留、闲聊直接丢弃。优点：信息密度最高。缺点：需要额外的分类器或规则引擎来判断消息类型，实现复杂度较高。' },
-    { num: 5, title: '语义保护型压缩（Semantic-Preserving）', desc: '最先进的方案：锁定核心指令（System Prompt 不压缩），确保行动-结果完整性（工具调用与其返回值成对保留），只压缩中间推理过程。优点：在压缩率和信息完整性之间取得最优平衡。缺点：实现最复杂，需要精确识别消息间的因果依赖。' }
+    { num: 1, title: '截断(Truncation)', desc: '最简单的方案:超过窗口上限时,直接丢弃最早的消息。优点:实现成本为零,性能开销最小。缺点:可能导致行为不一致--Agent 可能忘记用户在第一轮设定的约束条件。截断不考虑内容重要性,一刀切地丢弃历史。' },
+    { num: 2, title: '摘要(Summarization)', desc: '有损压缩:用 LLM 对旧对话生成摘要,用摘要替代原始内容。优点:保留了关键信息的"精华"。缺点:压缩质量依赖摘要模型的能力;每次压缩消耗额外 token 和时间;二次摘要会进一步损失细节(信息蒸馏的熵增问题)。' },
+    { num: 3, title: '滑动窗口(Sliding Window)', desc: '按时间维度丢弃:始终保留最近 N 轮对话,超出的部分自动淘汰。优点:简单可控,上下文长度恒定。缺点:只考虑时间远近,不考虑重要性--可能丢掉关键决策但保留了无关闲聊。' },
+    { num: 4, title: '选择性保留(Selective Retention)', desc: '按类型分别设定保留策略:系统指令全量保留、用户偏好标记后保留、工具调用结果压缩后保留、闲聊直接丢弃。优点:信息密度最高。缺点:需要额外的分类器或规则引擎来判断消息类型,实现复杂度较高。' },
+    { num: 5, title: '语义保护型压缩(Semantic-Preserving)', desc: '最先进的方案:锁定核心指令(System Prompt 不压缩),确保行动-结果完整性(工具调用与其返回值成对保留),只压缩中间推理过程。优点:在压缩率和信息完整性之间取得最优平衡。缺点:实现最复杂,需要精确识别消息间的因果依赖。' }
   ],
   render() {
     const s = this.steps[this.current];
@@ -282,34 +282,34 @@ window.CompressAnim = CompressAnim;
   <span class="code-label">上下文压缩前后 Token 数对比</span>
 <pre># ===== 模拟一次 30 轮对话的上下文膨胀 =====
 
-# 原始对话（无压缩）
+# 原始对话(无压缩)
 raw_tokens_per_turn = 150          # 每轮平均 150 token
 turns = 30
 total_raw = raw_tokens_per_turn * turns + 500  # +500 为 System Prompt
 print(f"原始上下文: {total_raw} tokens")  # 输出: 5000 tokens
 
 # ----- 策略 1: 截断 -----
-# 保留最近 10 轮，丢弃其余
+# 保留最近 10 轮,丢弃其余
 truncated = raw_tokens_per_turn * 10 + 500
 print(f"截断后:     {truncated} tokens")      # 输出: 2000 tokens
-# 损失: 20 轮对话完全丢失，包含用户初始约束条件
+# 损失: 20 轮对话完全丢失,包含用户初始约束条件
 
 # ----- 策略 2: 摘要 -----
-# 旧 20 轮压缩为一段摘要（约 200 token）
+# 旧 20 轮压缩为一段摘要(约 200 token)
 summarized = 200 + raw_tokens_per_turn * 10 + 500
 print(f"摘要后:     {summarized} tokens")      # 输出: 2200 tokens
-# 损失: 细节丢失，但保留了关键决策和偏好
+# 损失: 细节丢失,但保留了关键决策和偏好
 
 # ----- 策略 3: 滑动窗口 -----
-# 等同于截断策略（按时间维度）
+# 等同于截断策略(按时间维度)
 sliding = truncated
 print(f"滑动窗口后: {sliding} tokens")         # 输出: 2000 tokens
 
 # ----- 策略 4: 选择性保留 -----
-# 从 30 轮中标记 8 轮为"重要"，其余丢弃
+# 从 30 轮中标记 8 轮为"重要",其余丢弃
 selected = raw_tokens_per_turn * 8 + 500 + 150  # +150 为类型标签开销
 print(f"选择性保留后: {selected} tokens")       # 输出: 1850 tokens
-# 信息密度最高，但可能遗漏看似不重要实则关键的上下文
+# 信息密度最高,但可能遗漏看似不重要实则关键的上下文
 
 # ----- 策略 5: 语义保护型压缩 -----
 # System Prompt 全量 + 6 个关键行动-结果对 + 12 轮推理压缩为 300 token
@@ -342,7 +342,7 @@ for name, tokens in strategies.items():
 
 <h3 class="sub-heading">Solon AI 框架的 SummarizationInterceptor</h3>
 
-<p>Solon AI 是一个国产的 Java AI 框架，它提供了 <code>SummarizationInterceptor</code> 作为上下文压缩的内置方案。其核心思路是：当对话轮次超过阈值时，自动触发摘要压缩。</p>
+<p>Solon AI 是一个国产的 Java AI 框架,它提供了 <code>SummarizationInterceptor</code> 作为上下文压缩的内置方案。其核心思路是:当对话轮次超过阈值时,自动触发摘要压缩。</p>
 
 <div class="code-block">
   <span class="code-label">Solon AI SummarizationInterceptor 配置示例</span>
@@ -350,7 +350,7 @@ for name, tokens in strategies.items():
 
 @Configuration
 public class AiConfig {
-    
+
     @Bean
     public ChatService chatService() {
         return new ChatService.builder()
@@ -358,37 +358,37 @@ public class AiConfig {
             .interceptor(summarizationInterceptor()) // 添加压缩拦截器
             .build();
     }
-    
+
     @Bean
     public SummarizationInterceptor summarizationInterceptor() {
         return new SummarizationInterceptor()
             .threshold(10)              // 超过 10 轮对话时触发压缩
-            .summaryModel(openAiModel)  // 用哪个模型做摘要（可以用更便宜的模型）
+            .summaryModel(openAiModel)  // 用哪个模型做摘要(可以用更便宜的模型)
             .preserveSystemPrompt(true) // 保护 System Prompt 不被压缩
             .preserveLastN(3)           // 保留最近 3 轮原始对话
-            .summaryPrompt("请将以下对话历史压缩为简洁摘要，" +
+            .summaryPrompt("请将以下对话历史压缩为简洁摘要," +
                            "保留所有关键决策、用户偏好和事实信息。" +
                            "丢弃闲聊和重复内容。");
     }
 }
 
 // ===== 工作原理 =====
-// 1. 用户每轮对话后，Interceptor 检查当前对话轮次
+// 1. 用户每轮对话后,Interceptor 检查当前对话轮次
 // 2. 轮次 <= threshold(10): 正常拼接所有历史
-// 3. 轮次 > threshold: 
-//    - System Prompt 全量保留（preserveSystemPrompt=true）
-//    - 最近 3 轮完整保留（preserveLastN=3）
+// 3. 轮次 > threshold:
+//    - System Prompt 全量保留(preserveSystemPrompt=true)
+//    - 最近 3 轮完整保留(preserveLastN=3)
 //    - 其余轮次调用 summaryModel 生成摘要
-//    - 摘要替代原始对话，拼接到上下文中
+//    - 摘要替代原始对话,拼接到上下文中
 
 // ===== 压缩前后对比 =====
 // 压缩前: [System] + [15轮原始对话] = ~3000 tokens
 // 压缩后: [System] + [摘要~200tokens] + [最近3轮] = ~1150 tokens
-// 压缩率: 38.3%，且核心指令和近期上下文无损保留</pre>
+// 压缩率: 38.3%,且核心指令和近期上下文无损保留</pre>
 </div>
 
 <div class="quote">
-  压缩不是删减，而是蒸馏。好的压缩策略就像化学蒸馏——把混合物中的精华提取出来，丢弃的是杂质而非有效成分。
+  压缩不是删减,而是蒸馏。好的压缩策略就像化学蒸馏--把混合物中的精华提取出来,丢弃的是杂质而非有效成分。
 </div>
 
 <!-- ===== 5.6 记忆架构实战 ===== -->
@@ -470,11 +470,11 @@ public class AiConfig {
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div class="card-title">🎯 选型决策树</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>快速原型验证</strong> → Chroma（零配置，pip install 即用）</li>
-    <li><strong>不想运维</strong> → Pinecone（全托管，按量付费，注册即用）</li>
-    <li><strong>需要混合搜索（关键词+语义）</strong> → Weaviate（BM25+向量双路召回）</li>
-    <li><strong>已有 PostgreSQL 且数据量不大</strong> → pgvector（不用引入新组件，SQL+向量一体化）</li>
-    <li><strong>十亿级向量 + 高可用</strong> → Milvus（分布式架构，专门为超大规模设计）</li>
+    <li><strong>快速原型验证</strong> → Chroma(零配置,pip install 即用)</li>
+    <li><strong>不想运维</strong> → Pinecone(全托管,按量付费,注册即用)</li>
+    <li><strong>需要混合搜索(关键词+语义)</strong> → Weaviate(BM25+向量双路召回)</li>
+    <li><strong>已有 PostgreSQL 且数据量不大</strong> → pgvector(不用引入新组件,SQL+向量一体化)</li>
+    <li><strong>十亿级向量 + 高可用</strong> → Milvus(分布式架构,专门为超大规模设计)</li>
   </ul>
 </div>
 
@@ -522,7 +522,7 @@ from openai import OpenAI
 
 class MemorySystem:
     """三层记忆协同系统"""
-    
+
     def __init__(self, embedding_model="text-embedding-3-small"):
         self.client = OpenAI()
         self.chroma = chromadb.PersistentClient(path="./memory_db")
@@ -530,49 +530,49 @@ class MemorySystem:
             name="agent_memory",
             metadata={"hnsw:space": "cosine"}
         )
-        self.short_term = []     # 短期记忆：对话历史列表
-        self.working = {}        # 工作记忆：当前任务的中间变量
+        self.short_term = []     # 短期记忆:对话历史列表
+        self.working = {}        # 工作记忆:当前任务的中间变量
         self.compress_threshold = 15  # 超过 15 轮触发压缩
-    
+
     # ===== 短期记忆管理 =====
     def add_to_short_term(self, role, content):
         """添加一条消息到短期记忆"""
         self.short_term.append({"role": role, "content": content})
-        
+
         # 检查是否需要压缩
         if len(self.short_term) > self.compress_threshold:
             self._compress_short_term()
-    
+
     def _compress_short_term(self):
-        """压缩短期记忆：摘要 + 转存长期记忆"""
+        """压缩短期记忆:摘要 + 转存长期记忆"""
         # 保留最近 3 轮和 System Prompt
         system_msgs = [m for m in self.short_term if m["role"] == "system"]
         recent_msgs = self.short_term[-6:]  # 最近 3 轮(每轮2条)
-        
+
         # 其余消息交给 LLM 生成摘要
         old_msgs = self.short_term[len(system_msgs):-6]
         if old_msgs:
             summary = self._summarize(old_msgs)
-            
-            # 摘要存入长期记忆（向量数据库）
+
+            # 摘要存入长期记忆(向量数据库)
             self._save_to_long_term(
                 text=summary,
-                metadata={"type": "summary", "turn_range": 
+                metadata={"type": "summary", "turn_range":
                           f"turns {len(system_msgs)}-{len(self.short_term)-6}"}
             )
-            
+
             # 用摘要替代原始对话
             self.short_term = system_msgs + [
                 {"role": "system", "content": f"[历史摘要]: {summary}"}
             ] + recent_msgs
-    
+
     def _summarize(self, messages):
         """用 LLM 对旧对话生成摘要"""
         text = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",  # 用便宜模型做摘要
             messages=[
-                {"role": "system", "content": 
+                {"role": "system", "content":
                  "将以下对话压缩为简洁摘要。保留所有关键决策、"
                  "用户偏好、事实信息和约束条件。丢弃闲聊和重复内容。"},
                 {"role": "user", "content": text}
@@ -580,10 +580,10 @@ class MemorySystem:
             max_tokens=300
         )
         return response.choices[0].message.content
-    
+
     # ===== 长期记忆管理 =====
     def _save_to_long_term(self, text, metadata=None):
-        """将内容存入长期记忆（向量数据库）"""
+        """将内容存入长期记忆(向量数据库)"""
         vector = self._get_embedding(text)
         doc_id = f"mem_{len(self.short_term)}_{hash(text) % 10000}"
         self.collection.upsert(
@@ -592,7 +592,7 @@ class MemorySystem:
             documents=[text],
             metadatas=[metadata or {}]
         )
-    
+
     def retrieve_from_long_term(self, query, top_k=5):
         """从长期记忆中检索相关内容"""
         results = self.collection.query(
@@ -613,20 +613,20 @@ class MemorySystem:
                     "similarity": 1 - dist
                 })
         return memories
-    
+
     # ===== 工作记忆管理 =====
     def update_working(self, key, value):
         """更新工作记忆中的变量"""
         self.working[key] = value
-    
+
     def get_working(self, key):
         """获取工作记忆中的变量"""
         return self.working.get(key)
-    
+
     def clear_working(self):
         """任务完成后清空工作记忆"""
         self.working = {}
-    
+
     # ===== Embedding =====
     def _get_embedding(self, text):
         """调用 OpenAI Embedding API"""
@@ -635,35 +635,35 @@ class MemorySystem:
             input=text
         )
         return response.data[0].embedding
-    
+
     # ===== 完整响应流程 =====
     def respond(self, user_input):
-        """Agent 完整响应流程（三层记忆协同）"""
-        
+        """Agent 完整响应流程(三层记忆协同)"""
+
         # 1. 检索长期记忆
         long_memories = self.retrieve_from_long_term(user_input, top_k=3)
         memory_context = "\n".join([m["text"] for m in long_memories])
-        
+
         # 2. 注入工作记忆
         working_context = "\n".join(
             [f"{k}: {v}" for k, v in self.working.items()]
         )
-        
+
         # 3. 构建完整 prompt
         messages = self.short_term + [
-            {"role": "system", "content": 
+            {"role": "system", "content":
              f"[相关历史记忆]\n{memory_context}\n\n"
              f"[当前任务状态]\n{working_context}"},
             {"role": "user", "content": user_input}
         ]
-        
+
         # 4. 调用 LLM 生成响应
         response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=messages
         )
         answer = response.choices[0].message.content
-        
+
         # 5. 更新三层记忆
         self.add_to_short_term("user", user_input)
         self.add_to_short_term("assistant", answer)
@@ -671,7 +671,7 @@ class MemorySystem:
             f"用户: {user_input}\n助手: {answer}",
             metadata={"type": "interaction"}
         )
-        
+
         return answer
 
 
@@ -740,36 +740,36 @@ print(answer)</pre>
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">💡 Embedding 选型建议</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>中文为主</strong> → BGE 系列（BAAI 北京智源），中文语义理解显著优于 OpenAI 模型</li>
-    <li><strong>成本敏感</strong> → 本地模型（bge / MiniLM），零 API 费用，但需要 GPU 或 CPU 推理</li>
-    <li><strong>追求最高质量</strong> → OpenAI text-embedding-3-large，MTEB 排行榜领先</li>
-    <li><strong>平衡成本与质量</strong> → OpenAI text-embedding-3-small，性价比最优</li>
+    <li><strong>中文为主</strong> → BGE 系列(BAAI 北京智源),中文语义理解显著优于 OpenAI 模型</li>
+    <li><strong>成本敏感</strong> → 本地模型(bge / MiniLM),零 API 费用,但需要 GPU 或 CPU 推理</li>
+    <li><strong>追求最高质量</strong> → OpenAI text-embedding-3-large,MTEB 排行榜领先</li>
+    <li><strong>平衡成本与质量</strong> → OpenAI text-embedding-3-small,性价比最优</li>
   </ul>
 </div>
 
 <!-- ===== 5.7 反思记忆与情景记忆 ===== -->
 <h2 class="section-heading">5.7 反思记忆与情景记忆</h2>
 
-<p>前面介绍的三层记忆架构解决了<strong>存储和检索</strong>问题，但记忆系统还有更高阶的能力：<strong>从经验中学习</strong>（反思记忆）和<strong>记录完整事件</strong>（情景记忆）。</p>
+<p>前面介绍的三层记忆架构解决了<strong>存储和检索</strong>问题,但记忆系统还有更高阶的能力:<strong>从经验中学习</strong>(反思记忆)和<strong>记录完整事件</strong>(情景记忆)。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-info);">
-      <strong style="color: var(--color-info);">🪞 反思记忆（Reflective Memory）</strong>
+      <strong style="color: var(--color-info);">🪞 反思记忆(Reflective Memory)</strong>
       <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        从执行结果中<strong>提炼经验教训</strong>。不是存储原始对话，而是存储"我学到了什么"。
+        从执行结果中<strong>提炼经验教训</strong>。不是存储原始对话,而是存储"我学到了什么"。
       </p>
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        例：任务失败后反思 → "查询天气 API 时需要加超时处理，否则会卡死整个流程"
+        例:任务失败后反思 → "查询天气 API 时需要加超时处理,否则会卡死整个流程"
       </p>
     </div>
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
-      <strong style="color: var(--color-success);">📖 情景记忆（Episodic Memory）</strong>
+      <strong style="color: var(--color-success);">📖 情景记忆(Episodic Memory)</strong>
       <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        记录具体事件的<strong>完整上下文</strong>：谁、什么、何时、何地、为什么、结果如何。
+        记录具体事件的<strong>完整上下文</strong>:谁、什么、何时、何地、为什么、结果如何。
       </p>
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        例：记录完整事件 → "2024-03-15，用户请求分析报告，用了 Python 分析工具，耗时 3 分钟，输出 500 字摘要，用户满意"
+        例:记录完整事件 → "2024-03-15,用户请求分析报告,用了 Python 分析工具,耗时 3 分钟,输出 500 字摘要,用户满意"
       </p>
     </div>
   </div>
@@ -803,7 +803,7 @@ setTimeout(() => {
 }, 700);
 </script>
 
-<p>反思记忆和情景记忆都存储在<strong>长期记忆</strong>（向量数据库）中，但它们的元数据标签不同，检索时可以按类型过滤：</p>
+<p>反思记忆和情景记忆都存储在<strong>长期记忆</strong>(向量数据库)中,但它们的元数据标签不同,检索时可以按类型过滤:</p>
 
 <div class="card">
   <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -819,7 +819,7 @@ setTimeout(() => {
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">短期记忆</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">原始对话轮次</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无（直接拼接）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无(直接拼接)</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">当前对话上下文</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
@@ -837,7 +837,7 @@ setTimeout(() => {
       <tr>
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">工作记忆</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">当前任务中间变量</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无（Scratchpad）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无(Scratchpad)</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">多步推理过程中的状态</td>
       </tr>
     </tbody>
@@ -846,7 +846,7 @@ setTimeout(() => {
 
 <h3 class="sub-heading">Reflexion 框架的反思循环</h3>
 
-<p>Reflexion 是一个经典的反思型 Agent 框架，其核心创新在于引入<strong>反思循环</strong>：Agent 执行任务后，如果结果不理想，会进行自我反思，将反思结果存入记忆，下次执行时参考这些经验。</p>
+<p>Reflexion 是一个经典的反思型 Agent 框架,其核心创新在于引入<strong>反思循环</strong>:Agent 执行任务后,如果结果不理想,会进行自我反思,将反思结果存入记忆,下次执行时参考这些经验。</p>
 
 <div class="flowchart-container" id="reflexionLoop"></div>
 
@@ -880,15 +880,15 @@ setTimeout(() => {
   <span class="code-label">Reflexion 反思循环 Python 实现</span>
 <pre>class ReflexionAgent:
     """基于 Reflexion 框架的反思型 Agent"""
-    
+
     def __init__(self, llm, memory_system):
         self.llm = llm
         self.memory = memory_system
         self.max_retries = 3  # 最大反思重试次数
-    
+
     def execute_task(self, task_description):
-        """执行任务，失败时触发反思循环"""
-        
+        """执行任务,失败时触发反思循环"""
+
         for attempt in range(self.max_retries):
             # 1. 检索相关反思经验
             past_reflections = self.memory.retrieve_from_long_term(
@@ -896,26 +896,26 @@ setTimeout(() => {
                 top_k=3
             )
             reflection_context = "\n".join([
-                f"[过往经验 #{i+1}]: {r['text']}" 
+                f"[过往经验 #{i+1}]: {r['text']}"
                 for i, r in enumerate(past_reflections)
                 if r.get('metadata', {}).get('type') == 'reflection'
             ])
-            
+
             # 2. 构建带反思经验的 prompt
             prompt = f"""
             任务: {task_description}
-            
+
             {f'过往反思经验:\n{reflection_context}' if reflection_context else '这是首次尝试此任务。'}
-            
-            请执行任务，注意避免过去犯过的错误。
+
+            请执行任务,注意避免过去犯过的错误。
             """
-            
+
             # 3. 执行 ReAct 循环
             result = self._react_loop(prompt)
-            
+
             # 4. 评估结果
             evaluation = self._evaluate(task_description, result)
-            
+
             if evaluation["success"]:
                 # 成功 → 记录为情景记忆
                 self.memory._save_to_long_term(
@@ -923,10 +923,10 @@ setTimeout(() => {
                     metadata={"type": "episodic", "outcome": "success"}
                 )
                 return result
-            
+
             # 5. 失败 → 触发反思
             reflection = self._reflect(task_description, result, evaluation)
-            
+
             # 6. 将反思存入记忆
             self.memory._save_to_long_term(
                 text=reflection,
@@ -937,11 +937,11 @@ setTimeout(() => {
                     "outcome": "failure"
                 }
             )
-            
-            print(f"第 {attempt+1} 次尝试失败，反思已存入记忆")
-        
-        return {"output": "任务失败，已达最大重试次数", "success": False}
-    
+
+            print(f"第 {attempt+1} 次尝试失败,反思已存入记忆")
+
+        return {"output": "任务失败,已达最大重试次数", "success": False}
+
     def _reflect(self, task, result, evaluation):
         """对失败结果进行反思"""
         reflect_prompt = f"""
@@ -949,24 +949,24 @@ setTimeout(() => {
         我的行动: {result['actions_taken']}
         得到的结果: {result['output']}
         评估反馈: {evaluation['feedback']}
-        
-        请反思以下问题：
-        1. 我哪里做错了？具体是哪个步骤出了问题？
-        2. 为什么会犯这个错误？根本原因是什么？
-        3. 下次应该怎么避免？给出具体的改进策略。
-        
+
+        请反思以下问题:
+        1. 我哪里做错了?具体是哪个步骤出了问题?
+        2. 为什么会犯这个错误?根本原因是什么?
+        3. 下次应该怎么避免?给出具体的改进策略。
+
         用简洁的要点总结你的反思。
         """
         response = self.llm.generate(reflect_prompt)
         return response
-    
+
     def _evaluate(self, task, result):
         """用 LLM 评估任务结果"""
         eval_prompt = f"""
         任务: {task}
         结果: {result['output']}
-        
-        这个结果是否成功完成了任务？请判断：
+
+        这个结果是否成功完成了任务?请判断:
         - 成功: 返回 JSON {"success": true}
         - 失败: 返回 JSON {"success": false, "feedback": "具体问题描述"}
         """
@@ -976,22 +976,22 @@ setTimeout(() => {
 </div>
 
 <div class="quote">
-  反思记忆让 Agent 从"重复犯错的傻瓜"进化为"从失败中学习的聪明人"。每次失败都是一次学习机会，关键是把教训提炼出来，而不是简单地丢掉失败记录。
+  反思记忆让 Agent 从"重复犯错的傻瓜"进化为"从失败中学习的聪明人"。每次失败都是一次学习机会,关键是把教训提炼出来,而不是简单地丢掉失败记录。
 </div>
 
 <!-- ===== 5.8 记忆治理与上下文工程 ===== -->
 <h2 class="section-heading">5.8 记忆治理与上下文工程</h2>
 
-<p>记忆系统的终极问题不是"怎么存"，而是<strong>怎么管</strong>。本节从工程视角讨论记忆的完整生命周期治理，以及从 Prompt Engineering 到 Context Engineering 的范式转变。</p>
+<p>记忆系统的终极问题不是"怎么存",而是<strong>怎么管</strong>。本节从工程视角讨论记忆的完整生命周期治理,以及从 Prompt Engineering 到 Context Engineering 的范式转变。</p>
 
 <h3 class="sub-heading">Context Engineering vs Prompt Engineering</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
-      <strong style="color: var(--color-error);">❌ Prompt Engineering（旧范式）</strong>
+      <strong style="color: var(--color-error);">❌ Prompt Engineering(旧范式)</strong>
       <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        关注<strong>单次请求</strong>的措辞优化："怎么写 prompt 让 LLM 回答更好？"是一次性的、静态的。
+        关注<strong>单次请求</strong>的措辞优化:"怎么写 prompt 让 LLM 回答更好?"是一次性的、静态的。
       </p>
       <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 6px 0 0; line-height: 1.8;">
         <li>优化 System Prompt 措辞</li>
@@ -1000,9 +1000,9 @@ setTimeout(() => {
       </ul>
     </div>
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
-      <strong style="color: var(--color-success);">✅ Context Engineering（新范式）</strong>
+      <strong style="color: var(--color-success);">✅ Context Engineering(新范式)</strong>
       <p style="font-size: 14px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        关注<strong>整个上下文的动态编排</strong>："在正确的时刻，为 LLM 提供正确的信息，不多也不少。"是持续性的、动态的。
+        关注<strong>整个上下文的动态编排</strong>:"在正确的时刻,为 LLM 提供正确的信息,不多也不少。"是持续性的、动态的。
       </p>
       <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; margin: 6px 0 0; line-height: 1.8;">
         <li>记忆的检索、压缩、淘汰策略</li>
@@ -1014,12 +1014,12 @@ setTimeout(() => {
 </div>
 
 <div class="quote">
-  Prompt Engineering 是写一首诗，Context Engineering 是管理一个图书馆。前者关注措辞，后者关注信息流的完整治理。
+  Prompt Engineering 是写一首诗,Context Engineering 是管理一个图书馆。前者关注措辞,后者关注信息流的完整治理。
 </div>
 
-<h3 class="sub-heading">Just-in-Time Context：在正确时间提供正确信息</h3>
+<h3 class="sub-heading">Just-in-Time Context:在正确时间提供正确信息</h3>
 
-<p>JIT Context 的核心原则是：<strong>不在一开始就塞满上下文，而是在每一步只注入当前需要的信息</strong>。就像 JIT 生产——零库存，按需供应。</p>
+<p>JIT Context 的核心原则是:<strong>不在一开始就塞满上下文,而是在每一步只注入当前需要的信息</strong>。就像 JIT 生产--零库存,按需供应。</p>
 
 <div class="flowchart-container" id="jitContextFlow"></div>
 
@@ -1051,14 +1051,14 @@ setTimeout(() => {
 
 <h3 class="sub-heading">记忆生命周期管理</h3>
 
-<p>记忆不是一次性写入就完事的，它有完整的生命周期，每个阶段都需要工程化治理：</p>
+<p>记忆不是一次性写入就完事的,它有完整的生命周期,每个阶段都需要工程化治理:</p>
 
 <div class="step-animation" id="lifecycleSteps">
   <div class="step-canvas">
     <div class="step-content" id="lifecycleStepContent">
       <div class="step-number">1</div>
-      <div class="step-title">写入（Write）</div>
-      <div class="step-desc">记录交互内容，附带元数据（时间、类型、用户ID）。写入时需决策：哪些内容值得存储？全部存储会导致噪音过多。</div>
+      <div class="step-title">写入(Write)</div>
+      <div class="step-desc">记录交互内容,附带元数据(时间、类型、用户ID)。写入时需决策:哪些内容值得存储?全部存储会导致噪音过多。</div>
     </div>
   </div>
   <div class="step-controls">
@@ -1073,11 +1073,11 @@ setTimeout(() => {
 const LifecycleAnim = {
   current: 0,
   steps: [
-    { num: 1, title: '写入（Write）', desc: '记录交互内容，附带元数据（时间、类型、用户ID、重要性评分）。写入时需决策：哪些内容值得存储？全部存储会导致噪音过多，只存关键内容则可能遗漏。策略：默认全部写入，后续通过索引和淘汰来管理质量。' },
-    { num: 2, title: '索引（Index）', desc: '为记忆建立索引，加速后续检索。包括：向量索引（Embedding→向量数据库），关键词索引（BM25→全文检索），时间索引（按时间范围快速过滤），类型索引（reflection/episodic/interaction 分类标签）。多索引 = 多路召回 = 更高命中率。' },
-    { num: 3, title: '检索（Retrieve）', desc: '根据当前任务需求，从记忆库中找到最相关的信息。JIT 原则：只检索当前步骤需要的，不提前加载。检索策略：多路召回（向量+关键词+时间），相似度阈值过滤（距离 < 0.7），元数据过滤（按类型/用户/时间范围），Top-K 截断（取最相关的 K 条）。' },
-    { num: 4, title: '压缩（Compress）', desc: '上下文超阈值时触发压缩。压缩策略优先级：语义保护型 > 选择性保留 > 摘要 > 滑动窗口 > 截断。压缩时锁定：System Prompt 不压缩，行动-结果对成对保留。压缩后内容存入长期记忆，原始内容可淘汰。' },
-    { num: 5, title: '淘汰（Evict）', desc: '记忆不是永久保留的。淘汰策略：时效淘汰（超过 N 天的低重要性记忆自动清理），容量淘汰（总条数超过上限时淘汰最不重要的），质量淘汰（从未被检索过的记忆降低优先级），用户主动淘汰（用户标记"忘掉这件事"）。淘汰前可以先做最终摘要归档。' }
+    { num: 1, title: '写入(Write)', desc: '记录交互内容,附带元数据(时间、类型、用户ID、重要性评分)。写入时需决策:哪些内容值得存储?全部存储会导致噪音过多,只存关键内容则可能遗漏。策略:默认全部写入,后续通过索引和淘汰来管理质量。' },
+    { num: 2, title: '索引(Index)', desc: '为记忆建立索引,加速后续检索。包括:向量索引(Embedding→向量数据库),关键词索引(BM25→全文检索),时间索引(按时间范围快速过滤),类型索引(reflection/episodic/interaction 分类标签)。多索引 = 多路召回 = 更高命中率。' },
+    { num: 3, title: '检索(Retrieve)', desc: '根据当前任务需求,从记忆库中找到最相关的信息。JIT 原则:只检索当前步骤需要的,不提前加载。检索策略:多路召回(向量+关键词+时间),相似度阈值过滤(距离 < 0.7),元数据过滤(按类型/用户/时间范围),Top-K 截断(取最相关的 K 条)。' },
+    { num: 4, title: '压缩(Compress)', desc: '上下文超阈值时触发压缩。压缩策略优先级:语义保护型 > 选择性保留 > 摘要 > 滑动窗口 > 截断。压缩时锁定:System Prompt 不压缩,行动-结果对成对保留。压缩后内容存入长期记忆,原始内容可淘汰。' },
+    { num: 5, title: '淘汰(Evict)', desc: '记忆不是永久保留的。淘汰策略:时效淘汰(超过 N 天的低重要性记忆自动清理),容量淘汰(总条数超过上限时淘汰最不重要的),质量淘汰(从未被检索过的记忆降低优先级),用户主动淘汰(用户标记"忘掉这件事")。淘汰前可以先做最终摘要归档。' }
   ],
   render() {
     const s = this.steps[this.current];
@@ -1106,7 +1106,7 @@ from datetime import datetime, timedelta
 
 class MemoryGovernor:
     """记忆生命周期治理引擎"""
-    
+
     def __init__(self, memory_system):
         self.memory = memory_system
         self.config = {
@@ -1120,13 +1120,13 @@ class MemoryGovernor:
             "retrieval_top_k": 5,              # 检索返回 Top-K
             "jit_mode": True                   # JIT 上下文模式
         }
-        self.access_stats = {}  # 记忆访问统计（用于淘汰决策）
-    
+        self.access_stats = {}  # 记忆访问统计(用于淘汰决策)
+
     # ===== 写入阶段 =====
     def write(self, content, metadata=None):
-        """写入记忆，自动评估重要性"""
+        """写入记忆,自动评估重要性"""
         importance = self._assess_importance(content)
-        
+
         enriched_meta = {
             **(metadata or {}),
             "importance": importance,
@@ -1134,15 +1134,15 @@ class MemoryGovernor:
             "access_count": 0,
             "last_accessed": None
         }
-        
+
         self.memory._save_to_long_term(content, enriched_meta)
         self.memory.add_to_short_term(
             enriched_meta.get("role", "user"), content
         )
-    
+
     def _assess_importance(self, content):
-        """用 LLM 快速评估内容重要性（1-5分）"""
-        # 简化版：基于规则的启发式评估
+        """用 LLM 快速评估内容重要性(1-5分)"""
+        # 简化版:基于规则的启发式评估
         score = 1
         if any(kw in content for kw in ["决策", "偏好", "规则", "约束"]):
             score += 2
@@ -1151,61 +1151,61 @@ class MemoryGovernor:
         if len(content) > 200:  # 长内容通常更重要
             score += 1
         return min(score, 5)
-    
+
     # ===== 索引阶段 =====
     def index(self):
         """确保记忆索引完整且高效"""
         # Chroma/Milvus 等向量数据库自动维护向量索引
-        # 额外维护：时间索引、类型索引、访问频率索引
+        # 额外维护:时间索引、类型索引、访问频率索引
         pass  # 由向量数据库自动处理
-    
-    # ===== 检索阶段（JIT 模式） =====
+
+    # ===== 检索阶段(JIT 模式) =====
     def retrieve_jit(self, current_step_description):
-        """Just-in-Time 检索：只取当前步骤需要的信息"""
+        """Just-in-Time 检索:只取当前步骤需要的信息"""
         if not self.config["jit_mode"]:
-            # 非 JIT 模式：一次性加载所有相关记忆
+            # 非 JIT 模式:一次性加载所有相关记忆
             return self.memory.retrieve_from_long_term(
-                current_step_description, 
+                current_step_description,
                 top_k=self.config["retrieval_top_k"]
             )
-        
-        # JIT 模式：分步检索，按需注入
+
+        # JIT 模式:分步检索,按需注入
         results = self.memory.retrieve_from_long_term(
             current_step_description,
             top_k=3  # JIT 模式下减少初始检索量
         )
-        
-        # 更新访问统计（用于淘汰决策）
+
+        # 更新访问统计(用于淘汰决策)
         for r in results:
             doc_id = r.get("metadata", {}).get("doc_id", "")
             if doc_id:
                 self.access_stats[doc_id] = \
                     self.access_stats.get(doc_id, 0) + 1
-        
+
         # 相似度过滤
         filtered = [
-            r for r in results 
+            r for r in results
             if r["similarity"] >= self.config["retrieval_similarity_threshold"]
         ]
-        
+
         return filtered
-    
+
     # ===== 压缩阶段 =====
     def compress_if_needed(self):
         """检查并执行上下文压缩"""
         if len(self.memory.short_term) > self.config["compress_threshold"]:
             self._semantic_preserving_compress()
-    
+
     def _semantic_preserving_compress(self):
         """语义保护型压缩"""
         short = self.memory.short_term
-        
+
         # 分层提取
         system_msgs = [m for m in short if m["role"] == "system"]
         recent = short[-(self.config["preserve_last_n"] * 2):]
         middle = short[len(system_msgs):-(self.config["preserve_last_n"] * 2)]
-        
-        # 识别行动-结果对（工具调用 + 返回值）
+
+        # 识别行动-结果对(工具调用 + 返回值)
         action_pairs = []
         i = 0
         while i < len(middle):
@@ -1215,44 +1215,44 @@ class MemoryGovernor:
                     i += 2
                     continue
             i += 1
-        
+
         # 其余内容生成摘要
-        remaining = [m for m in middle if m not in 
+        remaining = [m for m in middle if m not in
                      [p[0] for p in action_pairs] + [p[1] for p in action_pairs]]
-        
+
         if remaining:
             summary = self.memory._summarize(remaining)
-        
+
         # 重组上下文
         compressed = system_msgs.copy()
         if remaining:
             compressed.append({
-                "role": "system", 
+                "role": "system",
                 "content": f"[历史摘要]: {summary}"
             })
         for pair in action_pairs[-3:]:  # 保留最近 3 个行动-结果对
             compressed.extend(pair)
         compressed.extend(recent)
-        
+
         self.memory.short_term = compressed
-    
+
     # ===== 淘汰阶段 =====
     def evict(self):
         """执行记忆淘汰策略"""
-        # 1. 时效淘汰：超过 N 天且重要性 <= 2 的记忆
+        # 1. 时效淘汰:超过 N 天且重要性 <= 2 的记忆
         cutoff = datetime.now() - timedelta(days=self.config["eviction_age_days"])
-        # 向量数据库不支持直接按元数据范围删除，需要查询+批量删除
+        # 向量数据库不支持直接按元数据范围删除,需要查询+批量删除
         # 此处为简化逻辑示意
-        
-        # 2. 容量淘汰：总条数超过上限时，淘汰最少访问的
+
+        # 2. 容量淘汰:总条数超过上限时,淘汰最少访问的
         if self.access_stats:
             least_accessed = sorted(
-                self.access_stats.items(), 
+                self.access_stats.items(),
                 key=lambda x: x[1]
             )[:100]
             # 从向量数据库中删除 least_accessed 的条目
-        
-        # 3. 质量淘汰：从未被检索过的记忆
+
+        # 3. 质量淘汰:从未被检索过的记忆
         never_accessed = [
             k for k, v in self.access_stats.items() if v == 0
         ]
@@ -1262,7 +1262,7 @@ class MemoryGovernor:
 # ===== 使用示例 =====
 governor = MemoryGovernor(MemorySystem())
 
-# 写入记忆（自动评估重要性）
+# 写入记忆(自动评估重要性)
 governor.write("用户偏好简洁的中文回答", metadata={"type": "preference"})
 
 # JIT 检索
@@ -1278,61 +1278,61 @@ governor.evict()</pre>
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">✅ 记忆治理的黄金法则</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>写入要慷慨</strong>：宁可多存，后续靠检索和淘汰来筛选</li>
-    <li><strong>检索要精准</strong>：JIT 原则，只在需要时取需要的量</li>
-    <li><strong>压缩要保守</strong>：保护核心指令和行动-结果对，只压缩中间推理</li>
-    <li><strong>淘汰要渐进</strong>：先降优先级再删除，给"冷记忆"一个回暖的机会</li>
-    <li><strong>指标要量化</strong>：追踪命中率、压缩率、检索延迟，用数据驱动治理策略</li>
+    <li><strong>写入要慷慨</strong>:宁可多存,后续靠检索和淘汰来筛选</li>
+    <li><strong>检索要精准</strong>:JIT 原则,只在需要时取需要的量</li>
+    <li><strong>压缩要保守</strong>:保护核心指令和行动-结果对,只压缩中间推理</li>
+    <li><strong>淘汰要渐进</strong>:先降优先级再删除,给"冷记忆"一个回暖的机会</li>
+    <li><strong>指标要量化</strong>:追踪命中率、压缩率、检索延迟,用数据驱动治理策略</li>
   </ul>
 </div>
 
 <!-- ===== 5.9 长期记忆的静态与动态分类 ===== -->
 <h2 class="section-heading">5.9 长期记忆的静态与动态分类</h2>
 
-<p>长期记忆不是铁板一块。仔细观察就会发现，有些记忆<strong>几乎不变</strong>，有些记忆<strong>持续更新</strong>。把长期记忆分为<strong>静态长期记忆</strong>和<strong>动态长期记忆</strong>，是面试中的高频考点，也是工程落地时的关键设计决策。</p>
+<p>长期记忆不是铁板一块。仔细观察就会发现,有些记忆<strong>几乎不变</strong>,有些记忆<strong>持续更新</strong>。把长期记忆分为<strong>静态长期记忆</strong>和<strong>动态长期记忆</strong>,是面试中的高频考点,也是工程落地时的关键设计决策。</p>
 
-<h3 class="sub-heading">为什么要做这个分类？</h3>
+<h3 class="sub-heading">为什么要做这个分类?</h3>
 
-<p>如果所有长期记忆都用同一种策略管理，会出现两类问题：</p>
+<p>如果所有长期记忆都用同一种策略管理,会出现两类问题:</p>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">❌ 不分类的后果</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>存储浪费</strong>：用户偏好这种不变的信息，如果存入向量数据库每次做语义检索，检索开销大且没有必要——它永远都该被注入</li>
-    <li><strong>信息过时</strong>：历史对话摘要这种高频更新的信息，如果像用户偏好一样"写入就不管了"，很快就会变得过时和冗余</li>
-    <li><strong>召回混乱</strong>：不同性质的记忆混在一起检索，模型很难区分"这是永远有效的规则"还是"这是上次的经验"</li>
+    <li><strong>存储浪费</strong>:用户偏好这种不变的信息,如果存入向量数据库每次做语义检索,检索开销大且没有必要--它永远都该被注入</li>
+    <li><strong>信息过时</strong>:历史对话摘要这种高频更新的信息,如果像用户偏好一样"写入就不管了",很快就会变得过时和冗余</li>
+    <li><strong>召回混乱</strong>:不同性质的记忆混在一起检索,模型很难区分"这是永远有效的规则"还是"这是上次的经验"</li>
   </ul>
 </div>
 
-<p>所以，分类的核心目的是<strong>让不同性质的记忆用不同的管理策略</strong>，从而提升存储效率、召回精准度和上下文利用率。</p>
+<p>所以,分类的核心目的是<strong>让不同性质的记忆用不同的管理策略</strong>,从而提升存储效率、召回精准度和上下文利用率。</p>
 
-<h3 class="sub-heading">静态长期记忆：几乎不变的核心知识</h3>
+<h3 class="sub-heading">静态长期记忆:几乎不变的核心知识</h3>
 
-<p>静态长期记忆的特点是<strong>变化频率极低</strong>，写入后几乎不需要更新。它像一本"个人手册"，定义了 Agent 与用户交互的基本规则。</p>
+<p>静态长期记忆的特点是<strong>变化频率极低</strong>,写入后几乎不需要更新。它像一本"个人手册",定义了 Agent 与用户交互的基本规则。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">📖 静态长期记忆的典型内容</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>用户偏好</strong>："用户偏好简洁的中文回答"、"用户不喜欢表格输出"——这些偏好一旦确定，几乎不变</li>
-    <li><strong>系统规则</strong>："不要生成代码中的硬编码密码"、"回答必须附带引用来源"——规则是确定性的约束</li>
-    <li><strong>领域知识</strong>："公司 API 文档的 Base URL 是 https://api.example.com/v2"——事实性知识，除非系统变更才更新</li>
+    <li><strong>用户偏好</strong>:"用户偏好简洁的中文回答"、"用户不喜欢表格输出"--这些偏好一旦确定,几乎不变</li>
+    <li><strong>系统规则</strong>:"不要生成代码中的硬编码密码"、"回答必须附带引用来源"--规则是确定性的约束</li>
+    <li><strong>领域知识</strong>:"公司 API 文档的 Base URL 是 https://api.example.com/v2"--事实性知识,除非系统变更才更新</li>
   </ul>
 </div>
 
-<h3 class="sub-heading">动态长期记忆：持续更新的经验积累</h3>
+<h3 class="sub-heading">动态长期记忆:持续更新的经验积累</h3>
 
-<p>动态长期记忆的特点是<strong>变化频率高</strong>，需要持续更新、压缩和淘汰。它像一本"工作日记"，记录了 Agent 的成长轨迹。</p>
+<p>动态长期记忆的特点是<strong>变化频率高</strong>,需要持续更新、压缩和淘汰。它像一本"工作日记",记录了 Agent 的成长轨迹。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div class="card-title">📝 动态长期记忆的典型内容</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>历史对话摘要</strong>：之前多轮对话的压缩摘要——每次新对话都可能产生新的摘要，旧的摘要需要定期合并</li>
-    <li><strong>任务执行经验</strong>："上次用 pandas 读 CSV 时遇到了编码问题，解决方案是指定 encoding='utf-8'"——经验会不断积累</li>
-    <li><strong>用户行为模式</strong>："用户通常在下午 3 点后提问"、"用户习惯先问背景再问具体方案"——模式需要持续观察和修正</li>
+    <li><strong>历史对话摘要</strong>:之前多轮对话的压缩摘要--每次新对话都可能产生新的摘要,旧的摘要需要定期合并</li>
+    <li><strong>任务执行经验</strong>:"上次用 pandas 读 CSV 时遇到了编码问题,解决方案是指定 encoding='utf-8'"--经验会不断积累</li>
+    <li><strong>用户行为模式</strong>:"用户通常在下午 3 点后提问"、"用户习惯先问背景再问具体方案"--模式需要持续观察和修正</li>
   </ul>
 </div>
 
-<h3 class="sub-heading">分类的意义：不同策略适配不同性质</h3>
+<h3 class="sub-heading">分类的意义:不同策略适配不同性质</h3>
 
 <div class="flowchart-container" id="staticDynamicMemory"></div>
 
@@ -1365,12 +1365,12 @@ setTimeout(() => {
 }, 1200);
 </script>
 
-<p>分类带来三方面的差异化策略：</p>
+<p>分类带来三方面的差异化策略:</p>
 
 <ul>
-  <li><strong>不同的存储策略</strong>：静态记忆存本地配置文件（YAML/JSON），读写简单、确定性高；动态记忆存向量数据库，支持语义检索和大规模管理</li>
-  <li><strong>不同的召回策略</strong>：静态记忆直接注入 System Prompt，每次对话都有，不需要检索；动态记忆按相关性从向量库检索，只在需要时注入</li>
-  <li><strong>不同的压缩策略</strong>：静态记忆本身已经是精炼的表达（一条偏好就是一句话），不需要压缩；动态记忆需要定期压缩摘要、淘汰过时内容</li>
+  <li><strong>不同的存储策略</strong>:静态记忆存本地配置文件(YAML/JSON),读写简单、确定性高;动态记忆存向量数据库,支持语义检索和大规模管理</li>
+  <li><strong>不同的召回策略</strong>:静态记忆直接注入 System Prompt,每次对话都有,不需要检索;动态记忆按相关性从向量库检索,只在需要时注入</li>
+  <li><strong>不同的压缩策略</strong>:静态记忆本身已经是精炼的表达(一条偏好就是一句话),不需要压缩;动态记忆需要定期压缩摘要、淘汰过时内容</li>
 </ul>
 
 <h3 class="sub-heading">对比表格</h3>
@@ -1392,13 +1392,13 @@ setTimeout(() => {
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">变化频率</td>
-        <td style="padding: 10px 8px; color: var(--color-info);">极低，几乎不变</td>
-        <td style="padding: 10px 8px; color: var(--color-accent);">高，持续更新</td>
+        <td style="padding: 10px 8px; color: var(--color-info);">极低,几乎不变</td>
+        <td style="padding: 10px 8px; color: var(--color-accent);">高,持续更新</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">存储方式</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">本地配置文件（YAML/JSON）</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量数据库（Chroma/Milvus）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">本地配置文件(YAML/JSON)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量数据库(Chroma/Milvus)</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">召回方式</td>
@@ -1407,7 +1407,7 @@ setTimeout(() => {
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">压缩策略</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不压缩（本身已精炼）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">不压缩(本身已精炼)</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">定期压缩摘要 + 淘汰过时内容</td>
       </tr>
       <tr>
@@ -1422,7 +1422,7 @@ setTimeout(() => {
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">✅ 面试要点</div>
   <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
-    面试中回答"长期记忆的管理策略"时，<strong>先分类再谈策略</strong>。不要一上来就说"存向量数据库"，而要先区分："静态记忆存配置文件、直接注入 Prompt；动态记忆存向量库、按需检索、定期压缩"。这体现了你对记忆系统不同性质的深刻理解。<br><br>
+    面试中回答"长期记忆的管理策略"时,<strong>先分类再谈策略</strong>。不要一上来就说"存向量数据库",而要先区分:"静态记忆存配置文件、直接注入 Prompt;动态记忆存向量库、按需检索、定期压缩"。这体现了你对记忆系统不同性质的深刻理解。<br><br>
     关联面试题 → Q10
   </p>
 </div>
@@ -1430,50 +1430,50 @@ setTimeout(() => {
 <!-- ===== 5.10 记忆存储触发链路 ===== -->
 <h2 class="section-heading">5.10 记忆存储触发链路</h2>
 
-<p>一个常见误解是：<strong>"每轮对话都触发长期记忆写入"</strong>。如果真的每轮都写，长期记忆库会变成完整对话日志的备份——噪音爆炸，检索失效。</p>
+<p>一个常见误解是:<strong>"每轮对话都触发长期记忆写入"</strong>。如果真的每轮都写,长期记忆库会变成完整对话日志的备份--噪音爆炸,检索失效。</p>
 
 <div class="quote">
-  记忆写入不是"录一切"，而是"记值得记的"。就像人类不会记住每顿饭吃了什么，但会记住第一次吃到惊艳味道的那顿。
+  记忆写入不是"录一切",而是"记值得记的"。就像人类不会记住每顿饭吃了什么,但会记住第一次吃到惊艳味道的那顿。
 </div>
 
-<h3 class="sub-heading">不是每轮都触发！有筛选机制</h3>
+<h3 class="sub-heading">不是每轮都触发!有筛选机制</h3>
 
-<p>记忆写入有明确的<strong>触发条件</strong>，只有满足条件的信息才进入长期记忆：</p>
+<p>记忆写入有明确的<strong>触发条件</strong>,只有满足条件的信息才进入长期记忆:</p>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div class="card-title">🎯 记忆写入触发条件</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>用户表达了新偏好</strong> → 写入<strong>静态长期记忆</strong>（如"我不喜欢表格输出"）</li>
-    <li><strong>完成了一个有价值的任务</strong> → 写入<strong>动态长期记忆</strong>（执行经验，如"CSV 编码问题的解决方案"）</li>
-    <li><strong>发现了新的上下文信息</strong> → 写入<strong>动态长期记忆</strong>（知识片段，如"公司的 API 版本升级到 v2 了"）</li>
-    <li><strong>简单闲聊</strong> → <strong>不触发长期记忆写入</strong>（如"你好"、"今天天气不错"）</li>
+    <li><strong>用户表达了新偏好</strong> → 写入<strong>静态长期记忆</strong>(如"我不喜欢表格输出")</li>
+    <li><strong>完成了一个有价值的任务</strong> → 写入<strong>动态长期记忆</strong>(执行经验,如"CSV 编码问题的解决方案")</li>
+    <li><strong>发现了新的上下文信息</strong> → 写入<strong>动态长期记忆</strong>(知识片段,如"公司的 API 版本升级到 v2 了")</li>
+    <li><strong>简单闲聊</strong> → <strong>不触发长期记忆写入</strong>(如"你好"、"今天天气不错")</li>
   </ul>
 </div>
 
-<h3 class="sub-heading">判断标准：什么信息"值得记住"？</h3>
+<h3 class="sub-heading">判断标准:什么信息"值得记住"?</h3>
 
-<p>判断一条信息是否值得写入长期记忆，核心标准是两个问题：</p>
+<p>判断一条信息是否值得写入长期记忆,核心标准是两个问题:</p>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
   <div class="card" style="border-left: 3px solid var(--color-info);">
-    <div class="card-title">❓ 问题一：是否有长期参考价值？</div>
+    <div class="card-title">❓ 问题一:是否有长期参考价值?</div>
     <p style="font-size: 14px; color: var(--color-text-secondary);">
-      如果这条信息<strong>在未来的对话中还可能被用到</strong>，就值得记住。用户的偏好、问题的解决方案、关键的事实信息——这些都可能在下次交互中再次需要。<br><br>
-      反例："今天中午吃什么"只在当天有价值，不值得写入长期记忆。
+      如果这条信息<strong>在未来的对话中还可能被用到</strong>,就值得记住。用户的偏好、问题的解决方案、关键的事实信息--这些都可能在下次交互中再次需要。<br><br>
+      反例:"今天中午吃什么"只在当天有价值,不值得写入长期记忆。
     </p>
   </div>
   <div class="card" style="border-left: 3px solid var(--color-success);">
-    <div class="card-title">❓ 问题二：是否包含决策/偏好/知识点？</div>
+    <div class="card-title">❓ 问题二:是否包含决策/偏好/知识点?</div>
     <p style="font-size: 14px; color: var(--color-text-secondary);">
-      如果这条信息包含<strong>明确的决策、稳定的偏好或可复用的知识</strong>，就值得记住。<br><br>
-      反例："嗯嗯好的"这种确认性回复不包含任何决策或知识，不值得写入。
+      如果这条信息包含<strong>明确的决策、稳定的偏好或可复用的知识</strong>,就值得记住。<br><br>
+      反例:"嗯嗯好的"这种确认性回复不包含任何决策或知识,不值得写入。
     </p>
   </div>
 </div>
 
-<h3 class="sub-heading">链路设计：对话→信息提取→价值评估→分类→写入</h3>
+<h3 class="sub-heading">链路设计:对话→信息提取→价值评估→分类→写入</h3>
 
-<p>记忆写入是一个<strong>五步链路</strong>，每一步都有明确的职责：</p>
+<p>记忆写入是一个<strong>五步链路</strong>,每一步都有明确的职责:</p>
 
 <div class="flowchart-container" id="memoryWritePipeline"></div>
 
@@ -1507,58 +1507,58 @@ setTimeout(() => {
 <div class="code-block">
   <span class="code-label">记忆写入触发引擎 Python 实现</span>
 <pre>class MemoryWriteTrigger:
-    """记忆写入触发引擎：判断什么信息值得写入长期记忆"""
-    
+    """记忆写入触发引擎:判断什么信息值得写入长期记忆"""
+
     def __init__(self, llm_client, static_store, dynamic_store):
         self.llm = llm_client
         self.static_store = static_store      # 本地配置文件存储
         self.dynamic_store = dynamic_store    # 向量数据库存储
-    
-    # ===== 第一步：信息提取 =====
+
+    # ===== 第一步:信息提取 =====
     def extract_key_info(self, conversation_turn):
         """从对话中提取关键信息片段"""
-        prompt = f"""从以下对话中提取关键信息。只提取可能具有长期参考价值的内容：
-        
-对话内容：
+        prompt = f"""从以下对话中提取关键信息。只提取可能具有长期参考价值的内容:
+
+对话内容:
 {conversation_turn}
 
-提取格式（JSON）：
+提取格式(JSON):
 - type: preference / decision / knowledge / experience / none
-- content: 提取的关键内容（精炼为一句话）
-- confidence: 置信度（0-1）
+- content: 提取的关键内容(精炼为一句话)
+- confidence: 置信度(0-1)
 
-如果对话中没有值得长期记住的信息，返回 type=none."""
-        
+如果对话中没有值得长期记住的信息,返回 type=none."""
+
         result = self.llm.generate(prompt)
         return self._parse_extraction(result)
-    
-    # ===== 第二步：价值评估 =====
+
+    # ===== 第二步:价值评估 =====
     def evaluate_value(self, extracted_info):
         """评估信息是否值得写入长期记忆"""
         if extracted_info["type"] == "none":
             return False, "无关键信息"
-        
+
         # 规则+LLM 双重评估
-        # 规则层：简单闲聊模式直接跳过
+        # 规则层:简单闲聊模式直接跳过
         trivial_patterns = ["你好", "谢谢", "好的", "嗯嗯", "再见"]
         if any(p in extracted_info["content"] for p in trivial_patterns):
-            return False, "简单闲聊，无长期价值"
-        
-        # LLM 层：评估长期参考价值
-        prompt = f"""评估以下信息是否具有长期参考价值（未来对话中可能再次需要）：
-        
-信息：{extracted_info["content"]}
-类型：{extracted_info["type"]}
+            return False, "简单闲聊,无长期价值"
 
-回答 YES 或 NO，并简要说明理由."""
-        
+        # LLM 层:评估长期参考价值
+        prompt = f"""评估以下信息是否具有长期参考价值(未来对话中可能再次需要):
+
+信息:{extracted_info["content"]}
+类型:{extracted_info["type"]}
+
+回答 YES 或 NO,并简要说明理由."""
+
         evaluation = self.llm.generate(prompt)
         is_valuable = "YES" in evaluation.upper()
         reason = evaluation.strip()
-        
+
         return is_valuable, reason
-    
-    # ===== 第三步：分类 =====
+
+    # ===== 第三步:分类 =====
     def classify_memory(self, extracted_info):
         """判断信息属于静态记忆还是动态记忆"""
         type_mapping = {
@@ -1568,19 +1568,19 @@ setTimeout(() => {
             "experience": "dynamic",   # 执行经验 → 动态记忆
         }
         return type_mapping.get(extracted_info["type"], "dynamic")
-    
-    # ===== 第四步：写入 =====
+
+    # ===== 第四步:写入 =====
     def write_memory(self, extracted_info, memory_type):
         """写入对应类型的记忆存储"""
         if memory_type == "static":
-            # 静态记忆：写入本地配置文件
+            # 静态记忆:写入本地配置文件
             self.static_store.save(
                 key=extracted_info["type"],
                 value=extracted_info["content"],
                 metadata={"updated_at": datetime.now().isoformat()}
             )
         else:
-            # 动态记忆：Embedding → 向量数据库
+            # 动态记忆:Embedding → 向量数据库
             vector = self.llm.embed(extracted_info["content"])
             self.dynamic_store.save(
                 vector=vector,
@@ -1591,24 +1591,24 @@ setTimeout(() => {
                     "confidence": extracted_info.get("confidence", 0.8)
                 }
             )
-    
+
     # ===== 完整链路 =====
     def process_turn(self, conversation_turn):
         """处理一轮对话的完整记忆写入链路"""
         # Step 1: 信息提取
         extracted = self.extract_key_info(conversation_turn)
-        
+
         # Step 2: 价值评估
         is_valuable, reason = self.evaluate_value(extracted)
         if not is_valuable:
             return {"action": "skip", "reason": reason}
-        
+
         # Step 3: 分类
         memory_type = self.classify_memory(extracted)
-        
+
         # Step 4: 写入
         self.write_memory(extracted, memory_type)
-        
+
         return {
             "action": "write",
             "type": memory_type,
@@ -1620,23 +1620,23 @@ setTimeout(() => {
 # ===== 使用示例 =====
 trigger = MemoryWriteTrigger(llm, static_config, vector_db)
 
-# 场景 1：用户表达偏好 → 写入静态记忆
-result = trigger.process_turn("以后回答都用简洁的中文，不要用英文")
+# 场景 1:用户表达偏好 → 写入静态记忆
+result = trigger.process_turn("以后回答都用简洁的中文,不要用英文")
 # → {"action": "write", "type": "static", "content": "用户偏好简洁中文回答"}
 
-# 场景 2：任务经验 → 写入动态记忆
-result = trigger.process_turn("用 pandas 读 CSV 遇到编码问题，指定 encoding='utf-8' 解决了")
+# 场景 2:任务经验 → 写入动态记忆
+result = trigger.process_turn("用 pandas 读 CSV 遇到编码问题,指定 encoding='utf-8' 解决了")
 # → {"action": "write", "type": "dynamic", "content": "CSV编码问题解决方案..."}
 
-# 场景 3：简单闲聊 → 不触发写入
-result = trigger.process_turn("你好，今天天气不错")
-# → {"action": "skip", "reason": "简单闲聊，无长期价值"}</pre>
+# 场景 3:简单闲聊 → 不触发写入
+result = trigger.process_turn("你好,今天天气不错")
+# → {"action": "skip", "reason": "简单闲聊,无长期价值"}</pre>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">✅ 面试要点</div>
   <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
-    面试中回答"记忆写入机制"时，<strong>重点强调筛选而非全量</strong>。链路是：对话→信息提取→价值评估→分类→写入。不是每轮都触发，只有"有长期参考价值"的信息才写入。简单闲聊不触发，偏好/规则写入静态记忆，经验/知识写入动态记忆。<br><br>
+    面试中回答"记忆写入机制"时,<strong>重点强调筛选而非全量</strong>。链路是:对话→信息提取→价值评估→分类→写入。不是每轮都触发,只有"有长期参考价值"的信息才写入。简单闲聊不触发,偏好/规则写入静态记忆,经验/知识写入动态记忆。<br><br>
     关联面试题 → Q11
   </p>
 </div>
@@ -1644,76 +1644,76 @@ result = trigger.process_turn("你好，今天天气不错")
 <!-- ===== 5.11 记忆召回决策与上下文污染防控 ===== -->
 <h2 class="section-heading">5.11 记忆召回决策与上下文污染防控</h2>
 
-<p>记忆召回的核心问题不是"能不能找到"，而是<strong>"该不该注入"</strong>。召回太多无关记忆，比没有记忆更危险——这就是<strong>上下文污染</strong>。</p>
+<p>记忆召回的核心问题不是"能不能找到",而是<strong>"该不该注入"</strong>。召回太多无关记忆,比没有记忆更危险--这就是<strong>上下文污染</strong>。</p>
 
 <div class="quote">
-  上下文污染就像往一杯清水里倒泥浆——信息越多，水质越差。精准的召回不是"把所有相关的都找出来"，而是"只把最必要的放进去"。
+  上下文污染就像往一杯清水里倒泥浆--信息越多,水质越差。精准的召回不是"把所有相关的都找出来",而是"只把最必要的放进去"。
 </div>
 
-<h3 class="sub-heading">召回决策机制：如何判断哪些记忆需要召回？</h3>
+<h3 class="sub-heading">召回决策机制:如何判断哪些记忆需要召回?</h3>
 
-<p>大模型判断哪些长期记忆需要召回，依赖三个核心维度的综合评分：</p>
+<p>大模型判断哪些长期记忆需要召回,依赖三个核心维度的综合评分:</p>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0;">
   <div class="card" style="border-left: 3px solid var(--color-info);">
     <div class="card-title">🎯 意图匹配</div>
     <p style="font-size: 14px; color: var(--color-text-secondary);">
       当前对话意图与记忆标签的<strong>语义相似度</strong>。<br><br>
-      如用户问"怎么处理 CSV 编码问题"，与记忆标签"CSV编码"的相似度高，应召回。
+      如用户问"怎么处理 CSV 编码问题",与记忆标签"CSV编码"的相似度高,应召回。
     </p>
   </div>
   <div class="card" style="border-left: 3px solid var(--color-accent);">
     <div class="card-title">⏰ 时间衰减</div>
     <p style="font-size: 14px; color: var(--color-text-secondary);">
       <strong>越近期的记忆权重越高</strong>。<br><br>
-      时间衰减函数：weight × e^(-λ × Δt)<br>
-      λ 是衰减系数，Δt 是距今时间。3天前的经验比3个月前的更有参考价值。
+      时间衰减函数:weight × e^(-λ × Δt)<br>
+      λ 是衰减系数,Δt 是距今时间。3天前的经验比3个月前的更有参考价值。
     </p>
   </div>
   <div class="card" style="border-left: 3px solid var(--color-success);">
     <div class="card-title">📊 频率加权</div>
     <p style="font-size: 14px; color: var(--color-text-secondary);">
       <strong>多次被召回验证有效的记忆权重更高</strong>。<br><br>
-      如果一条经验被召回了5次且每次都有帮助，说明它是高价值的。从未被召回的记忆权重低。
+      如果一条经验被召回了5次且每次都有帮助,说明它是高价值的。从未被召回的记忆权重低。
     </p>
   </div>
 </div>
 
-<p>综合评分公式：</p>
+<p>综合评分公式:</p>
 
 <div class="card" style="background: var(--color-bg-code);">
-  <pre style="font-size: 15px; color: var(--color-text); margin: 0;">recall_score = intent_similarity × w₁ + time_decay_weight × w₂ + frequency_weight × w₃
+  <pre style="font-size: 15px; color: var(--color-text); margin: 0;">recall_score = intent_similarity × w1 + time_decay_weight × w2 + frequency_weight × w3
 
-其中：
+其中:
   intent_similarity  = cosine_similarity(query_embedding, memory_embedding)
   time_decay_weight  = e^(-λ × days_since_creation)
   frequency_weight   = log(1 + successful_recall_count)
-  w₁ + w₂ + w₃ = 1（权重归一化）</pre>
+  w1 + w2 + w3 = 1(权重归一化)</pre>
 </div>
 
-<h3 class="sub-heading">召回数量限制：不是越多越好</h3>
+<h3 class="sub-heading">召回数量限制:不是越多越好</h3>
 
-<p>很多开发者认为"多召回一些总比漏掉好"，但这恰恰是上下文污染的根源。</p>
+<p>很多开发者认为"多召回一些总比漏掉好",但这恰恰是上下文污染的根源。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">❌ 召回过多的三大危害</div>
   <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>注意力稀释</strong>：模型关注无关内容，忽略核心问题。就像人在嘈杂环境中听不清关键信息</li>
-    <li><strong>指令冲突</strong>：多条记忆互相矛盾。如一条说"偏好简洁回答"，另一条说"上次用户要求详细分析"——模型该听谁的？</li>
-    <li><strong>Token浪费</strong>：无关记忆消耗宝贵的上下文窗口，挤占真正有用的信息空间</li>
+    <li><strong>注意力稀释</strong>:模型关注无关内容,忽略核心问题。就像人在嘈杂环境中听不清关键信息</li>
+    <li><strong>指令冲突</strong>:多条记忆互相矛盾。如一条说"偏好简洁回答",另一条说"上次用户要求详细分析"--模型该听谁的?</li>
+    <li><strong>Token浪费</strong>:无关记忆消耗宝贵的上下文窗口,挤占真正有用的信息空间</li>
   </ul>
 </div>
 
 <h3 class="sub-heading">上下文污染防控策略</h3>
 
-<p>防控上下文污染需要四道防线：</p>
+<p>防控上下文污染需要四道防线:</p>
 
 <div class="step-animation" id="pollutionDefenseSteps">
   <div class="step-canvas">
     <div class="step-content" id="pollutionStepContent">
       <div class="step-number">1</div>
       <div class="step-title">数量上限</div>
-      <div class="step-desc">每次召回不超过 5 条记忆。宁可少召回一条有用信息，也不要多召回三条噪音。上限可以动态调整：简单问题 ≤3 条，复杂问题 ≤5 条。</div>
+      <div class="step-desc">每次召回不超过 5 条记忆。宁可少召回一条有用信息,也不要多召回三条噪音。上限可以动态调整:简单问题 ≤3 条,复杂问题 ≤5 条。</div>
     </div>
   </div>
   <div class="step-controls">
@@ -1728,10 +1728,10 @@ result = trigger.process_turn("你好，今天天气不错")
 const PollutionAnim = {
   current: 0,
   steps: [
-    { num: 1, title: '数量上限', desc: '每次召回不超过 5 条记忆。宁可少召回一条有用信息，也不要多召回三条噪音。上限可动态调整：简单问题 ≤3 条，复杂问题 ≤5 条。这是最基本也最有效的防线——物理限制上下文中的记忆条数。' },
-    { num: 2, title: '相关性阈值', desc: '相似度低于 0.7 的记忆不召回。即使向量搜索返回了 20 条结果，只有相似度 ≥0.7 的才进入上下文。这过滤掉了"勉强相关"但实际无用的信息。阈值可根据场景微调：0.6 适合宽松场景，0.8 适合精准场景。' },
-    { num: 3, title: '冲突检测', desc: '多条记忆互相矛盾时，优先选择最新的。冲突检测逻辑：如果两条记忆的语义相反（如"偏好简洁"vs"要求详细"），取时间戳更新的那条——用户的偏好可能已经变了。更高级的做法是让 LLM 做冲突仲裁。' },
-    { num: 4, title: '优先级排序', desc: '注入顺序遵循：核心指令 > 最近经验 > 补充信息。核心指令（如 System Prompt）占据上下文最前面的位置，权重最高。最近经验紧跟其后。补充信息放在最后，即使被截断也不影响核心推理。' }
+    { num: 1, title: '数量上限', desc: '每次召回不超过 5 条记忆。宁可少召回一条有用信息,也不要多召回三条噪音。上限可动态调整:简单问题 ≤3 条,复杂问题 ≤5 条。这是最基本也最有效的防线--物理限制上下文中的记忆条数。' },
+    { num: 2, title: '相关性阈值', desc: '相似度低于 0.7 的记忆不召回。即使向量搜索返回了 20 条结果,只有相似度 ≥0.7 的才进入上下文。这过滤掉了"勉强相关"但实际无用的信息。阈值可根据场景微调:0.6 适合宽松场景,0.8 适合精准场景。' },
+    { num: 3, title: '冲突检测', desc: '多条记忆互相矛盾时,优先选择最新的。冲突检测逻辑:如果两条记忆的语义相反(如"偏好简洁"vs"要求详细"),取时间戳更新的那条--用户的偏好可能已经变了。更高级的做法是让 LLM 做冲突仲裁。' },
+    { num: 4, title: '优先级排序', desc: '注入顺序遵循:核心指令 > 最近经验 > 补充信息。核心指令(如 System Prompt)占据上下文最前面的位置,权重最高。最近经验紧跟其后。补充信息放在最后,即使被截断也不影响核心推理。' }
   ],
   render() {
     const s = this.steps[this.current];
@@ -1754,10 +1754,10 @@ window.PollutionAnim = PollutionAnim;
 <h3 class="sub-heading">智能召回引擎代码示例</h3>
 
 <div class="code-block">
-  <span class="code-label">智能召回引擎 Python 实现（含污染防控）</span>
+  <span class="code-label">智能召回引擎 Python 实现(含污染防控)</span>
 <pre>class SmartRecallEngine:
-    """智能召回引擎：精准召回 + 上下文污染防控"""
-    
+    """智能召回引擎:精准召回 + 上下文污染防控"""
+
     def __init__(self, vector_db, llm_client, config=None):
         self.db = vector_db
         self.llm = llm_client
@@ -1773,34 +1773,34 @@ window.PollutionAnim = PollutionAnim;
             "priority_order": ["core", "recent_experience", "supplementary"]
         }
         self.recall_stats = {}  # 记忆召回统计
-    
-    # ===== 第一步：多维度评分 =====
+
+    # ===== 第一步:多维度评分 =====
     def compute_recall_scores(self, query_embedding, candidate_memories):
         """为每条候选记忆计算综合召回评分"""
         scores = []
-        
+
         for memory in candidate_memories:
-            # 意图匹配：语义相似度
+            # 意图匹配:语义相似度
             intent_score = cosine_similarity(
                 query_embedding, memory["embedding"]
             )
-            
-            # 时间衰减：越近期权重越高
+
+            # 时间衰减:越近期权重越高
             days_since = (datetime.now() - memory["created_at"]).days
             time_score = math.exp(-self.config["time_decay_lambda"] * days_since)
-            
-            # 频率加权：多次验证有效的记忆权重更高
+
+            # 频率加权:多次验证有效的记忆权重更高
             mem_id = memory["id"]
             freq_score = math.log(1 + self.recall_stats.get(mem_id, {}).get("success_count", 0))
-            
+
             # 综合评分
             w = self.config["weights"]
             total_score = (
-                intent_score * w["intent"] + 
-                time_score * w["time"] + 
+                intent_score * w["intent"] +
+                time_score * w["time"] +
                 freq_score * w["frequency"]
             )
-            
+
             scores.append({
                 "memory": memory,
                 "total_score": total_score,
@@ -1808,131 +1808,496 @@ window.PollutionAnim = PollutionAnim;
                 "time_score": time_score,
                 "freq_score": freq_score
             })
-        
+
         return scores
-    
-    # ===== 第二步：污染防控过滤 =====
+
+    # ===== 第二步:污染防控过滤 =====
     def pollution_defense(self, scored_memories):
-        """四道防线过滤，防止上下文污染"""
-        
-        # 防线 1：相关性阈值过滤
+        """四道防线过滤,防止上下文污染"""
+
+        # 防线 1:相关性阈值过滤
         filtered = [
-            s for s in scored_memories 
+            s for s in scored_memories
             if s["intent_score"] >= self.config["similarity_threshold"]
         ]
-        
-        # 防线 2：数量上限截断
+
+        # 防线 2:数量上限截断
         filtered.sort(key=lambda x: x["total_score"], reverse=True)
         filtered = filtered[:self.config["max_recall_count"]]
-        
-        # 防线 3：冲突检测
+
+        # 防线 3:冲突检测
         filtered = self._resolve_conflicts(filtered)
-        
-        # 防线 4：优先级排序
+
+        # 防线 4:优先级排序
         filtered = self._priority_sort(filtered)
-        
+
         return filtered
-    
+
     def _resolve_conflicts(self, scored_memories):
-        """冲突检测：语义矛盾的记忆取最新的"""
+        """冲突检测:语义矛盾的记忆取最新的"""
         result = []
         used_indices = set()
-        
+
         for i, m1 in enumerate(scored_memories):
             if i in used_indices:
                 continue
             conflict_found = False
-            
+
             for j, m2 in enumerate(scored_memories):
                 if j in used_indices or j == i:
                     continue
-                
-                # 检测语义矛盾（简化：同类别但内容相反）
+
+                # 检测语义矛盾(简化:同类别但内容相反)
                 if m1["memory"].get("category") == m2["memory"].get("category"):
-                    # 同类记忆可能冲突，取时间更新的
+                    # 同类记忆可能冲突,取时间更新的
                     if m2["memory"]["created_at"] > m1["memory"]["created_at"]:
                         result.append(m2)
                         used_indices.add(j)
                         conflict_found = True
                         break
-            
+
             if not conflict_found:
                 result.append(m1)
                 used_indices.add(i)
-        
+
         return result
-    
+
     def _priority_sort(self, scored_memories):
-        """优先级排序：核心指令 > 最近经验 > 补充信息"""
+        """优先级排序:核心指令 > 最近经验 > 补充信息"""
         priority_map = {"core": 0, "recent_experience": 1, "supplementary": 2}
-        
+
         for m in scored_memories:
             cat = m["memory"].get("priority_category", "supplementary")
             m["priority_rank"] = priority_map.get(cat, 2)
-        
+
         return sorted(scored_memories, key=lambda x: x["priority_rank"])
-    
+
     # ===== 完整召回流程 =====
     def recall(self, query, task_complexity="normal"):
         """智能召回完整流程"""
         # Step 1: 向量检索候选记忆
         query_embedding = self.llm.embed(query)
         candidates = self.db.search(query_embedding, top_k=20)
-        
+
         # Step 2: 多维度评分
         scored = self.compute_recall_scores(query_embedding, candidates)
-        
+
         # Step 3: 动态调整召回上限
         max_count = self.config["max_recall_count"]
         if task_complexity == "simple":
             max_count = 3   # 简单问题召回更少
         elif task_complexity == "complex":
             max_count = 5   # 复杂问题允许更多
-        
+
         self.config["max_recall_count"] = max_count
-        
+
         # Step 4: 污染防控过滤
         final_memories = self.pollution_defense(scored)
-        
+
         # Step 5: 更新召回统计
         for m in final_memories:
             mem_id = m["memory"]["id"]
             if mem_id not in self.recall_stats:
                 self.recall_stats[mem_id] = {"success_count": 0, "total_count": 0}
             self.recall_stats[mem_id]["total_count"] += 1
-        
+
         return final_memories
 
 
 # ===== 使用示例 =====
 engine = SmartRecallEngine(chroma_db, llm)
 
-# 简单问题：召回 ≤3 条
+# 简单问题:召回 ≤3 条
 results = engine.recall("今天有什么日程?", task_complexity="simple")
 # → 只返回最相关的 2-3 条近期日程记忆
 
-# 复杂问题：召回 ≤5 条
+# 复杂问题:召回 ≤5 条
 results = engine.recall("分析上个季度的销售趋势并给出优化建议", task_complexity="complex")
-# → 返回最多 5 条：1条核心指令 + 2条最近经验 + 2条补充知识</pre>
+# → 返回最多 5 条:1条核心指令 + 2条最近经验 + 2条补充知识</pre>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">✅ 面试要点</div>
   <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
-    面试中回答"记忆召回策略"时，<strong>先谈召回决策再谈污染防控</strong>。召回决策靠三维度评分（意图匹配×时间衰减×频率加权），污染防控靠四道防线（数量上限≤5、相关性阈值≥0.7、冲突检测取最新、优先级排序核心>经验>补充）。不要只说"用向量搜索找相关记忆"——那只是第一步，真正的难点是防控上下文污染。<br><br>
+    面试中回答"记忆召回策略"时,<strong>先谈召回决策再谈污染防控</strong>。召回决策靠三维度评分(意图匹配×时间衰减×频率加权),污染防控靠四道防线(数量上限≤5、相关性阈值≥0.7、冲突检测取最新、优先级排序核心>经验>补充)。不要只说"用向量搜索找相关记忆"--那只是第一步,真正的难点是防控上下文污染。<br><br>
     关联面试题 → Q12
   </p>
 </div>
 
-<!-- ===== 八股总结 ===== -->
-<!-- ===== 5.12 工程深度：生产级上下文压缩系统 ===== -->
-<h2 class="section-heading">5.12 工程深度：生产级上下文压缩系统</h2>
+<!-- ===== 5.11.5 Prompt工程:静态框架与动态组装 ===== -->
+<h2 class="section-heading">5.11a Prompt 工程:静态框架与动态组装</h2>
 
-<p>4.5 节介绍了上下文压缩的概念，但生产级系统远比概念复杂：什么时候压缩？用什么策略压缩？压缩后如何避免频繁重复压缩？压缩失败怎么办？本节基于 WaLiCode 项目的 contextCompressor.ts 和 ChatContextManager.ts 真实实现，讲解生产级上下文压缩系统的六大设计。</p>
+<p>面试追问:<strong>"动态 Prompt 和静态 Prompt 有什么区别?Agent 每轮对话开始时,上下文是如何动态组装的?"</strong>上一节讲了记忆的召回决策,这一节讲召回的结果怎么<strong>组装进 Prompt</strong>--以及哪些部分永远不动(静态),哪些每轮都变(动态)。</p>
+
+<div class="quote">
+  把 Prompt 想象成一栋建筑:<strong>静态部分是地基和框架</strong>(角色定义、安全规则、工具列表)--不会随对话变化;<strong>动态部分是家具和装饰</strong>(记忆片段、对话历史、当前任务)--每轮都换。地基不稳,房子会塌;家具不换,住着不舒服。
+</div>
+
+<h3 class="sub-heading">静态 Prompt:不随对话变化的"固定框架"</h3>
+
+<p>静态 Prompt 包含<strong>在所有对话中都相同</strong>的内容,是 Agent 的"宪法":</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">🔒 静态 Prompt 的四个组成部分</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>角色定义</strong>:"你是一个专业的代码审查专家"--定义 Agent 身份</li>
+      <li><strong>安全规则</strong>:"不要泄露用户隐私、不要执行危险命令"--行为边界</li>
+      <li><strong>输出格式约束</strong>:"回答格式:风险等级→问题→修复建议"--控制输出</li>
+      <li><strong>工具/Skill 描述</strong>:Function Calling Schema + Skill 触发词列表--Agent 的"能力菜单"</li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">📌 静态 Prompt 的三个特点</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>不变性</strong>:同一个会话内,内容完全不变(除非用户明确修改偏好)</li>
+      <li><strong>最高优先级</strong>:System Prompt 具有最高权重,模型始终遵循</li>
+      <li><strong>缓存友好</strong>:因为不变,放在 Prompt 前缀处可100%命中 Prompt Cache</li>
+    </ul>
+  </div>
+</div>
+
+<p>在 OpenClaw 等框架中,静态 Prompt 就是从 <code>SOUL.md</code>(角色)、<code>AGENTS.md</code>(规则)和 <code>&lt;available_skills&gt;</code>(Skill列表)读取的内容,注入为 System Prompt 的一部分。这部分<strong>每次请求都一样</strong>,所以是最容易命中缓存的部分。</p>
+
+<h3 class="sub-heading">动态 Prompt:每轮对话变化的"活的内容"</h3>
+
+<p>动态 Prompt 包含<strong>根据当前对话上下文实时变化</strong>的内容:</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🔄 动态 Prompt 的三个来源</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>长期记忆召回</strong>:根据当前意图检索的5条相关记忆</li>
+      <li><strong>对话历史</strong>:累积的多轮交互记录(每轮增加)</li>
+      <li><strong>当前任务上下文</strong>:用户刚输入的指令 + 工具返回结果</li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-warning);">
+    <div class="card-title">⚡ 动态内容的变化频率</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>慢变化</strong>:Skill完整指令(只在触发时加载)、静态记忆偏好(很少更新)</li>
+      <li><strong>中变化</strong>:长期记忆召回片段(每几轮可能换一批)</li>
+      <li><strong>快变化</strong>:对话历史和工具结果(每轮必变)</li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-error);">
+    <div class="card-title">⚠️ 动态内容的缓存特征</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>慢变化</strong>:多轮后可能命中缓存</li>
+      <li><strong>中变化</strong>:难命中,但可控制注入量</li>
+      <li><strong>快变化</strong>:完全不命中缓存</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">每轮对话的完整 Prompt 组装流程</h3>
+
+<p>每轮对话开始时,Agent 需要把静态和动态内容<strong>按顺序组装</strong>成完整 Prompt。顺序很重要--因为缓存是前缀匹配,固定部分必须放最前面:</p>
+
+<div class="flowchart-container" id="promptAssemblyFlow"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('promptAssemblyFlow', {
+    nodes: [
+      { id: 'static', label: 'Layer 1: 静态框架\n🔒 System Prompt\n🔒 工具Schema\n🔒 Skill触发词', type: 'start' },
+      { id: 'memory', label: 'Layer 2: 记忆注入\n⚠️ 长期记忆召回\n⚠️ Skill完整指令\n⚠️ 静态记忆偏好', type: 'process' },
+      { id: 'history', label: 'Layer 3: 对话历史\n🔄 多轮交互记录\n🔄 工具返回结果', type: 'process' },
+      { id: 'current', label: 'Layer 4: 当前请求\n📝 用户输入', type: 'end' }
+    ],
+    edges: [
+      { from: 'static', to: 'memory', label: '100%缓存命中' },
+      { from: 'memory', to: 'history', label: '部分命中' },
+      { from: 'history', to: 'current', label: '旧部分可缓存' }
+    ],
+    animate: true
+  });
+}, 600);
+</script>
+
+<div class="code-block">
+  <span class="code-label">Python - Prompt 动态组装引擎</span>
+<pre>class PromptAssembler:
+    """每轮对话的 Prompt 动态组装引擎"""
+
+    def __init__(self, system_prompt, tool_schemas, skill_triggers,
+                 memory_engine, chat_history_manager):
+        # Layer 1: 静态层(整个会话不变)
+        self.static_prefix = f"{system_prompt}\n\n{tool_schemas}\n\n{skill_triggers}"
+        self.memory_engine = memory_engine
+        self.history_manager = chat_history_manager
+
+    def assemble(self, user_input, intent=None):
+        """组装当前轮次的完整 Prompt"""
+        messages = []
+
+        # ===== Layer 1: 静态框架 =====
+        # System Prompt + 工具Schema + Skill触发词
+        # 每次相同 → 100%命中缓存
+        messages.append({"role": "system", "content": self.static_prefix})
+
+        # ===== Layer 2: 记忆注入 =====
+        # 根据当前意图召回长期记忆
+        # 只注入与当前任务相关的 ≤5 条记忆
+        if intent:
+            recalled = self.memory_engine.recall(
+                query=intent, top_k=5, threshold=0.7
+            )
+            if recalled:
+                memory_block = "# Relevant Memory\n" + "\n".join(recalled)
+                messages.append({"role": "system", "content": memory_block})
+
+        # ===== Layer 3: 对话历史 =====
+        # 如果历史过长,先压缩再注入
+        history = self.history_manager.get_history(max_tokens=50000)
+        for msg in history:
+            messages.append(msg)
+
+        # ===== Layer 4: 当前请求 =====
+        messages.append({"role": "user", "content": user_input})
+
+        return messages
+
+# 使用示例
+assembler = PromptAssembler(
+    system_prompt="你是代码审查专家...",
+    tool_schemas=json.dumps(tool_definitions),
+    skill_triggers="<available_skills>...",
+    memory_engine=vector_db,
+    chat_history_manager=history_mgr
+)
+
+# 每轮调用
+messages = assembler.assemble("帮我审查这段代码", intent="代码审查")
+# → [system(fixed), system(memory), ...history..., user(current)]</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ 面试要点</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
+    回答"动态Prompt和静态Prompt的区别"时,<strong>先定义再对比</strong>:<br><br>
+    <strong>静态Prompt</strong> = System Prompt(角色+规则+工具Schema+Skill触发词),整个会话不变,放Prompt最前面,100%命中缓存。<br>
+    <strong>动态Prompt</strong> = 记忆召回片段 + Skill完整指令 + 对话历史 + 用户当前输入,每轮都变,放Prompt后面,按变化频率分层。<br><br>
+    <strong>组装策略</strong>:固定→半固定→动态→当前请求,四层叠放。核心原则:<strong>不变的放前面最大化缓存,变化的放后面最小化缓存失效</strong>。<br><br>
+    关联面试题 → Q11(动态vs静态Prompt)、Q12(缓存命中设计)<br>
+    关联章节 → 1.1.6(上下文窗口Token经济学)、4.13(Token Budget)
+  </p>
+</div>
+
+<!-- ===== 5.11b 多轮对话状态爆炸与完整解决方案 ===== -->
+<h2 class="section-heading">5.11b 多轮对话状态爆炸与完整解决方案</h2>
+
+<p>面试追问:<strong>"多轮对话Agent,怎么解决状态爆炸、上下文溢出?"</strong>前面5.3~5.11分别讲了压缩、治理、召回防控,但面试需要的是<strong>一个完整的系统级解决方案</strong>--怎么把这些策略串起来?这一节给你一个全景框架。</p>
+
+<div class="quote">
+  状态爆炸不是某一个环节的问题,而是<strong>整个系统的压力累积</strong>。就像水管爆裂--不是某一个接头坏了,而是整条管路压力超标。解决方案不是"堵一个洞",而是"设计一套泄压系统"。
+</div>
+
+<h3 class="sub-heading">什么是"状态爆炸"?为什么多轮对话会导致这个问题?</h3>
+
+<p>单轮对话很简单:用户问→模型答→结束。但多轮对话Agent中,<strong>状态会从线性增长变为指数增长</strong>:</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div class="card" style="border-left: 3px solid var(--color-error);">
+    <div class="card-title">💥 三种状态爆炸模式</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>对话历史膨胀</strong>:每轮新增 ~1000-3000 Token,10轮就是 10K-30K,50轮可能50K-150K--线性增长但速度很快</li>
+      <li><strong>工具调用结果嵌套</strong>:一个工具返回3K Token,模型基于结果再调2个工具,每个又返回2K--嵌套增长呈<strong>树状展开</strong></li>
+      <li><strong>推理路径分叉</strong>:ToT/Reflexion模式中,每条路径各自累积上下文,多条路径并行时Token消耗是<strong>倍数增长</strong></li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-warning);">
+    <div class="card-title">📉 状态爆炸的四大危害</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>上下文溢出</strong>:总Token超过窗口128K,直接截断丢失关键信息</li>
+      <li><strong>注意力稀释</strong>:模型在100K上下文中"迷失",重要信息被淹没(Lost in the Middle)</li>
+      <li><strong>成本爆炸</strong>:每轮都发50K+上下文给API,20轮就是$1+的账单</li>
+      <li><strong>行为漂移</strong>:长上下文导致模型偏离原始指令(Context Rot)</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">完整解决方案:四层泄压体系</h3>
+
+<p>解决状态爆炸不是单一策略,而是<strong>四层递进的泄压体系</strong>--从预防到压缩到淘汰到兜底:</p>
+
+<div class="flowchart-container" id="stateOverflowSolution"></div>
+
+<script>
+setTimeout(() => {
+  FlowChart.render('stateOverflowSolution', {
+    nodes: [
+      { id: 'layer1', label: 'Layer 1: 预防\n预算控制 + JIT原则', type: 'start' },
+      { id: 'layer2', label: 'Layer 2: 压缩\n语义保护型压缩', type: 'process' },
+      { id: 'layer3', label: 'Layer 3: 淘汰\n记忆治理 + 上下文裁剪', type: 'process' },
+      { id: 'layer4', label: 'Layer 4: 兜底\n紧急压缩 + 降级回答', type: 'end' }
+    ],
+    edges: [
+      { from: 'layer1', to: 'layer2', label: '超阈值触发' },
+      { from: 'layer2', to: 'layer3', label: '压缩后仍超' },
+      { from: 'layer3', to: 'layer4', label: '淘汰后仍超' }
+    ],
+    animate: true
+  });
+}, 900);
+</script>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">🛡️ Layer 1: 预防--不让压力累积</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>Token Budget</strong>:设定全局上限(如20万Token),实时累加,超预算立即停止(详见4.13节)</li>
+      <li><strong>JIT召回原则</strong>:只检索当前步骤需要的记忆,不提前加载全量(详见5.8节)</li>
+      <li><strong>输出长度约束</strong>:要求模型"只输出关键结论"而非长篇大论,减少输出Token</li>
+      <li><strong>工具结果精简</strong>:工具返回后先做格式化过滤(只保留关键行),不原样塞入上下文</li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">📦 Layer 2: 压缩--在信息完整的前提下缩减体积</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>语义保护型压缩</strong>:锁定System Prompt+原始问题,保护行动-结果对完整性,只压缩中间推理(详见5.5节)</li>
+      <li><strong>三层压缩触发</strong>:主动压缩(80%阈值)→后台压缩(60%)→反应式压缩(413状态码触发紧急压缩)</li>
+      <li><strong>增量压缩</strong>:只压缩"上次压缩后新增"的部分,避免全量重复压缩(详见5.12节)</li>
+      <li><strong>对话历史摘要</strong>:旧对话压缩为摘要存入长期记忆,上下文中只保留摘要和最近3轮原文</li>
+    </ul>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;">
+  <div class="card" style="border-left: 3px solid var(--color-warning);">
+    <div class="card-title">🗑️ Layer 3: 淘汰--扔掉不再需要的</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>记忆淘汰策略</strong>:时效淘汰(过期记忆清理)+容量淘汰(超上限淘汰最低价值)+质量淘汰(从未被召回的记忆降优先级)(详见5.8节)</li>
+      <li><strong>召回数量硬限制</strong>:每次召回≤5条,简单问题≤3条,宁可少召回也不多注入噪音</li>
+      <li><strong>工具结果裁剪</strong>:长输出只保留Top-K关键行,命令输出只保留最后20行</li>
+      <li><strong>淘汰前归档</strong>:淘汰的记忆做最终摘要存入"归档层",彻底删除前保留摘要</li>
+    </ul>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-error);">
+    <div class="card-title">🚨 Layer 4: 兜底--当所有策略都不够时</div>
+    <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+      <li><strong>紧急压缩(413反应式)</strong>:上下文超限导致API返回413状态码时,立即触发最激进压缩--只保留System Prompt + 最近1轮 + 任务摘要</li>
+      <li><strong>降级回答</strong>:压缩后仍然超限,告诉用户"当前对话过长,建议开启新会话"</li>
+      <li><strong>自动会话切分</strong>:超过阈值(如50轮)后自动将当前对话摘要存入长期记忆,开启新会话继续</li>
+      <li><strong>人工介入</strong>:预算超限+压缩失败+降级回答后,通知用户人工决策</li>
+    </ul>
+  </div>
+</div>
+
+<div class="code-block">
+  <span class="code-label">Python - 四层泄压体系完整实现</span>
+<pre>class StateOverflowGuard:
+    """多轮对话状态爆炸的完整解决方案:四层泄压体系"""
+
+    def __init__(self, token_budget=200000, context_window=128000):
+        self.token_budget = token_budget      # 全局Token预算
+        self.context_window = context_window  # 上下文窗口大小
+        self.current_tokens = 0               # 当前累计Token
+        self.compressor = SemanticCompressor() # 语义保护型压缩器
+        self.memory_governor = MemoryGovernor() # 记忆治理引擎
+
+    # ===== Layer 1: 预防 =====
+    def check_budget(self, new_tokens):
+        """预算检查:预防状态累积"""
+        self.current_tokens += new_tokens
+        if self.current_tokens > self.token_budget:
+            raise BudgetExceededError(
+                f"Token预算耗尽: {self.current_tokens}/{self.token_budget}"+
+                "建议开启新会话或人工介入"
+            )
+        # JIT召回:只检索当前需要的记忆
+        # 输出约束:限制模型输出长度
+        # 工具精简:过滤工具返回结果
+        return True
+
+    # ===== Layer 2: 压缩 =====
+    def compress_if_needed(self, messages):
+        """压缩检查:超80%阈值触发语义保护型压缩"""
+        total = count_tokens(messages)
+        threshold = self.context_window * 0.8  # 80%阈值
+
+        if total > threshold:
+            # 语义保护型压缩:
+            # 锁定层(System Prompt+原始问题) → 不压缩
+            # 压缩层(中间推理步骤) → 摘要化
+            # 保留层(最近3轮) → 原样保留
+            compressed = self.compressor.compress(messages)
+            return compressed
+        return messages
+
+    # ===== Layer 3: 淘汰 =====
+    def evict_if_needed(self, messages):
+        """淘汰检查:压缩后仍超阈值时淘汰低价值内容"""
+        total = count_tokens(messages)
+        threshold = self.context_window * 0.6  # 60%阈值
+
+        if total > threshold:
+            # 淘汰策略:时效淘汰 + 容量淘汰 + 质量淘汰
+            # 召回限制:每次≤5条记忆
+            # 工具裁剪:只保留关键行
+            # 淘汰前归档:做最终摘要存入长期记忆
+            evicted = self.memory_governor.evict(messages)
+            return evicted
+        return messages
+
+    # ===== Layer 4: 兜底 =====
+    def emergency_handler(self, error):
+        """紧急兜底:413状态码或预算超限"""
+        if isinstance(error, ContextOverflowError):
+            # 紧急压缩:只保留System Prompt + 最近1轮 + 摘要
+            return self.compressor.emergency_compress()
+        elif isinstance(error, BudgetExceededError):
+            # 降级回答 + 自动会话切分 + 人工介入
+            return {
+                "action": "degrade",
+                "message": "对话过长,建议开启新会话",
+                "summary": self.memory_governor.archive_session()
+            }
+
+    # ===== 完整流程 =====
+    def process_turn(self, messages, new_tokens):
+        """每轮对话的状态管理完整流程"""
+        try:
+            # Layer 1: 预防(预算检查)
+            self.check_budget(new_tokens)
+
+            # Layer 2: 压缩(超80%触发)
+            messages = self.compress_if_needed(messages)
+
+            # Layer 3: 淘汰(超60%触发)
+            messages = self.evict_if_needed(messages)
+
+            return messages
+        except (ContextOverflowError, BudgetExceededError) as e:
+            # Layer 4: 兜底(紧急处理)
+            return self.emergency_handler(e)</pre>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ 面试要点:四层泄压体系答题模板</div>
+  <p style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8;">
+    面试回答"多轮对话状态爆炸"时,<strong>不要只说"压缩上下文"</strong>,要给系统级方案:<br><br>
+    <strong>1 先定义问题</strong>--多轮对话中状态从线性增长变为树状展开(工具嵌套)和倍数增长(推理分叉),导致上下文溢出、注意力稀释、成本爆炸和行为漂移。<br><br>
+    <strong>2 再给方案框架</strong>--四层泄压体系递进式处理:<br>
+    Layer 1 预防:Token Budget全局预算 + JIT召回原则 + 输出长度约束 + 工具结果精简<br>
+    Layer 2 压缩:语义保护型压缩(锁定System Prompt和行动-结果对)+ 三层触发机制<br>
+    Layer 3 淘汰:记忆治理策略 + 召回硬限制≤5条 + 工具结果裁剪 + 淘汰前归档<br>
+    Layer 4 兜底:紧急压缩(413)+ 降级回答 + 自动会话切分 + 人工介入<br><br>
+    <strong>3 最后强调</strong>--不是某一层单独起作用,而是四层递进。预防失败→压缩兜住,压缩不够→淘汰兜住,淘汰也不够→紧急兜底。<br><br>
+    关联面试题 → Q23(状态爆炸)<br>
+    关联章节 → 4.13(Token Budget)、5.3(短期记忆管理)、5.5(上下文压缩)、5.8(记忆治理)、5.11(召回防控)、5.12(生产级压缩系统)
+  </p>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<!-- ===== 5.12 工程深度:生产级上下文压缩系统 ===== -->
+<h2 class="section-heading">5.12 工程深度:生产级上下文压缩系统</h2>
+
+<p>4.5 节介绍了上下文压缩的概念,但生产级系统远比概念复杂:什么时候压缩?用什么策略压缩?压缩后如何避免频繁重复压缩?压缩失败怎么办?本节基于 WaLiCode 项目的 contextCompressor.ts 和 ChatContextManager.ts 真实实现,讲解生产级上下文压缩系统的六大设计。</p>
 
 <h3 class="sub-heading">5.12.1 轮次分割算法</h3>
 
-<p>压缩的第一步是理解对话的结构。对话不是扁平的消息列表，而是由多个"轮次"组成——每个轮次以 user message 开始，包含后续的所有 assistant/tool 消息。WaLiCode 的 splitIntoRounds 算法实现了这个分割：</p>
+<p>压缩的第一步是理解对话的结构。对话不是扁平的消息列表,而是由多个"轮次"组成--每个轮次以 user message 开始,包含后续的所有 assistant/tool 消息。WaLiCode 的 splitIntoRounds 算法实现了这个分割:</p>
 
 <div class="code-block"><pre>interface ConversationRound {
   startIndex: number;
@@ -1950,7 +2315,7 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
     // user message 开始新轮次
     if (msg.role === 'user') {
-      // 检查是否是 inline tool_result（Anthropic 格式中的 user 消息包含 tool_result）
+      // 检查是否是 inline tool_result(Anthropic 格式中的 user 消息包含 tool_result)
       const isInlineToolResult = Array.isArray(msg.content) &amp;&amp;
         msg.content.some((c: any) =&gt; c.type === 'tool_result');
 
@@ -1989,11 +2354,11 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
   return rounds;
 }</pre></div>
 
-<p>关键细节：<strong>inline tool_result 不开新轮次</strong>。Anthropic 格式中，工具结果以 <code>{ role: 'user', content: [{ type: 'tool_result', ... }] }</code> 形式出现。如果把它当新轮次，会把一个完整的"AI 调工具→获取结果→继续推理"轮次错误地拆成两半。</p>
+<p>关键细节:<strong>inline tool_result 不开新轮次</strong>。Anthropic 格式中,工具结果以 <code>{ role: 'user', content: [{ type: 'tool_result', ... }] }</code> 形式出现。如果把它当新轮次,会把一个完整的"AI 调工具→获取结果→继续推理"轮次错误地拆成两半。</p>
 
 <h3 class="sub-heading">5.12.2 三种压缩触发模式</h3>
 
-<p>什么时候该压缩？WaLiCode 设计了三种触发模式，形成三层防线：</p>
+<p>什么时候该压缩?WaLiCode 设计了三种触发模式,形成三层防线:</p>
 
 <div class="comparison-table">
 <table>
@@ -2001,9 +2366,9 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 <tr><th>模式</th><th>触发条件</th><th>执行方式</th><th>阻塞对话</th><th>压缩力度</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>主动压缩</strong></td><td>token 占比 &gt; 80%</td><td>同步执行</td><td>是（短暂）</td><td>中等（保留近期 3-5 轮）</td></tr>
+<tr><td><strong>主动压缩</strong></td><td>token 占比 &gt; 80%</td><td>同步执行</td><td>是(短暂)</td><td>中等(保留近期 3-5 轮)</td></tr>
 <tr><td><strong>后台压缩</strong></td><td>token 占比 &gt; 60%</td><td>异步执行</td><td>否</td><td>中等</td></tr>
-<tr><td><strong>反应式压缩</strong></td><td>API 返回 413</td><td>同步紧急执行</td><td>是</td><td>激进（只保留 1-2 轮）</td></tr>
+<tr><td><strong>反应式压缩</strong></td><td>API 返回 413</td><td>同步紧急执行</td><td>是</td><td>激进(只保留 1-2 轮)</td></tr>
 </tbody>
 </table>
 </div>
@@ -2012,21 +2377,21 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <h3 class="sub-heading">5.12.3 AI 摘要 vs 规则摘要</h3>
 
-<p>压缩的核心是生成摘要。WaLiCode 支持两种摘要方式：</p>
+<p>压缩的核心是生成摘要。WaLiCode 支持两种摘要方式:</p>
 
-<p><strong>AI 摘要（generateAiSummary）</strong>：用专门的压缩 Prompt 让 AI 生成 500 字以内的摘要，保留：用户意图、文件操作、错误信息与解决方案、关键决策、当前进度。质量高但消耗 token。</p>
+<p><strong>AI 摘要(generateAiSummary)</strong>:用专门的压缩 Prompt 让 AI 生成 500 字以内的摘要,保留:用户意图、文件操作、错误信息与解决方案、关键决策、当前进度。质量高但消耗 token。</p>
 
-<p><strong>规则摘要（generateRuleSummary）</strong>：纯规则提取关键信息，不调 AI。质量低但零成本、零延迟。</p>
+<p><strong>规则摘要(generateRuleSummary)</strong>:纯规则提取关键信息,不调 AI。质量低但零成本、零延迟。</p>
 
 <div class="code-block"><pre>// AI 摘要的 System Prompt
 const COMPRESSION_SYSTEM_PROMPT = `你是一个对话压缩器。将长对话压缩为 500 字以内的摘要。
-必须保留：
+必须保留:
 1. 用户的原始意图和需求
-2. 已执行的关键文件操作（创建/修改/删除）
+2. 已执行的关键文件操作(创建/修改/删除)
 3. 遇到的错误和解决方案
 4. 做出的重要决策
 5. 当前进度和下一步计划
-可以省略：
+可以省略:
 - 工具调用的详细参数
 - AI 的推理过程
 - 重复的失败尝试`;
@@ -2038,7 +2403,7 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
     const label = msg.role === 'user' ? '👤 用户'
       : msg.role === 'assistant' ? '🤖 助手'
       : msg.role === 'tool' ? '🔧 工具' : '📋 系统';
-    // 截断过长内容（避免压缩本身消耗太多 token）
+    // 截断过长内容(避免压缩本身消耗太多 token)
     const truncated = content.length &gt; 2000
       ? content.slice(0, 2000) + '\n... (已截断)' : content;
     return `${label}:\n${truncated}`;
@@ -2048,7 +2413,7 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
     let fullResponse = '';
     for await (const event of ai.stream([
       { role: 'user', content: COMPRESSION_SYSTEM_PROMPT },
-      { role: 'user', content: `请压缩以下对话历史：\n\n${conversationText}` },
+      { role: 'user', content: `请压缩以下对话历史:\n\n${conversationText}` },
     ], undefined, undefined, undefined, { disableTools: true })) {
       if (event.type === 'text') fullResponse += event.content || '';
     }
@@ -2059,13 +2424,13 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
   }
 }</pre></div>
 
-<p><strong>降级策略</strong>：AI 摘要失败（API 错误、超时、返回空）时自动降级为规则摘要。为什么不直接报错？因为压缩是基础设施——如果压缩本身都能失败，那对话就没法继续了。规则摘要虽然质量低，但至少保留了基本信息，让对话能继续。</p>
+<p><strong>降级策略</strong>:AI 摘要失败(API 错误、超时、返回空)时自动降级为规则摘要。为什么不直接报错?因为压缩是基础设施--如果压缩本身都能失败,那对话就没法继续了。规则摘要虽然质量低,但至少保留了基本信息,让对话能继续。</p>
 
 <h3 class="sub-heading">5.12.4 增量压缩</h3>
 
-<p>问题：如果每次 token 超过 80% 就压缩，压缩后降到 50%，用户继续对话又涨到 80%，又要压缩……这会导致频繁压缩，每次压缩都消耗 token（AI 摘要本身也要花 token）。</p>
+<p>问题:如果每次 token 超过 80% 就压缩,压缩后降到 50%,用户继续对话又涨到 80%,又要压缩......这会导致频繁压缩,每次压缩都消耗 token(AI 摘要本身也要花 token)。</p>
 
-<p>WaLiCode 的解决方案：<strong>增量压缩阈值</strong>——只有当 token 再次上升到上次压缩水平的 80% 时才再次压缩。</p>
+<p>WaLiCode 的解决方案:<strong>增量压缩阈值</strong>--只有当 token 再次上升到上次压缩水平的 80% 时才再次压缩。</p>
 
 <div class="code-block"><pre>class ContextCompressor {
   private lastCompressTokenLevel: number = 0; // 上次压缩时的 token 水平
@@ -2073,14 +2438,14 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
   shouldCompress(currentTokens: number, maxTokens: number): boolean {
     const ratio = currentTokens / maxTokens;
 
-    // 首次压缩：80% 阈值
+    // 首次压缩:80% 阈值
     if (this.lastCompressTokenLevel === 0) {
       return ratio &gt;= 0.8;
     }
 
-    // 后续压缩：必须超过上次压缩水平的 80%
-    // 例如：上次在 80000 token 时压缩，这次必须到 80000 * 0.8 = 64000 才再压缩
-    // 但由于压缩后降到了 ~50000，用户需要再聊 14000 token 才触发
+    // 后续压缩:必须超过上次压缩水平的 80%
+    // 例如:上次在 80000 token 时压缩,这次必须到 80000 * 0.8 = 64000 才再压缩
+    // 但由于压缩后降到了 ~50000,用户需要再聊 14000 token 才触发
     const threshold = this.lastCompressTokenLevel * 0.8;
     return currentTokens &gt;= threshold;
   }
@@ -2094,15 +2459,15 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
 
 <h3 class="sub-heading">5.12.5 Provider/Reducer 可插拔架构</h3>
 
-<p>WaLiCode 的上下文管理采用<strong>Provider/Reducer 可插拔架构</strong>，这是生产级系统与 Demo 级系统的核心区别：</p>
+<p>WaLiCode 的上下文管理采用<strong>Provider/Reducer 可插拔架构</strong>,这是生产级系统与 Demo 级系统的核心区别:</p>
 
-<p><strong>Provider 模式</strong>：可插拔的上下文来源，每个 Provider 负责一种类型的上下文。</p>
+<p><strong>Provider 模式</strong>:可插拔的上下文来源,每个 Provider 负责一种类型的上下文。</p>
 <div class="code-block"><pre>interface ContextProvider {
   name: string;
   provide(): MessageContext[];
 }
 
-// 文件上下文：当前打开的文件、最近修改的文件
+// 文件上下文:当前打开的文件、最近修改的文件
 class FileProvider implements ContextProvider {
   name = 'FileProvider';
   provide(): MessageContext[] {
@@ -2114,7 +2479,7 @@ class FileProvider implements ContextProvider {
   }
 }
 
-// 任务上下文：当前任务的目标和进度
+// 任务上下文:当前任务的目标和进度
 class TaskProvider implements ContextProvider {
   name = 'TaskProvider';
   provide(): MessageContext[] {
@@ -2126,7 +2491,7 @@ class TaskProvider implements ContextProvider {
   }
 }
 
-// 里程碑上下文：关键决策记录
+// 里程碑上下文:关键决策记录
 class MilestoneProvider implements ContextProvider {
   name = 'MilestoneProvider';
   provide(): MessageContext[] {
@@ -2138,7 +2503,7 @@ class MilestoneProvider implements ContextProvider {
   }
 }</pre></div>
 
-<p><strong>Reducer 模式</strong>：可插拔的裁剪策略，按不同策略裁剪消息。</p>
+<p><strong>Reducer 模式</strong>:可插拔的裁剪策略,按不同策略裁剪消息。</p>
 <div class="code-block"><pre>interface MessageReducer {
   name: string;
   reduce(messages: MessageContext[], maxTokens: number): MessageContext[];
@@ -2148,9 +2513,9 @@ class PriorityReducer implements MessageReducer {
   name = 'PriorityReducer';
 
   reduce(messages: MessageContext[], maxTokens: number): MessageContext[] {
-    // 第一轮：Critical 和 High 无条件保留
-    // 第二轮：按优先级从高到低，在预算内逐条追加
-    // 第三轮：按时间排序输出
+    // 第一轮:Critical 和 High 无条件保留
+    // 第二轮:按优先级从高到低,在预算内逐条追加
+    // 第三轮:按时间排序输出
     const result: MessageContext[] = [];
     let usedChars = 0;
     const maxChars = maxTokens * 4; // ~4 chars/token
@@ -2179,30 +2544,30 @@ class PriorityReducer implements MessageReducer {
   }
 }</pre></div>
 
-<p>消息优先级推断规则：</p>
+<p>消息优先级推断规则:</p>
 <ul>
-<li><strong>Critical</strong>：错误消息、系统指令、当前任务</li>
-<li><strong>High</strong>：文件操作、用户配置、里程碑事件</li>
-<li><strong>Medium</strong>：工具调用结果、AI 推理过程</li>
-<li><strong>Low</strong>：AI 长文本解释、闲聊内容</li>
+<li><strong>Critical</strong>:错误消息、系统指令、当前任务</li>
+<li><strong>High</strong>:文件操作、用户配置、里程碑事件</li>
+<li><strong>Medium</strong>:工具调用结果、AI 推理过程</li>
+<li><strong>Low</strong>:AI 长文本解释、闲聊内容</li>
 </ul>
 
-<p>为什么用可插拔设计？因为不同场景需要不同的 Provider 和 Reducer 组合。编码场景需要 FileProvider + TaskProvider + PriorityReducer；聊天场景可能只需要 MemoryProvider + SlidingWindowReducer。写死在代码里意味着每次改需求都要改核心代码，可插拔意味着只需注册新组件。</p>
+<p>为什么用可插拔设计?因为不同场景需要不同的 Provider 和 Reducer 组合。编码场景需要 FileProvider + TaskProvider + PriorityReducer;聊天场景可能只需要 MemoryProvider + SlidingWindowReducer。写死在代码里意味着每次改需求都要改核心代码,可插拔意味着只需注册新组件。</p>
 
 <h3 class="sub-heading">5.12.6 双作用域记忆系统</h3>
 
-<p>WaLiCode 的记忆系统分为两个作用域：</p>
+<p>WaLiCode 的记忆系统分为两个作用域:</p>
 
 <div class="comparison-table">
 <table>
 <thead>
-<tr><th>维度</th><th>User Scope（用户级）</th><th>Project Scope（项目级）</th></tr>
+<tr><th>维度</th><th>User Scope(用户级)</th><th>Project Scope(项目级)</th></tr>
 </thead>
 <tbody>
 <tr><td>作用范围</td><td>跨项目共享</td><td>仅当前项目</td></tr>
 <tr><td>存储内容</td><td>用户偏好、通用知识、历史决策</td><td>架构决策、模块依赖、编码规范</td></tr>
-<tr><td>容量限制</td><td>LRU 淘汰，最多 20 条</td><td>LRU 淘汰，最多 20 条</td></tr>
-<tr><td>示例</td><td>"用户喜欢用 TypeScript"</td><td>"本项目用 pnpm，不要用 npm"</td></tr>
+<tr><td>容量限制</td><td>LRU 淘汰,最多 20 条</td><td>LRU 淘汰,最多 20 条</td></tr>
+<tr><td>示例</td><td>"用户喜欢用 TypeScript"</td><td>"本项目用 pnpm,不要用 npm"</td></tr>
 </tbody>
 </table>
 </div>
@@ -2215,7 +2580,7 @@ class PriorityReducer implements MessageReducer {
   set(scope: 'user' | 'project', key: string, value: string) {
     const store = scope === 'user' ? this.userMemory : this.projectMemory;
 
-    // LRU 淘汰：超过 20 条时删除最久未访问的
+    // LRU 淘汰:超过 20 条时删除最久未访问的
     if (store.size &gt;= this.MAX_ENTRIES &amp;&amp; !store.has(key)) {
       const oldest = [...store.entries()]
         .sort((a, b) =&gt; a[1].lastAccessed - b[1].lastAccessed)[0];
@@ -2247,145 +2612,326 @@ class PriorityReducer implements MessageReducer {
 
 <div class="summary-box">
 <div class="summary-title">🔗 5.12 核心要点</div>
-<p><strong>轮次分割</strong>：按 user message 分割对话为多个轮次，inline tool_result 不开新轮次。</p>
-<p><strong>三层压缩触发</strong>：主动（80%）→ 后台（60%）→ 反应式（413），层层递进。</p>
-<p><strong>AI 摘要 vs 规则摘要</strong>：AI 质量高但贵，规则零成本但糙，AI 失败降级为规则。</p>
-<p><strong>增量压缩</strong>：上次压缩水平的 80% 才再压缩，避免频繁压缩浪费 token。</p>
-<p><strong>Provider/Reducer 架构</strong>：可插拔设计，按场景组合不同的上下文来源和裁剪策略。</p>
-<p><strong>双作用域记忆</strong>：User Scope 跨项目，Project Scope 仅当前项目，LRU 淘汰。</p>
+<p><strong>轮次分割</strong>:按 user message 分割对话为多个轮次,inline tool_result 不开新轮次。</p>
+<p><strong>三层压缩触发</strong>:主动(80%)→ 后台(60%)→ 反应式(413),层层递进。</p>
+<p><strong>AI 摘要 vs 规则摘要</strong>:AI 质量高但贵,规则零成本但糙,AI 失败降级为规则。</p>
+<p><strong>增量压缩</strong>:上次压缩水平的 80% 才再压缩,避免频繁压缩浪费 token。</p>
+<p><strong>Provider/Reducer 架构</strong>:可插拔设计,按场景组合不同的上下文来源和裁剪策略。</p>
+<p><strong>双作用域记忆</strong>:User Scope 跨项目,Project Scope 仅当前项目,LRU 淘汰。</p>
+</div>
+
+<!-- ===== 5.13 主流记忆框架对比（2026更新） ===== -->
+<h2 class="section-heading">5.13 主流记忆框架对比（2026更新）</h2>
+
+<p>前面几节讲了记忆系统的原理和工程实践。2024-2025 年,一批专门的<strong>记忆框架</strong>崛起,它们把记忆管理从 Agent 主逻辑中解耦出来,提供开箱即用的记忆层。面试中经常被问到:"你了解哪些记忆框架?它们有什么区别?"</p>
+
+<h3 class="sub-heading">Mem0:三层记忆架构（Episodic + Semantic + Procedural）</h3>
+
+<p>Mem0 是 2024 年开源的记忆框架,核心理念是把记忆按<strong>性质</strong>分为三层,而非简单堆在向量库里:</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 Mem0 的三层记忆</div>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+    <li><strong>Episodic（情景记忆）</strong>:存储具体的交互片段,如"用户上周问了X问题,Agent回答了Y"。按时间线组织,支持回溯。</li>
+    <li><strong>Semantic（语义记忆）</strong>:从交互中提取的结构化知识,如"用户偏好简洁风格""用户是Java开发者"。去重后存储,支持增量更新。</li>
+    <li><strong>Procedural（过程记忆）</strong>:从历史交互中总结的"怎么做"类知识,如"处理JSON解析错误时,先检查编码再检查格式"。类似人类的技能记忆。</li>
+  </ul>
+</div>
+
+<p>Mem0 的工作流程:<strong>对话输入 → LLM 提取记忆 → 分类（episodic/semantic/procedural）→ 去重/合并 → 存储</strong>。检索时按当前意图从三层记忆分别召回,合并后注入上下文。面试要点:Mem0 的三层不是物理分区,而是<strong>逻辑分类</strong>,底层可以共用同一个向量库。</p>
+
+<h3 class="sub-heading">Letta（原 MemGPT）:自编辑记忆 + 记忆分页</h3>
+
+<p>Letta 是 MemGPT 团队的商业化产品,核心创新是<strong>把操作系统的虚拟内存概念引入 Agent 记忆</strong>:</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">💡 Letta 的两大核心机制</div>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+    <li><strong>自编辑记忆（Self-Editing Memory）</strong>:Agent 可以主动修改自己的记忆。当发现旧记忆过时或矛盾时,LLM 自行调用 memory_edit 工具更新记忆内容,而非简单追加。类似人类"纠正记忆"的过程。</li>
+    <li><strong>记忆分页（Memory Paging）</strong>:把记忆分为<strong>Core Memory</strong>（常驻上下文,类似RAM）和<strong>Archival Memory</strong>（外部存储,类似磁盘）。Core Memory 满了时,自动把低优先级记忆"换出"到 Archival,需要时再"换入"。这和操作系统的页面置换机制几乎一模一样。</li>
+  </ul>
+</div>
+
+<p>面试要点:Letta 的记忆分页解决的是<strong>有限上下文窗口 vs 无限记忆需求</strong>的矛盾。Core Memory 放最关键的用户信息和当前任务状态（通常 &lt; 2000 token）,Archival Memory 放历史交互。LLM 通过 search_archival 和 edit_core_memory 两个工具自主管理记忆流转。</p>
+
+<h3 class="sub-heading">Zep:时序知识图谱 + 自动摘要</h3>
+
+<p>Zep 走了一条完全不同的路线——用<strong>知识图谱</strong>组织记忆,并引入<strong>时间维度</strong>:</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 Zep 的两个核心设计</div>
+  <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
+    <li><strong>时序知识图谱（Temporal Knowledge Graph）</strong>:把对话中的实体、关系、事件抽取为三元组,并附带时间戳。当用户说"我上个月换了一台Mac"时,Zep 不会只存原始文本,而是建一条 (用户, 换设备, Mac, 2025-06) 的图谱边。后续查询时可以回答"用户什么时候换的电脑"这类时序问题。</li>
+    <li><strong>自动摘要（Auto-Summarization）</strong>:每轮对话后自动生成摘要,摘要本身也会被图谱化。旧摘要会随时间衰减,新摘要权重更高。这解决了"半年前的摘要和昨天的摘要权重一样"的问题。</li>
+  </ul>
+</div>
+
+<p>Zep 的优势在于<strong>结构化检索</strong>。向量检索只能回答"什么和X相关",Zep 的图谱检索还能回答"X是什么时候发生的""X和Y是什么关系""X最近有变化吗"。代价是抽取质量依赖 NLP 能力,复杂场景下图谱构建成本较高。</p>
+
+<h3 class="sub-heading">三者对比</h3>
+
+<div class="card">
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+      <th style="text-align: left; padding: 10px 8px;">维度</th>
+      <th style="text-align: left; padding: 10px 8px;">Mem0</th>
+      <th style="text-align: left; padding: 10px 8px;">Letta (MemGPT)</th>
+      <th style="text-align: left; padding: 10px 8px;">Zep</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">记忆组织</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">三层分类（episodic/semantic/procedural）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">两级分页（core/archival）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">时序知识图谱</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">记忆更新</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM 提取 + 去重合并</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 自编辑（工具调用）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">图谱增量 + 自动摘要</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">检索方式</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量相似度（分层召回）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Core 直接注入 + Archival 语义搜索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">图谱查询 + 向量检索 + 时序过滤</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">核心优势</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">分类清晰,开箱即用</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 自主管理记忆,最像OS</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">支持时序查询,结构化最强</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">适用场景</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通用对话 Agent、客服</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">长期伴随型 Agent、个人助手</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">需要时序推理、实体关系追踪</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">开源协议</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Apache 2.0</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Apache 2.0</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Apache 2.0</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 <div class="summary-box">
-  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+<div class="summary-title">🔗 5.13 核心要点</div>
+<p><strong>Mem0</strong>:三层记忆（episodic/semantic/procedural）按性质分类,LLM 自动提取+去重,适合通用场景。</p>
+<p><strong>Letta</strong>:OS 式记忆分页（core/archival）,Agent 自编辑记忆,最接近"Agent 自我管理"的理念。</p>
+<p><strong>Zep</strong>:时序知识图谱 + 自动摘要,支持"什么时候""什么关系"类时序查询,结构化最强。</p>
+<p><strong>选型建议</strong>:通用对话选 Mem0,长期伴随选 Letta,需要时序推理选 Zep。也可组合使用——Zep 做图谱存储 + Mem0 做分层检索。</p>
+</div>
+
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 - 面试高频考点</div>
 
   <div class="qa-item">
-    <div class="qa-question">Q1: Agent 的记忆系统分为哪几层？各自的特点和实现方式？</div>
+    <div class="qa-question">Q1: Agent 的记忆系统分为哪几层?各自的特点和实现方式?</div>
     <div class="qa-answer">
-      <strong>短期记忆</strong>：= LLM 上下文窗口，存当前对话历史。容量 4K~200K token，速度最快，对话结束即消失。<br>
-      <strong>工作记忆</strong>：= Scratchpad/变量，存当前任务的中间状态。任务结束清除，辅助多步推理。<br>
-      <strong>长期记忆</strong>：= 向量数据库，存历史交互经验。理论无限容量，需语义检索，永久持久化。<br><br>
-      三者关系：短期→工作（任务相关提取），短期→长期（压缩存储），长期→工作（检索回忆）。
+      <strong>短期记忆</strong>:= LLM 上下文窗口,存当前对话历史。容量 4K~200K token,速度最快,对话结束即消失。<br>
+      <strong>工作记忆</strong>:= Scratchpad/变量,存当前任务的中间状态。任务结束清除,辅助多步推理。<br>
+      <strong>长期记忆</strong>:= 向量数据库,存历史交互经验。理论无限容量,需语义检索,永久持久化。<br><br>
+      三者关系:短期→工作(任务相关提取),短期→长期(压缩存储),长期→工作(检索回忆)。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q2: 短期记忆的压缩策略有哪些？各有什么优缺点？</div>
+    <div class="qa-question">Q2: 短期记忆的压缩策略有哪些?各有什么优缺点?</div>
     <div class="qa-answer">
-      <strong>① 滑窗截断</strong>：保留最近 N 轮，丢弃旧的。简单但可能丢失关键信息。<br>
-      <strong>② 摘要压缩</strong>：用 LLM 对旧对话生成摘要替代原文。保留关键信息但消耗额外 token。<br>
-      <strong>③ 选择性保留</strong>：用 LLM 判断消息重要性，只保留重要的。信息密度高但判断可能不准。<br>
-      <strong>④ 分层压缩</strong>：结合以上策略，近期完整保留、中期摘要、远期存入长期记忆。效果最好但实现最复杂。
+      <strong>1 滑窗截断</strong>:保留最近 N 轮,丢弃旧的。简单但可能丢失关键信息。<br>
+      <strong>2 摘要压缩</strong>:用 LLM 对旧对话生成摘要替代原文。保留关键信息但消耗额外 token。<br>
+      <strong>3 选择性保留</strong>:用 LLM 判断消息重要性,只保留重要的。信息密度高但判断可能不准。<br>
+      <strong>4 分层压缩</strong>:结合以上策略,近期完整保留、中期摘要、远期存入长期记忆。效果最好但实现最复杂。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q3: 向量数据库在 Agent 记忆中的作用？检索流程是什么？</div>
+    <div class="qa-question">Q3: 向量数据库在 Agent 记忆中的作用?检索流程是什么?</div>
     <div class="qa-answer">
-      <strong>作用</strong>：作为长期记忆的存储引擎，支持语义相似度检索，让 Agent 能"回忆"与当前查询相关的历史交互。<br><br>
-      <strong>写入流程</strong>：交互文本 → Embedding 模型 → 向量 → 存入向量数据库（附带元数据如时间、用户ID）。<br><br>
-      <strong>检索流程</strong>：用户查询 → Embedding → 在向量库中做相似度搜索（如余弦相似度）→ 返回 Top-K 最相关记忆 → 注入 prompt。
+      <strong>作用</strong>:作为长期记忆的存储引擎,支持语义相似度检索,让 Agent 能"回忆"与当前查询相关的历史交互。<br><br>
+      <strong>写入流程</strong>:交互文本 → Embedding 模型 → 向量 → 存入向量数据库(附带元数据如时间、用户ID)。<br><br>
+      <strong>检索流程</strong>:用户查询 → Embedding → 在向量库中做相似度搜索(如余弦相似度)→ 返回 Top-K 最相关记忆 → 注入 prompt。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q4: 反思记忆、实体记忆、情景记忆分别是什么？</div>
+    <div class="qa-question">Q4: 反思记忆、实体记忆、情景记忆分别是什么?</div>
     <div class="qa-answer">
-      <strong>反思记忆</strong>：定期对历史交互进行反思，提取规律和偏好（如"用户偏好简洁回答"），存储提炼后的知识而非原始对话。<br>
-      <strong>实体记忆</strong>：以实体为中心组织记忆，维护实体知识图谱（如"小明"的属性和关系），实现实体级别的快速回忆。<br>
-      <strong>情景记忆</strong>：按时间线存储情节，带时间戳和上下文标签，适合"上次聊到哪了"这类时间敏感场景。
+      <strong>反思记忆</strong>:定期对历史交互进行反思,提取规律和偏好(如"用户偏好简洁回答"),存储提炼后的知识而非原始对话。<br>
+      <strong>实体记忆</strong>:以实体为中心组织记忆,维护实体知识图谱(如"小明"的属性和关系),实现实体级别的快速回忆。<br>
+      <strong>情景记忆</strong>:按时间线存储情节,带时间戳和上下文标签,适合"上次聊到哪了"这类时间敏感场景。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q5: 为什么不用 SQL 数据库而用向量数据库存 Agent 记忆？</div>
+    <div class="qa-question">Q5: 为什么不用 SQL 数据库而用向量数据库存 Agent 记忆?</div>
     <div class="qa-answer">
-      SQL 数据库做精确查询（WHERE name='小明'），但记忆检索是<strong>语义相似度</strong>查询——"和用户当前问题意思相近的历史交互"。这需要把文本转为向量，在向量空间中计算距离。<br><br>
-      SQL 无法高效做语义相似度搜索（只能用 LIKE 做模糊匹配，效果差）。向量数据库专门优化了高维向量的相似度搜索，能在毫秒级从百万条记忆中找到最相关的几条。<br><br>
-      实践中也可用 pgvector（PostgreSQL 扩展）兼顾两者。
+      SQL 数据库做精确查询(WHERE name='小明'),但记忆检索是<strong>语义相似度</strong>查询--"和用户当前问题意思相近的历史交互"。这需要把文本转为向量,在向量空间中计算距离。<br><br>
+      SQL 无法高效做语义相似度搜索(只能用 LIKE 做模糊匹配,效果差)。向量数据库专门优化了高维向量的相似度搜索,能在毫秒级从百万条记忆中找到最相关的几条。<br><br>
+      实践中也可用 pgvector(PostgreSQL 扩展)兼顾两者。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q6: 上下文膨胀（Context Rot）是什么？五种压缩策略的优先级如何排序？</div>
+    <div class="qa-question">Q6: 上下文膨胀(Context Rot)是什么?五种压缩策略的优先级如何排序?</div>
     <div class="qa-answer">
-      <strong>Context Rot</strong>：长任务中上下文不断膨胀，导致行为漂移、注意力稀释、成本飙升和窗口溢出。<br><br>
-      五种压缩策略优先级（从最优到最差）：<br>
-      <strong>① 语义保护型</strong>：锁定核心指令 + 保护行动-结果对完整性，只压缩中间推理。压缩率和信息完整性最优。<br>
-      <strong>② 选择性保留</strong>：按消息类型分别设定保留策略，信息密度高。<br>
-      <strong>③ 摘要压缩</strong>：有损压缩，保留关键信息但可能丢失细节。<br>
-      <strong>④ 滑动窗口</strong>：按时间丢弃，不考虑重要性。<br>
-      <strong>⑤ 截断</strong>：最简单但最粗暴，可能导致行为不一致。
+      <strong>Context Rot</strong>:长任务中上下文不断膨胀,导致行为漂移、注意力稀释、成本飙升和窗口溢出。<br><br>
+      五种压缩策略优先级(从最优到最差):<br>
+      <strong>1 语义保护型</strong>:锁定核心指令 + 保护行动-结果对完整性,只压缩中间推理。压缩率和信息完整性最优。<br>
+      <strong>2 选择性保留</strong>:按消息类型分别设定保留策略,信息密度高。<br>
+      <strong>3 摘要压缩</strong>:有损压缩,保留关键信息但可能丢失细节。<br>
+      <strong>4 滑动窗口</strong>:按时间丢弃,不考虑重要性。<br>
+      <strong>5 截断</strong>:最简单但最粗暴,可能导致行为不一致。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q7: Context Engineering 和 Prompt Engineering 的区别是什么？</div>
+    <div class="qa-question">Q7: Context Engineering 和 Prompt Engineering 的区别是什么?</div>
     <div class="qa-answer">
-      <strong>Prompt Engineering</strong>：关注单次请求的措辞优化，是静态的、一次性的。如：优化 System Prompt、设计 Few-shot 示例。<br><br>
-      <strong>Context Engineering</strong>：关注整个上下文的动态编排，是持续性的、动态的。如：记忆的检索/压缩/淘汰策略、工具结果的格式化过滤、多源信息的优先级排序。<br><br>
-      类比：Prompt Engineering 是写一首诗（关注措辞），Context Engineering 是管理一个图书馆（关注信息流治理）。
+      <strong>Prompt Engineering</strong>:关注单次请求的措辞优化,是静态的、一次性的。如:优化 System Prompt、设计 Few-shot 示例。<br><br>
+      <strong>Context Engineering</strong>:关注整个上下文的动态编排,是持续性的、动态的。如:记忆的检索/压缩/淘汰策略、工具结果的格式化过滤、多源信息的优先级排序。<br><br>
+      类比:Prompt Engineering 是写一首诗(关注措辞),Context Engineering 是管理一个图书馆(关注信息流治理)。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q8: 记忆生命周期包含哪些阶段？各阶段的治理要点是什么？</div>
+    <div class="qa-question">Q8: 记忆生命周期包含哪些阶段?各阶段的治理要点是什么?</div>
     <div class="qa-answer">
-      五个阶段：<br>
-      <strong>① 写入</strong>：记录交互 + 附带元数据，默认慷慨写入，后续靠淘汰筛选。<br>
-      <strong>② 索引</strong>：向量索引 + 关键词索引 + 时间索引 + 类型索引，多路召回提高命中率。<br>
-      <strong>③ 检索</strong>：JIT 模式按需取信息，相似度阈值过滤 + 元数据过滤 + Top-K 截断。<br>
-      <strong>④ 压缩</strong>：语义保护型优先，锁定 System Prompt 和行动-结果对。<br>
-      <strong>⑤ 淘汰</strong>：时效淘汰 + 容量淘汰 + 质量淘汰，淘汰前可做最终摘要归档。
+      五个阶段:<br>
+      <strong>1 写入</strong>:记录交互 + 附带元数据,默认慷慨写入,后续靠淘汰筛选。<br>
+      <strong>2 索引</strong>:向量索引 + 关键词索引 + 时间索引 + 类型索引,多路召回提高命中率。<br>
+      <strong>3 检索</strong>:JIT 模式按需取信息,相似度阈值过滤 + 元数据过滤 + Top-K 截断。<br>
+      <strong>4 压缩</strong>:语义保护型优先,锁定 System Prompt 和行动-结果对。<br>
+      <strong>5 淘汰</strong>:时效淘汰 + 容量淘汰 + 质量淘汰,淘汰前可做最终摘要归档。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q9: Reflexion 框架的反思循环是如何工作的？</div>
+    <div class="qa-question">Q9: Reflexion 框架的反思循环是如何工作的?</div>
     <div class="qa-answer">
-      Reflexion 的核心流程：<br>
-      <strong>① 接收任务</strong> → 检索相关反思经验（如有）<br>
-      <strong>② 执行行动</strong> → 用 ReAct 循环完成任务<br>
-      <strong>③ 评估结果</strong> → 判断是否成功<br>
-      <strong>④ 成功</strong> → 记录为情景记忆（完整事件）<br>
-      <strong>⑤ 失败</strong> → 触发反思（分析失败原因、提炼改进策略）<br>
-      <strong>⑥ 存入反思记忆</strong> → 下次重试时参考经验教训<br><br>
-      关键创新：不是简单重试，而是每次失败都提炼经验存入记忆，使 Agent 从"重复犯错的傻瓜"进化为"从失败中学习的聪明人"。
+      Reflexion 的核心流程:<br>
+      <strong>1 接收任务</strong> → 检索相关反思经验(如有)<br>
+      <strong>2 执行行动</strong> → 用 ReAct 循环完成任务<br>
+      <strong>3 评估结果</strong> → 判断是否成功<br>
+      <strong>4 成功</strong> → 记录为情景记忆(完整事件)<br>
+      <strong>5 失败</strong> → 触发反思(分析失败原因、提炼改进策略)<br>
+      <strong>6 存入反思记忆</strong> → 下次重试时参考经验教训<br><br>
+      关键创新:不是简单重试,而是每次失败都提炼经验存入记忆,使 Agent 从"重复犯错的傻瓜"进化为"从失败中学习的聪明人"。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q10: 长期记忆为什么要分为静态和动态？各自的存储、召回、压缩策略有何不同？</div>
+    <div class="qa-question">Q10: 长期记忆为什么要分为静态和动态?各自的存储、召回、压缩策略有何不同?</div>
     <div class="qa-answer">
-      不分类会导致三类问题：<strong>存储浪费</strong>（偏好存向量库每次检索没必要）、<strong>信息过时</strong>（摘要不更新会冗余）、<strong>召回混乱</strong>（规则和经验混在一起模型无法区分）。<br><br>
-      <strong>静态长期记忆</strong>（偏好/规则/知识）：变化频率低 → 存本地配置文件 → 直接注入 System Prompt → 不压缩（本身已精炼）。<br>
-      <strong>动态长期记忆</strong>（摘要/经验/模式）：变化频率高 → 存向量数据库 → 按相关性语义检索 → 定期压缩摘要+淘汰过时内容。<br><br>
-      面试要点：先分类再谈策略，不要一上来就说"存向量数据库"。
+      不分类会导致三类问题:<strong>存储浪费</strong>(偏好存向量库每次检索没必要)、<strong>信息过时</strong>(摘要不更新会冗余)、<strong>召回混乱</strong>(规则和经验混在一起模型无法区分)。<br><br>
+      <strong>静态长期记忆</strong>(偏好/规则/知识):变化频率低 → 存本地配置文件 → 直接注入 System Prompt → 不压缩(本身已精炼)。<br>
+      <strong>动态长期记忆</strong>(摘要/经验/模式):变化频率高 → 存向量数据库 → 按相关性语义检索 → 定期压缩摘要+淘汰过时内容。<br><br>
+      面试要点:先分类再谈策略,不要一上来就说"存向量数据库"。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q11: 为什么不是每轮对话都触发长期记忆写入？什么信息"值得记住"？</div>
+    <div class="qa-question">Q11: 为什么不是每轮对话都触发长期记忆写入?什么信息"值得记住"?</div>
     <div class="qa-answer">
-      <strong>不是每轮都触发</strong>，否则长期记忆库会变成完整对话日志的备份，噪音爆炸，检索失效。<br><br>
-      记忆写入触发条件：用户表达新偏好→写入静态记忆；完成有价值任务→写入动态记忆（执行经验）；发现新上下文信息→写入动态记忆（知识片段）；简单闲聊→不触发写入。<br><br>
-      判断"值得记住"的两个标准：<strong>① 是否有长期参考价值</strong>（未来对话中可能再次需要）；<strong>② 是否包含决策/偏好/知识点</strong>（明确的、可复用的信息）。<br><br>
-      链路：对话→信息提取→价值评估→分类→写入。重点强调筛选而非全量。
+      <strong>不是每轮都触发</strong>,否则长期记忆库会变成完整对话日志的备份,噪音爆炸,检索失效。<br><br>
+      记忆写入触发条件:用户表达新偏好→写入静态记忆;完成有价值任务→写入动态记忆(执行经验);发现新上下文信息→写入动态记忆(知识片段);简单闲聊→不触发写入。<br><br>
+      判断"值得记住"的两个标准:<strong>1 是否有长期参考价值</strong>(未来对话中可能再次需要);<strong>2 是否包含决策/偏好/知识点</strong>(明确的、可复用的信息)。<br><br>
+      链路:对话→信息提取→价值评估→分类→写入。重点强调筛选而非全量。
     </div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q12: 召回太多长期记忆会导致什么问题？如何防控上下文污染？</div>
+    <div class="qa-question">Q12: 召回太多长期记忆会导致什么问题?如何防控上下文污染?</div>
     <div class="qa-answer">
-      <strong>三大危害</strong>：<br>
-      <strong>① 注意力稀释</strong>：模型关注无关内容，忽略核心问题<br>
-      <strong>② 指令冲突</strong>：多条记忆互相矛盾（如"偏好简洁"vs"要求详细"）<br>
-      <strong>③ Token浪费</strong>：无关记忆消耗宝贵上下文窗口<br><br>
-      <strong>四道防线</strong>：<br>
-      <strong>① 数量上限</strong>：每次召回 ≤5 条，简单问题 ≤3 条<br>
-      <strong>② 相关性阈值</strong>：相似度 < 0.7 的不召回<br>
-      <strong>③ 冲突检测</strong>：多条矛盾记忆取最新的<br>
-      <strong>④ 优先级排序</strong>：核心指令 > 最近经验 > 补充信息<br><br>
-      召回决策靠三维度评分：意图匹配×时间衰减×频率加权。面试要点：先谈召回决策再谈污染防控，不要只说"用向量搜索"。
+      <strong>三大危害</strong>:<br>
+      <strong>1 注意力稀释</strong>:模型关注无关内容,忽略核心问题<br>
+      <strong>2 指令冲突</strong>:多条记忆互相矛盾(如"偏好简洁"vs"要求详细")<br>
+      <strong>3 Token浪费</strong>:无关记忆消耗宝贵上下文窗口<br><br>
+      <strong>四道防线</strong>:<br>
+      <strong>1 数量上限</strong>:每次召回 ≤5 条,简单问题 ≤3 条<br>
+      <strong>2 相关性阈值</strong>:相似度 < 0.7 的不召回<br>
+      <strong>3 冲突检测</strong>:多条矛盾记忆取最新的<br>
+      <strong>4 优先级排序</strong>:核心指令 > 最近经验 > 补充信息<br><br>
+      召回决策靠三维度评分:意图匹配×时间衰减×频率加权。面试要点:先谈召回决策再谈污染防控,不要只说"用向量搜索"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q13: 多轮对话 Agent 怎么解决状态爆炸 / 上下文溢出?生产级的三板斧方案是什么?</div>
+    <div class="qa-answer">
+      这是落地项目一定会遇到的痛点,面试官深挖项目必问。我主要靠三套方案组合解决:<br><br>
+      <strong>1 规范状态结构</strong>:用 LangGraph 的 TypedDict 定义固定的状态模板,只留存核心业务变量,去除无效冗余信息,防止状态字段无限膨胀。<br><br>
+      <strong>2 智能截断</strong>:不做简单粗暴的字符删减,而是按优先级保留上下文--<strong>系统提示词 > 最近对话记录 > 当前核心任务目标</strong>。低优先级的早期内容优先被截断。<br><br>
+      <strong>3 对话摘要</strong>:把老旧的历史对话压缩成简短摘要,放在上下文头部。既保留完整语境,又大幅减少上下文占用。类似人类的"回忆"而非"逐字回放"。<br><br>
+      面试要点：不要只说"用向量数据库",要展示"规范状态→智能截断→摘要压缩"三板斧组合思维，体现生产级落地经验而非纸上谈兵。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q14: 动态 Prompt 和静态 Prompt 有什么区别？Agent 每轮对话开始时，上下文是如何动态组装的？</div>
+    <div class="qa-answer">
+      <strong>静态Prompt</strong> = System Prompt（角色定义+安全规则+输出格式约束） + 工具Schema + Skill触发词。整个会话内不变，放在Prompt最前面，100%命中缓存，是Agent的"宪法"。<br><br>
+      <strong>动态Prompt</strong> = 记忆召回片段（按意图检索≤5条） + Skill完整指令（触发时加载） + 对话历史（逐轮增长） + 用户当前输入。每轮都变，放Prompt后面，按变化频率分层。<br><br>
+      <strong>组装策略</strong>：四层叠放，固定→半固定→动态→当前请求：<br>
+      Layer 1 静态框架：System Prompt + 工具Schema + Skill触发词（100%缓存命中）<br>
+      Layer 2 记忆注入：长期记忆召回片段（同会话内部分命中缓存）<br>
+      Layer 3 对话历史：多轮交互记录+工具返回结果（旧部分可缓存）<br>
+      Layer 4 当前请求：用户输入（完全不命中缓存）<br><br>
+      核心原则：<strong>不变的放前面最大化缓存，变化的放后面最小化缓存失效</strong>。面试要点：先定义静态和动态，再说组装顺序和缓存策略，不要只说"每次都重新生成Prompt"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q15: 多轮对话Agent的状态爆炸，除了三板斧还有什么更完整的系统级解决方案？</div>
+    <div class="qa-answer">
+      Q13的三板斧（规范状态+智能截断+对话摘要）是入门级回答。<strong>完整生产级方案是四层递进的泄压体系</strong>：<br><br>
+      <strong>Layer 1 预防</strong>——不让压力累积：<br>
+      ① Token Budget全局预算控制（超预算立即停止）<br>
+      ② JIT召回原则（只检索当前步骤需要的记忆）<br>
+      ③ 输出长度约束（要求模型只输出关键结论）<br>
+      ④ 工具结果精简（只保留关键行而非原样塞入）<br><br>
+      <strong>Layer 2 压缩</strong>——在信息完整前提下缩减体积：<br>
+      ① 语义保护型压缩（锁定System Prompt和行动-结果对，只压缩中间推理）<br>
+      ② 三层压缩触发（主动80%→后台60%→反应式413）<br>
+      ③ 增量压缩（只压缩上次压缩后新增部分）<br><br>
+      <strong>Layer 3 淘汰</strong>——扔掉不再需要的：<br>
+      ① 记忆治理策略（时效+容量+质量三维度淘汰）<br>
+      ② 召回数量硬限制（≤5条）<br>
+      ③ 工具结果裁剪（只保留Top-K关键行）<br>
+      ④ 淘汰前归档（做最终摘要存入长期记忆）<br><br>
+      <strong>Layer 4 兜底</strong>——当所有策略都不够时：<br>
+      ① 紧急压缩（413状态码触发最激进压缩）<br>
+      ② 降级回答（告诉用户建议开新会话）<br>
+      ③ 自动会话切分（超50轮自动摘要+开新会话）<br>
+      ④ 人工介入（预算超限+压缩失败后通知用户）<br><br>
+      面试要点：不是某一层单独起作用，而是四层递进。预防失败→压缩兜住，压缩不够→淘汰兜住，淘汰也不够→紧急兜底。体现"从预防到兜底的全链路思维"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q16: Mem0 的三层记忆（Episodic / Semantic / Procedural）分别是什麽？如何协同工作？</div>
+    <div class="qa-answer">
+      <strong>Episodic（情景记忆）</strong>:存储具体交互片段,按时间线组织,支持回溯。如"用户上周问了X,Agent回答了Y"。<br>
+      <strong>Semantic（语义记忆）</strong>:从交互中提取的结构化知识,去重后增量更新。如"用户偏好简洁风格""用户是Java开发者"。<br>
+      <strong>Procedural（过程记忆）</strong>:从历史中总结的"怎么做"类技能知识。如"处理JSON解析错误时,先检查编码再检查格式"。<br><br>
+      <strong>协同流程</strong>:对话输入 → LLM 提取记忆 → 分类（episodic/semantic/procedural）→ 去重/合并 → 存储。检索时按当前意图从三层分别召回,合并后注入上下文。三层是<strong>逻辑分类</strong>而非物理分区,底层可共用同一个向量库。<br><br>
+      面试要点:先说三层分别是什么,再说提取→分类→去重→存储的写入流程,最后说分层召回的检索策略。不要把三层说成三个数据库。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q17: Letta（MemGPT）如何实现记忆分页？Zep 的时序知识图谱有什么优势？</div>
+    <div class="qa-answer">
+      <strong>Letta 记忆分页</strong>:借鉴 OS 虚拟内存机制,把记忆分为 Core Memory（常驻上下文,类似 RAM,放最关键的用户信息和任务状态,通常 &lt; 2000 token）和 Archival Memory（外部存储,类似磁盘,放历史交互）。Core 满了自动把低优先级记忆"换出"到 Archival,需要时通过 search_archival 工具"换入"。Agent 还能通过 edit_core_memory 工具<strong>自编辑</strong>记忆,纠正过时信息。<br><br>
+      <strong>Zep 时序知识图谱</strong>:把对话中的实体、关系、事件抽取为带时间戳的三元组,如 (用户, 换设备, Mac, 2025-06)。优势:①支持时序查询（"用户什么时候换的电脑"）,向量检索做不到;②支持关系查询（"X和Y什么关系"）;③自动摘要随时间衰减,新摘要权重更高,解决旧摘要和新摘要同等权重的问题。代价是图谱构建质量依赖 NLP 抽取能力。<br><br>
+      面试要点:Letta 重点说"OS 式分页 + 自编辑",Zep 重点说"时序 + 结构化"。对比时强调:Letta 解决的是有限窗口 vs 无限记忆的矛盾,Zep 解决的是向量检索无法回答时序和关系查询的矛盾。
     </div>
   </div>
 </div>
@@ -2397,33 +2943,33 @@ class PriorityReducer implements MessageReducer {
 var ch05Questions = [
   {
     type: 'single',
-    question: 'Agent 的短期记忆通常存储在哪里？',
+    question: 'Agent 的短期记忆通常存储在哪里?',
     options: ['向量数据库', 'LLM 上下文窗口', '关系型数据库', '文件系统'],
     answer: [1],
-    explanation: '短期记忆 = LLM 上下文窗口，存当前对话历史。容量受限于模型窗口大小（4K~200K token）。'
+    explanation: '短期记忆 = LLM 上下文窗口,存当前对话历史。容量受限于模型窗口大小(4K~200K token)。'
   },
   {
     type: 'single',
-    question: '长期记忆检索时使用什么技术找到相关记忆？',
-    options: ['SQL LIKE 模糊查询', '正则表达式匹配', '向量相似度搜索（如余弦相似度）', '全文索引'],
+    question: '长期记忆检索时使用什么技术找到相关记忆?',
+    options: ['SQL LIKE 模糊查询', '正则表达式匹配', '向量相似度搜索(如余弦相似度)', '全文索引'],
     answer: [2],
-    explanation: '长期记忆通过向量相似度搜索检索。文本先转为向量，再在向量空间中计算距离（如余弦相似度），找到语义最相关的记忆。'
+    explanation: '长期记忆通过向量相似度搜索检索。文本先转为向量,再在向量空间中计算距离(如余弦相似度),找到语义最相关的记忆。'
   },
   {
     type: 'single',
-    question: '当对话历史超过 LLM 上下文窗口限制时，"摘要压缩"策略的做法是？',
+    question: '当对话历史超过 LLM 上下文窗口限制时,"摘要压缩"策略的做法是?',
     options: [
       '直接丢弃最旧的消息',
-      '用 LLM 对旧对话生成摘要，用摘要替代原始内容',
+      '用 LLM 对旧对话生成摘要,用摘要替代原始内容',
       '扩大 LLM 的上下文窗口',
-      '停止对话，清空所有历史'
+      '停止对话,清空所有历史'
     ],
     answer: [1],
-    explanation: '摘要压缩策略用 LLM 对旧对话生成摘要，用摘要替代原始内容。这样既控制了上下文长度，又保留了关键信息。'
+    explanation: '摘要压缩策略用 LLM 对旧对话生成摘要,用摘要替代原始内容。这样既控制了上下文长度,又保留了关键信息。'
   },
   {
     type: 'single',
-    question: '工作记忆（Working Memory）的主要用途是什么？',
+    question: '工作记忆(Working Memory)的主要用途是什么?',
     options: [
       '存储所有历史对话',
       '存储用户的个人偏好',
@@ -2431,66 +2977,66 @@ var ch05Questions = [
       '存储向量数据库的索引'
     ],
     answer: [2],
-    explanation: '工作记忆类似便签纸，存储当前任务的中间状态和推理过程。任务结束后清除，辅助多步推理。'
+    explanation: '工作记忆类似便签纸,存储当前任务的中间状态和推理过程。任务结束后清除,辅助多步推理。'
   },
   {
     type: 'single',
-    question: '反思记忆（Reflective Memory）的核心思想是？',
+    question: '反思记忆(Reflective Memory)的核心思想是?',
     options: [
       '存储所有原始对话记录',
-      '定期对历史交互进行反思，提取规律和偏好',
+      '定期对历史交互进行反思,提取规律和偏好',
       '只存储用户的错误操作',
       '按时间戳排序存储记忆'
     ],
     answer: [1],
-    explanation: '反思记忆不仅存储原始交互，还定期让 LLM 对历史交互进行反思，提取规律和偏好（如"用户偏好简洁回答"），存储提炼后的知识。'
+    explanation: '反思记忆不仅存储原始交互,还定期让 LLM 对历史交互进行反思,提取规律和偏好(如"用户偏好简洁回答"),存储提炼后的知识。'
   },
   {
     type: 'single',
-    question: '在五种上下文压缩策略中，哪种策略能锁定核心指令并保护行动-结果对的完整性？',
+    question: '在五种上下文压缩策略中,哪种策略能锁定核心指令并保护行动-结果对的完整性?',
     options: [
-      '截断（Truncation）',
-      '滑动窗口（Sliding Window）',
-      '摘要（Summarization）',
-      '语义保护型压缩（Semantic-Preserving）'
+      '截断(Truncation)',
+      '滑动窗口(Sliding Window)',
+      '摘要(Summarization)',
+      '语义保护型压缩(Semantic-Preserving)'
     ],
     answer: [3],
-    explanation: '语义保护型压缩锁定核心指令（System Prompt不压缩），确保行动-结果完整性（工具调用与返回值成对保留），只压缩中间推理过程。'
+    explanation: '语义保护型压缩锁定核心指令(System Prompt不压缩),确保行动-结果完整性(工具调用与返回值成对保留),只压缩中间推理过程。'
   },
   {
     type: 'single',
-    question: 'Context Engineering 与 Prompt Engineering 的核心区别是什么？',
+    question: 'Context Engineering 与 Prompt Engineering 的核心区别是什么?',
     options: [
       'Context Engineering 只关注 System Prompt 的措辞',
       'Prompt Engineering 关注整个上下文的动态编排',
-      'Context Engineering 关注整个上下文的动态编排，而 Prompt Engineering 关注单次请求的措辞优化',
-      '两者完全相同，只是名称不同'
+      'Context Engineering 关注整个上下文的动态编排,而 Prompt Engineering 关注单次请求的措辞优化',
+      '两者完全相同,只是名称不同'
     ],
     answer: [2],
-    explanation: 'Context Engineering 关注整个上下文的动态编排（记忆检索/压缩/淘汰、信息优先级排序），是持续性的、动态的。Prompt Engineering 关注单次请求的措辞优化，是静态的、一次性的。'
+    explanation: 'Context Engineering 关注整个上下文的动态编排(记忆检索/压缩/淘汰、信息优先级排序),是持续性的、动态的。Prompt Engineering 关注单次请求的措辞优化,是静态的、一次性的。'
   },
   {
     type: 'multiple',
-    question: '以下哪些是主流的向量数据库？（多选）',
+    question: '以下哪些是主流的向量数据库?(多选)',
     options: ['Chroma', 'Pinecone', 'MySQL', 'Milvus'],
     answer: [0, 1, 3],
-    explanation: 'Chroma、Pinecone、Milvus 都是主流向量数据库。MySQL 是关系型数据库，虽然可通过 pgvector 扩展支持向量，但 MySQL 本身不是向量数据库。'
+    explanation: 'Chroma、Pinecone、Milvus 都是主流向量数据库。MySQL 是关系型数据库,虽然可通过 pgvector 扩展支持向量,但 MySQL 本身不是向量数据库。'
   },
   {
     type: 'multiple',
-    question: '关于长期记忆的写入流程，以下哪些步骤是正确的？（多选）',
+    question: '关于长期记忆的写入流程,以下哪些步骤是正确的?(多选)',
     options: [
       '将交互文本通过 Embedding 模型转为向量',
       '将向量存入向量数据库',
-      '附带元数据（时间、用户ID等）',
+      '附带元数据(时间、用户ID等)',
       '对每条记忆进行人工审核'
     ],
     answer: [0, 1, 2],
-    explanation: '写入流程：文本→Embedding→存入向量数据库（附带元数据）。不需要人工审核，是自动化的过程。'
+    explanation: '写入流程:文本→Embedding→存入向量数据库(附带元数据)。不需要人工审核,是自动化的过程。'
   },
   {
     type: 'multiple',
-    question: '短期记忆管理中，"分层压缩"策略结合了哪些方法？（多选）',
+    question: '短期记忆管理中,"分层压缩"策略结合了哪些方法?(多选)',
     options: [
       '近期对话完整保留',
       '中期对话做摘要压缩',
@@ -2498,44 +3044,105 @@ var ch05Questions = [
       '删除所有旧内容不保留'
     ],
     answer: [0, 1, 2],
-    explanation: '分层压缩：近期完整保留 + 中期摘要 + 远期存入长期记忆。不是简单删除，而是分层处理，类似人类的记忆机制。'
+    explanation: '分层压缩:近期完整保留 + 中期摘要 + 远期存入长期记忆。不是简单删除,而是分层处理,类似人类的记忆机制。'
   },
   {
     type: 'multiple',
-    question: '记忆生命周期包含以下哪些阶段？（多选）',
+    question: '记忆生命周期包含以下哪些阶段?(多选)',
     options: [
-      '写入（Write）',
-      '索引（Index）',
-      '检索（Retrieve）',
-      '压缩（Compress）',
-      '淘汰（Evict）'
+      '写入(Write)',
+      '索引(Index)',
+      '检索(Retrieve)',
+      '压缩(Compress)',
+      '淘汰(Evict)'
     ],
     answer: [0, 1, 2, 3, 4],
-    explanation: '记忆生命周期完整包含五个阶段：写入→索引→检索→压缩→淘汰。每个阶段都需要工程化治理。'
+    explanation: '记忆生命周期完整包含五个阶段:写入→索引→检索→压缩→淘汰。每个阶段都需要工程化治理。'
   },
   {
     type: 'multiple',
-    question: 'Reflexion 框架的反思循环中，任务失败后会执行哪些步骤？（多选）',
+    question: 'Reflexion 框架的反思循环中,任务失败后会执行哪些步骤?(多选)',
     options: [
       '直接丢弃失败记录并重试',
-      '自我反思，分析失败原因',
+      '自我反思,分析失败原因',
       '将反思结果存入反思记忆',
       '重新执行时参考过往反思经验'
     ],
     answer: [1, 2, 3],
-    explanation: 'Reflexion 反思循环：失败后触发自我反思（分析失败原因）→将反思存入记忆→重新执行时参考过往经验。不是简单丢弃重试，而是从失败中学习。'
+    explanation: 'Reflexion 反思循环:失败后触发自我反思(分析失败原因)→将反思存入记忆→重新执行时参考过往经验。不是简单丢弃重试,而是从失败中学习。'
   },
   {
     type: 'single',
-    question: '静态长期记忆和动态长期记忆的主要区别是？',
+    question: '静态长期记忆和动态长期记忆的主要区别是?',
     options: [
       '静态记忆存向量数据库、动态记忆存本地配置',
-      '静态记忆变化频率低存配置文件直接注入Prompt，动态记忆变化频率高存向量库按相关性检索',
+      '静态记忆变化频率低存配置文件直接注入Prompt,动态记忆变化频率高存向量库按相关性检索',
       '两者存储方式相同但压缩策略不同',
-      '静态记忆需要定期压缩，动态记忆不需要压缩'
+      '静态记忆需要定期压缩,动态记忆不需要压缩'
     ],
     answer: [1],
-    explanation: '静态长期记忆（偏好/规则/知识）变化频率极低→存本地配置文件→直接注入System Prompt→不压缩。动态长期记忆（摘要/经验/模式）变化频率高→存向量数据库→按相关性语义检索→定期压缩摘要+淘汰。两者的存储方式、召回方式、压缩策略和更新频率都不同。'
+    explanation: '静态长期记忆(偏好/规则/知识)变化频率极低→存本地配置文件→直接注入System Prompt→不压缩。动态长期记忆(摘要/经验/模式)变化频率高→存向量数据库→按相关性语义检索→定期压缩摘要+淘汰。两者的存储方式、召回方式、压缩策略和更新频率都不同。'
+  }
+  },
+  {
+    type: 'single',
+    question: '静态 Prompt 和动态 Prompt 的核心区别是什么？',
+    options: [
+      '静态Prompt只用于System Prompt，动态Prompt只用于User Prompt',
+      '静态Prompt整个会话不变放最前面100%命中缓存，动态Prompt每轮变化放后面按变化频率分层',
+      '静态Prompt和动态Prompt只是不同命名没有实质区别',
+      '静态Prompt不能包含工具定义，动态Prompt才能包含'
+    ],
+    answer: [1],
+    explanation: '静态Prompt（角色+规则+工具Schema+Skill触发词）整个会话不变，放Prompt最前面100%命中缓存。动态Prompt（记忆召回+对话历史+用户输入）每轮都变，放后面按变化频率分层组装。'
+  },
+  {
+    type: 'single',
+    question: '多轮对话状态爆炸的四层泄压体系中，Layer 4 兜底策略包含什么？',
+    options: [
+      'Token Budget全局预算控制',
+      '语义保护型压缩和三层压缩触发',
+      '记忆治理和召回数量硬限制',
+      '紧急压缩（413）+ 降级回答 + 自动会话切分 + 人工介入'
+    ],
+    answer: [3],
+    explanation: 'Layer 4是兜底层，当预防+压缩+淘汰都不够时启动：紧急压缩（413触发最激进压缩）+ 降级回答（建议开新会话）+ 自动会话切分（超50轮自动摘要开新会话）+ 人工介入。其他选项分别对应Layer 1、2、3。'
+  },
+  {
+    type: 'multiple',
+    question: 'Prompt动态组装的四层叠放顺序中，哪些层可以命中缓存？（多选）',
+    options: [
+      'Layer 1 静态框架（System Prompt + 工具Schema + Skill触发词）',
+      'Layer 2 记忆注入（长期记忆召回片段）',
+      'Layer 3 对话历史（多轮交互记录+工具返回结果）',
+      'Layer 4 当前请求（用户输入）'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Layer 1固定不变100%命中缓存，Layer 2同会话内部分命中缓存，Layer 3的旧部分可命中缓存。Layer 4每次不同完全不命中缓存。'
+  },
+  {
+    type: 'single',
+    question: 'Mem0 的三层记忆中,Procedural Memory 存储的是什么类型的信息?',
+    options: [
+      '具体的交互片段,如"用户上周问了什么"',
+      '从交互中提取的结构化知识,如"用户偏好简洁风格"',
+      '从历史交互中总结的"怎么做"类技能知识,如"处理JSON错误先检查编码"',
+      '所有原始对话记录的备份'
+    ],
+    answer: [2],
+    explanation: 'Procedural Memory（过程记忆）存储从历史交互中总结的技能类知识,如"处理JSON解析错误时,先检查编码再检查格式"。Episodic 存具体交互片段,Semantic 存结构化知识。'
+  },
+  {
+    type: 'single',
+    question: 'Letta（MemGPT）的记忆分页机制中,Core Memory 和 Archival Memory 的关系类似操作系统的什么概念?',
+    options: [
+      '进程和线程',
+      'RAM（内存）和磁盘（外部存储）',
+      '缓存和数据库',
+      '内核空间和用户空间'
+    ],
+    answer: [1],
+    explanation: 'Letta 借鉴 OS 虚拟内存机制:Core Memory 类似 RAM 常驻上下文（放最关键信息,&lt; 2000 token）,Archival Memory 类似磁盘外部存储（放历史交互）。Core 满了自动换出到 Archival,需要时换入。'
   }
 ];
 
@@ -2545,33 +3152,66 @@ setTimeout(() => { Quiz.render('quizArea', ch05Questions); }, 500);
 <!-- ===== L3 开放题 ===== -->
 <div class="quiz-section" style="margin-top: 24px;">
   <div class="quiz-header">
-    <h3>🧠 L3 开放题（面试高频）</h3>
+    <h3>🧠 L3 开放题(面试高频)</h3>
     <span class="quiz-score" style="color: var(--color-accent);">深度思考 · 无标准答案</span>
   </div>
   <div class="quiz-body">
     <div class="quiz-question">
       <div class="q-type" style="background: var(--color-accent); color: white;">开放题</div>
-      <div class="q-text">为什么不是每轮对话都触发长期记忆写入？什么信息"值得记住"？请描述记忆写入的完整链路。</div>
+      <div class="q-text">为什么不是每轮对话都触发长期记忆写入?什么信息"值得记住"?请描述记忆写入的完整链路。</div>
       <div class="quiz-explanation" style="display: block; background: var(--color-bg-code); border: 1px solid var(--color-border);">
-        <strong>参考思路：</strong><br><br>
-        不是每轮都触发，否则记忆库变成对话日志备份，噪音爆炸检索失效。<br><br>
-        <strong>触发条件</strong>：用户表达新偏好→静态记忆；完成有价值任务→动态记忆（经验）；发现新上下文→动态记忆（知识）；简单闲聊→不触发。<br><br>
-        <strong>判断标准</strong>：①是否有长期参考价值（未来可能再次需要）②是否包含决策/偏好/知识点（明确的、可复用的信息）。<br><br>
-        <strong>完整链路</strong>：对话→信息提取→价值评估→分类（静态/动态）→写入（配置文件/向量数据库）。<br><br>
-        关键词：筛选机制、价值评估、分类写入、不是全量记录。<br>
-        关联章节：4.10 | 面试题：Q11
+        <strong>参考思路:</strong><br><br>
+        不是每轮都触发,否则记忆库变成对话日志备份,噪音爆炸检索失效。<br><br>
+        <strong>触发条件</strong>:用户表达新偏好→静态记忆;完成有价值任务→动态记忆(经验);发现新上下文→动态记忆(知识);简单闲聊→不触发。<br><br>
+        <strong>判断标准</strong>:1是否有长期参考价值(未来可能再次需要)2是否包含决策/偏好/知识点(明确的、可复用的信息)。<br><br>
+        <strong>完整链路</strong>:对话→信息提取→价值评估→分类(静态/动态)→写入(配置文件/向量数据库)。<br><br>
+        关键词:筛选机制、价值评估、分类写入、不是全量记录。<br>
+        关联章节:4.10 | 面试题:Q11
       </div>
     </div>
     <div class="quiz-question">
       <div class="q-type" style="background: var(--color-accent); color: white;">开放题</div>
-      <div class="q-text">如果召回太多长期记忆，会导致什么问题？如何防控上下文污染？请描述召回决策机制和四道防线。</div>
+      <div class="q-text">如果召回太多长期记忆,会导致什么问题?如何防控上下文污染?请描述召回决策机制和四道防线。</div>
       <div class="quiz-explanation" style="display: block; background: var(--color-bg-code); border: 1px solid var(--color-border);">
-        <strong>参考思路：</strong><br><br>
-        <strong>三大危害</strong>：①注意力稀释（模型关注无关内容忽略核心问题）②指令冲突（多条记忆互相矛盾）③Token浪费（无关记忆消耗上下文窗口）。<br><br>
-        <strong>召回决策机制</strong>（三维度评分）：意图匹配（语义相似度）× 时间衰减（越近期权重越高）× 频率加权（多次验证有效的记忆权重更高）。综合评分决定是否召回。<br><br>
-        <strong>四道防线</strong>：①数量上限（≤5条，简单≤3）②相关性阈值（相似度<0.7不召回）③冲突检测（矛盾记忆取最新）④优先级排序（核心指令>最近经验>补充信息）。<br><br>
-        关键词：上下文污染、注意力稀释、指令冲突、四道防线、召回评分公式。<br>
-        关联章节：4.11 | 面试题：Q12
+        <strong>参考思路:</strong><br><br>
+        <strong>三大危害</strong>:1注意力稀释(模型关注无关内容忽略核心问题)2指令冲突(多条记忆互相矛盾)3Token浪费(无关记忆消耗上下文窗口)。<br><br>
+        <strong>召回决策机制</strong>(三维度评分):意图匹配(语义相似度)× 时间衰减(越近期权重越高)× 频率加权(多次验证有效的记忆权重更高)。综合评分决定是否召回。<br><br>
+        <strong>四道防线</strong>:1数量上限(≤5条,简单≤3)2相关性阈值(相似度<0.7不召回)3冲突检测(矛盾记忆取最新)4优先级排序(核心指令>最近经验>补充信息)。<br><br>
+        关键词:上下文污染、注意力稀释、指令冲突、四道防线、召回评分公式。<br>
+        关联章节:4.11 | 面试题:Q12
+      </div>
+    </div>
+    <div class="quiz-question">
+      <div class="q-type" style="background: var(--color-accent); color: white;">开放题</div>
+      <div class="q-text">动态Prompt和静态Prompt有什么区别？Agent每轮对话开始时，上下文是如何动态组装的？为什么固定前缀放最前面能最大化缓存命中率？</div>
+      <div class="quiz-explanation" style="display: block; background: var(--color-bg-code); border: 1px solid var(--color-border);">
+        <strong>参考思路:</strong><br><br>
+        <strong>静态Prompt</strong> = System Prompt（角色+规则） + 工具Schema + Skill触发词，整个会话不变，是Agent的"宪法"。<br><br>
+        <strong>动态Prompt</strong> = 记忆召回片段 + Skill完整指令 + 对话历史 + 用户当前输入，每轮都变。<br><br>
+        <strong>组装策略</strong>：四层叠放，固定→半固定→动态→当前请求。<br>
+        Layer 1 静态框架（100%缓存命中）<br>
+        Layer 2 记忆注入（同会话内部分命中缓存）<br>
+        Layer 3 对话历史（旧部分可缓存）<br>
+        Layer 4 当前请求（完全不命中缓存）<br><br>
+        <strong>为什么固定前缀放最前面</strong>：Prompt Caching是前缀缓存，只有Prompt开头的不变部分才能命中缓存。System Prompt+工具Schema放在最前面确保每轮前缀一致，100%命中缓存，节省50%+输入成本。合并固定层为一个system消息增加前缀连续性，更容易达到OpenAI缓存最低5个消息触发阈值。<br><br>
+        关键词:静态框架、动态组装、四层叠放、缓存命中率、前缀缓存。<br>
+        关联章节:5.11a | 面试题:Q14
+      </div>
+    </div>
+    <div class="quiz-question">
+      <div class="q-type" style="background: var(--color-accent); color: white;">开放题</div>
+      <div class="q-text">多轮对话Agent的状态爆炸怎么解决？请描述四层泄压体系的完整框架，以及每层递进的关系。</div>
+      <div class="quiz-explanation" style="display: block; background: var(--color-bg-code); border: 1px solid var(--color-border);">
+        <strong>参考思路:</strong><br><br>
+        <strong>问题定义</strong>：多轮对话中状态从线性增长变为树状展开（工具嵌套）和倍数增长（推理分叉），导致上下文溢出、注意力稀释、成本爆炸和行为漂移。<br><br>
+        <strong>四层泄压体系</strong>：<br><br>
+        <strong>Layer 1 预防</strong>——不让压力累积：Token Budget全局预算控制、JIT召回原则、输出长度约束、工具结果精简。<br><br>
+        <strong>Layer 2 压缩</strong>——在信息完整前提下缩减体积：语义保护型压缩（锁定System Prompt和行动-结果对）、三层压缩触发（主动80%→后台60%→反应式413）、增量压缩。<br><br>
+        <strong>Layer 3 淘汰</strong>——扔掉不再需要的：记忆治理策略（时效+容量+质量三维度淘汰）、召回数量硬限制≤5条、工具结果裁剪、淘汰前归档。<br><br>
+        <strong>Layer 4 兜底</strong>——当所有策略都不够时：紧急压缩（413触发最激进压缩）、降级回答、自动会话切分、人工介入。<br><br>
+        <strong>递进关系</strong>：预防失败→压缩兜住，压缩不够→淘汰兜住，淘汰也不够→紧急兜底。不是某一层单独起作用，而是四层递进式泄压。<br><br>
+        关键词:状态爆炸、四层泄压、预算控制、语义保护型压缩、记忆治理、紧急兜底。<br>
+        关联章节:5.11b | 面试题:Q15
       </div>
     </div>
   </div>

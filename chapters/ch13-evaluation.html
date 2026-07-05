@@ -322,6 +322,12 @@ for sample in test_dataset:
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">压力测试、对抗测试</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">&gt; 85%</td>
       </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">工具调用准确率</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">正确工具调用数 / 总工具调用数 × 100%</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工具选择与参数生成质量评估</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">&gt; 95%</td>
+      </tr>
       <tr>
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">幻觉率</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary); font-family: monospace;">含幻觉回答数 / 总回答数 × 100%</td>
@@ -1019,6 +1025,27 @@ correctness = GEval(
       ③ <strong>边界覆盖</strong>：包含空输入、超长文本、提示注入等异常 case。<br>
       ④ <strong>可演进</strong>：线上发现的 bad case 定期归入回归集，持续扩充。<br><br>
       <strong>实践建议</strong>：回归集至少 50 个 case，集成到 CI/CD 流水线，每次 PR 自动运行。退化用例数必须为 0 才允许合并。建议按功能模块分组管理，定位问题更快。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: 什么是影子测试（Shadow Testing）？在 Agent 评估中有什么作用？</div>
+    <div class="qa-answer">
+      <strong>影子测试</strong>：在生产环境同时运行新旧两套 Agent 的逻辑，对比输出差异，精准验证优化效果。类似 A/B 测试但不影响用户体验——两套逻辑并行运行，用户只看到旧版结果，新版结果仅用于内部对比。<br><br>
+      <strong>作用</strong>：① 验证新版本是否真的更好，不只是离线指标好看；② 发现离线评估未覆盖的生产环境 edge case；③ 降低新版本上线风险——先影子跑一段时间确认无异常再正式切换。<br><br>
+      面试要点：影子测试是"从离线评估到上线"之间的最后一道验证，体现专业评估思维而非"改完就上线"的粗糙做法。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q12: 怎么量化评估一个 Agent 的性能好坏？2026 面试四维评估框架是什么？</div>
+    <div class="qa-answer">
+      避免自学答题片面、话术不专业的问题，我从四个维度量化评估：<br><br>
+      <strong>① 核心任务成功率</strong>：最终能完整解决用户需求的比例。这是最根本的指标——能干成事才是硬道理。生产环境要求 >90%。<br><br>
+      <strong>② 平均推理步数</strong>：步数越少 → 模型推理成本越低 → 响应速度越快 → 体验更好。反映 Agent 的"效率"而非"能力"。<br><br>
+      <strong>③ 工具调用准确率</strong>：避免无效/错误的工具调用。反映 Agent "决策精准度"——选对了工具、传对了参数才算成功。<br><br>
+      <strong>④ 影子测试</strong>：生产环境同时运行新旧两套 Agent 逻辑，对比输出差异，精准验证优化效果。这是专业评估的标志，避免"凭感觉说优化了"的模糊表述。<br><br>
+      面试要点：四维框架覆盖能力（成功率）、效率（步数）、精准度（工具准确率）、验证（影子测试），体现系统化评估思维。
     </div>
   </div>
 </div>

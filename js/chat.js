@@ -1,6 +1,7 @@
 /* ========================================
    AI Agent Guide - AI 对话助手
    支持 OpenAI 协议，用户自定义 API 配置
+   支持章节上下文感知（提取当前章节内容注入 system prompt）
    ======================================== */
 
 const AIChat = {
@@ -10,7 +11,19 @@ const AIChat = {
   isLoading: false,
   abortController: null,
 
+  // 当前章节上下文
+  chapterContext: {
+    id: '',
+    title: '',
+    num: 0,
+    section: '',
+    contentText: ''  // 提取的章节纯文本（截断到 3000 字符）
+  },
+
   STORAGE_KEY: 'ai-agent-guide-api-configs',
+
+  // 章节内容最大长度（字符数），避免 token 过多
+  MAX_CHAPTER_CONTENT_LENGTH: 3000,
 
   /**
    * 初始化
@@ -19,11 +32,169 @@ const AIChat = {
     this.loadConfigs();
     this.bindEvents();
     this.renderModelSelector();
+    this.updateQuickPrompts();
     
     // 欢迎消息
     if (this.messages.length === 0) {
       this.addMessage('assistant', '你好！我是你的 AI 学习助手。阅读教程时如果有任何不理解的地方，随时问我。');
     }
+  },
+
+  /**
+   * 更新章节上下文（由 main.js 的 loadChapter 调用）
+   * @param {Object} chapterInfo - { id, title, num, section }
+   */
+  updateChapterContext(chapterInfo) {
+    this.chapterContext = {
+      ...this.chapterContext,
+      ...chapterInfo
+    };
+    
+    // 提取当前页面章节的纯文本内容
+    this.extractChapterContent();
+    
+    // 更新快捷提示词（根据章节动态生成）
+    this.updateQuickPrompts();
+  },
+
+  /**
+   * 从页面内容区提取当前章节的纯文本
+   * 提取规则：取 contentBody 下的文字，去除 HTML 标签，截断到指定长度
+   */
+  extractChapterContent() {
+    const contentBody = document.getElementById('contentBody');
+    if (!contentBody) {
+      this.chapterContext.contentText = '';
+      return;
+    }
+
+    // 克隆节点，移除 script/style/pre 标签后再提取文本
+    const clone = contentBody.cloneNode(true);
+    clone.querySelectorAll('script, style, pre, .skeleton-loader').forEach(el => el.remove());
+    
+    let text = clone.textContent || clone.innerText || '';
+    // 清理多余空白
+    text = text.replace(/\s+/g, ' ').trim();
+    // 截断
+    if (text.length > this.MAX_CHAPTER_CONTENT_LENGTH) {
+      text = text.substring(0, this.MAX_CHAPTER_CONTENT_LENGTH) + '...（内容过长，已截断）';
+    }
+    
+    this.chapterContext.contentText = text;
+  },
+
+  /**
+   * 根据当前章节动态更新快捷提示词
+   */
+  updateQuickPrompts() {
+    const container = document.getElementById('chatQuickPrompts');
+    if (!container) return;
+
+    const { title, num } = this.chapterContext;
+    
+    let promptsHtml;
+    if (!title || !num) {
+      // 首页/未选择章节 - 通用引导提示词
+      promptsHtml = `
+        <button class="quick-prompt" data-prompt="什么是 AI Agent？它和 ChatBot 有什么区别？">🤖 什么是 Agent</button>
+        <button class="quick-prompt" data-prompt="我想学习 AI Agent，应该从哪一章开始？">📚 学习路线</button>
+        <button class="quick-prompt" data-prompt="AI Agent 开发需要哪些技术基础？">💡 技术基础</button>
+        <button class="quick-prompt" data-prompt="请介绍下这本教程的整体结构和亮点">📖 教程导览</button>
+        <button class="quick-prompt" data-prompt="AI Agent 目前有哪些主流框架？各有什么特点？">🔧 框架对比</button>
+      `;
+    } else {
+      // 已选择章节 - 提供章节相关的快捷提示词（增强版）
+      promptsHtml = `
+        <button class="quick-prompt" data-prompt="请总结第${num}章「${title}」的核心知识点，用表格呈现">📝 总结本节</button>
+        <button class="quick-prompt" data-prompt="请针对第${num}章「${title}」的内容，给我出5道八股面试题，附上答案和解析">🎯 八股面试题</button>
+        <button class="quick-prompt" data-prompt="请用简单的比喻解释第${num}章「${title}」的核心概念">💡 通俗解释</button>
+        <button class="quick-prompt" data-prompt="第${num}章「${title}」中有哪些容易混淆的概念？请帮我区分">🔍 易混概念</button>
+        <button class="quick-prompt" data-prompt="第${num}章「${title}」在实际工作中有哪些应用场景？">🏢 应用场景</button>
+        <button class="quick-prompt" data-prompt="请帮我梳理第${num}章「${title}」的知识脉络，形成思维导图结构">🗺️ 知识脉络</button>
+        <button class="quick-prompt" data-prompt="第${num}章「${title}」的内容在面试中会怎么考？重点是什么？">📌 面试重点</button>
+        <button class="quick-prompt" data-prompt="请用知识卡片的方式，总结第${num}章「${title}」的关键概念">🃏 知识卡片</button>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="quick-prompts-row" id="quickPromptsRow">${promptsHtml}</div>
+      <button class="quick-prompts-toggle" id="quickPromptsToggle" title="展开更多">
+        <span class="toggle-icon">▾</span>
+      </button>
+    `;
+
+    // 绑定快捷提示词事件
+    this.bindQuickPrompts();
+
+    // 绑定展开/收起按钮
+    const toggleBtn = document.getElementById('quickPromptsToggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggleQuickPrompts());
+    }
+
+    // 延迟检查是否需要展开按钮（等 DOM 渲染完）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.checkToggleNeeded());
+    });
+  },
+
+  /**
+   * 检查快捷提示词是否需要展开按钮
+   * 当提示词换行超过1行时显示展开按钮
+   */
+  checkToggleNeeded() {
+    const row = document.getElementById('quickPromptsRow');
+    const toggleBtn = document.getElementById('quickPromptsToggle');
+    if (!row || !toggleBtn) return;
+
+    // 先设为展开状态来测量真实高度
+    row.classList.add('expanded');
+    row.classList.add('visible');
+    const fullHeight = row.scrollHeight;
+    row.classList.remove('expanded');
+
+    // 如果内容超过1行（32px），显示展开按钮
+    if (fullHeight > 36) {
+      toggleBtn.style.display = 'flex';
+    } else {
+      toggleBtn.style.display = 'none';
+    }
+  },
+
+  /**
+   * 展开/收起快捷提示词
+   */
+  toggleQuickPrompts() {
+    const row = document.getElementById('quickPromptsRow');
+    const toggleBtn = document.getElementById('quickPromptsToggle');
+    if (!row || !toggleBtn) return;
+
+    const isExpanded = row.classList.contains('expanded');
+    if (isExpanded) {
+      row.classList.remove('expanded');
+      toggleBtn.classList.remove('expanded');
+    } else {
+      row.classList.add('expanded');
+      toggleBtn.classList.add('expanded');
+    }
+  },
+
+  /**
+   * 绑定快捷提示词点击事件
+   */
+  bindQuickPrompts() {
+    const input = document.getElementById('chatInput');
+    const quickPrompts = document.querySelectorAll('.quick-prompt');
+    quickPrompts.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (input) {
+          input.value = e.currentTarget.dataset.prompt;
+          input.focus();
+          // 直接发送
+          this.send();
+        }
+      });
+    });
   },
 
   /**
@@ -83,6 +254,8 @@ const AIChat = {
     
     if (input) {
       input.addEventListener('keydown', (e) => {
+        // 输入法组合输入中（如中文拼音选字），不拦截 Enter
+        if (e.isComposing) return;
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           this.send();
@@ -95,17 +268,7 @@ const AIChat = {
     }
 
     // 快捷提示词
-    const quickPrompts = document.querySelectorAll('.quick-prompt');
-    quickPrompts.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        if (input) {
-          input.value = e.target.dataset.prompt;
-          input.focus();
-          // 可选：直接发送
-          // this.send();
-        }
-      });
-    });
+    this.bindQuickPrompts();
     
     // 模型切换
     const selector = document.getElementById('modelSelector');
@@ -126,6 +289,120 @@ const AIChat = {
     if (clearBtn) {
       clearBtn.addEventListener('click', () => this.clearMessages());
     }
+  },
+
+  /**
+   * 构建章节感知的 system prompt
+   * 增强版：支持文章总结、Agent知识处理、面试八股、知识图谱构建等场景
+   */
+  buildSystemPrompt() {
+    const { title, num, section, contentText } = this.chapterContext;
+    
+    // ========== 基础角色设定 ==========
+    let systemPrompt = `你是"AI Agent 百科学习助教"，专为《AI Agent 渐进式可视化教程》设计。
+你的核心使命：帮助用户高效学习 AI Agent 知识体系，顺利通过技术面试，成为合格的 AI Agent 开发者。
+
+## 🎯 你的核心能力
+1. **文章总结** - 提炼章节核心知识点，结构化呈现
+2. **知识处理** - 将复杂概念转化为易懂的知识卡片、对比表格、思维导图
+3. **面试八股** - 生成高频面试题，附带详细解析和记忆技巧
+4. **概念解释** - 用生活化比喻、类比、图解描述解释抽象概念
+5. **知识串联** - 建立章节间联系，构建完整知识图谱
+6. **实战指导** - 结合代码示例和实际应用场景
+
+## 📚 知识体系范围
+你精通以下 AI Agent 核心领域：
+- **基础概念**：LLM、Agent vs ChatBot、ReAct 模式、Agent 架构
+- **记忆系统**：短期记忆、长期记忆、向量数据库、RAG
+- **工具使用**：Function Calling、MCP 协议、Skills、CLI 能力
+- **多 Agent 协作**：多 Agent 架构、LangGraph 状态机、Swarm、AutoGen
+- **框架平台**：LangChain、LangGraph、Dify、Coze、AutoGen、Semantic Kernel、Spring AI
+- **工程化**：Agent 评估、可观测性、安全防护、部署运维、推理框架
+- **前沿技术**：多模态 Agent、自主 Agent、企业级 Agent 平台
+
+## 💡 回答规范
+### 通用要求
+- 使用中文回答，格式清晰，使用 Markdown 排版
+- 优先基于当前章节内容回答，必要时综合其他章节知识
+- 回答要有层次：先结论，后展开，最后总结
+- 善用表格、列表、代码块、引用等 Markdown 元素
+
+### 文章总结场景
+当用户要求"总结本节"时：
+1. 提炼 3-5 个核心知识点，每个用一句话概括
+2. 用表格展示关键概念对比（如有）
+3. 标注面试高频考点（⭐ 标记）
+4. 给出学习建议：哪些需要深入理解，哪些只需了解
+
+### 面试八股场景
+当用户要求"出八股面试题"时：
+1. 生成 5-8 道题目，包含：
+   - 单选题（考察概念理解）
+   - 多选题（考察知识全面性）
+   - 简答题（考察深度理解）
+   - 场景题（考察实战能力）
+2. 每题附带：
+   - ✅ 标准答案
+   - 💡 解析（为什么选这个，其他选项为什么错）
+   - 🎯 记忆技巧/口诀
+   - 📌 相关章节引用
+3. 最后给出本题在面试中的出现频率和重要程度
+
+### 知识处理场景
+当用户要求"梳理知识"、"知识脉络"时：
+1. 用层级结构展示知识点（类似思维导图）
+2. 标注知识点之间的依赖关系（前置/后续）
+3. 用表格对比相似概念（如 Agent vs ChatBot vs 传统机器人）
+4. 给出知识卡片格式的核心概念解释
+
+### 通俗解释场景
+当用户要求"通俗解释"时：
+1. 用生活化比喻开头（如"Agent 就像一个..."）
+2. 逐步拆解比喻中的对应关系
+3. 回归技术术语，建立映射
+4. 给出一个具体的代码/场景示例
+
+### 应用场景场景
+当用户要求"应用场景"时：
+1. 列举 3-5 个实际应用场景
+2. 每个场景说明：行业、痛点、Agent 如何解决
+3. 给出伪代码或架构示意
+4. 提及相关的开源项目或商业案例
+
+## 🎓 教学风格
+- 亲切自然，像一位经验丰富的技术导师
+- 善用"你知道吗？"、"这里有个关键点"等引导语
+- 遇到难点时会说"我们换个角度理解"
+- 鼓励用户思考，而不是直接给答案
+- 适当使用 emoji 增加可读性（但不要过度）
+
+## ⚠️ 注意事项
+- 不编造不存在的概念或技术
+- 如果用户问题超出教程范围，诚实说明并给出延伸学习建议
+- 回答长度适中：总结类 200-400 字，面试题类可适当延长
+- 代码示例必须正确且可运行（或注明是伪代码）`;
+
+    if (title && num) {
+      systemPrompt += `\n\n## 📖 当前学习章节`;
+      systemPrompt += `\n用户正在阅读：第${num}章「${title}」${section ? `（${section}）` : ''}。`;
+      
+      if (contentText) {
+        systemPrompt += `\n\n以下是当前章节的内容摘要，请基于这些内容回答问题：\n---\n${contentText}\n---`;
+      }
+      
+      systemPrompt += `\n\n请基于以上章节内容，结合你的 AI Agent 知识体系，为用户提供精准、有用的学习帮助。`;
+    } else {
+      systemPrompt += `\n\n用户目前在首页，尚未选择具体章节。`;
+      systemPrompt += `\n此时用户可能想了解：`;
+      systemPrompt += `\n- AI Agent 是什么？适合谁学？`;
+      systemPrompt += `\n- 学习路线和建议`;
+      systemPrompt += `\n- 教程的整体结构和亮点`;
+      systemPrompt += `\n请根据用户的具体问题灵活回答，并引导用户选择章节深入学习。`;
+    }
+    
+    systemPrompt += `\n\n现在，请开始帮助用户学习吧！`;
+    
+    return systemPrompt;
   },
 
   /**
@@ -155,11 +432,11 @@ const AIChat = {
     this.showLoading();
     
     try {
-      // 构建上下文
-      const currentChapter = document.body.dataset.chapter || '';
-      const chapterTitle = document.body.dataset.chapterTitle || '';
+      // 在发送前重新提取章节内容（确保内容是最新的）
+      this.extractChapterContent();
       
-      const systemPrompt = `你是一个 AI Agent 学习助教。用户正在学习《AI Agent 渐进式可视化教程》。${chapterTitle ? `当前正在阅读：${chapterTitle}。` : ''}请用简洁、准确的方式回答问题，帮助用户理解 AI Agent 相关概念。回答用中文，格式清晰。`;
+      // 构建章节感知的 system prompt
+      const systemPrompt = this.buildSystemPrompt();
       
       const apiMessages = [
         { role: 'system', content: systemPrompt },
@@ -311,20 +588,44 @@ const AIChat = {
     `;
     
     container.appendChild(msgEl);
+    
+    // 触发 Prism 代码高亮
+    if (typeof Prism !== 'undefined') {
+      msgEl.querySelectorAll('pre code').forEach(block => {
+        Prism.highlightElement(block);
+      });
+    }
+    
     container.scrollTop = container.scrollHeight;
   },
 
   /**
-   * 格式化内容（简单Markdown）
+   * 格式化内容（Markdown 渲染）
    */
   formatContent(text) {
+    if (typeof marked !== 'undefined') {
+      try {
+        marked.setOptions({
+          breaks: true,
+          gfm: true,
+          highlight: function(code, lang) {
+            if (typeof Prism !== 'undefined' && Prism.languages[lang]) {
+              return Prism.highlight(code, Prism.languages[lang], lang);
+            }
+            return code;
+          }
+        });
+        return marked.parse(text);
+      } catch (e) {
+        console.warn('marked 渲染失败，降级为纯文本', e);
+      }
+    }
+    // 降级：简单 Markdown 替换
     return text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, code) => {
-        return `<pre>${code.trim()}</pre>`;
-      })
+      .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br>');
