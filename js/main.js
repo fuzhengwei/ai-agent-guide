@@ -1383,10 +1383,10 @@ const App = {
       `;
       q.options.forEach((opt, oi) => {
         html += `
-          <label class="exam-option" onclick="App.selectExamAnswer(${i}, ${oi})">
-            <input type="${q.type === 'single' ? 'radio' : 'checkbox'}" name="exam-q${i}" value="${oi}">
+          <div class="exam-option" data-qindex="${i}" data-opt="${oi}" onclick="App.selectExamAnswer(${i}, ${oi})">
+            <input type="${q.type === 'single' ? 'radio' : 'checkbox'}" name="exam-q${i}" value="${oi}" onclick="event.stopPropagation()">
             <span class="exam-option-text">${String.fromCharCode(65 + oi)}. ${this.escapeHtml(opt)}</span>
-          </label>
+          </div>
         `;
       });
       html += `
@@ -1418,9 +1418,10 @@ const App = {
       const qEl = document.querySelector(`.exam-question[data-qindex="${qIndex}"]`);
       if (qEl) {
         qEl.querySelectorAll('.exam-option').forEach((el, i) => {
-          el.classList.toggle('selected', i === optionIndex);
+          const isChecked = i === optionIndex;
+          el.classList.toggle('selected', isChecked);
           const input = el.querySelector('input');
-          if (input) input.checked = i === optionIndex;
+          if (input) input.checked = isChecked;
         });
       }
     } else {
@@ -1435,9 +1436,10 @@ const App = {
       const qEl = document.querySelector(`.exam-question[data-qindex="${qIndex}"]`);
       if (qEl) {
         qEl.querySelectorAll('.exam-option').forEach((el, i) => {
-          el.classList.toggle('selected', arr.includes(i));
+          const isSelected = arr.includes(i);
+          el.classList.toggle('selected', isSelected);
           const input = el.querySelector('input');
-          if (input) input.checked = arr.includes(i);
+          if (input) input.checked = isSelected;
         });
       }
     }

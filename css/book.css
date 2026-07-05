@@ -2893,25 +2893,78 @@ p {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
   font-size: var(--text-sm);
+  position: relative;
+  user-select: none;
+}
+/* 隐藏原生 input，用自定义样式 */
+.exam-option input[type="radio"],
+.exam-option input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.exam-option input[type="radio"] {
+  border-radius: 50%;
+}
+.exam-option input[type="radio"]:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 3px white;
+}
+.exam-option input[type="checkbox"]:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+.exam-option input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
 }
 .exam-option:hover {
   background: var(--color-surface-hover);
-  border-color: var(--color-border-dark);
+  border-color: var(--color-accent);
+  transform: translateX(3px);
 }
 .exam-option.selected {
-  border-color: var(--color-accent);
-  background: rgba(231, 111, 81, 0.06);
+  border-color: var(--color-accent) !important;
+  background: linear-gradient(135deg, rgba(212, 165, 116, 0.12) 0%, rgba(212, 165, 116, 0.06) 100%) !important;
+  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.12);
+  transform: translateX(3px);
+}
+.exam-option.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: var(--color-accent);
+  border-radius: 0 2px 2px 0;
 }
 .exam-option-text {
   color: var(--color-text-secondary);
 }
 .exam-option.selected .exam-option-text {
   color: var(--color-text);
+  font-weight: 500;
 }
 .exam-footer {
   display: flex;
