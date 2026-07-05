@@ -1349,6 +1349,16 @@ p {
   font-weight: 600;
 }
 
+/* 项目按钮 - 绿色主题 */
+.toolbar-btn-project {
+  color: #2ecc71;
+}
+.toolbar-btn-project:hover {
+  background: rgba(46, 204, 113, 0.12);
+  border-left-color: #2ecc71;
+  color: #27ae60;
+}
+
 .chat-header {
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--color-border);
