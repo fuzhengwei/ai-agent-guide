@@ -1470,6 +1470,16 @@ p {
   color: #27ae60;
 }
 
+/* GitHub 按钮 - 黑色主题 */
+.toolbar-btn-github {
+  color: #24292e;
+}
+.toolbar-btn-github:hover {
+  background: rgba(36, 41, 46, 0.1);
+  border-left-color: #24292e;
+  color: #000000;
+}
+
 .chat-header {
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--color-border);
