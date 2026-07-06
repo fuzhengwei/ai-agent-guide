@@ -433,7 +433,7 @@ const App = {
           </div>
 
           <div class="cover-badge">2026 · 21章渐进式可视化教程</div>
-          <h1 class="hero-title">AI Agent Guide</h1>
+          <h1 class="hero-title">AI Agent Guide - 通识教程</h1>
           <p class="hero-subtitle">从基础认知到面试通关 · 21章渐进式可视化教程</p>
           
           <div class="hero-btn-group">
