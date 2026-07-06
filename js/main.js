@@ -132,15 +132,10 @@ const App = {
       });
     }
 
-    // 考试遮罩关闭
+    // 考试遮罩 - 点击空白不跳转
     const examOverlay = document.getElementById('examOverlay');
     if (examOverlay) {
-      examOverlay.addEventListener('click', (e) => {
-        if (e.target === examOverlay) {
-          this.showExamExitConfirm();
-          this.closeExam();
-        }
-      });
+      // 不再绑定点击空白关闭考试的事件
     }
     
     // TOC 折叠按钮
@@ -403,7 +398,6 @@ const App = {
 
     contentArea.innerHTML = `
       <div class="hero-section page-transition">
-        <div class="hero-bg"></div>
         <div class="hero-content">
           <div class="hero-agent-loop">
             <div class="hero-loop-step">
@@ -468,6 +462,94 @@ const App = {
             <div class="hero-map-title">📚 章节导航 · 点击开始</div>
             <div class="hero-map-scroll">
               ${chaptersMap}
+            </div>
+          </div>
+
+          <!-- 实战项目区域 -->
+          <div class="hero-projects">
+            <div class="hero-map-title">🏗️ 实战项目 · 点击进入</div>
+            <div class="project-group">
+              <a class="project-card" href="https://bugstack.cn/md/project/walissh/walissh.html" target="_blank">
+                <span class="project-icon">🖥️</span>
+                <div class="project-info">
+                  <span class="project-name">WaLiSSH - AI Shell 智能终端</span>
+                  <span class="project-desc">AI 驱动的 Shell 智能终端，对话式操作云服务器</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/project/walicode/walicode.html" target="_blank">
+                <span class="project-icon">🤖</span>
+                <div class="project-info">
+                  <span class="project-name">WaLiSSH - AI Coding 辅助编码</span>
+                  <span class="project-desc">AI 辅助编程助手，智能代码生成与审查</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/project/ai-mcp-gateway/ai-mcp-gateway.html" target="_blank">
+                <span class="project-icon">🌐</span>
+                <div class="project-info">
+                  <span class="project-name">AI MCP Gateway 网关服务系统</span>
+                  <span class="project-desc">MCP 协议网关，统一管理 AI 工具调用</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/project/ai-agent-scaffold/ai-agent-scaffold.html" target="_blank">
+                <span class="project-icon">🧩</span>
+                <div class="project-info">
+                  <span class="project-name">AI Agent 脚手架 + 场景应用</span>
+                  <span class="project-desc">Spring AI + LangChain4j + Google ADK，智能体架构方案</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/project/ai-knowledge/ai-knowledge.html" target="_blank">
+                <span class="project-icon">🔗</span>
+                <div class="project-info">
+                  <span class="project-name">AI Agent 拖拉拽 + 动态配置</span>
+                  <span class="project-desc">RAG、MCP、Prompt 动态编排与配置</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/zsxq/project/openai-code-review.html" target="_blank">
+                <span class="project-icon">🔍</span>
+                <div class="project-info">
+                  <span class="project-name">OpenAI 代码自动评审组件</span>
+                  <span class="project-desc">AI 驱动的代码评审，自动发现代码问题</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/zsxq/project/chatgpt.html" target="_blank">
+                <span class="project-icon">🔑</span>
+                <div class="project-info">
+                  <span class="project-name">OpenAI 大模型微服务应用体系构建</span>
+                  <span class="project-desc">API-SDK、鉴权、公众号、微信支付</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+              <a class="project-card" href="https://bugstack.cn/md/zsxq/project/chatbot-api.html" target="_blank">
+                <span class="project-icon">💬</span>
+                <div class="project-info">
+                  <span class="project-name">ChatGPT AI 问答助手</span>
+                  <span class="project-desc">小型项目，对接知识星球</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+            </div>
+
+            <div class="project-divider">
+              <span class="divider-line"></span>
+              <span class="divider-text">AI 新范式</span>
+              <span class="divider-line"></span>
+            </div>
+
+            <div class="project-group">
+              <a class="project-card project-card-highlight" href="https://bugstack.cn/md/project/ai-new-paradigm/ai-new-paradigm.html" target="_blank">
+                <span class="project-icon">🚀</span>
+                <div class="project-info">
+                  <span class="project-name">AI 新范式（0编码）</span>
+                  <span class="project-desc">Vibe Coding 方式开发 + 运维（部署、压测、调优）</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
             </div>
           </div>
         </div>
@@ -1364,25 +1446,76 @@ const App = {
     const container = document.getElementById('examContainer');
     if (!container) return;
 
-    let html = `
-      <div class="exam-header">
-        <h2>📝 AI Agent 综合考试</h2>
-        <div class="exam-info">
-          <span class="exam-count">共 ${this.examQuestions.length} 题</span>
-          <span class="exam-timer" id="examTimer">⏱ 30:00</span>
-          <button class="exam-close-btn" onclick="App.closeExam()">✕</button>
+    // 按章节分组题目
+    const chapterGroups = {};
+    this.examQuestions.forEach((q, i) => {
+      const chNum = parseInt(q.chapterId.replace('ch', ''));
+      const chInfo = this.chapters.find(c => c.id === q.chapterId);
+      const label = chInfo ? `第${chNum}章 ${chInfo.title}` : `第${chNum}章`;
+      if (!chapterGroups[q.chapterId]) {
+        chapterGroups[q.chapterId] = { label, chNum, indices: [] };
+      }
+      chapterGroups[q.chapterId].indices.push(i);
+    });
+    // 按章节号排序
+    const sortedGroups = Object.values(chapterGroups).sort((a, b) => a.chNum - b.chNum);
+
+    // 右侧题目导航栏 HTML
+    let sidebarHtml = `
+      <div class="exam-sidebar" id="examSidebar">
+        <div class="exam-sidebar-title" onclick="App.toggleExamSidebar()">📋 答题卡 <span style="margin-left:auto;font-size:11px;color:var(--color-text-tertiary)">▼</span></div>
+        <div class="exam-sidebar-progress">
+          已答 <span class="answered-count" id="examAnsweredCount">0</span> / ${this.examQuestions.length} 题
         </div>
+    `;
+    sortedGroups.forEach(group => {
+      sidebarHtml += `
+        <div class="exam-chapter-group">
+          <div class="exam-chapter-label"><span class="ch-icon">📖</span>${group.label}</div>
+          <div class="exam-q-grid">
+      `;
+      group.indices.forEach(idx => {
+        sidebarHtml += `<div class="exam-q-dot" data-qindex="${idx}" onclick="App.scrollToExamQuestion(${idx})" title="第${idx + 1}题">${idx + 1}</div>`;
+      });
+      sidebarHtml += `
+          </div>
+        </div>
+      `;
+    });
+    sidebarHtml += `
       </div>
-      <div class="exam-progress-bar">
-        <div class="exam-progress-fill" id="examProgressFill" style="width:0%"></div>
+      <div class="exam-sidebar-submit">
+        <button class="exam-submit-btn" onclick="App.submitExam()">📝 我要交卷</button>
       </div>
-      <div class="exam-body">
+    `;
+
+    // 左侧题目区 HTML
+    let mainHtml = `
+      <div class="exam-main">
+        <div class="exam-header">
+          <div class="exam-header-left">
+            <div class="exam-logo">📝</div>
+            <div class="exam-header-text">
+              <h2>AI Agent 综合考试</h2>
+              <p class="exam-subtitle">21章知识覆盖 · 随机抽题 · 限时30分钟</p>
+            </div>
+          </div>
+          <div class="exam-header-right">
+            <span class="exam-count-badge">共 ${this.examQuestions.length} 题</span>
+            <span class="exam-timer" id="examTimer">⏱ 30:00</span>
+            <button class="exam-back-btn" onclick="App.showExamExitConfirm()">← 回到专业</button>
+          </div>
+        </div>
+        <div class="exam-progress-bar">
+          <div class="exam-progress-fill" id="examProgressFill" style="width:0%"></div>
+        </div>
+        <div class="exam-body">
     `;
 
     this.examQuestions.forEach((q, i) => {
       const chNum = q.chapterId.replace('ch', '');
-      html += `
-        <div class="exam-question" data-qindex="${i}">
+      mainHtml += `
+        <div class="exam-question" data-qindex="${i}" id="examQ${i}">
           <div class="exam-q-header">
             <span class="exam-q-num">Q${i + 1}</span>
             <span class="exam-q-type ${q.type}">${q.type === 'single' ? '单选' : '多选'}</span>
@@ -1392,27 +1525,79 @@ const App = {
           <div class="exam-options">
       `;
       q.options.forEach((opt, oi) => {
-        html += `
+        mainHtml += `
           <div class="exam-option" data-qindex="${i}" data-opt="${oi}" onclick="App.selectExamAnswer(${i}, ${oi})">
             <input type="${q.type === 'single' ? 'radio' : 'checkbox'}" name="exam-q${i}" value="${oi}" onclick="event.stopPropagation()">
             <span class="exam-option-text">${String.fromCharCode(65 + oi)}. ${this.escapeHtml(opt)}</span>
           </div>
         `;
       });
-      html += `
+      mainHtml += `
           </div>
         </div>
       `;
     });
 
-    html += `
-      </div>
-      <div class="exam-footer">
-        <button class="exam-submit-btn" onclick="App.submitExam()">交卷</button>
+    mainHtml += `
+        </div>
       </div>
     `;
 
-    container.innerHTML = html;
+    container.innerHTML = mainHtml + `<div class="exam-right">` + sidebarHtml + `</div>`;
+  },
+
+  /**
+   * 滚动到指定题目
+   */
+  scrollToExamQuestion(qIndex) {
+    const qEl = document.getElementById(`examQ${qIndex}`);
+    if (qEl) {
+      qEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // 高亮当前题
+      document.querySelectorAll('.exam-q-dot').forEach(dot => dot.classList.remove('current'));
+      const dot = document.querySelector(`.exam-q-dot[data-qindex="${qIndex}"]`);
+      if (dot) dot.classList.add('current');
+      // 短暂高亮题目卡片
+      qEl.style.boxShadow = '0 0 0 3px rgba(79, 70, 229, 0.25)';
+      setTimeout(() => { qEl.style.boxShadow = ''; }, 1200);
+    }
+    // 移动端：点击题号后收起侧边栏
+    const sidebar = document.getElementById('examSidebar');
+    if (sidebar && window.innerWidth <= 768) {
+      sidebar.classList.remove('expanded');
+    }
+  },
+
+  /**
+   * 切换考试侧边栏（移动端）
+   */
+  toggleExamSidebar() {
+    const sidebar = document.getElementById('examSidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('expanded');
+    }
+  },
+
+  /**
+   * 更新右侧题目导航栏状态
+   */
+  updateExamSidebar() {
+    const answered = Object.keys(this.examAnswers).length;
+    const total = this.examQuestions.length;
+    // 更新已答计数
+    const countEl = document.getElementById('examAnsweredCount');
+    if (countEl) countEl.textContent = answered;
+    // 更新每个题目的圆点状态
+    this.examQuestions.forEach((_, i) => {
+      const dot = document.querySelector(`.exam-q-dot[data-qindex="${i}"]`);
+      if (dot) {
+        if (this.examAnswers[i] && this.examAnswers[i].length > 0) {
+          dot.classList.add('answered');
+        } else {
+          dot.classList.remove('answered');
+        }
+      }
+    });
   },
 
   /**
@@ -1459,6 +1644,9 @@ const App = {
     const total = this.examQuestions.length;
     const fill = document.getElementById('examProgressFill');
     if (fill) fill.style.width = `${(answered / total) * 100}%`;
+
+    // 更新右侧题目导航栏
+    this.updateExamSidebar();
   },
 
   /**
@@ -1547,7 +1735,7 @@ const App = {
       })
       .join('、');
 
-    // 渲染结果
+    // 渲染结果：成绩 + 所有题目答案
     const container = document.getElementById('examContainer');
     if (!container) return;
 
@@ -1567,7 +1755,8 @@ const App = {
           <div class="exam-stat"><span class="stat-val">${total - correct}</span><span class="stat-key">答错</span></div>
           <div class="exam-stat"><span class="stat-val">${total}</span><span class="stat-key">总题数</span></div>
         </div>
-      `;
+      </div>
+    `;
 
     if (wrongQuestions.length > 0) {
       html += `
@@ -1575,40 +1764,70 @@ const App = {
           <h3>📋 薄弱章节</h3>
           <p>${chapterAdvice}</p>
         </div>
-        <div class="exam-wrong-list">
-          <h3>❌ 错题回顾</h3>
       `;
-      wrongQuestions.forEach((wq, i) => {
-        const chNum = wq.q.chapterId.replace('ch', '');
-        const userText = wq.userAnswer.map(a => String.fromCharCode(65 + a)).join('、') || '未作答';
-        const correctText = wq.correctAnswer.map(a => String.fromCharCode(65 + a)).join('、');
-        html += `
-          <div class="exam-wrong-item">
-            <div class="wrong-q-header">
-              <span class="wrong-q-num">Q${wq.index + 1}</span>
-              <span class="wrong-q-chapter">第${parseInt(chNum)}章</span>
-            </div>
-            <div class="wrong-q-text">${wq.q.question}</div>
-            <div class="wrong-q-answer">
-              <span class="wrong-user">你的答案：${userText}</span>
-              <span class="wrong-correct">正确答案：${correctText}</span>
-            </div>
-            <div class="wrong-explanation">${wq.q.explanation || '暂无解析'}</div>
-          </div>
-        `;
-      });
-      html += '</div>';
     }
 
+    // 所有题目答案回顾
     html += `
+      <div class="exam-answer-review">
+        <h3>📋 答案解析</h3>
+    `;
+
+    this.examQuestions.forEach((q, i) => {
+      const userAnswer = this.examAnswers[i] || [];
+      const correctAnswer = q.answer || [];
+      const chNum = parseInt(q.chapterId.replace('ch', ''));
+      const isCorrect = userAnswer.length === correctAnswer.length &&
+        correctAnswer.every(a => userAnswer.includes(a));
+
+      html += `
+        <div class="exam-answer-item ${isCorrect ? 'is-correct' : 'is-wrong'}">
+          <div class="answer-q-header">
+            <span class="answer-status">${isCorrect ? '✅' : '❌'}</span>
+            <span class="answer-q-num">Q${i + 1}</span>
+            <span class="exam-q-type ${q.type}">${q.type === 'single' ? '单选' : '多选'}</span>
+            <span class="exam-q-chapter">第${chNum}章</span>
+          </div>
+          <div class="answer-q-text">${this.escapeHtml(q.question)}</div>
+          <div class="answer-options">
+      `;
+      q.options.forEach((opt, oi) => {
+        const letter = String.fromCharCode(65 + oi);
+        const isUserChoice = userAnswer.includes(oi);
+        const isCorrectChoice = correctAnswer.includes(oi);
+        let optClass = 'answer-option';
+        if (isCorrectChoice) optClass += ' opt-correct';
+        if (isUserChoice && !isCorrectChoice) optClass += ' opt-wrong';
+        if (isUserChoice && isCorrectChoice) optClass += ' opt-user-correct';
+
+        html += `
+            <div class="${optClass}">
+              <span class="opt-letter">${letter}</span>
+              <span class="opt-text">${this.escapeHtml(opt)}</span>
+              ${isCorrectChoice ? '<span class="opt-tag correct-tag">正确答案</span>' : ''}
+              ${isUserChoice && !isCorrectChoice ? '<span class="opt-tag wrong-tag">你的选择</span>' : ''}
+              ${isUserChoice && isCorrectChoice ? '<span class="opt-tag user-correct-tag">你的选择</span>' : ''}
+            </div>
+        `;
+      });
+      html += `
+          </div>
+          <div class="answer-explanation">
+            <strong>解析：</strong>${q.explanation || '暂无解析'}
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+      </div>
       <div class="exam-result-actions">
         <button class="hero-btn secondary" onclick="App.closeExam()">关闭</button>
         <button class="hero-btn primary" onclick="App.closeExam(); App.loadChapter('${wrongQuestions.length > 0 ? wrongQuestions[0].q.chapterId : 'ch00'}')">开始学习</button>
       </div>
     `;
 
-    html += '</div>';
-    container.innerHTML = html;
+    container.innerHTML = `<div class="exam-main" style="max-width:800px;margin:0 auto;overflow-y:auto;height:100vh;padding:var(--space-xl);">${html}</div>`;
 
     // 保存成绩
     Progress.saveExamScore(score, correct, total);
