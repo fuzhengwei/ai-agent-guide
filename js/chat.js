@@ -208,13 +208,14 @@ const AIChat = {
     }
     
     if (this.configs.length === 0) {
-      // 默认配置：内置免费 API Key，开箱即用
+      // 默认配置：使用 Nginx 代理，无需 API Key，开箱即用
       this.configs = [{
         id: 'default',
-        name: 'Agnes AI（免费）',
-        baseUrl: 'https://apihub.agnes-ai.com/v1',
-        apiKey: 'sk-Jf7Ly1k9EccTEHy6rbMLFjgfWLFeDBpwSdIs3MPc2UARHfrK',
-        model: 'agnes-2.0-flash'
+        name: '默认免费（开箱即用）',
+        baseUrl: '/api/chat',
+        apiKey: '',
+        model: 'agnes-2.0-flash',
+        builtin: true  // 标记为内置配置，不可删除
       }];
     }
     
@@ -235,9 +236,10 @@ const AIChat = {
     const selector = document.getElementById('modelSelector');
     if (!selector) return;
     
-    selector.innerHTML = this.configs.map(c => 
-      `<option value="${c.id}" ${c.id === this.activeConfigId ? 'selected' : ''}>${c.name} · ${c.model}</option>`
-    ).join('');
+    selector.innerHTML = this.configs.map(c => {
+      const label = c.builtin ? `${c.name}` : `${c.name} · ${c.model}`;
+      return `<option value="${c.id}" ${c.id === this.activeConfigId ? 'selected' : ''}>${label}</option>`;
+    }).join('');
   },
 
   /**
@@ -416,8 +418,16 @@ const AIChat = {
     if (!text || this.isLoading) return;
     
     const config = this.getActiveConfig();
-    if (!config || (!config.apiKey && !config.baseUrl)) {
-      this.addMessage('assistant', '请先点击右上角设置按钮，配置你的 API Key。');
+    if (!config || (!config.baseUrl)) {
+      this.addMessage('assistant', '请先点击右上角设置按钮，配置你的 API。');
+      this.openSettings();
+      return;
+    }
+    
+    // 代理模式不需要 Key，直连模式需要
+    const isProxyMode = config.baseUrl.startsWith('/');
+    if (!isProxyMode && !config.apiKey) {
+      this.addMessage('assistant', '⚠️ 你使用的是自定义 API，请先填写 API Key。');
       this.openSettings();
       return;
     }
@@ -469,25 +479,41 @@ const AIChat = {
 
   /**
    * 流式调用 OpenAI 兼容 API（SSE）
-   * 直接请求用户配置的 API 地址，无需 Nginx 代理
+   * 支持两种模式：
+   * 1. 代理模式：baseUrl 以 / 开头 → 走 Nginx 代理（无需 Key）
+   * 2. 直连模式：baseUrl 以 http 开头 → 直连用户自己的 API
    */
   async callAPIStream(config, messages, signal) {
-    const baseUrl = config.baseUrl.replace(/\/$/, '');
-    const apiUrl = `${baseUrl}/chat/completions`;
+    const isProxyMode = config.baseUrl.startsWith('/');
+    let apiUrl;
+    let headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (isProxyMode) {
+      // 代理模式：Nginx 自动附加 Key
+      apiUrl = `${config.baseUrl}/v1/chat/completions`;
+    } else {
+      // 直连模式：用户自己的 API
+      const baseUrl = config.baseUrl.replace(/\/$/, '');
+      apiUrl = `${baseUrl}/chat/completions`;
+      if (config.apiKey) {
+        headers['Authorization'] = `Bearer ${config.apiKey}`;
+      }
+    }
+    
+    const body = {
+      model: config.model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 2000,
+      stream: true
+    };
     
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
-        stream: true
-      }),
+      headers: headers,
+      body: JSON.stringify(body),
       signal: signal
     });
     
@@ -696,10 +722,13 @@ const AIChat = {
    * 渲染设置表单
    */
   renderSettingsForm() {
-    let html = `<div style="background: #f0f7ff; border: 1px solid #b3d4fc; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
-      <div style="font-weight: 600; color: #1a56db; margin-bottom: 4px;">💡 免费 API Key 获取</div>
-      <div>内置默认 Key 可直接使用。如需自己的 Key，请访问：<a href="https://platform.agnes-ai.com/settings/apiKeys" target="_blank" style="color: #1a56db; text-decoration: underline;">platform.agnes-ai.com</a></div>
-    </div>`;
+    // 顶部提示区域
+    let html = `
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+        <div style="font-weight: 600; color: #15803d; margin-bottom: 4px;">✅ 默认免费模型</div>
+        <div>已内置免费 AI 助手，无需任何配置即可使用。开箱即用，畅快学习！</div>
+      </div>
+    `;
     
     html += '<div id="apiConfigList">';
     
@@ -708,7 +737,21 @@ const AIChat = {
     });
     
     html += `</div>
-      <button class="btn" onclick="AIChat.addConfig()" style="width: 100%; margin-top: 8px; border-style: dashed;">+ 添加配置</button>
+      <div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+        <div style="font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">添加自定义 API</div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn" onclick="AIChat.addPresetConfig('agnes')" style="flex: 1; font-size: 13px;">
+            🤖 Agnes AI
+          </button>
+          <button class="btn" onclick="AIChat.addPresetConfig('custom')" style="flex: 1; font-size: 13px;">
+            🔧 自定义 LLM
+          </button>
+        </div>
+        <div style="font-size: 12px; color: #9ca3af; margin-top: 6px; line-height: 1.5;">
+          Agnes AI：可申请自己的 API Key，使用更稳定<br>
+          自定义 LLM：支持 OpenAI 协议的任意 API（DeepSeek、OpenAI 等）
+        </div>
+      </div>
     `;
     
     return html;
@@ -718,26 +761,56 @@ const AIChat = {
    * 渲染单个配置项
    */
   renderConfigItem(config, index) {
+    const isProxyMode = config.baseUrl.startsWith('/');
+    const isBuiltin = config.builtin === true;
+    
+    // 内置默认配置：精简显示，只展示状态信息
+    if (isBuiltin) {
+      return `
+        <div class="api-config-item" data-index="${index}" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-color: #86efac;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 14px; font-weight: 600; color: #15803d;">
+              ✅ ${config.name}
+            </div>
+            <span style="font-size: 11px; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 10px;">免费</span>
+          </div>
+          <div style="font-size: 12px; color: #6b7280; margin-top: 6px; line-height: 1.5;">
+            模型：${config.model} · 无需 API Key · 已就绪
+          </div>
+        </div>
+      `;
+    }
+    
+    // 自定义配置：显示完整编辑表单
+    const modeHint = isProxyMode 
+      ? '<span style="color: #15803d; font-size: 12px; margin-left: 4px;">✅ 代理模式</span>'
+      : '<span style="color: #a16207; font-size: 12px; margin-left: 4px;">🔑 直连模式</span>';
+    
     return `
       <div class="api-config-item" data-index="${index}">
-        ${index > 0 ? `<button class="remove-btn" onclick="AIChat.removeConfig(${index})">×</button>` : ''}
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--color-primary); display: flex; align-items: center;">
+            ${config.name} ${modeHint}
+          </div>
+          <button class="remove-btn" onclick="AIChat.removeConfig(${index})" style="background: none; border: none; color: #ef4444; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1;">×</button>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>配置名称</label>
-            <input type="text" data-field="name" value="${config.name}" placeholder="如：我的GPT-4o">
+            <input type="text" data-field="name" value="${config.name}" placeholder="如：我的 Agnes AI">
           </div>
           <div class="form-group">
             <label>模型</label>
-            <input type="text" data-field="model" value="${config.model}" placeholder="如：gpt-4o">
+            <input type="text" data-field="model" value="${config.model}" placeholder="如：agnes-2.0-flash">
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 8px;">
           <label>Base URL（OpenAI 兼容协议）</label>
-          <input type="text" data-field="baseUrl" value="${config.baseUrl}" placeholder="填写API地址(如 https://api.deepseek.com/v1)">
+          <input type="text" data-field="baseUrl" value="${config.baseUrl}" placeholder="${isProxyMode ? '使用官方代理（无需修改）' : '填写 API 地址（如 https://api.deepseek.com/v1）'}">
         </div>
         <div class="form-group">
-          <label>API Key</label>
-          <input type="password" data-field="apiKey" value="${config.apiKey}" placeholder="sk-...">
+          <label>API Key ${isProxyMode ? '<span style="color: #9ca3af; font-size: 12px;">（代理模式不需要）</span>' : ''}</label>
+          <input type="password" data-field="apiKey" value="${config.apiKey}" placeholder="${isProxyMode ? '留空即可' : 'sk-...'}">
         </div>
       </div>
     `;
@@ -758,17 +831,33 @@ const AIChat = {
    */
   collectConfigs() {
     const items = document.querySelectorAll('.api-config-item');
+    const oldConfigs = [...this.configs];  // 保留旧配置备份
     this.configs = [];
     
     items.forEach((item, i) => {
       const fields = item.querySelectorAll('input');
+      
+      // 内置配置卡片没有 input 元素，保留原配置数据
+      if (fields.length === 0) {
+        if (oldConfigs[i]) {
+          this.configs.push({ ...oldConfigs[i] });
+        }
+        return;
+      }
+      
       const config = {
-        id: i === 0 ? 'default' : `config_${Date.now()}_${i}`,
-        name: fields[0].value || `配置${i + 1}`,
-        model: fields[1].value || 'gpt-4o',
-        baseUrl: fields[2].value || '',
-        apiKey: fields[3].value || ''
+        id: oldConfigs[i]?.id || `config_${Date.now()}_${i}`,
+        name: fields[0]?.value || `配置${i + 1}`,
+        model: fields[1]?.value || 'gpt-4o',
+        baseUrl: fields[2]?.value || '',
+        apiKey: fields[3]?.value || ''
       };
+      
+      // 保留 builtin 标记
+      if (oldConfigs[i]?.builtin) {
+        config.builtin = true;
+      }
+      
       this.configs.push(config);
     });
     
@@ -778,17 +867,32 @@ const AIChat = {
   },
 
   /**
-   * 添加配置
+   * 添加预设配置
+   * @param {string} type - 'agnes' | 'custom'
    */
-  addConfig() {
+  addPresetConfig(type) {
     this.collectConfigs();
-    this.configs.push({
-      id: `config_${Date.now()}`,
-      name: '新配置',
-      baseUrl: 'https://apihub.agnes-ai.com/v1',
-      apiKey: '',
-      model: 'agnes-2.0-flash'
-    });
+    
+    let newConfig;
+    if (type === 'agnes') {
+      newConfig = {
+        id: `agnes_${Date.now()}`,
+        name: '🤖 Agnes AI',
+        baseUrl: 'https://apihub.agnes-ai.com/v1',
+        apiKey: '',
+        model: 'agnes-2.0-flash'
+      };
+    } else {
+      newConfig = {
+        id: `custom_${Date.now()}`,
+        name: '自定义 LLM',
+        baseUrl: '',
+        apiKey: '',
+        model: 'gpt-4o'
+      };
+    }
+    
+    this.configs.push(newConfig);
     
     const body = document.getElementById('modalBody');
     body.innerHTML = this.renderSettingsForm();
@@ -796,10 +900,22 @@ const AIChat = {
   },
 
   /**
+   * 添加配置（兼容旧调用）
+   */
+  addConfig() {
+    this.addPresetConfig('custom');
+  },
+
+  /**
    * 删除配置
    */
   removeConfig(index) {
     this.collectConfigs();
+    // 不允许删除内置配置
+    if (this.configs[index] && this.configs[index].builtin) {
+      alert('内置默认配置不可删除');
+      return;
+    }
     if (this.configs.length <= 1) {
       alert('至少保留一个配置');
       return;

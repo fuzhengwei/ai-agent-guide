@@ -642,7 +642,7 @@ const App = {
     contentArea.innerHTML = `<div class="skeleton-loader"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line"></div><div class="skeleton-line medium"></div></div>`;
 
     try {
-      const response = await fetch(chapter.file);
+      const response = await fetch(chapter.file + '?t=' + Date.now());
       if (response.ok) {
         const html = await response.text();
         contentArea.innerHTML = `<div class="page-transition">${html}</div>`;
@@ -1503,7 +1503,7 @@ const App = {
           <div class="exam-header-right">
             <span class="exam-count-badge">共 ${this.examQuestions.length} 题</span>
             <span class="exam-timer" id="examTimer">⏱ 30:00</span>
-            <button class="exam-back-btn" onclick="App.showExamExitConfirm()">← 回到专业</button>
+            <button class="exam-back-btn" onclick="App.showExamExitConfirm()">← 回到教程</button>
           </div>
         </div>
         <div class="exam-progress-bar">
