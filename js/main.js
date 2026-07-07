@@ -68,6 +68,9 @@ const App = {
     // AI助手默认展开（收藏到侧边栏）
     this.setDefaultChatVisible();
     
+    // 移动端初始化
+    this.initMobile();
+    
     this.showCover();
   },
 
@@ -297,25 +300,17 @@ const App = {
   },
 
   /**
-   * 设置 AI 助手默认收起（点击后展开）
-   * 首次访问时默认收起，用户手动展开后记住状态
+   * 设置 AI 助手默认打开
    */
   setDefaultChatVisible() {
     const layout = document.querySelector('.app-layout');
     const chatBtn = document.getElementById('toolbarChatBtn');
     if (!layout) return;
     
-    // 检查用户是否曾经手动展开过AI助手
-    const chatShown = localStorage.getItem('ai-agent-guide-chat-shown');
-    
-    if (chatShown === 'true') {
-      // 用户之前展开过，保持展开状态
+    // 桌面端：AI 学习助手默认打开
+    if (window.innerWidth > 768) {
       layout.classList.remove('chat-collapsed');
       if (chatBtn) chatBtn.classList.add('active');
-    } else {
-      // 默认收起AI助手（用户点击按钮后再展开）
-      layout.classList.add('chat-collapsed');
-      if (chatBtn) chatBtn.classList.remove('active');
     }
   },
 
@@ -323,6 +318,13 @@ const App = {
    * 切换 AI 助手对话栏 显示/隐藏
    */
   toggleChat() {
+    // 移动端：切换底部抽屉
+    if (window.innerWidth <= 768) {
+      this.toggleMobileChat();
+      return;
+    }
+    
+    // 桌面端：切换侧边栏
     const layout = document.querySelector('.app-layout');
     if (!layout) return;
     
@@ -330,17 +332,202 @@ const App = {
     const isCollapsed = layout.classList.contains('chat-collapsed');
     
     if (isCollapsed) {
-      // 展开
       layout.classList.remove('chat-collapsed');
       if (chatBtn) chatBtn.classList.add('active');
-      // 记住用户选择了展开
-      localStorage.setItem('ai-agent-guide-chat-shown', 'true');
     } else {
-      // 收起
       layout.classList.add('chat-collapsed');
       if (chatBtn) chatBtn.classList.remove('active');
-      // 记住用户选择了收起
-      localStorage.removeItem('ai-agent-guide-chat-shown');
+    }
+  },
+
+  /**
+   * 切换侧边栏（移动端抽屉 / 桌面端折叠）
+   */
+  toggleSidebar() {
+    if (window.innerWidth <= 768) {
+      this.toggleMobileSidebar();
+      return;
+    }
+    // 桌面端暂无侧边栏折叠需求
+  },
+
+  // ===== 移动端交互 =====
+
+  /**
+   * 初始化移动端底部导航和遮罩
+   */
+  initMobile() {
+    const overlay = document.getElementById('mobileOverlay');
+    const navSidebar = document.getElementById('mobileNavSidebar');
+    const navTOC = document.getElementById('mobileNavTOC');
+    const navChat = document.getElementById('mobileNavChat');
+    const navTheme = document.getElementById('mobileNavTheme');
+
+    // 遮罩点击关闭所有抽屉
+    if (overlay) {
+      overlay.addEventListener('click', () => this.closeAllMobileDrawers());
+    }
+
+    // 底部导航按钮
+    if (navSidebar) {
+      navSidebar.addEventListener('click', () => this.toggleMobileSidebar());
+    }
+    if (navTOC) {
+      navTOC.addEventListener('click', () => this.toggleMobileTOC());
+    }
+    if (navChat) {
+      navChat.addEventListener('click', () => this.toggleMobileChat());
+    }
+    if (navTheme) {
+      navTheme.addEventListener('click', () => {
+        this.toggleTheme();
+        // 更新移动端主题图标
+        const icon = document.getElementById('mobileThemeIcon');
+        if (icon) icon.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+      });
+    }
+
+    // 窗口尺寸变化时，关闭移动端抽屉
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        this.closeAllMobileDrawers();
+      }
+    });
+  },
+
+  /**
+   * 切换移动端侧边栏抽屉
+   */
+  toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    const chatPanel = document.querySelector('.chat-panel');
+    const navBtn = document.getElementById('mobileNavSidebar');
+    if (!sidebar) return;
+
+    const isOpen = sidebar.classList.contains('mobile-open');
+    
+    // 先关闭聊天抽屉
+    if (chatPanel) chatPanel.classList.remove('mobile-open');
+    this.updateMobileNavActive('mobileNavChat', false);
+
+    if (isOpen) {
+      sidebar.classList.remove('mobile-open');
+      if (overlay) overlay.classList.remove('show');
+      this.updateMobileNavActive('mobileNavSidebar', false);
+    } else {
+      sidebar.classList.add('mobile-open');
+      if (overlay) overlay.classList.add('show');
+      this.updateMobileNavActive('mobileNavSidebar', true);
+    }
+  },
+
+  /**
+   * 切换移动端聊天面板抽屉
+   */
+  toggleMobileChat() {
+    const chatPanel = document.querySelector('.chat-panel');
+    const overlay = document.getElementById('mobileOverlay');
+    const sidebar = document.querySelector('.sidebar');
+    if (!chatPanel) return;
+
+    const isOpen = chatPanel.classList.contains('mobile-open');
+    
+    // 先关闭侧边栏抽屉
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    this.updateMobileNavActive('mobileNavSidebar', false);
+
+    if (isOpen) {
+      chatPanel.classList.remove('mobile-open');
+      if (overlay) overlay.classList.remove('show');
+      this.updateMobileNavActive('mobileNavChat', false);
+    } else {
+      chatPanel.classList.add('mobile-open');
+      if (overlay) overlay.classList.add('show');
+      this.updateMobileNavActive('mobileNavChat', true);
+    }
+  },
+
+  /**
+   * 切换移动端 TOC（本节目录）
+   * 在手机端，TOC 以侧边栏抽屉形式展示
+   */
+  toggleMobileTOC() {
+    // 手机端没有独立的 TOC 面板，改为滚动到内容区顶部的章节目录
+    // 或者可以复用 sidebar 的抽屉模式显示 TOC
+    const tocPanel = document.querySelector('.toc-panel');
+    const overlay = document.getElementById('mobileOverlay');
+    
+    if (!tocPanel) {
+      // 没有 TOC 面板，滚动到顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 用 fixed 抽屉方式显示 TOC
+    const isOpen = tocPanel.classList.contains('mobile-open');
+    
+    // 先关闭其他抽屉
+    this.closeAllMobileDrawers();
+
+    if (!isOpen) {
+      tocPanel.style.cssText = `
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 80vw;
+        z-index: 1100;
+        display: flex;
+        flex-direction: column;
+        background: var(--color-bg);
+        border-left: 1px solid var(--color-border);
+        box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+        overflow-y: auto;
+      `;
+      tocPanel.classList.add('mobile-open');
+      if (overlay) overlay.classList.add('show');
+      this.updateMobileNavActive('mobileNavTOC', true);
+    }
+  },
+
+  /**
+   * 关闭所有移动端抽屉
+   */
+  closeAllMobileDrawers() {
+    const sidebar = document.querySelector('.sidebar');
+    const chatPanel = document.querySelector('.chat-panel');
+    const tocPanel = document.querySelector('.toc-panel');
+    const overlay = document.getElementById('mobileOverlay');
+
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (chatPanel) chatPanel.classList.remove('mobile-open');
+    if (overlay) overlay.classList.remove('show');
+    
+    // TOC 面板恢复原状
+    if (tocPanel) {
+      tocPanel.classList.remove('mobile-open');
+      tocPanel.style.cssText = '';
+    }
+
+    // 清除所有底部导航高亮
+    this.updateMobileNavActive('mobileNavSidebar', false);
+    this.updateMobileNavActive('mobileNavChat', false);
+    this.updateMobileNavActive('mobileNavTOC', false);
+  },
+
+  /**
+   * 更新移动端底部导航按钮高亮状态
+   */
+  updateMobileNavActive(btnId, active) {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      if (active) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
     }
   },
 
@@ -458,6 +645,12 @@ const App = {
             </div>
           </div>
 
+          <!-- 作者信息 -->
+          <div class="hero-author-simple">
+            <span class="hero-author-name">小傅哥</span>
+            <span class="hero-author-role">全栈架构师 · 开源爱好者</span>
+          </div>
+
           <div class="hero-chapter-map">
             <div class="hero-map-title">📚 章节导航 · 点击开始</div>
             <div class="hero-map-scroll">
@@ -552,6 +745,20 @@ const App = {
               </a>
             </div>
           </div>
+          
+          <!-- 备案信息 -->
+          <div class="hero-footer">
+            <div class="hero-beian">
+              <a href="http://beian.miit.gov.cn" target="_blank" class="beian-link">津ICP备2025037015号-1</a>
+              <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010102000001" target="_blank" class="beian-gov-link">
+                <img src="https://bugstack.cn/assets/images/beian.png" alt="公安备案" class="beian-gov-icon">
+                京公网安备11010102000001号
+              </a>
+            </div>
+            <div class="hero-copyright">
+              <span>MIT 协议 © 2023-2026 小傅哥，All rights reserved.</span>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -602,6 +809,11 @@ const App = {
   async loadChapter(chapterId) {
     const chapter = this.chapters.find(c => c.id === chapterId);
     if (!chapter) return;
+
+    // 移动端：点击章节后自动关闭侧边栏抽屉
+    if (window.innerWidth <= 768) {
+      this.closeAllMobileDrawers();
+    }
 
     this.currentChapter = chapterId;
     document.body.dataset.chapter = chapterId;

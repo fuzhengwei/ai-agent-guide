@@ -1,0 +1,4 @@
+{
+  "version": "20260707",
+  "changelog": "新增 LLM API 代理配置，优化缓存策略"
+}

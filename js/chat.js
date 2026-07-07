@@ -461,7 +461,13 @@ const AIChat = {
       const response = await this.callAPIStream(config, apiMessages, this.abortController.signal);
       
       this.hideLoading();
-      this.addMessage('assistant', response);
+      
+      // 确保响应内容有效
+      if (response && response.trim() !== '') {
+        this.addMessage('assistant', response);
+      } else {
+        this.addMessage('assistant', '抱歉，我没有收到有效的回复。请稍后再试。');
+      }
     } catch (err) {
       this.hideLoading();
       if (err.name === 'AbortError') {
@@ -528,6 +534,9 @@ const AIChat = {
     let fullText = '';
     let buffer = '';
     
+    // 保存 this 引用，确保在异步回调中正确引用
+    const self = this;
+    
     // 实时显示流式文本
     const container = document.getElementById('chatMessages');
     let liveMsgEl = null;
@@ -565,8 +574,13 @@ const AIChat = {
             const delta = json.choices?.[0]?.delta?.content || '';
             fullText += delta;
             if (liveBubbleEl) {
-              liveBubbleEl.innerHTML = this.formatContent(fullText);
-              container.scrollTop = container.scrollHeight;
+              try {
+                liveBubbleEl.innerHTML = self.formatContent(fullText);
+                container.scrollTop = container.scrollHeight;
+              } catch (e) {
+                console.error('[AIChat] 格式化流式内容失败:', e);
+                liveBubbleEl.textContent = fullText;
+              }
             }
           } catch (e) { /* skip parse errors */ }
         }
@@ -576,6 +590,7 @@ const AIChat = {
     // 移除实时元素（最终版本会由 addMessage 重新渲染）
     if (liveMsgEl) liveMsgEl.remove();
     
+    // 确保返回完整文本
     return fullText || '（空回复）';
   },
 
@@ -590,6 +605,12 @@ const AIChat = {
    * 添加消息
    */
   addMessage(role, content) {
+    // 确保内容不为空
+    if (!content || content.trim() === '') {
+      console.warn('addMessage: content is empty');
+      return;
+    }
+    
     this.messages.push({ role, content });
     this.renderMessage(role, content);
   },
@@ -599,7 +620,10 @@ const AIChat = {
    */
   renderMessage(role, content) {
     const container = document.getElementById('chatMessages');
-    if (!container) return;
+    if (!container) {
+      console.warn('renderMessage: chatMessages container not found');
+      return;
+    }
     
     const msgEl = document.createElement('div');
     msgEl.className = `chat-msg ${role} fade-in`;
@@ -607,9 +631,23 @@ const AIChat = {
     const avatar = role === 'user' ? '你' : 'AI';
     const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     
+    // 确保内容被正确格式化
+    let formattedContent;
+    try {
+      formattedContent = this.formatContent(content);
+    } catch (e) {
+      console.error('renderMessage: formatContent 失败，使用原始内容', e);
+      formattedContent = this.escapeHtml(content);
+    }
+    
+    if (!formattedContent || formattedContent.trim() === '') {
+      console.warn('renderMessage: formatted content is empty');
+      return;
+    }
+    
     msgEl.innerHTML = `
       <div class="msg-avatar">${avatar}</div>
-      <div class="msg-bubble">${this.formatContent(content)}</div>
+      <div class="msg-bubble">${formattedContent}</div>
       <div class="msg-meta">${time}</div>
     `;
     
@@ -617,9 +655,13 @@ const AIChat = {
     
     // 触发 Prism 代码高亮
     if (typeof Prism !== 'undefined') {
-      msgEl.querySelectorAll('pre code').forEach(block => {
-        Prism.highlightElement(block);
-      });
+      try {
+        msgEl.querySelectorAll('pre code').forEach(block => {
+          Prism.highlightElement(block);
+        });
+      } catch (e) {
+        console.warn('Prism 高亮失败:', e);
+      }
     }
     
     container.scrollTop = container.scrollHeight;
@@ -629,6 +671,16 @@ const AIChat = {
    * 格式化内容（Markdown 渲染）
    */
   formatContent(text) {
+    // 安全检查
+    if (!text || typeof text !== 'string') {
+      return '<div class="empty-message">暂无内容</div>';
+    }
+    
+    if (text.trim() === '') {
+      return '<div class="empty-message">暂无内容</div>';
+    }
+    
+    // 尝试使用 marked 库渲染 Markdown
     if (typeof marked !== 'undefined') {
       try {
         marked.setOptions({
@@ -641,20 +693,33 @@ const AIChat = {
             return code;
           }
         });
-        return marked.parse(text);
+        const rendered = marked.parse(text);
+        // 检查渲染结果是否有效
+        if (rendered && typeof rendered === 'string' && rendered.trim() !== '') {
+          return rendered;
+        }
       } catch (e) {
         console.warn('marked 渲染失败，降级为纯文本', e);
       }
     }
-    // 降级：简单 Markdown 替换
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    
+    // 降级：简单 HTML 转义和换行处理
+    return this.escapeHtml(text).replace(/\n/g, '<br>');
+  },
+
+  /**
+   * 转义 HTML 特殊字符
+   */
+  escapeHtml(text) {
+    if (typeof text !== 'string') return '';
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
   },
 
   /**
@@ -811,6 +876,7 @@ const AIChat = {
         <div class="form-group">
           <label>API Key ${isProxyMode ? '<span style="color: #9ca3af; font-size: 12px;">（代理模式不需要）</span>' : ''}</label>
           <input type="password" data-field="apiKey" value="${config.apiKey}" placeholder="${isProxyMode ? '留空即可' : 'sk-...'}">
+          ${!isProxyMode ? `<div style="margin-top: 6px;"><a href="https://platform.agnes-ai.com/settings/apiKeys" target="_blank" style="font-size: 12px; color: var(--color-accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">🔑 获取 API Key</a></div>` : ''}
         </div>
       </div>
     `;

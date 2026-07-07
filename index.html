@@ -113,8 +113,8 @@
   }
   </script>
 
-  <link rel="stylesheet" href="css/book.css?v=15">
-  <link rel="stylesheet" href="css/animations.css?v=2">
+  <link rel="stylesheet" href="css/book.css?v=20260707">
+  <link rel="stylesheet" href="css/animations.css?v=20260707">
   <!-- Prism.js 语法高亮 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" integrity="sha384-wFjoQjtV1y5jVHbt0p35Ui8aV8GVpEZkyF99OXWqP/eNJDU93D3Ugxkoyh6Y2I4A" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" integrity="sha384-ZM8fDxYm+GXOWeJcxDetoRImNnEAS7XwVFH5kv0pT6RXNy92Nemw/Sj7NfciXpqg" crossorigin="anonymous"></script>
@@ -251,14 +251,71 @@
       <!-- 考试界面由 JS 动态生成 -->
     </div>
   </div>
+
+  <!-- ===== 移动端遮罩层（抽屉打开时显示） ===== -->
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+
+  <!-- ===== 移动端底部导航栏 ===== -->
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-item" id="mobileNavSidebar" title="目录">
+      <span class="nav-icon">📚</span>
+      <span class="nav-label">目录</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavTOC" title="本节目录">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">本节</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavChat" title="AI 助手">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">AI 助手</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavTheme" title="切换主题">
+      <span class="nav-icon" id="mobileThemeIcon">🌙</span>
+      <span class="nav-label">主题</span>
+    </button>
+  </nav>
+  
+  <!-- ===== 备案信息 ===== -->
+  <div class="footer-bottom">
+    <div class="footer-social">
+      <div class="social-icon">
+        <i class="fab fa-github"></i>
+      </div>
+      <div class="social-icon">
+        <i class="fas fa-book-open"></i>
+      </div>
+      <div class="social-icon">
+        <i class="fas fa-users"></i>
+      </div>
+    </div>
+    <div class="beian-info">
+      <div>
+        <a href="http://beian.miit.gov.cn" target="_blank" class="beian-link">津ICP备2025037015号-1</a>
+      </div>
+      <div>
+        <a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010102000001" class="beian-gov">
+          <img src="https://bugstack.cn/assets/images/beian.png" alt="公安备案" class="beian-icon">
+          京公网安备11010102000001号
+        </a>
+      </div>
+      <div>
+        <span>MIT 协议, 版权所有 © 2023 小傅哥，All rights reserved.</span>
+      </div>
+    </div>
+    <div class="footer-motto">
+      让每一个技术梦想都能在这里绽放 ✨
+    </div>
+  </div>
   
   <!-- ===== 脚本 ===== -->
+  <!-- 版本检测（最先加载，检测到新版本自动刷新） -->
+  <script src="js/version.js?v=20260707"></script>
   <!-- 百度统计（首加载，全局共享） -->
   <script src="js/analytics.js"></script>
-  <script src="js/flowchart.js?v=3"></script>
-  <script src="js/progress.js"></script>
-  <script src="js/quiz.js"></script>
-  <script src="js/chat.js?v=6"></script>
-  <script src="js/main.js?v=25"></script>
+  <script src="js/flowchart.js?v=20260707"></script>
+  <script src="js/progress.js?v=20260707"></script>
+  <script src="js/quiz.js?v=20260707"></script>
+  <script src="js/chat.js?v=20260707"></script>
+  <script src="js/main.js?v=20260707"></script>
 </body>
 </html>

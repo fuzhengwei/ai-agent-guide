@@ -1700,6 +1700,8 @@ p {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* 确保容器有最小高度 */
+  min-height: 100px;
 }
 
 /* 回到最新消息按钮 - 居中优雅设计 */
@@ -1819,6 +1821,10 @@ p {
   word-break: break-word;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  /* 确保内容可见 */
+  min-height: 20px;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .chat-msg.user .msg-bubble {
@@ -2111,6 +2117,27 @@ p {
   margin-top: var(--space-xs);
 }
 
+/* 确保消息内容可见 */
+.chat-msg .msg-bubble p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.chat-msg .msg-bubble p:first-child {
+  margin-top: 0;
+}
+
+.chat-msg .msg-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* 空消息样式 */
+.empty-message {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: var(--text-xs);
+}
+
 .chat-msg.loading .msg-bubble {
   display: flex;
   gap: 4px;
@@ -2259,6 +2286,15 @@ p {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
 }
 
 .modal {
@@ -2624,6 +2660,32 @@ p {
   margin-top: 4px;
 }
 
+/* ===== 作者信息（简约版） ===== */
+.hero-author-simple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: var(--space-lg) 0;
+  margin: var(--space-lg) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hero-author-name {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hero-author-role {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: 4px 12px;
+  background: var(--color-bg-alt);
+  border-radius: 20px;
+}
+
 /* Agent 循环动画 */
 .hero-agent-loop {
   display: flex;
@@ -2814,6 +2876,59 @@ p {
   border: 1px solid var(--color-primary);
   border-radius: 100px;
   background: rgba(79, 70, 229, 0.06);
+}
+
+/* ===== 首页备案信息 ===== */
+.hero-footer {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.hero-beian {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.beian-link {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.beian-link:hover {
+  color: var(--color-accent);
+}
+
+.beian-gov-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.beian-gov-link:hover {
+  color: var(--color-accent);
+}
+
+.beian-gov-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.hero-copyright {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
 }
 
 /* 骨架屏 */
@@ -3530,6 +3645,12 @@ code[class*="language-"] {
 .token.variable { color: #ffa657; }
 
 
+/* ===== 移动端专用元素（桌面端默认隐藏） ===== */
+.mobile-nav,
+.mobile-overlay {
+  display: none;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 1200px) {
   :root {
@@ -3538,27 +3659,250 @@ code[class*="language-"] {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
+  /* 中等屏幕：隐藏 TOC 面板，保留侧边栏和内容区 */
   .app-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr !important;
   }
-  .sidebar, .chat-panel {
-    display: none;
+  .toc-panel {
+    display: none !important;
   }
-  .sidebar.mobile-show, .chat-panel.mobile-show {
-    display: flex;
+  .right-toolbar {
     position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 999;
+  }
+}
+
+@media (max-width: 768px) {
+  /* ===== 手机端：全部改为抽屉式 ===== */
+
+  /* 1. 主布局只留内容区 */
+  .app-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1fr auto !important;
+  }
+
+  /* 2. 侧边栏改为左侧抽屉 */
+  .sidebar {
+    position: fixed;
+    left: 0;
     top: 0;
     bottom: 0;
-    z-index: 50;
-    width: 100%;
+    width: 280px !important;
+    max-width: 80vw;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
   }
-  .sidebar.mobile-show { left: 0; }
-  .chat-panel.mobile-show { right: 0; }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 3. 聊天面板改为底部全屏抽屉 */
+  .chat-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    height: 70vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    z-index: 1100;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    box-shadow: none;
+    display: flex !important;
+  }
+  .chat-panel.mobile-open {
+    transform: translateY(0);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  }
+  /* 聊天面板在手机端始终显示内部元素 */
+  .chat-panel .chat-header,
+  .chat-panel .chat-model-selector,
+  .chat-panel .chat-context-badge,
+  .chat-panel .chat-messages,
+  .chat-panel .chat-input-area {
+    display: flex !important;
+  }
+
+  /* 4. 移动端遮罩层 */
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1050;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-overlay.show {
+    display: block;
+  }
+
+  /* 5. 移动端底部导航栏 */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    z-index: 1000;
+    padding: 0;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  }
+  .mobile-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    background: none;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s;
+    padding: 0;
+  }
+  .mobile-nav-item:active {
+    background: var(--color-surface-hover);
+  }
+  .mobile-nav-item.active {
+    color: var(--color-accent);
+  }
+  .mobile-nav-item .nav-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+  .mobile-nav-item .nav-label {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  /* 6. 右侧工具栏在手机端隐藏（功能已移到底部导航） */
+  .right-toolbar {
+    display: none !important;
+  }
+
+  /* 7. 内容区占满宽度，底部留出导航栏空间 */
+  .content-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-bottom: 56px;
+  }
+  .content-body {
+    padding: var(--space-md) var(--space-md) calc(var(--space-xl) + 56px) !important;
+  }
+
+  /* 8. 回到顶部按钮调整位置 */
+  .back-to-top {
+    right: 16px !important;
+    bottom: 72px !important;
+  }
+
+  /* 9. 聊天面板拖拽手柄在手机端隐藏 */
+  .chat-resize-handle {
+    display: none !important;
+  }
+
+  /* 10. Tab 书签在小屏幕上紧凑显示 */
+  .chapter-tab-btn {
+    padding: 8px 14px;
+    font-size: var(--text-xs);
+  }
+  .chapter-tab-btn .tab-icon {
+    font-size: 13px;
+  }
+
+  /* 11. 代码块横向滚动 */
+  .code-block-wrapper pre {
+    font-size: 12px;
+  }
+
+  /* 12. 考试页面：侧边栏改为底部固定 */
+  .exam-container {
+    flex-direction: column;
+    max-width: 100%;
+  }
+  .exam-main {
+    max-width: 100%;
+  }
+  .exam-sidebar {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 45vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    z-index: 210;
+    transform: translateY(calc(100% - 48px));
+    transition: transform 0.3s ease;
+  }
+  .exam-sidebar.expanded {
+    transform: translateY(0);
+  }
+  .exam-sidebar-title {
+    cursor: pointer;
+  }
+
+  /* 13. 内容头导航按钮 */
+  .content-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 14. hero 区域适配 */
   .hero-title { font-size: 28px; }
   .hero-stats { gap: var(--space-md); }
   .hero-stat-item .stat-num { font-size: 22px; }
   .hero-agent-loop { gap: 12px; }
+  
+  /* 作者信息移动端适配 */
+  .hero-author-simple {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 手机端进一步缩小 */
+  .chapter-tab-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .chapter-tab-btn .tab-badge {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+  .sidebar {
+    width: 260px !important;
+  }
+  .chat-panel {
+    height: 75vh !important;
+  }
+}
+
+/* 桌面端隐藏移动端专用元素 */
+@media (min-width: 769px) {
+  .mobile-nav,
+  .mobile-overlay {
+    display: none !important;
+  }
 }
 
 /* ========================================
@@ -3724,128 +4068,7 @@ code[class*="language-"] {
 }
 
 /* ===== 移动端响应式适配 ===== */
-@media (max-width: 1024px) {
-  /* 中等屏幕：隐藏 TOC 面板，保留侧边栏和内容区 */
-  .app-layout {
-    grid-template-columns: var(--sidebar-width) 1fr !important;
-  }
-  .toc-panel {
-    display: none !important;
-  }
-}
 
-@media (max-width: 768px) {
-  /* 平板/手机：隐藏侧边栏和聊天栏，改为抽屉式 */
-  .app-layout {
-    grid-template-columns: 1fr !important;
-    grid-template-areas: "content" !important;
-  }
-
-  /* 侧边栏改为抽屉 */
-  .sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    box-shadow: var(--shadow-lg);
-  }
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  /* 聊天面板改为底部抽屉 */
-  .chat-panel {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    height: 60vh;
-    width: 100% !important;
-    z-index: 1000;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-  .chat-panel.mobile-open {
-    transform: translateY(0);
-  }
-
-  /* 右侧工具栏改为底部固定 */
-  .right-toolbar {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    flex-direction: row !important;
-    z-index: 999;
-  }
-
-  /* 内容区占满宽度 */
-  .content-area {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  /* Tab 书签在小屏幕上紧凑显示 */
-  .chapter-tab-btn {
-    padding: 8px 14px;
-    font-size: var(--text-xs);
-  }
-  .chapter-tab-btn .tab-icon {
-    font-size: 13px;
-  }
-
-  /* 代码块横向滚动 */
-  .code-block-wrapper pre {
-    font-size: 12px;
-  }
-
-  /* 考试页面：侧边栏改为底部固定 */
-  .exam-container {
-    flex-direction: column;
-    max-width: 100%;
-  }
-  .exam-main {
-    max-width: 100%;
-  }
-  .exam-sidebar {
-    width: 100%;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 45vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    z-index: 210;
-    transform: translateY(calc(100% - 48px));
-    transition: transform 0.3s ease;
-  }
-  .exam-sidebar.expanded {
-    transform: translateY(0);
-  }
-  .exam-sidebar-title {
-    cursor: pointer;
-  }
-}
-
-@media (max-width: 480px) {
-  /* 手机端进一步缩小 */
-  .chapter-tab-btn {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-  .chapter-tab-btn .tab-badge {
-    min-width: 16px;
-    height: 16px;
-    font-size: 10px;
-  }
-  .content-header {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-}
 
 /* ===== 回到顶部按钮 ===== */
 .back-to-top {
@@ -3897,5 +4120,136 @@ code[class*="language-"] {
   .back-to-top {
     right: 30px;
     bottom: 30px;
+  }
+}
+
+/* ===== 备案信息 Footer ===== */
+.footer-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: 8px 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.footer-social {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.social-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.social-icon:hover {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.beian-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.beian-info a {
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.beian-info a:hover {
+  color: var(--color-accent);
+}
+
+.beian-link {
+  font-size: 12px;
+}
+
+.beian-gov {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.beian-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.footer-motto {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 深色主题适配 */
+[data-theme="dark"] .footer-bottom {
+  background: var(--color-surface);
+  border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] .social-icon {
+  background: var(--color-bg-alt);
+  border-color: var(--color-border);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 6px;
+    bottom: 56px; /* 避开底部导航栏 */
+  }
+  
+  .footer-motto {
+    display: none;
+  }
+  
+  .beian-info {
+    align-items: center;
+    text-align: center;
+  }
+  
+  .beian-gov {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+/* 桌面端隐藏 footer（因为有 content-area 滚动） */
+@media (min-width: 769px) {
+  .footer-bottom {
+    display: none;
   }
 }
