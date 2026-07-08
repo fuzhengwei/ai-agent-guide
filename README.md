@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/部署-Nginx%20%2B%20SSL-brightgreen" alt="Deploy">
 </p>
 
-# AI Agent 百科全书
+# AI Agent 通识教程
 
 > 从零到面试通关 — 21 章渐进式可视化教程，动画拆解 AI Agent 核心概念
 

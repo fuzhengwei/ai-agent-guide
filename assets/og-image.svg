@@ -18,7 +18,7 @@
   <rect x="0" y="0" width="1200" height="4" fill="url(#accent)"/>
   
   <!-- 标题 -->
-  <text x="600" y="220" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="64" font-weight="700" fill="#f1f5f9">AI Agent 百科全书</text>
+  <text x="600" y="220" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="64" font-weight="700" fill="#f1f5f9">AI Agent 通识教程</text>
   
   <!-- 副标题 -->
   <text x="600" y="300" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="32" fill="#94a3b8">从基础认知到面试通关 · 21章渐进式教程</text>
