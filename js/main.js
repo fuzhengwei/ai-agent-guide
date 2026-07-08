@@ -673,7 +673,7 @@ const App = {
               <a class="project-card" href="https://bugstack.cn/md/project/walicode/walicode.html" target="_blank">
                 <span class="project-icon">🤖</span>
                 <div class="project-info">
-                  <span class="project-name">WaLiSSH - AI Coding 辅助编码</span>
+                  <span class="project-name">WaLiCode - AI Coding 辅助编码</span>
                   <span class="project-desc">AI 辅助编程助手，智能代码生成与审查</span>
                 </div>
                 <span class="project-arrow">↗</span>
