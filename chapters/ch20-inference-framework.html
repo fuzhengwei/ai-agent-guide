@@ -121,9 +121,8 @@ ollama cp qwen2:7b my-agent # 复制模型（用于自定义 Modelfile）
 
 <p>Ollama 最强大的地方在于<strong>API 兼容 OpenAI 格式</strong>。你原来用 GPT-4 的 Agent 代码，只需要改一行配置就能切换到本地模型：</p>
 
-<div class="code-block">
-  <span class="code-label">Python — Agent 代码切换本地模型</span>
-<pre>from openai import OpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
 
 # ========== 方案A：云端 API ==========
 # client = OpenAI(
@@ -178,8 +177,187 @@ response = client.chat.completions.create(
 if response.choices[0].message.tool_calls:
     for tool_call in response.choices[0].message.tool_calls:
         print(f"调用函数: {tool_call.function.name}")
-        print(f"参数: {tool_call.function.arguments}")
-</pre>
+        print(f"参数: {tool_call.function.arguments}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+// ========== 方案A：云端 API ==========
+// const client = new OpenAI({
+//   baseURL: 'https://api.openai.com/v1',
+//   apiKey: 'sk-xxx'
+// });
+// const model = 'gpt-4o';
+
+// ========== 方案B：本地 Ollama — 只改这两行 ==========
+const client = new OpenAI({
+  baseURL: 'http://localhost:11434/v1',
+  apiKey: 'ollama', // Ollama 不需要真密钥
+});
+const model = 'qwen2:7b'; // 改为本地模型名
+
+// ========== 以下代码完全不变 ==========
+
+// 1. 简单对话
+const response = await client.chat.completions.create({
+  model,
+  messages: [
+    { role: 'system', content: '你是客服Agent，帮助用户解决问题' },
+    { role: 'user', content: '我的订单还没到，订单号ORD123' }
+  ]
+});
+console.log(response.choices[0].message.content);
+
+// 2. Function Calling（Ollama 从 v0.5 起支持）
+const tools = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'query_order',
+      description: '查询订单状态',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_id: { type: 'string', description: '订单号' }
+        },
+        required: ['order_id']
+      }
+    }
+  }
+];
+
+const response2 = await client.chat.completions.create({
+  model,
+  messages: [{ role: 'user', content: '查一下ORD123' }],
+  tools
+});
+
+if (response2.choices[0].message.tool_calls) {
+  for (const toolCall of response2.choices[0].message.tool_calls) {
+    console.log(`调用函数: ${toolCall.function.name}`);
+    console.log(`参数: ${toolCall.function.arguments}`);
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "context"
+    "fmt"
+    openai "github.com/sashabaranov/go-openai"
+)
+
+func main() {
+    // ========== 方案B：本地 Ollama — 只改这两行 ==========
+    config := openai.DefaultConfig("ollama") // Ollama 不需要真密钥
+    config.BaseURL = "http://localhost:11434/v1"
+    client := openai.NewClientWithConfig(config)
+    model := "qwen2:7b" // 改为本地模型名
+
+    ctx := context.Background()
+
+    // 1. 简单对话
+    resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+        Model: model,
+        Messages: []openai.ChatCompletionMessage{
+            {Role: openai.ChatMessageRoleSystem, Content: "你是客服Agent，帮助用户解决问题"},
+            {Role: openai.ChatMessageRoleUser, Content: "我的订单还没到，订单号ORD123"},
+        },
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(resp.Choices[0].Message.Content)
+
+    // 2. Function Calling
+    resp2, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+        Model: model,
+        Messages: []openai.ChatCompletionMessage{
+            {Role: openai.ChatMessageRoleUser, Content: "查一下ORD123"},
+        },
+        Functions: []openai.FunctionDefinition{
+            {
+                Name:        "query_order",
+                Description: "查询订单状态",
+                Parameters: map[string]interface{}{
+                    "type": "object",
+                    "properties": map[string]interface{}{
+                        "order_id": map[string]string{
+                            "type":        "string",
+                            "description": "订单号",
+                        },
+                    },
+                    "required": []string{"order_id"},
+                },
+            },
+        },
+    })
+    if err != nil {
+        panic(err)
+    }
+    for _, choice := range resp2.Choices {
+        if choice.Message.FunctionCall != nil {
+            fmt.Printf("调用函数: %s\n", choice.Message.FunctionCall.Name)
+            fmt.Printf("参数: %s\n", choice.Message.FunctionCall.Arguments)
+        }
+    }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientConfig;
+import com.openai.models.*;
+import java.util.*;
+
+public class AgentApp {
+    public static void main(String[] args) {
+        // ========== 方案B：本地 Ollama — 只改这两行 ==========
+        OpenAIClientConfig config = OpenAIClientConfig.builder()
+            .baseUrl("http://localhost:11434/v1")
+            .apiKey("ollama") // Ollama 不需要真密钥
+            .build();
+        OpenAIClient client = new OpenAIClient(config);
+        String model = "qwen2:7b"; // 改为本地模型名
+
+        // 1. 简单对话
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model(model)
+            .addMessage(ChatCompletionMessageParam.builder()
+                .role(ChatCompletionMessageParam.Role.SYSTEM)
+                .content("你是客服Agent，帮助用户解决问题")
+                .build())
+            .addMessage(ChatCompletionMessageParam.builder()
+                .role(ChatCompletionMessageParam.Role.USER)
+                .content("我的订单还没到，订单号ORD123")
+                .build())
+            .build();
+        ChatCompletion response = client.chat().completions().create(params);
+        System.out.println(response.choices().get(0).message().content());
+
+        // 2. Function Calling
+        FunctionDefinition queryOrder = FunctionDefinition.builder()
+            .name("query_order")
+            .description("查询订单状态")
+            .parameters(Map.of(
+                "type", "object",
+                "properties", Map.of(
+                    "order_id", Map.of("type", "string", "description", "订单号")
+                ),
+                "required", List.of("order_id")
+            ))
+            .build();
+
+        ChatCompletionCreateParams params2 = ChatCompletionCreateParams.builder()
+            .model(model)
+            .addMessage(ChatCompletionMessageParam.builder()
+                .role(ChatCompletionMessageParam.Role.USER)
+                .content("查一下ORD123")
+                .build())
+            .addTool(queryOrder)
+            .build();
+        ChatCompletion response2 = client.chat().completions().create(params2);
+
+        for (ChatCompletionMessage.ToolCall toolCall : response2.choices().get(0).message().toolCalls()) {
+            System.out.printf("调用函数: %s%n", toolCall.function().name());
+            System.out.printf("参数: %s%n", toolCall.function().arguments());
+        }
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">Ollama Modelfile：自定义模型行为</h3>
@@ -619,9 +797,8 @@ python -m vllm.entrypoints.openai.api_server \
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"Agent 代码\n（OpenAI SDK）","type":"start"},{"id":"router","label":"模型路由层\n（base_url切换）","type":"process"},{"id":"cloud","label":"GPT-4o\napi.openai.com","type":"tool"},{"id":"ollama","label":"Qwen2:7b\nlocalhost:11434","type":"tool"},{"id":"vllm","label":"DeepSeek-V3\ngpu-server:8000","type":"tool"},{"id":"sglang","label":"Llama3\nsglang-server:30000","type":"tool"}],"edges":[{"from":"agent","to":"router"},{"from":"router","to":"cloud"},{"from":"router","to":"ollama"},{"from":"router","to":"vllm"},{"from":"router","to":"sglang"}]}'></div>
 
-<div class="code-block">
-  <span class="code-label">Python — 模型路由器：动态切换推理后端</span>
-<pre>from openai import OpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
 from enum import Enum
 
 class ModelBackend(Enum):
@@ -694,8 +871,202 @@ result = router.chat(
 
 # 上线切换到 vLLM（一行代码）
 router.switch_backend(ModelBackend.VLLM)
-result = router.chat([{"role": "user", "content": "帮我查北京天气"}])
-</pre>
+result = router.chat([{"role": "user", "content": "帮我查北京天气"}])</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+enum ModelBackend {
+  OPENAI = 'https://api.openai.com/v1',
+  OLLAMA = 'http://localhost:11434/v1',
+  VLLM = 'http://gpu-server:8000/v1',
+  SGLANG = 'http://sglang-server:30000/v1',
+}
+
+const BACKEND_CONFIG: Record&lt;ModelBackend, { apiKey: string; model: string }&gt; = {
+  [ModelBackend.OPENAI]: { apiKey: 'sk-xxx', model: 'gpt-4o' },
+  [ModelBackend.OLLAMA]: { apiKey: 'ollama', model: 'qwen2:7b' },
+  [ModelBackend.VLLM]: { apiKey: 'EMPTY', model: 'deepseek-v3' },
+  [ModelBackend.SGLANG]: { apiKey: 'EMPTY', model: 'llama3-8b' },
+};
+
+class AgentModelRouter {
+  /** Agent 模型路由器：根据任务类型自动选择推理后端 */
+  private client: OpenAI;
+  private model: string;
+
+  constructor(backend: ModelBackend = ModelBackend.OLLAMA) {
+    const config = BACKEND_CONFIG[backend];
+    this.client = new OpenAI({ baseURL: backend, apiKey: config.apiKey });
+    this.model = config.model;
+  }
+
+  /** 统一调用接口，代码不变只切换后端 */
+  async chat(messages: any[], tools?: any[], kwargs?: any) {
+    const params: any = { model: this.model, messages, ...kwargs };
+    if (tools) params.tools = tools;
+    return await this.client.chat.completions.create(params);
+  }
+
+  /** 运行时动态切换后端 */
+  switchBackend(backend: ModelBackend) {
+    const config = BACKEND_CONFIG[backend];
+    this.client = new OpenAI({ baseURL: backend, apiKey: config.apiKey });
+    this.model = config.model;
+  }
+}
+
+// ===== 使用示例 =====
+
+// 开发阶段用 Ollama
+const router = new AgentModelRouter(ModelBackend.OLLAMA);
+
+// 简单对话
+const result = await router.chat([
+  { role: 'user', content: '帮我查北京天气' }
+]);
+console.log(result.choices[0].message.content);
+
+// Function Calling
+const result2 = await router.chat(
+  [{ role: 'user', content: '查一下ORD123' }],
+  [{
+    type: 'function' as const,
+    function: {
+      name: 'query_order',
+      description: '查询订单状态',
+      parameters: {
+        type: 'object',
+        properties: { order_id: { type: 'string' } },
+        required: ['order_id']
+      }
+    }
+  }]
+);
+
+// 上线切换到 vLLM（一行代码）
+router.switchBackend(ModelBackend.VLLM);
+const result3 = await router.chat([{ role: 'user', content: '帮我查北京天气' }]);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    openai "github.com/sashabaranov/go-openai"
+)
+
+type ModelBackend string
+
+const (
+    BackendOpenAI  ModelBackend = "https://api.openai.com/v1"
+    BackendOllama  ModelBackend = "http://localhost:11434/v1"
+    BackendVLLM    ModelBackend = "http://gpu-server:8000/v1"
+    BackendSGLang  ModelBackend = "http://sglang-server:30000/v1"
+)
+
+type BackendConfig struct {
+    APIKey string
+    Model  string
+}
+
+// AgentModelRouter Agent 模型路由器
+type AgentModelRouter struct {
+    client *openai.Client
+    model  string
+}
+
+var backendConfigs = map[ModelBackend]BackendConfig{
+    BackendOpenAI: {APIKey: "sk-xxx", Model: "gpt-4o"},
+    BackendOllama: {APIKey: "ollama", Model: "qwen2:7b"},
+    BackendVLLM:   {APIKey: "EMPTY", Model: "deepseek-v3"},
+    BackendSGLang: {APIKey: "EMPTY", Model: "llama3-8b"},
+}
+
+func NewAgentModelRouter(backend ModelBackend) *AgentModelRouter {
+    config := backendConfigs[backend]
+    cfg := openai.DefaultConfig(config.APIKey)
+    cfg.BaseURL = string(backend)
+    return &AgentModelRouter{
+        client: openai.NewClientWithConfig(cfg),
+        model:  config.Model,
+    }
+}
+
+// Chat 统一调用接口
+func (r *AgentModelRouter) Chat(messages []openai.ChatCompletionMessage) (string, error) {
+    resp, err := r.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+        Model:    r.model,
+        Messages: messages,
+    })
+    if err != nil {
+        return "", err
+    }
+    return resp.Choices[0].Message.Content, nil
+}
+
+// SwitchBackend 运行时动态切换后端
+func (r *AgentModelRouter) SwitchBackend(backend ModelBackend) {
+    config := backendConfigs[backend]
+    cfg := openai.DefaultConfig(config.APIKey)
+    cfg.BaseURL = string(backend)
+    r.client = openai.NewClientWithConfig(cfg)
+    r.model = config.Model
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientConfig;
+import com.openai.models.*;
+import java.util.*;
+
+public class AgentModelRouter {
+    /** Agent 模型路由器：根据任务类型自动选择推理后端 */
+
+    enum ModelBackend {
+        OPENAI("https://api.openai.com/v1"),
+        OLLAMA("http://localhost:11434/v1"),
+        VLLM("http://gpu-server:8000/v1"),
+        SGLANG("http://sglang-server:30000/v1");
+
+        final String url;
+        ModelBackend(String url) { this.url = url; }
+    }
+
+    static final Map&lt;ModelBackend, String[]&gt; BACKEND_CONFIG = Map.of(
+        ModelBackend.OPENAI, new String[]{"sk-xxx", "gpt-4o"},
+        ModelBackend.OLLAMA, new String[]{"ollama", "qwen2:7b"},
+        ModelBackend.VLLM, new String[]{"EMPTY", "deepseek-v3"},
+        ModelBackend.SGLANG, new String[]{"EMPTY", "llama3-8b"}
+    );
+
+    private OpenAIClient client;
+    private String model;
+
+    public AgentModelRouter(ModelBackend backend) {
+        String[] config = BACKEND_CONFIG.get(backend);
+        OpenAIClientConfig cfg = OpenAIClientConfig.builder()
+            .baseUrl(backend.url)
+            .apiKey(config[0])
+            .build();
+        this.client = new OpenAIClient(cfg);
+        this.model = config[1];
+    }
+
+    /** 统一调用接口，代码不变只切换后端 */
+    public ChatCompletion chat(List&lt;ChatCompletionMessageParam&gt; messages) {
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model(model)
+            .messages(messages)
+            .build();
+        return client.chat().completions().create(params);
+    }
+
+    /** 运行时动态切换后端 */
+    public void switchBackend(ModelBackend backend) {
+        String[] config = BACKEND_CONFIG.get(backend);
+        OpenAIClientConfig cfg = OpenAIClientConfig.builder()
+            .baseUrl(backend.url)
+            .apiKey(config[0])
+            .build();
+        this.client = new OpenAIClient(cfg);
+        this.model = config[1];
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">混合策略：关键场景用旗舰，辅助场景用开源</h3>

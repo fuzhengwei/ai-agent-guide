@@ -343,9 +343,8 @@ server {
   </table>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · Prometheus 指标埋点</span>
-<pre>from prometheus_client import Counter, Histogram, Gauge
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from prometheus_client import Counter, Histogram, Gauge
 
 # Agent 指标定义
 agent_requests = Counter(
@@ -384,7 +383,142 @@ def handle_request(user_input, chapter):
         agent_requests.labels(chapter=chapter, status='fail').inc()
         raise
     finally:
-        agent_latency.labels(chapter=chapter).observe(time.time() - start)</pre>
+        agent_latency.labels(chapter=chapter).observe(time.time() - start)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Counter, Histogram, register } from 'prom-client';
+
+// Agent 指标定义
+const agentRequests = new Counter({
+  name: 'agent_requests_total',
+  help: 'Total agent requests',
+  labelNames: ['chapter', 'status'],
+});
+
+const agentLatency = new Histogram({
+  name: 'agent_latency_seconds',
+  help: 'Agent response latency',
+  labelNames: ['chapter'],
+  buckets: [0.5, 1, 2, 5, 10, 30, 60, 120],
+});
+
+const agentTokens = new Counter({
+  name: 'agent_tokens_total',
+  help: 'Total tokens consumed',
+  labelNames: ['model', 'type'],
+});
+
+const agentSteps = new Histogram({
+  name: 'agent_steps_count',
+  help: 'Number of steps per request',
+  buckets: [1, 3, 5, 10, 15, 20],
+});
+
+// 在 Agent 执行流程中埋点
+async function handleRequest(userInput: string, chapter: string) {
+  const start = Date.now();
+  try {
+    const result = await agent.invoke(userInput);
+    agentRequests.labels({ chapter, status: 'success' }).inc();
+    return result;
+  } catch (e) {
+    agentRequests.labels({ chapter, status: 'fail' }).inc();
+    throw e;
+  } finally {
+    agentLatency.labels({ chapter }).observe((Date.now() - start) / 1000);
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "time"
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+// Agent 指标定义
+var (
+    agentRequests = promauto.NewCounterVec(prometheus.CounterOpts{
+        Name: "agent_requests_total",
+        Help: "Total agent requests",
+    }, []string{"chapter", "status"})
+
+    agentLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+        Name:    "agent_latency_seconds",
+        Help:    "Agent response latency",
+        Buckets: []float64{0.5, 1, 2, 5, 10, 30, 60, 120},
+    }, []string{"chapter"})
+
+    agentTokens = promauto.NewCounterVec(prometheus.CounterOpts{
+        Name: "agent_tokens_total",
+        Help: "Total tokens consumed",
+    }, []string{"model", "type"})
+
+    agentSteps = promauto.NewHistogram(prometheus.HistogramOpts{
+        Name:    "agent_steps_count",
+        Help:    "Number of steps per request",
+        Buckets: []float64{1, 3, 5, 10, 15, 20},
+    })
+)
+
+// 在 Agent 执行流程中埋点
+func handleRequest(userInput, chapter string) (interface{}, error) {
+    start := time.Now()
+    result, err := agent.Invoke(userInput)
+    if err != nil {
+        agentRequests.WithLabelValues(chapter, "fail").Inc()
+        return nil, err
+    }
+    agentRequests.WithLabelValues(chapter, "success").Inc()
+    agentLatency.WithLabelValues(chapter).Observe(time.Since(start).Seconds())
+    return result, nil
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import io.prometheus.client.*;
+import java.time.Instant;
+import java.time.Duration;
+
+public class AgentMetrics {
+
+    // Agent 指标定义
+    static final Counter agentRequests = Counter.build()
+        .name("agent_requests_total")
+        .help("Total agent requests")
+        .labelNames("chapter", "status")
+        .register();
+
+    static final Histogram agentLatency = Histogram.build()
+        .name("agent_latency_seconds")
+        .help("Agent response latency")
+        .labelNames("chapter")
+        .buckets(0.5, 1, 2, 5, 10, 30, 60, 120)
+        .register();
+
+    static final Counter agentTokens = Counter.build()
+        .name("agent_tokens_total")
+        .help("Total tokens consumed")
+        .labelNames("model", "type")
+        .register();
+
+    static final Histogram agentSteps = Histogram.build()
+        .name("agent_steps_count")
+        .help("Number of steps per request")
+        .buckets(1, 3, 5, 10, 15, 20)
+        .register();
+
+    // 在 Agent 执行流程中埋点
+    public Object handleRequest(String userInput, String chapter) {
+        long start = System.currentTimeMillis();
+        try {
+            Object result = agent.invoke(userInput);
+            agentRequests.labels(chapter, "success").inc();
+            return result;
+        } catch (Exception e) {
+            agentRequests.labels(chapter, "fail").inc();
+            throw e;
+        } finally {
+            double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+            agentLatency.labels(chapter).observe(elapsed);
+        }
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 19.6 成本优化 ===== -->
@@ -418,9 +552,8 @@ def handle_request(user_input, chapter):
   </div>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · 模型分级路由</span>
-<pre>def route_model(query: str, has_tools: bool) -> str:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def route_model(query: str, has_tools: bool) -> str:
     """根据问题复杂度选择模型"""
     
     # 简单问答 → mini 模型（便宜 30 倍）
@@ -441,12 +574,97 @@ def handle_request(user_input, chapter):
 # 
 # 不分级：100% 用 gpt-4o = $2.50/M
 # 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
-# 节省 77%！</pre>
+# 节省 77%！</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>function routeModel(query: string, hasTools: boolean): string {
+  /** 根据问题复杂度选择模型 */
+
+  // 简单问答 → mini 模型（便宜 30 倍）
+  if (!hasTools && query.length < 100) {
+    return 'gpt-4o-mini';
+  }
+
+  // 需要工具调用 → 标准模型
+  if (hasTools && !isComplexTask(query)) {
+    return 'gpt-4o';
+  }
+
+  // 复杂推理 → 旗舰模型
+  return 'claude-3.5-sonnet';
+}
+
+// 成本对比（每百万 Token）：
+// gpt-4o-mini:  $0.15  ← 80% 请求用这个
+// gpt-4o:       $2.50  ← 15% 请求用这个
+// claude-3.5:   $3.00  ← 5% 请求用这个
+//
+// 不分级：100% 用 gpt-4o = $2.50/M
+// 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
+// 节省 77%！</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+)
+
+// RouteModel 根据问题复杂度选择模型
+func RouteModel(query string, hasTools bool) string {
+    // 简单问答 → mini 模型（便宜 30 倍）
+    if !hasTools && len(query) < 100 {
+        return "gpt-4o-mini"
+    }
+
+    // 需要工具调用 → 标准模型
+    if hasTools && !isComplexTask(query) {
+        return "gpt-4o"
+    }
+
+    // 复杂推理 → 旗舰模型
+    return "claude-3.5-sonnet"
+}
+
+// 成本对比（每百万 Token）：
+// gpt-4o-mini:  $0.15  ← 80% 请求用这个
+// gpt-4o:       $2.50  ← 15% 请求用这个
+// claude-3.5:   $3.00  ← 5% 请求用这个
+//
+// 不分级：100% 用 gpt-4o = $2.50/M
+// 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
+// 节省 77%！
+func main() {
+    model := RouteModel("你好", false)
+    fmt.Println(model) // gpt-4o-mini
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class ModelRouter {
+
+    /** 根据问题复杂度选择模型 */
+    public static String routeModel(String query, boolean hasTools) {
+        // 简单问答 → mini 模型（便宜 30 倍）
+        if (!hasTools && query.length() &lt; 100) {
+            return "gpt-4o-mini";
+        }
+
+        // 需要工具调用 → 标准模型
+        if (hasTools && !isComplexTask(query)) {
+            return "gpt-4o";
+        }
+
+        // 复杂推理 → 旗舰模型
+        return "claude-3.5-sonnet";
+    }
+
+    // 成本对比（每百万 Token）：
+    // gpt-4o-mini:  $0.15  ← 80% 请求用这个
+    // gpt-4o:       $2.50  ← 15% 请求用这个
+    // claude-3.5:   $3.00  ← 5% 请求用这个
+    //
+    // 不分级：100% 用 gpt-4o = $2.50/M
+    // 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
+    // 节省 77%！
+}</pre></div>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · 语义缓存</span>
-<pre>import numpy as np
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import numpy as np
 
 class SemanticCache:
     """基于向量相似度的缓存"""
@@ -481,7 +699,157 @@ def chat(query):
     # 未命中，调用 LLM
     response = llm.invoke(query)
     cache.set(query, response)
-    return response</pre>
+    return response</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { OpenAIEmbeddings } from '@langchain/openai';
+
+/** 基于向量相似度的缓存 */
+class SemanticCache {
+  private cache: Map&lt;number[], string&gt; = new Map();
+  private threshold: number;
+  private embeddings: OpenAIEmbeddings;
+
+  constructor(threshold = 0.95, embeddings: OpenAIEmbeddings) {
+    this.threshold = threshold;
+    this.embeddings = embeddings;
+  }
+
+  async get(query: string): Promise&lt;string | null&gt; {
+    const queryVec = await this.embeddings.embedQuery(query);
+
+    for (const [cachedVec, response] of this.cache.entries()) {
+      const similarity = cosineSimilarity(queryVec, cachedVec);
+      if (similarity > this.threshold) {
+        return response; // 缓存命中
+      }
+    }
+
+    return null; // 未命中
+  }
+
+  async set(query: string, response: string): Promise&lt;void&gt; {
+    const vec = await this.embeddings.embedQuery(query);
+    this.cache.set(vec, response);
+  }
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i &lt; a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// 使用
+const cache = new SemanticCache(0.95, embeddings);
+
+async function chat(query: string): Promise&lt;string&gt; {
+  // 先查缓存
+  const cached = await cache.get(query);
+  if (cached) {
+    return cached; // 命中，不调用 LLM
+  }
+
+  // 未命中，调用 LLM
+  const response = await llm.invoke(query);
+  await cache.set(query, response);
+  return response;
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "math"
+)
+
+// SemanticCache 基于向量相似度的缓存
+type SemanticCache struct {
+    cache     map[[128]float32]string
+    threshold float64
+    embeddings EmbeddingsClient
+}
+
+func NewSemanticCache(threshold float64, emb EmbeddingsClient) *SemanticCache {
+    return &SemanticCache{
+        cache:     make(map[[128]float32]string),
+        threshold: threshold,
+        embeddings: emb,
+    }
+}
+
+// Get 查询缓存
+func (c *SemanticCache) Get(query string) (string, bool) {
+    queryVec := c.embeddings.EmbedQuery(query)
+
+    for cachedVec, response := range c.cache {
+        sim := cosineSimilarity(queryVec, cachedVec[:])
+        if sim > c.threshold {
+            return response, true // 缓存命中
+        }
+    }
+    return "", false // 未命中
+}
+
+// Set 设置缓存
+func (c *SemanticCache) Set(query, response string) {
+    vec := c.embeddings.EmbedQuery(query)
+    var arr [128]float32
+    copy(arr[:], vec)
+    c.cache[arr] = response
+}
+
+func cosineSimilarity(a, b []float32) float64 {
+    var dot, normA, normB float64
+    for i := range a {
+        dot += float64(a[i] * b[i])
+        normA += float64(a[i] * a[i])
+        normB += float64(b[i] * b[i])
+    }
+    return dot / (math.Sqrt(normA) * math.Sqrt(normB))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class SemanticCache {
+    /** 基于向量相似度的缓存 */
+    private Map&lt;List&lt;Float&gt;, String&gt; cache = new HashMap&lt;&gt;();
+    private double threshold;
+    private EmbeddingsClient embeddings;
+
+    public SemanticCache(double threshold, EmbeddingsClient embeddings) {
+        this.threshold = threshold;
+        this.embeddings = embeddings;
+    }
+
+    /** 查询缓存 */
+    public Optional&lt;String&gt; get(String query) {
+        List&lt;Float&gt; queryVec = embeddings.embedQuery(query);
+
+        for (Map.Entry&lt;List&lt;Float&gt;, String&gt; entry : cache.entrySet()) {
+            double similarity = cosineSimilarity(queryVec, entry.getKey());
+            if (similarity > threshold) {
+                return Optional.of(entry.getValue()); // 缓存命中
+            }
+        }
+        return Optional.empty(); // 未命中
+    }
+
+    /** 设置缓存 */
+    public void set(String query, String response) {
+        List&lt;Float&gt; vec = embeddings.embedQuery(query);
+        cache.put(vec, response);
+    }
+
+    private double cosineSimilarity(List&lt;Float&gt; a, List&lt;Float&gt; b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i &lt; a.size(); i++) {
+            dot += a.get(i) * b.get(i);
+            normA += a.get(i) * a.get(i);
+            normB += b.get(i) * b.get(i);
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 八股总结 ===== -->

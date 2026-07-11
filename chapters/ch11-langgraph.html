@@ -86,9 +86,8 @@ setTimeout(() => {
 <!-- ===== 11.3 代码实战 ===== -->
 <h2 class="section-heading">11.3 用 LangGraph 构建 ReAct Agent</h2>
 
-<div class="code-block">
-  <span class="code-label">Python: LangGraph 实现 ReAct Agent</span>
-<pre>from langgraph.graph import StateGraph, END
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END
 from typing import TypedDict, Annotated
 from langchain_core.messages import HumanMessage, AIMessage
 import operator
@@ -146,7 +145,363 @@ app = workflow.compile(checkpointer=MemorySaver())
 result = app.invoke(
     {"messages": [HumanMessage("北京明天天气？")]},
     config={"configurable": {"thread_id": "1"}}
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { StateGraph, END, Annotation } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph";
+import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
+
+// 1. 定义状态（使用 Annotation 声明合并策略）
+const AgentState = Annotation.Root({
+  messages: Annotation&lt;BaseMessage[]>({
+    reducer: (prev, next) => [...prev, ...next],
+    default: () => [],
+  }),
+  tool_results: Annotation&lt;any[]>({
+    reducer: (_, next) => next,
+    default: () => [],
+  }),
+});
+
+// 2. 定义节点函数
+function callLLM(state: typeof AgentState.State) {
+  /** LLM 推理节点：决定下一步做什么 */
+  const response = llm.invoke(state.messages);
+  return { messages: [response] };
+}
+
+function callTool(state: typeof AgentState.State) {
+  /** 工具执行节点：执行 LLM 选择的工具 */
+  const lastMsg = state.messages[state.messages.length - 1] as AIMessage;
+  const toolCall = lastMsg.tool_calls![0];
+  const result = executeTool(toolCall);
+  return { messages: [new ToolMessage(result)] };
+}
+
+// 3. 定义条件路由
+function shouldContinue(state: typeof AgentState.State): string {
+  /** 条件边：判断是否继续循环 */
+  const lastMsg = state.messages[state.messages.length - 1] as AIMessage;
+  if (lastMsg.tool_calls &amp;&amp; lastMsg.tool_calls.length > 0) {
+    return "tools"; // 需要调用工具
+  }
+  return END; // 不需要，结束
+}
+
+// 4. 构建图
+const workflow = new StateGraph(AgentState);
+
+// 添加节点
+workflow.addNode("agent", callLLM);
+workflow.addNode("tools", callTool);
+
+// 设置入口
+workflow.setEntryPoint("agent");
+
+// 添加边和条件边
+workflow.addConditionalEdges("agent", shouldContinue, {
+  tools: "tools",
+  [END]: END,
+});
+workflow.addEdge("tools", "agent");
+
+// 5. 编译并运行
+const app = workflow.compile({ checkpointer: new MemorySaver() });
+
+const result = await app.invoke(
+  { messages: [new HumanMessage("北京明天天气？")] },
+  { configurable: { thread_id: "1" } }
+);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+)
+
+// Message 表示对话中的一条消息
+type Message struct {
+	Role      string `json:"role"`
+	Content   string `json:"content"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+}
+
+// ToolCall 表示 LLM 返回的工具调用请求
+type ToolCall struct {
+	Name string `json:"name"`
+	Args map[string]any `json:"args"`
+}
+
+// AgentState 全局状态，所有节点共享
+type AgentState struct {
+	Messages     []Message `json:"messages"`
+	ToolResults  []any     `json:"tool_results"`
+}
+
+// NodeFunc 节点函数类型：接收当前状态，返回状态更新
+type NodeFunc func(AgentState) map[string]any
+
+// RouteFunc 条件路由函数类型：返回下一个节点名
+type RouteFunc func(AgentState) string
+
+// 1. 定义节点函数
+func callLLM(state AgentState) map[string]any {
+	// LLM 推理节点：决定下一步做什么
+	// 实际项目中这里调用 LLM API
+	response := Message{Role: "ai", Content: "", ToolCalls: []ToolCall{{Name: "get_weather", Args: map[string]any{"city": "北京"}}}}
+	return map[string]any{"messages": append(state.Messages, response)}
+}
+
+func callTool(state AgentState) map[string]any {
+	// 工具执行节点：执行 LLM 选择的工具
+	lastMsg := state.Messages[len(state.Messages)-1]
+	if len(lastMsg.ToolCalls) == 0 {
+		return map[string]any{"messages": state.Messages}
+	}
+	toolCall := lastMsg.ToolCalls[0]
+	result := executeTool(toolCall) // 实际工具执行
+	toolMsg := Message{Role: "tool", Content: result}
+	return map[string]any{"messages": append(state.Messages, toolMsg)}
+}
+
+func executeTool(tc ToolCall) string {
+	// 实际项目中根据 tc.Name 调用对应工具
+	return fmt.Sprintf("{\"city\": \"%s\", \"weather\": \"晴\"}", tc.Args["city"])
+}
+
+// 2. 定义条件路由
+func shouldContinue(state AgentState) string {
+	// 条件边：判断是否继续循环
+	lastMsg := state.Messages[len(state.Messages)-1]
+	if len(lastMsg.ToolCalls) > 0 {
+		return "tools" // 需要调用工具
+	}
+	return "end" // 不需要，结束
+}
+
+// 3. 图引擎：用状态机模拟 StateGraph
+type StateGraph struct {
+	nodes      map[string]NodeFunc
+	edges      map[string]string          // 普通边: from -> to
+	condEdges  map[string]RouteFunc      // 条件边: from -> router
+	routeMap   map[string]map[string]string // 条件边路由表
+	entryPoint string
+}
+
+func NewStateGraph() *StateGraph {
+	return &StateGraph{
+		nodes:     make(map[string]NodeFunc),
+		edges:     make(map[string]string),
+		condEdges: make(map[string]RouteFunc),
+		routeMap:  make(map[string]map[string]string),
+	}
+}
+
+func (g *StateGraph) AddNode(name string, fn NodeFunc) { g.nodes[name] = fn }
+func (g *StateGraph) SetEntryPoint(name string)        { g.entryPoint = name }
+func (g *StateGraph) AddEdge(from, to string)         { g.edges[from] = to }
+func (g *StateGraph) AddConditionalEdges(from string, router RouteFunc, routes map[string]string) {
+	g.condEdges[from] = router
+	g.routeMap[from] = routes
+}
+
+// 4. 构建图
+func buildGraph() *StateGraph {
+	workflow := NewStateGraph()
+	workflow.AddNode("agent", callLLM)
+	workflow.AddNode("tools", callTool)
+	workflow.SetEntryPoint("agent")
+	workflow.AddConditionalEdges("agent", shouldContinue, map[string]string{
+		"tools": "tools",
+		"end":   "end",
+	})
+	workflow.AddEdge("tools", "agent")
+	return workflow
+}
+
+// 5. 编译并运行（模拟 invoke）
+func (g *StateGraph) Invoke(initial AgentState) AgentState {
+	state := initial
+	current := g.entryPoint
+	for step := 0; step < 25; step++ { // 最大步数限制
+		fn, ok := g.nodes[current]
+		if !ok {
+			break
+		}
+		updates := fn(state)
+		if msgs, ok := updates["messages"].([]Message); ok {
+			state.Messages = msgs
+		}
+		// 路由判断
+		if router, hasCond := g.condEdges[current]; hasCond {
+			nextKey := router(state)
+			if routes, ok := g.routeMap[current]; ok {
+				if nextNode, found := routes[nextKey]; found {
+					if nextNode == "end" {
+						break
+					}
+					current = nextNode
+					continue
+				}
+			}
+		}
+		if next, ok := g.edges[current]; ok {
+			current = next
+		} else {
+			break
+		}
+	}
+	return state
+}
+
+func main() {
+	app := buildGraph()
+	result := app.Invoke(AgentState{
+		Messages: []Message{{Role: "user", Content: "北京明天天气？"}},
+	})
+	fmt.Printf("最终消息数: %d\n", len(result.Messages))
+	fmt.Printf("最后一条: %+v\n", result.Messages[len(result.Messages)-1])
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class ReActAgent {
+
+    // ── 1. 定义状态 ──
+    static class AgentState {
+        List&lt;Message> messages = new ArrayList&lt;>();
+        List&lt;Object> toolResults = new ArrayList&lt;>();
+
+        AgentState copy() {
+            AgentState s = new AgentState();
+            s.messages = new ArrayList&lt;>(this.messages);
+            s.toolResults = new ArrayList&lt;>(this.toolResults);
+            return s;
+        }
+    }
+
+    static class Message {
+        String role;
+        String content;
+        List&lt;ToolCall> toolCalls;
+        Message(String role, String content) { this.role = role; this.content = content; }
+        Message(String role, String content, List&lt;ToolCall> toolCalls) {
+            this.role = role; this.content = content; this.toolCalls = toolCalls;
+        }
+    }
+
+    static class ToolCall {
+        String name;
+        Map&lt;String, Object> args;
+        ToolCall(String name, Map&lt;String, Object> args) { this.name = name; this.args = args; }
+    }
+
+    // ── 2. 定义节点函数 ──
+    static Map&lt;String, Object> callLLM(AgentState state) {
+        // LLM 推理节点：决定下一步做什么
+        // 实际项目中调用 llm.invoke(state.messages)
+        Message response = new Message("ai", "",
+            List.of(new ToolCall("get_weather", Map.of("city", "北京"))));
+        List&lt;Message> newMsgs = new ArrayList&lt;>(state.messages);
+        newMsgs.add(response);
+        return Map.of("messages", newMsgs);
+    }
+
+    static Map&lt;String, Object> callTool(AgentState state) {
+        // 工具执行节点：执行 LLM 选择的工具
+        Message lastMsg = state.messages.get(state.messages.size() - 1);
+        if (lastMsg.toolCalls == null || lastMsg.toolCalls.isEmpty()) {
+            return Map.of("messages", state.messages);
+        }
+        ToolCall toolCall = lastMsg.toolCalls.get(0);
+        String result = executeTool(toolCall);
+        List&lt;Message> newMsgs = new ArrayList&lt;>(state.messages);
+        newMsgs.add(new Message("tool", result));
+        return Map.of("messages", newMsgs);
+    }
+
+    static String executeTool(ToolCall tc) {
+        // 实际项目中根据 tc.name 调用对应工具
+        return "{\"city\": \"" + tc.args.get("city") + "\", \"weather\": \"晴\"}";
+    }
+
+    // ── 3. 定义条件路由 ──
+    static String shouldContinue(AgentState state) {
+        Message lastMsg = state.messages.get(state.messages.size() - 1);
+        if (lastMsg.toolCalls != null &amp;&amp; !lastMsg.toolCalls.isEmpty()) {
+            return "tools"; // 需要调用工具
+        }
+        return "end"; // 不需要，结束
+    }
+
+    // ── 4. 图引擎：状态机模拟 StateGraph ──
+    interface NodeFunc { Map&lt;String, Object> apply(AgentState state); }
+    interface RouteFunc { String apply(AgentState state); }
+
+    static class StateGraph {
+        Map&lt;String, NodeFunc> nodes = new LinkedHashMap&lt;>();
+        Map&lt;String, String> edges = new HashMap&lt;>();
+        Map&lt;String, RouteFunc> condEdges = new HashMap&lt;>();
+        Map&lt;String, Map&lt;String, String>> routeMap = new HashMap&lt;>();
+        String entryPoint;
+
+        void addNode(String name, NodeFunc fn) { nodes.put(name, fn); }
+        void setEntryPoint(String name) { entryPoint = name; }
+        void addEdge(String from, String to) { edges.put(from, to); }
+        void addConditionalEdges(String from, RouteFunc router, Map&lt;String, String> routes) {
+            condEdges.put(from, router);
+            routeMap.put(from, routes);
+        }
+
+        AgentState invoke(AgentState initial) {
+            AgentState state = initial;
+            String current = entryPoint;
+            for (int step = 0; step &lt; 25; step++) {
+                NodeFunc fn = nodes.get(current);
+                if (fn == null) break;
+                Map&lt;String, Object> updates = fn.apply(state);
+                Object msgs = updates.get("messages");
+                if (msgs instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List&lt;Message> newMsgs = (List&lt;Message>) msgs;
+                    state = new AgentState();
+                    state.messages = new ArrayList&lt;>(newMsgs);
+                    state.toolResults = new ArrayList&lt;>();
+                }
+                // 路由判断
+                RouteFunc router = condEdges.get(current);
+                if (router != null) {
+                    String nextKey = router.apply(state);
+                    Map&lt;String, String> routes = routeMap.get(current);
+                    if (routes != null &amp;&amp; routes.containsKey(nextKey)) {
+                        String nextNode = routes.get(nextKey);
+                        if ("end".equals(nextNode)) break;
+                        current = nextNode;
+                        continue;
+                    }
+                }
+                String next = edges.get(current);
+                if (next != null) { current = next; } else { break; }
+            }
+            return state;
+        }
+    }
+
+    // ── 5. 构建图并运行 ──
+    public static void main(String[] args) {
+        StateGraph workflow = new StateGraph();
+        workflow.addNode("agent", ReActAgent::callLLM);
+        workflow.addNode("tools", ReActAgent::callTool);
+        workflow.setEntryPoint("agent");
+        workflow.addConditionalEdges("agent", ReActAgent::shouldContinue, Map.of(
+            "tools", "tools", "end", "end"));
+        workflow.addEdge("tools", "agent");
+
+        AgentState initial = new AgentState();
+        initial.messages.add(new Message("user", "北京明天天气？"));
+        AgentState result = workflow.invoke(initial);
+
+        System.out.println("最终消息数: " + result.messages.size());
+        System.out.println("最后一条: " + result.messages.get(result.messages.size() - 1).content);
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">代码解析</h3>
@@ -288,9 +643,8 @@ result = app.invoke(None, config={"configurable": {"thread_id": "1"}})</pre>
 
 <p>前面几节我们分别学习了 State、Node、Edge 和 Checkpoint 的概念，现在把它们组合起来，写一个完整可运行的 LangGraph 项目。这个示例模拟一个<strong>智能客服 Agent</strong>：接收用户问题，判断是否需要查数据库、调用外部 API 或直接回答，执行后在审查节点检查结果质量，不达标则重试，达标则返回最终回复。</p>
 
-<div class="code-block">
-  <span class="code-label">Python: LangGraph 完整实战 — 智能客服 Agent</span>
-<pre>from langgraph.graph import StateGraph, END, START
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
 from typing import TypedDict, Annotated
@@ -370,7 +724,261 @@ result = app.invoke(
     {"messages": [{"role": "user", "content": "我的订单 #12345 到哪了？"}], "step_count": 0, "tool_results": [], "needs_review": False},
     config={"configurable": {"thread_id": "customer-001"}}
 )
-print(result["messages"][-1])</pre>
+print(result["messages"][-1])</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {StateGraph, END, START} from 'langgraph.graph';
+import {MemorySaver} from 'langgraph.checkpoint.memory';
+import {ToolNode} from 'langgraph.prebuilt';
+// TypeScript has built-in types, no import needed for TypedDict, Annotated
+import * as operator from 'operator';
+
+// ── 1. 定义全局状态 ──
+class AgentState {
+  // messages: Annotated[list, operator.add]   # 对话历史（追加策略）
+  // step_count: int                            # 当前循环步数
+  // tool_results: list                         # 工具返回结果
+  // needs_review: bool                         # 是否需要人工审查
+
+// ── 2. 定义节点函数 ──
+  // def agent_node(state: AgentState) -> dict:
+  /** docstring */
+  // step = state.get("step_count", 0) + 1
+// 实际项目中这里调用 llm.invoke(state["messages"])
+  // decision = "search_db" if step < 3 else "answer"
+  return {"messages": [{"role": "ai", "content": `step=${$1}, decision=${$1}`}], "step_count": step};
+
+  // def search_db_node(state: AgentState) -> dict:
+  /** docstring */
+// 实际项目中这里连接数据库执行查询
+  // result = {"found": True, "data": "订单 #12345 已发货，预计 7月3日 送达"}
+  return {"tool_results": [result], "messages": [{"role": "tool", "content": str(result)}]};
+
+  // def answer_node(state: AgentState) -> dict:
+  /** docstring */
+  // final = f"根据查询结果：{state.get('tool_results', [])}"
+  return {"messages": [{"role": "ai", "content": final}]};
+
+  // def review_node(state: AgentState) -> dict:
+  /** docstring */
+  // last = state["messages"][-1]
+  // quality_ok = len(str(last.get("content", ""))) > 5
+  return {"needs_review": not quality_ok, "step_count": state.get("step_count", 0)};
+
+// ── 3. 定义条件路由 ──
+  // def should_continue(state: AgentState) -> str:
+  if (state.get("step_count", 0) >= 5) {
+  return "end";
+  // last_msg = state["messages"][-1]
+  if ("decision=search_db" in str(last_msg.get("content", ""))) {
+  return "search_db";
+  return "answer";
+
+  // def review_decision(state: AgentState) -> str:
+  if (state.get("needs_review", false) && state.get("step_count", 0) < 5) {
+  return "retry";
+  return "finish";
+
+// ── 4. 构建 StateGraph ──
+  // workflow = StateGraph(AgentState)
+  // workflow.add_node("agent", agent_node)
+  // workflow.add_node("search_db", search_db_node)
+  // workflow.add_node("answer", answer_node)
+  // workflow.add_node("review", review_node)
+
+  // workflow.add_edge(START, "agent")
+  // workflow.add_conditional_edges("agent", should_continue, {
+  // "search_db": "search_db",
+  // "answer": "answer",
+  // "end": END
+  // })
+  // workflow.add_edge("search_db", "review")
+  // workflow.add_edge("answer", "review")
+  // workflow.add_conditional_edges("review", review_decision, {
+  // "retry": "agent",
+  // "finish": END
+  // })
+
+// ── 5. 编译并运行 ──
+  // memory = MemorySaver()
+  // app = workflow.compile(checkpointer=memory)
+
+  // result = app.invoke(
+  // {"messages": [{"role": "user", "content": "我的订单 #12345 到哪了？"}], "step_count": 0, "tool_results": [], "needs_review": False},
+  // config = {"configurable": {"thread_id": "customer-001"}}
+  // )
+  console.log(result["messages"][-1]);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langgraph.graph import StateGraph, END, START
+// from langgraph.checkpoint.memory import MemorySaver
+// from langgraph.prebuilt import ToolNode
+// from typing import TypedDict, Annotated
+// import operator
+
+// ── 1. 定义全局状态 ──
+// AgentState - CLI Agent class
+type AgentState struct {
+	// Python: messages: Annotated[list, operator.add]   # 对话历史（追加策略）
+	// Python: step_count: int                            # 当前循环步数
+	// Python: tool_results: list                         # 工具返回结果
+	// Python: needs_review: bool                         # 是否需要人工审查
+
+// ── 2. 定义节点函数 ──
+	// Python: def agent_node(state: AgentState) -> dict:
+	// Python: step = state.get("step_count", 0) + 1
+// 实际项目中这里调用 llm.invoke(state["messages"])
+	// Python: decision = "search_db" if step < 3 else "answer"
+	return {"messages": [{"role": "ai", "content": f"step={step}, decision={decision}"}], "step_count": step}
+
+	// Python: def search_db_node(state: AgentState) -> dict:
+// 实际项目中这里连接数据库执行查询
+	// Python: result = {"found": True, "data": "订单 #12345 已发货，预计 7月3日 送达"}
+	return {"tool_results": [result], "messages": [{"role": "tool", "content": str(result)}]}
+
+	// Python: def answer_node(state: AgentState) -> dict:
+	// Python: final = f"根据查询结果：{state.get('tool_results', [])}"
+	return {"messages": [{"role": "ai", "content": final}]}
+
+	// Python: def review_node(state: AgentState) -> dict:
+	// Python: last = state["messages"][-1]
+	// Python: quality_ok = len(str(last.get("content", ""))) > 5
+	return {"needs_review": not quality_ok, "step_count": state.get("step_count", 0)}
+
+// ── 3. 定义条件路由 ──
+	// Python: def should_continue(state: AgentState) -> str:
+	if state.get("step_count", 0) >= 5 {
+	return "end"
+	// Python: last_msg = state["messages"][-1]
+	if "decision=search_db" in str(last_msg.get("content", "")) {
+	return "search_db"
+	return "answer"
+
+	// Python: def review_decision(state: AgentState) -> str:
+	if state.get("needs_review", false) and state.get("step_count", 0) < 5 {
+	return "retry"
+	return "finish"
+
+// ── 4. 构建 StateGraph ──
+	// Python: workflow = StateGraph(AgentState)
+	// Python: workflow.add_node("agent", agent_node)
+	// Python: workflow.add_node("search_db", search_db_node)
+	// Python: workflow.add_node("answer", answer_node)
+	// Python: workflow.add_node("review", review_node)
+
+	// Python: workflow.add_edge(START, "agent")
+	// Python: workflow.add_conditional_edges("agent", should_continue, {
+	// Python: "search_db": "search_db",
+	// Python: "answer": "answer",
+	// Python: "end": END
+	// Python: })
+	// Python: workflow.add_edge("search_db", "review")
+	// Python: workflow.add_edge("answer", "review")
+	// Python: workflow.add_conditional_edges("review", review_decision, {
+	// Python: "retry": "agent",
+	// Python: "finish": END
+	// Python: })
+
+// ── 5. 编译并运行 ──
+	// Python: memory = MemorySaver()
+	// Python: app = workflow.compile(checkpointer=memory)
+
+	// Python: result = app.invoke(
+	// Python: {"messages": [{"role": "user", "content": "我的订单 #12345 到哪了？"}], "step_count": 0, "tool_results": [], "needs_review": False},
+	// Python: config={"configurable": {"thread_id": "customer-001"}}
+	// Python: )
+	fmt.Println(result["messages"][-1])
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langgraph.graph import StateGraph, END, START
+    // from langgraph.checkpoint.memory import MemorySaver
+    // from langgraph.prebuilt import ToolNode
+    // from typing import TypedDict, Annotated
+    // import operator
+
+    // ── 1. 定义全局状态 ──
+public class AgentState {
+        // Python: messages: Annotated[list, operator.add]   # 对话历史（追加策略）
+        // Python: step_count: int                            # 当前循环步数
+        // Python: tool_results: list                         # 工具返回结果
+        // Python: needs_review: bool                         # 是否需要人工审查
+
+    // ── 2. 定义节点函数 ──
+        // Python: def agent_node(state: AgentState) -> dict:
+        // Python: step = state.get("step_count", 0) + 1
+    // 实际项目中这里调用 llm.invoke(state["messages"])
+        // Python: decision = "search_db" if step < 3 else "answer"
+        return {"messages": [{"role": "ai", "content": f"step={step}, decision={decision}"}], "step_count": step};
+
+        // Python: def search_db_node(state: AgentState) -> dict:
+    // 实际项目中这里连接数据库执行查询
+        // Python: result = {"found": True, "data": "订单 #12345 已发货，预计 7月3日 送达"}
+        return {"tool_results": [result], "messages": [{"role": "tool", "content": str(result)}]};
+
+        // Python: def answer_node(state: AgentState) -> dict:
+        // Python: final = f"根据查询结果：{state.get('tool_results', [])}"
+        return {"messages": [{"role": "ai", "content": final}]};
+
+        // Python: def review_node(state: AgentState) -> dict:
+        // Python: last = state["messages"][-1]
+        // Python: quality_ok = len(str(last.get("content", ""))) > 5
+        return {"needs_review": not quality_ok, "step_count": state.get("step_count", 0)};
+
+    // ── 3. 定义条件路由 ──
+        // Python: def should_continue(state: AgentState) -> str:
+        if (state.get("step_count", 0) >= 5) {
+        return "end";
+        // Python: last_msg = state["messages"][-1]
+        if ("decision=search_db" in str(last_msg.get("content", ""))) {
+        return "search_db";
+        return "answer";
+
+        // Python: def review_decision(state: AgentState) -> str:
+        if (state.get("needs_review", false) && state.get("step_count", 0) < 5) {
+        return "retry";
+        return "finish";
+
+    // ── 4. 构建 StateGraph ──
+        // Python: workflow = StateGraph(AgentState)
+        // Python: workflow.add_node("agent", agent_node)
+        // Python: workflow.add_node("search_db", search_db_node)
+        // Python: workflow.add_node("answer", answer_node)
+        // Python: workflow.add_node("review", review_node)
+
+        // Python: workflow.add_edge(START, "agent")
+        // Python: workflow.add_conditional_edges("agent", should_continue, {
+        // Python: "search_db": "search_db",
+        // Python: "answer": "answer",
+        // Python: "end": END
+        // Python: })
+        // Python: workflow.add_edge("search_db", "review")
+        // Python: workflow.add_edge("answer", "review")
+        // Python: workflow.add_conditional_edges("review", review_decision, {
+        // Python: "retry": "agent",
+        // Python: "finish": END
+        // Python: })
+
+    // ── 5. 编译并运行 ──
+        // Python: memory = MemorySaver()
+        // Python: app = workflow.compile(checkpointer=memory)
+
+        // Python: result = app.invoke(
+        // Python: {"messages": [{"role": "user", "content": "我的订单 #12345 到哪了？"}], "step_count": 0, "tool_results": [], "needs_review": False},
+        // Python: config={"configurable": {"thread_id": "customer-001"}}
+        // Python: )
+        System.out.println(result["messages"][-1]);
+    }
+}</pre></div>
 </div>
 
 <p>上面这段代码展示了 LangGraph 的完整开发流程：<strong>定义 State → 编写节点函数 → 定义条件路由 → 组装图 → 编译运行</strong>。几个关键设计点值得注意：第一，<code>step_count</code> 字段用于防止无限循环，当步数超过 5 时强制结束，这是生产环境中的必备安全措施。第二，<code>review</code> 节点充当质量守门员，不满意的回复会被打回 <code>agent</code> 节点重试，形成了一个自我纠错的闭环。第三，<code>MemorySaver</code> 配合 <code>thread_id</code> 实现了状态持久化，同一个 thread 的多次调用可以无缝续接，这对于多轮对话场景至关重要。</p>
@@ -466,9 +1074,8 @@ setTimeout(() => {
 
 <p>当 Agent 工作流变得复杂时，把所有节点放在一个图里会导致可读性和可维护性下降。<strong>子图</strong>允许你把一组相关节点封装成一个独立子图，然后作为单个节点嵌入主图。这样做有三个好处：一是逻辑分层，主图只关心高层流程，子图处理细节；二是复用性，同一个子图可以在不同主图中重复使用；三是独立测试，子图可以单独编译和调试，不影响主图。</p>
 
-<div class="code-block">
-  <span class="code-label">Python: 子图定义与嵌入</span>
-<pre>from langgraph.graph import StateGraph, END, START
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END, START
 from typing import TypedDict, Annotated
 import operator
 
@@ -527,7 +1134,197 @@ main_graph.add_node("report", write_report)
 main_graph.add_edge(START, "research")
 main_graph.add_edge("research", "report")
 main_graph.add_edge("report", END)
-main_app = main_graph.compile()</pre>
+main_app = main_graph.compile()</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {StateGraph, END, START} from 'langgraph.graph';
+// TypeScript has built-in types, no import needed for TypedDict, Annotated
+import * as operator from 'operator';
+
+// ── 子图状态：研究子流程 ──
+class ResearchState {
+  // queries: list          # 查询列表
+  // findings: Annotated[list, operator.add]  # 研究结果
+
+// ── 子图节点 ──
+  // def generate_queries(state: ResearchState) -> dict:
+  /** docstring */
+  return {"queries": ["LangGraph 教程", "LangGraph 实战", "LangGraph vs LangChain"]};
+
+  // def execute_search(state: ResearchState) -> dict:
+  /** docstring */
+  // results = []
+  for (const q of state["queries"]) {
+// 实际项目中调用搜索 API
+  // results.append({"query": q, "snippet": f"关于 {q} 的搜索结果..."})
+  return {"findings": results};
+
+  // def summarize(state: ResearchState) -> dict:
+  /** docstring */
+  // summary = "; ".join([r["snippet"] for r in state["findings"]])
+  return {"findings": [{"summary": summary}]};
+
+// ── 构建子图 ──
+  // research_subgraph = StateGraph(ResearchState)
+  // research_subgraph.add_node("gen_queries", generate_queries)
+  // research_subgraph.add_node("search", execute_search)
+  // research_subgraph.add_node("summarize", summarize)
+  // research_subgraph.add_edge(START, "gen_queries")
+  // research_subgraph.add_edge("gen_queries", "search")
+  // research_subgraph.add_edge("search", "summarize")
+  // research_subgraph.add_edge("summarize", END)
+  // research_app = research_subgraph.compile()
+
+// ── 主图：将子图作为节点嵌入 ──
+class MainState {
+  // topic: str
+  // research_result: str
+  // final_report: str
+
+  // def research_node(state: MainState) -> dict:
+  /** docstring */
+  // sub_result = research_app.invoke({"queries": [], "findings": []})
+  return {"research_result": str(sub_result["findings"][-1])};
+
+  // def write_report(state: MainState) -> dict:
+  /** docstring */
+  return {"final_report": `研究报告：{state['research_result']}`};
+
+  // main_graph = StateGraph(MainState)
+  // main_graph.add_node("research", research_node)
+  // main_graph.add_node("report", write_report)
+  // main_graph.add_edge(START, "research")
+  // main_graph.add_edge("research", "report")
+  // main_graph.add_edge("report", END)
+  // main_app = main_graph.compile()
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langgraph.graph import StateGraph, END, START
+// from typing import TypedDict, Annotated
+// import operator
+
+// ── 子图状态：研究子流程 ──
+// ResearchState - CLI Agent class
+type ResearchState struct {
+	// Python: queries: list          # 查询列表
+	// Python: findings: Annotated[list, operator.add]  # 研究结果
+
+// ── 子图节点 ──
+	// Python: def generate_queries(state: ResearchState) -> dict:
+	return {"queries": ["LangGraph 教程", "LangGraph 实战", "LangGraph vs LangChain"]}
+
+	// Python: def execute_search(state: ResearchState) -> dict:
+	// Python: results = []
+	for _, q := range state["queries"] {
+// 实际项目中调用搜索 API
+	// Python: results.append({"query": q, "snippet": f"关于 {q} 的搜索结果..."})
+	return {"findings": results}
+
+	// Python: def summarize(state: ResearchState) -> dict:
+	// Python: summary = "; ".join([r["snippet"] for r in state["findings"]])
+	return {"findings": [{"summary": summary}]}
+
+// ── 构建子图 ──
+	// Python: research_subgraph = StateGraph(ResearchState)
+	// Python: research_subgraph.add_node("gen_queries", generate_queries)
+	// Python: research_subgraph.add_node("search", execute_search)
+	// Python: research_subgraph.add_node("summarize", summarize)
+	// Python: research_subgraph.add_edge(START, "gen_queries")
+	// Python: research_subgraph.add_edge("gen_queries", "search")
+	// Python: research_subgraph.add_edge("search", "summarize")
+	// Python: research_subgraph.add_edge("summarize", END)
+	// Python: research_app = research_subgraph.compile()
+
+// ── 主图：将子图作为节点嵌入 ──
+// MainState - CLI Agent class
+type MainState struct {
+	// Python: topic: str
+	// Python: research_result: str
+	// Python: final_report: str
+
+	// Python: def research_node(state: MainState) -> dict:
+	// Python: sub_result = research_app.invoke({"queries": [], "findings": []})
+	return {"research_result": str(sub_result["findings"][-1])}
+
+	// Python: def write_report(state: MainState) -> dict:
+	return {"final_report": f"研究报告：{state['research_result']}"}
+
+	// Python: main_graph = StateGraph(MainState)
+	// Python: main_graph.add_node("research", research_node)
+	// Python: main_graph.add_node("report", write_report)
+	// Python: main_graph.add_edge(START, "research")
+	// Python: main_graph.add_edge("research", "report")
+	// Python: main_graph.add_edge("report", END)
+	// Python: main_app = main_graph.compile()
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langgraph.graph import StateGraph, END, START
+    // from typing import TypedDict, Annotated
+    // import operator
+
+    // ── 子图状态：研究子流程 ──
+public class ResearchState {
+        // Python: queries: list          # 查询列表
+        // Python: findings: Annotated[list, operator.add]  # 研究结果
+
+    // ── 子图节点 ──
+        // Python: def generate_queries(state: ResearchState) -> dict:
+        return {"queries": ["LangGraph 教程", "LangGraph 实战", "LangGraph vs LangChain"]};
+
+        // Python: def execute_search(state: ResearchState) -> dict:
+        // Python: results = []
+        for (var q : state["queries"]) {
+    // 实际项目中调用搜索 API
+        // Python: results.append({"query": q, "snippet": f"关于 {q} 的搜索结果..."})
+        return {"findings": results};
+
+        // Python: def summarize(state: ResearchState) -> dict:
+        // Python: summary = "; ".join([r["snippet"] for r in state["findings"]])
+        return {"findings": [{"summary": summary}]};
+
+    // ── 构建子图 ──
+        // Python: research_subgraph = StateGraph(ResearchState)
+        // Python: research_subgraph.add_node("gen_queries", generate_queries)
+        // Python: research_subgraph.add_node("search", execute_search)
+        // Python: research_subgraph.add_node("summarize", summarize)
+        // Python: research_subgraph.add_edge(START, "gen_queries")
+        // Python: research_subgraph.add_edge("gen_queries", "search")
+        // Python: research_subgraph.add_edge("search", "summarize")
+        // Python: research_subgraph.add_edge("summarize", END)
+        // Python: research_app = research_subgraph.compile()
+
+    // ── 主图：将子图作为节点嵌入 ──
+public class MainState {
+        // Python: topic: str
+        // Python: research_result: str
+        // Python: final_report: str
+
+        // Python: def research_node(state: MainState) -> dict:
+        // Python: sub_result = research_app.invoke({"queries": [], "findings": []})
+        return {"research_result": str(sub_result["findings"][-1])};
+
+        // Python: def write_report(state: MainState) -> dict:
+        return {"final_report": f"研究报告：{state['research_result']}"};
+
+        // Python: main_graph = StateGraph(MainState)
+        // Python: main_graph.add_node("research", research_node)
+        // Python: main_graph.add_node("report", write_report)
+        // Python: main_graph.add_edge(START, "research")
+        // Python: main_graph.add_edge("research", "report")
+        // Python: main_graph.add_edge("report", END)
+        // Python: main_app = main_graph.compile()
+    }
+}</pre></div>
 </div>
 
 <p>这段代码展示了两层图结构：内层 <code>research_subgraph</code> 负责「生成查询 → 执行搜索 → 汇总结果」三步，外层主图调用子图后将结果传给 <code>write_report</code> 节点生成最终报告。子图的 State（<code>ResearchState</code>）与主图的 State（<code>MainState</code>）完全独立，通过 <code>research_node</code> 函数做桥接转换，这种设计让两层的逻辑互不污染。</p>
@@ -536,9 +1333,8 @@ main_app = main_graph.compile()</pre>
 
 <p>LangGraph 的人机协同不止「暂停-审核-继续」一种模式，实际项目中有三种常见模式：<strong>审批模式</strong>（执行前等人批准）、<strong>纠正模式</strong>（暂停后人工修改 State 再继续）、<strong>对话模式</strong>（Agent 遇到不确定时主动向人提问）。下面用代码演示这三种模式的实现。</p>
 
-<div class="code-block">
-  <span class="code-label">Python: 三种 Human-in-the-Loop 模式</span>
-<pre>from langgraph.graph import StateGraph, END, START
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict
 
@@ -594,7 +1390,187 @@ def execute_dialog_mode():
     wg.add_conditional_edges("risky", lambda s: "ask" if not s.get("approved") else END,
                             {"ask": "ask", END: END})
     wg.add_edge("ask", END)
-    return wg.compile(checkpointer=MemorySaver())</pre>
+    return wg.compile(checkpointer=MemorySaver())</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {StateGraph, END, START} from 'langgraph.graph';
+import {MemorySaver} from 'langgraph.checkpoint.memory';
+// TypeScript has built-in types, no import needed for TypedDict
+
+class HitlState {
+  // action: str
+  // approved: bool
+  // feedback: str
+  // result: str
+
+// ── 模式1：审批模式 — 执行前等待人工批准 ──
+  // def risky_action(state: HitlState) -> dict:
+  /** docstring */
+  return {"result": `已执行操作: {state['action']}`};
+
+function execute_approval_mode() {
+  /** docstring */
+  // wg = StateGraph(HitlState)
+  // wg.add_node("risky", risky_action)
+  // wg.add_edge(START, "risky")
+  // wg.add_edge("risky", END)
+  // app = wg.compile(
+  // checkpointer = MemorySaver(),
+  // interrupt_before = ["risky"]  # 关键：执行前暂停
+  // )
+  return app;
+
+// ── 模式2：纠正模式 — 人工修改 State 后继续 ──
+function execute_correction_mode(app, thread_id: string) {
+  /** docstring */
+  // cfg = {"configurable": {"thread_id": thread_id}}
+// 第一次调用：执行到暂停点
+  // state = app.invoke({"action": "删除 /tmp/all", "approved": False, "feedback": "", "result": ""}, config=cfg)
+// 人工审查后修改 State
+  // app.update_state(cfg, values={"action": "列出 /tmp/all 文件而非删除"})
+// 继续执行
+  // result = app.invoke(None, config=cfg)
+  return result;
+
+// ── 模式3：对话模式 — Agent 主动向人提问 ──
+  // def ask_human(state: HitlState) -> dict:
+  /** docstring */
+  // question = "我不确定你想删除哪个目录，请指定："
+// 实际项目中通过 UI 或 chat 将问题发给用户
+  return {"result": question, "feedback": "等待用户回答"};
+
+function execute_dialog_mode() {
+  /** docstring */
+  // wg = StateGraph(HitlState)
+  // wg.add_node("risky", risky_action)
+  // wg.add_node("ask", ask_human)
+  // wg.add_edge(START, "risky")
+// 条件边：不确定时跳到 ask 节点
+  // wg.add_conditional_edges("risky", lambda s: "ask" if not s.get("approved") else END,
+  // {"ask": "ask", END: END})
+  // wg.add_edge("ask", END)
+  return wg.compile(checkpointer=MemorySaver());
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langgraph.graph import StateGraph, END, START
+// from langgraph.checkpoint.memory import MemorySaver
+// from typing import TypedDict
+
+// HitlState - CLI Agent class
+type HitlState struct {
+	// Python: action: str
+	// Python: approved: bool
+	// Python: feedback: str
+	// Python: result: str
+
+// ── 模式1：审批模式 — 执行前等待人工批准 ──
+	// Python: def risky_action(state: HitlState) -> dict:
+	return {"result": f"已执行操作: {state['action']}"}
+
+func execute_approval_mode() {
+	// Python: wg = StateGraph(HitlState)
+	// Python: wg.add_node("risky", risky_action)
+	// Python: wg.add_edge(START, "risky")
+	// Python: wg.add_edge("risky", END)
+	// Python: app = wg.compile(
+	// Python: checkpointer=MemorySaver(),
+	// Python: interrupt_before=["risky"]  # 关键：执行前暂停
+	// Python: )
+	return app
+
+// ── 模式2：纠正模式 — 人工修改 State 后继续 ──
+func execute_correction_mode() {
+	// Python: cfg = {"configurable": {"thread_id": thread_id}}
+// 第一次调用：执行到暂停点
+	// Python: state = app.invoke({"action": "删除 /tmp/all", "approved": False, "feedback": "", "result": ""}, config=cfg)
+// 人工审查后修改 State
+	// Python: app.update_state(cfg, values={"action": "列出 /tmp/all 文件而非删除"})
+// 继续执行
+	// Python: result = app.invoke(None, config=cfg)
+	return result
+
+// ── 模式3：对话模式 — Agent 主动向人提问 ──
+	// Python: def ask_human(state: HitlState) -> dict:
+	// Python: question = "我不确定你想删除哪个目录，请指定："
+// 实际项目中通过 UI 或 chat 将问题发给用户
+	return {"result": question, "feedback": "等待用户回答"}
+
+func execute_dialog_mode() {
+	// Python: wg = StateGraph(HitlState)
+	// Python: wg.add_node("risky", risky_action)
+	// Python: wg.add_node("ask", ask_human)
+	// Python: wg.add_edge(START, "risky")
+// 条件边：不确定时跳到 ask 节点
+	// Python: wg.add_conditional_edges("risky", lambda s: "ask" if not s.get("approved") else END,
+	// Python: {"ask": "ask", END: END})
+	// Python: wg.add_edge("ask", END)
+	return wg.compile(checkpointer=MemorySaver())
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langgraph.graph import StateGraph, END, START
+    // from langgraph.checkpoint.memory import MemorySaver
+    // from typing import TypedDict
+
+public class HitlState {
+        // Python: action: str
+        // Python: approved: bool
+        // Python: feedback: str
+        // Python: result: str
+
+    // ── 模式1：审批模式 — 执行前等待人工批准 ──
+        // Python: def risky_action(state: HitlState) -> dict:
+        return {"result": f"已执行操作: {state['action']}"};
+
+    public static void execute_approval_mode() {
+        // Python: wg = StateGraph(HitlState)
+        // Python: wg.add_node("risky", risky_action)
+        // Python: wg.add_edge(START, "risky")
+        // Python: wg.add_edge("risky", END)
+        // Python: app = wg.compile(
+        // Python: checkpointer=MemorySaver(),
+        // Python: interrupt_before=["risky"]  # 关键：执行前暂停
+        // Python: )
+        return app;
+
+    // ── 模式2：纠正模式 — 人工修改 State 后继续 ──
+    public static void execute_correction_mode() {
+        // Python: cfg = {"configurable": {"thread_id": thread_id}}
+    // 第一次调用：执行到暂停点
+        // Python: state = app.invoke({"action": "删除 /tmp/all", "approved": False, "feedback": "", "result": ""}, config=cfg)
+    // 人工审查后修改 State
+        // Python: app.update_state(cfg, values={"action": "列出 /tmp/all 文件而非删除"})
+    // 继续执行
+        // Python: result = app.invoke(None, config=cfg)
+        return result;
+
+    // ── 模式3：对话模式 — Agent 主动向人提问 ──
+        // Python: def ask_human(state: HitlState) -> dict:
+        // Python: question = "我不确定你想删除哪个目录，请指定："
+    // 实际项目中通过 UI 或 chat 将问题发给用户
+        return {"result": question, "feedback": "等待用户回答"};
+
+    public static void execute_dialog_mode() {
+        // Python: wg = StateGraph(HitlState)
+        // Python: wg.add_node("risky", risky_action)
+        // Python: wg.add_node("ask", ask_human)
+        // Python: wg.add_edge(START, "risky")
+    // 条件边：不确定时跳到 ask 节点
+        // Python: wg.add_conditional_edges("risky", lambda s: "ask" if not s.get("approved") else END,
+        // Python: {"ask": "ask", END: END})
+        // Python: wg.add_edge("ask", END)
+        return wg.compile(checkpointer=MemorySaver());
+    }
+}</pre></div>
 </div>
 
 <p>三种模式各有适用场景：审批模式适合高风险操作（如删除数据、发送邮件），纠正模式适合 Agent 理解有偏差时人工修正，对话模式适合 Agent 信息不足需要向人补充询问。生产项目中可以组合使用，比如先对话模式收集信息，再审批模式确认执行。</p>
@@ -603,9 +1579,8 @@ def execute_dialog_mode():
 
 <p>用户体验角度，长时间运行的 Agent 必须提供实时反馈，否则用户会以为程序卡住了。LangGraph 原生支持 Streaming，可以流式输出每个节点的结果、State 变化以及 LLM 的 token 级流式输出。</p>
 
-<div class="code-block">
-  <span class="code-label">Python: Streaming 流式输出</span>
-<pre>from langgraph.graph import StateGraph, END, START
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict, Annotated
 import operator
@@ -665,7 +1640,203 @@ async for event in app.astream_events(
     if event["event"] == "on_chain_start":
         print(f"节点开始: {event['name']}")
     elif event["event"] == "on_chain_end":
-        print(f"节点完成: {event['name']}, 输出: {event.get('data', {}).get('output', '')[:80]}")</pre>
+        print(f"节点完成: {event['name']}, 输出: {event.get('data', {}).get('output', '')[:80]}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {StateGraph, END, START} from 'langgraph.graph';
+import {MemorySaver} from 'langgraph.checkpoint.memory';
+// TypeScript has built-in types, no import needed for TypedDict, Annotated
+import * as operator from 'operator';
+
+class StreamState {
+  // messages: Annotated[list, operator.add]
+  // current_step: str
+
+  // def thinking_node(state: StreamState) -> dict:
+  /** docstring */
+  return {"messages": [{"role": "ai", "content": "正在分析问题..."}], "current_step": "thinking"};
+
+  // def searching_node(state: StreamState) -> dict:
+  /** docstring */
+  return {"messages": [{"role": "tool", "content": "找到 3 条相关结果"}], "current_step": "searching"};
+
+  // def responding_node(state: StreamState) -> dict:
+  /** docstring */
+  return {"messages": [{"role": "ai", "content": "基于搜索结果，答案是..."}], "current_step": "responding"};
+
+// 构建图
+  // wg = StateGraph(StreamState)
+  // wg.add_node("think", thinking_node)
+  // wg.add_node("search", searching_node)
+  // wg.add_node("respond", responding_node)
+  // wg.add_edge(START, "think")
+  // wg.add_edge("think", "search")
+  // wg.add_edge("search", "respond")
+  // wg.add_edge("respond", END)
+
+  // app = wg.compile(checkpointer=MemorySaver())
+
+// ── 方式1：stream 模式 — 逐节点输出 ──
+  console.log("=== stream 模式 ===");
+  // for event in app.stream(
+  // {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+  // config = {"configurable": {"thread_id": "stream-001"}}
+  // ):
+  // node_name = list(event.keys())[0]
+  console.log(`[${$1}] → {event[node_name]}`);
+
+// ── 方式2：stream_values 模式 — 每步输出完整 State ──
+  console.log("\n=== stream_values 模式 ===");
+  // for state in app.stream_values(
+  // {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+  // config = {"configurable": {"thread_id": "stream-002"}}
+  // ):
+  console.log(`current_step={state.get('current_step')}, messages_count={len(state.get('messages', []))}`);
+
+// ── 方式3：stream_events 模式 — 细粒度事件流（含 LLM token） ──
+  console.log("\n=== stream_events 模式 ===");
+  // async for event in app.astream_events(
+  // {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+  // config = {"configurable": {"thread_id": "stream-003"}},
+  // version = "v2"
+  // ):
+  if (event["event"] == "on_chain_start") {
+  console.log(`节点开始: {event['name']}`);
+  } else if (event["event"] == "on_chain_end") {
+  console.log(`节点完成: {event['name']}, 输出: {event.get('data', {}).get('output', '')[:80]}`);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langgraph.graph import StateGraph, END, START
+// from langgraph.checkpoint.memory import MemorySaver
+// from typing import TypedDict, Annotated
+// import operator
+
+// StreamState - CLI Agent class
+type StreamState struct {
+	// Python: messages: Annotated[list, operator.add]
+	// Python: current_step: str
+
+	// Python: def thinking_node(state: StreamState) -> dict:
+	return {"messages": [{"role": "ai", "content": "正在分析问题..."}], "current_step": "thinking"}
+
+	// Python: def searching_node(state: StreamState) -> dict:
+	return {"messages": [{"role": "tool", "content": "找到 3 条相关结果"}], "current_step": "searching"}
+
+	// Python: def responding_node(state: StreamState) -> dict:
+	return {"messages": [{"role": "ai", "content": "基于搜索结果，答案是..."}], "current_step": "responding"}
+
+// 构建图
+	// Python: wg = StateGraph(StreamState)
+	// Python: wg.add_node("think", thinking_node)
+	// Python: wg.add_node("search", searching_node)
+	// Python: wg.add_node("respond", responding_node)
+	// Python: wg.add_edge(START, "think")
+	// Python: wg.add_edge("think", "search")
+	// Python: wg.add_edge("search", "respond")
+	// Python: wg.add_edge("respond", END)
+
+	// Python: app = wg.compile(checkpointer=MemorySaver())
+
+// ── 方式1：stream 模式 — 逐节点输出 ──
+	fmt.Println("=== stream 模式 ===")
+	// Python: for event in app.stream(
+	// Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+	// Python: config={"configurable": {"thread_id": "stream-001"}}
+	// Python: ):
+	// Python: node_name = list(event.keys())[0]
+	fmt.Println(f"[{node_name}] → {event[node_name]}")
+
+// ── 方式2：stream_values 模式 — 每步输出完整 State ──
+	fmt.Println("\n=== stream_values 模式 ===")
+	// Python: for state in app.stream_values(
+	// Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+	// Python: config={"configurable": {"thread_id": "stream-002"}}
+	// Python: ):
+	fmt.Println(f"current_step={state.get('current_step')}, messages_count={len(state.get('messages', []))}")
+
+// ── 方式3：stream_events 模式 — 细粒度事件流（含 LLM token） ──
+	fmt.Println("\n=== stream_events 模式 ===")
+	// Python: async for event in app.astream_events(
+	// Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+	// Python: config={"configurable": {"thread_id": "stream-003"}},
+	// Python: version="v2"
+	// Python: ):
+	if event["event"] == "on_chain_start" {
+	fmt.Println(f"节点开始: {event['name']}")
+	} else if event["event"] == "on_chain_end" {
+	fmt.Println(f"节点完成: {event['name']}, 输出: {event.get('data', {}).get('output', '')[:80]}")
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langgraph.graph import StateGraph, END, START
+    // from langgraph.checkpoint.memory import MemorySaver
+    // from typing import TypedDict, Annotated
+    // import operator
+
+public class StreamState {
+        // Python: messages: Annotated[list, operator.add]
+        // Python: current_step: str
+
+        // Python: def thinking_node(state: StreamState) -> dict:
+        return {"messages": [{"role": "ai", "content": "正在分析问题..."}], "current_step": "thinking"};
+
+        // Python: def searching_node(state: StreamState) -> dict:
+        return {"messages": [{"role": "tool", "content": "找到 3 条相关结果"}], "current_step": "searching"};
+
+        // Python: def responding_node(state: StreamState) -> dict:
+        return {"messages": [{"role": "ai", "content": "基于搜索结果，答案是..."}], "current_step": "responding"};
+
+    // 构建图
+        // Python: wg = StateGraph(StreamState)
+        // Python: wg.add_node("think", thinking_node)
+        // Python: wg.add_node("search", searching_node)
+        // Python: wg.add_node("respond", responding_node)
+        // Python: wg.add_edge(START, "think")
+        // Python: wg.add_edge("think", "search")
+        // Python: wg.add_edge("search", "respond")
+        // Python: wg.add_edge("respond", END)
+
+        // Python: app = wg.compile(checkpointer=MemorySaver())
+
+    // ── 方式1：stream 模式 — 逐节点输出 ──
+        System.out.println("=== stream 模式 ===");
+        // Python: for event in app.stream(
+        // Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+        // Python: config={"configurable": {"thread_id": "stream-001"}}
+        // Python: ):
+        // Python: node_name = list(event.keys())[0]
+        System.out.println(String.format("$1"));
+
+    // ── 方式2：stream_values 模式 — 每步输出完整 State ──
+        System.out.println("\n=== stream_values 模式 ===");
+        // Python: for state in app.stream_values(
+        // Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+        // Python: config={"configurable": {"thread_id": "stream-002"}}
+        // Python: ):
+        System.out.println(String.format("$1"));
+
+    // ── 方式3：stream_events 模式 — 细粒度事件流（含 LLM token） ──
+        System.out.println("\n=== stream_events 模式 ===");
+        // Python: async for event in app.astream_events(
+        // Python: {"messages": [{"role": "user", "content": "什么是 LangGraph？"}], "current_step": ""},
+        // Python: config={"configurable": {"thread_id": "stream-003"}},
+        // Python: version="v2"
+        // Python: ):
+        if (event["event"] == "on_chain_start") {
+        System.out.println(String.format("$1"));
+        } else if (event["event"] == "on_chain_end") {
+        System.out.println(String.format("$1"));
+    }
+}</pre></div>
 </div>
 
 <p>三种 Streaming 方式从粗到细各有用途：<code>stream()</code> 以节点为单位输出，适合展示「正在执行哪一步」的进度条；<code>stream_values()</code> 每步输出完整 State，适合调试和监控状态变化；<code>astream_events()</code> 是最细粒度的事件流，能捕获 LLM 的 token 级输出，适合实现打字机效果的实时回复。在生产项目中，推荐前端用 <code>astream_events</code> 做 token 级展示，后端用 <code>stream</code> 做节点级日志记录。</p>

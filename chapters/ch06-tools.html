@@ -122,9 +122,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">工具定义：JSON Schema</h3>
 
-<div class="code-block">
-  <span class="code-label">Function Calling 工具定义示例</span>
-<pre>// 定义工具
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 定义工具
 const tools = [
   {
     type: "function",
@@ -188,7 +187,217 @@ const finalResponse = await openai.chat.completions.create({
     response.choices[0].message,
     { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) }
   ]
-});</pre>
+});</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 定义工具
+  // const tools = [
+  // {
+  // type: "function",
+  // function: {
+  // name: "get_weather",
+  // description: "获取指定城市的天气信息",
+  // parameters: {
+  // type: "object",
+  // properties: {
+  // city: {
+  // type: "string",
+  // description: "城市名称，如：北京、上海"
+  // },
+  // date: {
+  // type: "string",
+  // description: "日期，格式 YYYY-MM-DD，默认今天"
+  // }
+  // },
+  // required: ["city"]
+  // }
+  // }
+  // },
+  // {
+  // type: "function",
+  // function: {
+  // name: "run_python",
+  // description: "执行 Python 代码并返回输出",
+  // parameters: {
+  // type: "object",
+  // properties: {
+  // code: {
+  // type: "string",
+  // description: "要执行的 Python 代码"
+  // }
+  // },
+  // required: ["code"]
+  // }
+  // }
+  // }
+  // ];
+
+  // // 调用 LLM
+  // const response = await openai.chat.completions.create({
+  // model: "gpt-4o",
+  // messages: [{ role: "user", content: "北京明天天气怎么样？" }],
+  // tools: tools  // 传入工具定义
+  // });
+
+  // // LLM 返回函数调用
+  // const toolCall = response.choices[0].message.tool_calls[0];
+  // // { name: "get_weather", arguments: '{"city":"北京","date":"2026-07-02"}' }
+
+  // // 执行实际函数
+  // const result = await getWeather("北京", "2026-07-02");
+
+  // // 结果回传 LLM 生成自然语言回答
+  // const finalResponse = await openai.chat.completions.create({
+  // model: "gpt-4o",
+  // messages: [
+  // { role: "user", content: "北京明天天气怎么样？" },
+  // response.choices[0].message,
+  // { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) }
+  // ]
+  // });</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 定义工具
+	// Python: const tools = [
+	// Python: {
+	// Python: type: "function",
+	// Python: function: {
+	// Python: name: "get_weather",
+	// Python: description: "获取指定城市的天气信息",
+	// Python: parameters: {
+	// Python: type: "object",
+	// Python: properties: {
+	// Python: city: {
+	// Python: type: "string",
+	// Python: description: "城市名称，如：北京、上海"
+	// Python: },
+	// Python: date: {
+	// Python: type: "string",
+	// Python: description: "日期，格式 YYYY-MM-DD，默认今天"
+	// Python: }
+	// Python: },
+	// Python: required: ["city"]
+	// Python: }
+	// Python: }
+	// Python: },
+	// Python: {
+	// Python: type: "function",
+	// Python: function: {
+	// Python: name: "run_python",
+	// Python: description: "执行 Python 代码并返回输出",
+	// Python: parameters: {
+	// Python: type: "object",
+	// Python: properties: {
+	// Python: code: {
+	// Python: type: "string",
+	// Python: description: "要执行的 Python 代码"
+	// Python: }
+	// Python: },
+	// Python: required: ["code"]
+	// Python: }
+	// Python: }
+	// Python: }
+	// Python: ];
+
+	// Python: // 调用 LLM
+	// Python: const response = await openai.chat.completions.create({
+	// Python: model: "gpt-4o",
+	// Python: messages: [{ role: "user", content: "北京明天天气怎么样？" }],
+	// Python: tools: tools  // 传入工具定义
+	// Python: });
+
+	// Python: // LLM 返回函数调用
+	// Python: const toolCall = response.choices[0].message.tool_calls[0];
+	// Python: // { name: "get_weather", arguments: '{"city":"北京","date":"2026-07-02"}' }
+
+	// Python: // 执行实际函数
+	// Python: const result = await getWeather("北京", "2026-07-02");
+
+	// Python: // 结果回传 LLM 生成自然语言回答
+	// Python: const finalResponse = await openai.chat.completions.create({
+	// Python: model: "gpt-4o",
+	// Python: messages: [
+	// Python: { role: "user", content: "北京明天天气怎么样？" },
+	// Python: response.choices[0].message,
+	// Python: { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) }
+	// Python: ]
+	// Python: });</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 定义工具
+        // Python: const tools = [
+        // Python: {
+        // Python: type: "function",
+        // Python: function: {
+        // Python: name: "get_weather",
+        // Python: description: "获取指定城市的天气信息",
+        // Python: parameters: {
+        // Python: type: "object",
+        // Python: properties: {
+        // Python: city: {
+        // Python: type: "string",
+        // Python: description: "城市名称，如：北京、上海"
+        // Python: },
+        // Python: date: {
+        // Python: type: "string",
+        // Python: description: "日期，格式 YYYY-MM-DD，默认今天"
+        // Python: }
+        // Python: },
+        // Python: required: ["city"]
+        // Python: }
+        // Python: }
+        // Python: },
+        // Python: {
+        // Python: type: "function",
+        // Python: function: {
+        // Python: name: "run_python",
+        // Python: description: "执行 Python 代码并返回输出",
+        // Python: parameters: {
+        // Python: type: "object",
+        // Python: properties: {
+        // Python: code: {
+        // Python: type: "string",
+        // Python: description: "要执行的 Python 代码"
+        // Python: }
+        // Python: },
+        // Python: required: ["code"]
+        // Python: }
+        // Python: }
+        // Python: }
+        // Python: ];
+
+        // Python: // 调用 LLM
+        // Python: const response = await openai.chat.completions.create({
+        // Python: model: "gpt-4o",
+        // Python: messages: [{ role: "user", content: "北京明天天气怎么样？" }],
+        // Python: tools: tools  // 传入工具定义
+        // Python: });
+
+        // Python: // LLM 返回函数调用
+        // Python: const toolCall = response.choices[0].message.tool_calls[0];
+        // Python: // { name: "get_weather", arguments: '{"city":"北京","date":"2026-07-02"}' }
+
+        // Python: // 执行实际函数
+        // Python: const result = await getWeather("北京", "2026-07-02");
+
+        // Python: // 结果回传 LLM 生成自然语言回答
+        // Python: const finalResponse = await openai.chat.completions.create({
+        // Python: model: "gpt-4o",
+        // Python: messages: [
+        // Python: { role: "user", content: "北京明天天气怎么样？" },
+        // Python: response.choices[0].message,
+        // Python: { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) }
+        // Python: ]
+        // Python: });
+}</pre></div>
 </div>
 
 <!-- ===== 6.4 工具分类体系 ===== -->
@@ -394,9 +603,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<div class="code-block">
-  <span class="code-label">意图识别与复合意图拆解代码</span>
-<pre>from enum import Enum
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from enum import Enum
 from dataclasses import dataclass
 from typing import List
 
@@ -499,7 +707,347 @@ for i, intent in enumerate(intents):
 
 tools = route_to_tools(intents)
 print(f"候选工具: {tools}")
-# 输出: 候选工具: ['web_search', 'weather_api', ..., 'python_executor', ...]</pre>
+# 输出: 候选工具: ['web_search', 'weather_api', ..., 'python_executor', ...]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>enum IntentType {
+  INFO_QUERY = '信息获取',
+  CODE_EXEC = '代码执行',
+  FILE_OP = '文件操作',
+  COMM_INTERACT = '通信交互'
+}
+
+interface Intent {
+  type: IntentType;
+  originalText: string;
+  target: string;
+  priority: number;
+  dependsOn: string[] | null;
+}
+
+const INTENT_KEYWORDS: Record&lt;IntentType, string[]&gt; = {
+  [IntentType.INFO_QUERY]: ['查', '看', '搜索', '查询', '了解', '什么', '多少', '怎样'],
+  [IntentType.CODE_EXEC]: ['算', '运行', '执行', '分析', '处理', '画', '计算', '统计'],
+  [IntentType.FILE_OP]: ['保存', '读取', '修改', '创建', '导出', '写入', '下载'],
+  [IntentType.COMM_INTERACT]: ['发', '通知', '推送', '提交', '发送', '提醒', '转发']
+};
+
+function classifyIntent(userInput: string): Intent[] {
+  const intents: Intent[] = [];
+  const subRequests = splitCompositeRequest(userInput);
+
+  for (const sub of subRequests) {
+    let matchedType: IntentType | null = null;
+    for (const [intentType, keywords] of Object.entries(INTENT_KEYWORDS)) {
+      if (keywords.some(kw => sub.includes(kw))) {
+        matchedType = intentType as IntentType;
+        break;
+      }
+    }
+    if (matchedType) {
+      intents.push({
+        type: matchedType,
+        originalText: sub,
+        target: extractTarget(sub),
+        priority: 0,
+        dependsOn: null
+      });
+    }
+  }
+
+  for (let i = 1; i &lt; intents.length; i++) {
+    if (intents[i].type === IntentType.CODE_EXEC && intents[i-1].type === IntentType.INFO_QUERY) {
+      intents[i].dependsOn = [intents[i-1].originalText];
+    }
+  }
+  return intents;
+}
+
+function splitCompositeRequest(text: string): string[] {
+  const connectors = ['并', '然后', '再', '接着', '以及', '而且'];
+  for (const conn of connectors) {
+    if (text.includes(conn)) {
+      const parts = text.split(conn);
+      return parts.map(p => p.trim()).filter(p => p);
+    }
+  }
+  return [text];
+}
+
+function extractTarget(text: string): string {
+  for (const keywords of Object.values(INTENT_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (text.includes(kw)) {
+        return text.replace(kw, '').trim();
+      }
+    }
+  }
+  return text;
+}
+
+const INTENT_TOOL_MAP: Record&lt;IntentType, string[]&gt; = {
+  [IntentType.INFO_QUERY]: ['web_search', 'weather_api', 'news_api', 'knowledge_base'],
+  [IntentType.CODE_EXEC]: ['python_executor', 'sql_executor', 'js_runtime'],
+  [IntentType.FILE_OP]: ['file_read', 'file_write', 'pdf_parser', 'csv_handler'],
+  [IntentType.COMM_INTERACT]: ['send_email', 'slack_notify', 'webhook_call']
+};
+
+function routeToTools(intents: Intent[]): string[] {
+  const tools: string[] = [];
+  for (const intent of intents) {
+    tools.push(...INTENT_TOOL_MAP[intent.type]);
+  }
+  return tools;
+}
+
+// ===== 使用示例 =====
+const userRequest = '帮我搜索最新的AI论文并用Python分析引用趋势';
+const intents = classifyIntent(userRequest);
+intents.forEach((intent, i) => {
+  console.log(`意图${i+1}: ${intent.type} | 目标: ${intent.target}`);
+  if (intent.dependsOn) {
+    console.log(`  ⚠️ 依赖前置结果: ${intent.dependsOn}`);
+  }
+});
+const tools = routeToTools(intents);
+console.log(`候选工具: ${tools}`);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+type IntentType string
+
+const (
+	IntentInfoQuery    IntentType = "信息获取"
+	IntentCodeExec     IntentType = "代码执行"
+	IntentFileOp       IntentType = "文件操作"
+	IntentCommInteract IntentType = "通信交互"
+)
+
+type Intent struct {
+	Type         IntentType
+	OriginalText string
+	Target       string
+	Priority     int
+	DependsOn    []string
+}
+
+var intentKeywords = map[IntentType][]string{
+	IntentInfoQuery:    {"查", "看", "搜索", "查询", "了解", "什么", "多少", "怎样"},
+	IntentCodeExec:     {"算", "运行", "执行", "分析", "处理", "画", "计算", "统计"},
+	IntentFileOp:       {"保存", "读取", "修改", "创建", "导出", "写入", "下载"},
+	IntentCommInteract: {"发", "通知", "推送", "提交", "发送", "提醒", "转发"},
+}
+
+func classifyIntent(userInput string) []Intent {
+	var intents []Intent
+	subRequests := splitCompositeRequest(userInput)
+
+	for _, sub := range subRequests {
+		var matchedType IntentType
+		for itype, keywords := range intentKeywords {
+			for _, kw := range keywords {
+				if strings.Contains(sub, kw) {
+					matchedType = itype
+					break
+				}
+			}
+			if matchedType != "" {
+				break
+			}
+		}
+		if matchedType != "" {
+			intents = append(intents, Intent{
+				Type:         matchedType,
+				OriginalText: sub,
+				Target:       extractTarget(sub),
+			})
+		}
+	}
+
+	for i := 1; i &lt; len(intents); i++ {
+		if intents[i].Type == IntentCodeExec && intents[i-1].Type == IntentInfoQuery {
+			intents[i].DependsOn = []string{intents[i-1].OriginalText}
+		}
+	}
+	return intents
+}
+
+func splitCompositeRequest(text string) []string {
+	connectors := []string{"并", "然后", "再", "接着", "以及", "而且"}
+	for _, conn := range connectors {
+		if strings.Contains(text, conn) {
+			parts := strings.SplitN(text, conn, 2)
+			var result []string
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					result = append(result, p)
+				}
+			}
+			return result
+		}
+	}
+	return []string{text}
+}
+
+func extractTarget(text string) string {
+	for _, keywords := range intentKeywords {
+		for _, kw := range keywords {
+			if strings.Contains(text, kw) {
+				return strings.TrimSpace(strings.ReplaceAll(text, kw, ""))
+			}
+		}
+	}
+	return text
+}
+
+var intentToolMap = map[IntentType][]string{
+	IntentInfoQuery:    {"web_search", "weather_api", "news_api", "knowledge_base"},
+	IntentCodeExec:     {"python_executor", "sql_executor", "js_runtime"},
+	IntentFileOp:       {"file_read", "file_write", "pdf_parser", "csv_handler"},
+	IntentCommInteract: {"send_email", "slack_notify", "webhook_call"},
+}
+
+func routeToTools(intents []Intent) []string {
+	var tools []string
+	for _, intent := range intents {
+		tools = append(tools, intentToolMap[intent.Type]...)
+	}
+	return tools
+}
+
+func main() {
+	userRequest := "帮我搜索最新的AI论文并用Python分析引用趋势"
+	intents := classifyIntent(userRequest)
+	for i, intent := range intents {
+		fmt.Printf("意图%d: %s | 目标: %s\n", i+1, intent.Type, intent.Target)
+		if intent.DependsOn != nil {
+			fmt.Printf("  ⚠️ 依赖前置结果: %v\n", intent.DependsOn)
+		}
+	}
+	tools := routeToTools(intents)
+	fmt.Printf("候选工具: %v\n", tools)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class IntentRouter {
+    enum IntentType {
+        INFO_QUERY("信息获取"),
+        CODE_EXEC("代码执行"),
+        FILE_OP("文件操作"),
+        COMM_INTERACT("通信交互");
+
+        final String label;
+        IntentType(String label) { this.label = label; }
+    }
+
+    static class Intent {
+        IntentType type;
+        String originalText;
+        String target;
+        int priority = 0;
+        List&lt;String&gt; dependsOn;
+
+        Intent(IntentType type, String originalText, String target) {
+            this.type = type;
+            this.originalText = originalText;
+            this.target = target;
+        }
+    }
+
+    static final Map&lt;IntentType, List&lt;String&gt;&gt; INTENT_KEYWORDS = new EnumMap&lt;&gt;(IntentType.class);
+    static final Map&lt;IntentType, List&lt;String&gt;&gt; INTENT_TOOL_MAP = new EnumMap&lt;&gt;(IntentType.class);
+
+    static {
+        INTENT_KEYWORDS.put(IntentType.INFO_QUERY, Arrays.asList("查", "看", "搜索", "查询", "了解", "什么", "多少", "怎样"));
+        INTENT_KEYWORDS.put(IntentType.CODE_EXEC, Arrays.asList("算", "运行", "执行", "分析", "处理", "画", "计算", "统计"));
+        INTENT_KEYWORDS.put(IntentType.FILE_OP, Arrays.asList("保存", "读取", "修改", "创建", "导出", "写入", "下载"));
+        INTENT_KEYWORDS.put(IntentType.COMM_INTERACT, Arrays.asList("发", "通知", "推送", "提交", "发送", "提醒", "转发"));
+
+        INTENT_TOOL_MAP.put(IntentType.INFO_QUERY, Arrays.asList("web_search", "weather_api", "news_api", "knowledge_base"));
+        INTENT_TOOL_MAP.put(IntentType.CODE_EXEC, Arrays.asList("python_executor", "sql_executor", "js_runtime"));
+        INTENT_TOOL_MAP.put(IntentType.FILE_OP, Arrays.asList("file_read", "file_write", "pdf_parser", "csv_handler"));
+        INTENT_TOOL_MAP.put(IntentType.COMM_INTERACT, Arrays.asList("send_email", "slack_notify", "webhook_call"));
+    }
+
+    static List&lt;Intent&gt; classifyIntent(String userInput) {
+        List&lt;Intent&gt; intents = new ArrayList&lt;&gt;();
+        List&lt;String&gt; subRequests = splitCompositeRequest(userInput);
+
+        for (String sub : subRequests) {
+            IntentType matchedType = null;
+            for (Map.Entry&lt;IntentType, List&lt;String&gt;&gt; entry : INTENT_KEYWORDS.entrySet()) {
+                for (String kw : entry.getValue()) {
+                    if (sub.contains(kw)) {
+                        matchedType = entry.getKey();
+                        break;
+                    }
+                }
+                if (matchedType != null) break;
+            }
+            if (matchedType != null) {
+                intents.add(new Intent(matchedType, sub, extractTarget(sub)));
+            }
+        }
+
+        for (int i = 1; i &lt; intents.size(); i++) {
+            if (intents.get(i).type == IntentType.CODE_EXEC && intents.get(i-1).type == IntentType.INFO_QUERY) {
+                intents.get(i).dependsOn = Collections.singletonList(intents.get(i-1).originalText);
+            }
+        }
+        return intents;
+    }
+
+    static List&lt;String&gt; splitCompositeRequest(String text) {
+        String[] connectors = {"并", "然后", "再", "接着", "以及", "而且"};
+        for (String conn : connectors) {
+            if (text.contains(conn)) {
+                String[] parts = text.split(java.util.regex.Pattern.quote(conn), 2);
+                List&lt;String&gt; result = new ArrayList&lt;&gt;();
+                for (String p : parts) {
+                    p = p.trim();
+                    if (!p.isEmpty()) result.add(p);
+                }
+                return result;
+            }
+        }
+        return Collections.singletonList(text);
+    }
+
+    static String extractTarget(String text) {
+        for (List&lt;String&gt; keywords : INTENT_KEYWORDS.values()) {
+            for (String kw : keywords) {
+                if (text.contains(kw)) {
+                    return text.replace(kw, "").trim();
+                }
+            }
+        }
+        return text;
+    }
+
+    static List&lt;String&gt; routeToTools(List&lt;Intent&gt; intents) {
+        List&lt;String&gt; tools = new ArrayList&lt;&gt;();
+        for (Intent intent : intents) {
+            tools.addAll(INTENT_TOOL_MAP.get(intent.type));
+        }
+        return tools;
+    }
+
+    public static void main(String[] args) {
+        String userRequest = "帮我搜索最新的AI论文并用Python分析引用趋势";
+        List&lt;Intent&gt; intents = classifyIntent(userRequest);
+        for (int i = 0; i &lt; intents.size(); i++) {
+            Intent intent = intents.get(i);
+            System.out.printf("意图%d: %s | 目标: %s%n", i+1, intent.type.label, intent.target);
+            if (intent.dependsOn != null) {
+                System.out.printf("  ⚠️ 依赖前置结果: %s%n", intent.dependsOn);
+            }
+        }
+        System.out.println("候选工具: " + routeToTools(intents));
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 6.11 上下文工程与工具管理 ===== -->
@@ -542,9 +1090,8 @@ print(f"候选工具: {tools}")
 
 <p>与文档 RAG 类似，Tool RAG 把工具描述做 embedding 存入向量库，请求来时检索最相关的 Top-K：</p>
 
-<div class="code-block">
-  <span class="code-label">Tool RAG 检索实现</span>
-<pre>import numpy as np
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import numpy as np
 from typing import List, Dict
 
 class ToolRAG:
@@ -595,7 +1142,210 @@ response = openai.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": user_query}],
     tools=relevant_tools  # ← 只传3个，而非全部50个
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+interface Tool {
+  type: string;
+  function: {
+    name: string;
+    description: string;
+    parameters?: any;
+  };
+}
+
+class ToolRAG {
+  private tools: Tool[];
+  private toolEmbeddings: number[][];
+  private toolTexts: string[];
+
+  constructor(embeddingModel: any, tools: Tool[]) {
+    this.tools = tools;
+    this.toolEmbeddings = [];
+    this.toolTexts = [];
+    for (const tool of tools) {
+      const desc = this.buildSearchText(tool);
+      const emb = embeddingModel.encode(desc);
+      this.toolEmbeddings.push(emb);
+      this.toolTexts.push(desc);
+    }
+  }
+
+  private buildSearchText(tool: Tool): string {
+    const func = tool.function;
+    let text = `${func.name}: ${func.description}`;
+    if (func.parameters?.properties) {
+      for (const [pname, pinfo] of Object.entries(func.parameters.properties)) {
+        text += ` | 参数${pname}(${(pinfo as any).type || ''}): ${(pinfo as any).description || ''}`;
+      }
+    }
+    return text;
+  }
+
+  retrieve(userQuery: string, topK: number = 5): Tool[] {
+    const queryEmb = this.embeddingModel.encode(userQuery);
+    const similarities = this.toolEmbeddings.map((emb, i) => ({
+      index: i,
+      sim: this.cosineSimilarity(emb, queryEmb)
+    }));
+    similarities.sort((a, b) => b.sim - a.sim);
+    return similarities.slice(0, topK).map(s => this.tools[s.index]);
+  }
+
+  private cosineSimilarity(a: number[], b: number[]): number {
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i &lt; a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+}
+
+// ===== 使用示例 =====
+const toolRag = new ToolRAG(embeddingModel, all50Tools);
+const userQuery = '帮我查下北京明天的天气';
+const relevantTools = toolRag.retrieve(userQuery, 3);
+
+const openai = new OpenAI();
+const response = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: userQuery }],
+  tools: relevantTools
+});</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"sort"
+)
+
+type Tool struct {
+	Type     string `json:"type"`
+	Function struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Parameters  *struct {
+			Properties map[string]struct {
+				Type        string `json:"type"`
+				Description string `json:"description"`
+			} `json:"properties"`
+		} `json:"parameters"`
+	} `json:"function"`
+}
+
+type ToolRAG struct {
+	tools          []Tool
+	toolEmbeddings [][]float64
+}
+
+func NewToolRAG(embeddingModel interface{ Encode(string) []float64 }, tools []Tool) *ToolRAG {
+	rag := &ToolRAG{tools: tools}
+	for _, tool := range tools {
+		desc := rag.buildSearchText(tool)
+		emb := embeddingModel.Encode(desc)
+		rag.toolEmbeddings = append(rag.toolEmbeddings, emb)
+	}
+	return rag
+}
+
+func (r *ToolRAG) buildSearchText(tool Tool) string {
+	text := tool.Function.Name + ": " + tool.Function.Description
+	if tool.Function.Parameters != nil {
+		for pname, pinfo := range tool.Function.Parameters.Properties {
+			text += " | 参数" + pname + "(" + pinfo.Type + "): " + pinfo.Description
+		}
+	}
+	return text
+}
+
+func (r *ToolRAG) Retrieve(userQuery string, topK int) []Tool {
+	queryEmb := r.embeddingModel.Encode(userQuery)
+	type idxSim struct {
+		index int
+		sim   float64
+	}
+	var sims []idxSim
+	for i, emb := range r.toolEmbeddings {
+		sims = append(sims, idxSim{i, cosineSimilarity(emb, queryEmb)})
+	}
+	sort.Slice(sims, func(i, j int) bool { return sims[i].sim > sims[j].sim })
+	if topK > len(sims) { topK = len(sims) }
+	result := make([]Tool, topK)
+	for i := 0; i &lt; topK; i++ {
+		result[i] = r.tools[sims[i].index]
+	}
+	return result
+}
+
+func cosineSimilarity(a, b []float64) float64 {
+	dot, normA, normB := 0.0, 0.0, 0.0
+	for i := range a {
+		dot += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class ToolRAG {
+    private List&lt;Tool&gt; tools;
+    private List&lt;double[]&gt; toolEmbeddings;
+    private EmbeddingModel embeddingModel;
+
+    public ToolRAG(EmbeddingModel embeddingModel, List&lt;Tool&gt; tools) {
+        this.tools = tools;
+        this.embeddingModel = embeddingModel;
+        this.toolEmbeddings = new ArrayList&lt;&gt;();
+        for (Tool tool : tools) {
+            String desc = buildSearchText(tool);
+            toolEmbeddings.add(embeddingModel.encode(desc));
+        }
+    }
+
+    private String buildSearchText(Tool tool) {
+        StringBuilder text = new StringBuilder(tool.function.name + ": " + tool.function.description);
+        if (tool.function.parameters != null && tool.function.parameters.properties != null) {
+            for (Map.Entry&lt;String, ParamInfo&gt; entry : tool.function.parameters.properties.entrySet()) {
+                text.append(" | 参数").append(entry.getKey())
+                    .append("(").append(entry.getValue().type).append(")")
+                    .append(": ").append(entry.getValue().description);
+            }
+        }
+        return text.toString();
+    }
+
+    public List&lt;Tool&gt; retrieve(String userQuery, int topK) {
+        double[] queryEmb = embeddingModel.encode(userQuery);
+        List&lt;int[]&gt; indexed = new ArrayList&lt;&gt;();
+        List&lt;Double&gt; sims = new ArrayList&lt;&gt;();
+
+        for (int i = 0; i &lt; toolEmbeddings.size(); i++) {
+            sims.add(cosineSimilarity(toolEmbeddings.get(i), queryEmb));
+        }
+
+        List&lt;Integer&gt; topIndices = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; toolEmbeddings.size(); i++) topIndices.add(i);
+        topIndices.sort((a, b) -> Double.compare(sims.get(b), sims.get(a)));
+
+        List&lt;Tool&gt; result = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; Math.min(topK, topIndices.size()); i++) {
+            result.add(tools.get(topIndices.get(i)));
+        }
+        return result;
+    }
+
+    private double cosineSimilarity(double[] a, double[] b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i &lt; a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">工具描述优化：高信号低噪声</h3>
@@ -746,9 +1496,8 @@ response = openai.chat.completions.create(
   </div>
 </div>
 
-<div class="code-block">
-  <span class="code-label">工具结果压缩器</span>
-<pre>import json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import json
 from typing import Dict, Any, List
 
 class ToolResultCompressor:
@@ -865,7 +1614,268 @@ compressed = compressor.compress("get_weather", weather_result)
 print(f"原始: {compressed['_meta']['original_tokens']} tokens")
 print(f"压缩: {compressed['_meta']['compressed_tokens']} tokens")
 print(f"压缩率: {compressed['_meta']['compression_ratio']}")
-# 输出: 原始: 2000 tokens | 压缩: 150 tokens | 压缩率: 0.075</pre>
+# 输出: 原始: 2000 tokens | 压缩: 150 tokens | 压缩率: 0.075</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class ToolResultCompressor {
+  private keyFieldsMap: Record&lt;string, string[]&gt; = {
+    'get_weather': ['temperature', 'description', 'wind_speed'],
+    'web_search': ['title', 'snippet', 'url'],
+    'run_python': ['stdout'],
+    'file_read': ['content_preview'],
+    'sql_query': ['rows_summary']
+  };
+
+  private maxTokensMap: Record&lt;string, number&gt; = {
+    'get_weather': 200,
+    'web_search': 300,
+    'run_python': 400,
+    'file_read': 500,
+    'sql_query': 300
+  };
+
+  compress(toolName: string, result: Record&lt;string, any&gt;): Record&lt;string, any&gt; {
+    const compressed: Record&lt;string, any&gt; = {};
+    const keyFields = this.keyFieldsMap[toolName] || [];
+    const maxTokens = this.maxTokensMap[toolName] || 500;
+
+    if (keyFields.length > 0) {
+      for (const field of keyFields) {
+        if (field in result) {
+          compressed[field] = this.truncate(result[field], maxTokens);
+        }
+      }
+    } else {
+      Object.assign(compressed, this.truncateDict(result, maxTokens));
+    }
+
+    compressed._meta = {
+      tool: toolName,
+      original_tokens: this.estimateTokens(result),
+      compressed_tokens: this.estimateTokens(compressed),
+      compression_ratio: Math.round(
+        this.estimateTokens(compressed) / Math.max(this.estimateTokens(result), 1) * 100
+      ) / 100
+    };
+    return compressed;
+  }
+
+  summarizeResult(toolName: string, result: any, llmClient: { chat: (p: string) => string }): string {
+    const originalText = JSON.stringify(result);
+    const prompt = `请用2~3句话总结以下工具调用结果的关键信息。\n工具: ${toolName}\n结果: ${originalText}\n只保留与用户任务最相关的信息，省略细节。`;
+    return llmClient.chat(prompt);
+  }
+
+  archiveToVectorStore(toolName: string, result: any, vectorStore: any, refId: string): string {
+    vectorStore.store(refId, { tool: toolName, result, timestamp: new Date().toISOString() });
+    return `[${toolName}结果已归档 | ref=${refId} | 如需详情可检索]`;
+  }
+
+  private truncate(text: any, maxTokens: number): string {
+    const maxChars = maxTokens * 2;
+    const str = String(text);
+    return str.length > maxChars ? str.slice(0, maxChars) + '...[已截断]' : str;
+  }
+
+  private truncateDict(d: Record&lt;string, any&gt;, maxTokens: number): Record&lt;string, any&gt; {
+    const result: Record&lt;string, any&gt; = {};
+    let remaining = maxTokens * 2;
+    for (const [k, v] of Object.entries(d)) {
+      const entry = JSON.stringify({ [k]: v });
+      if (entry.length > remaining) {
+        result[k] = String(v).slice(0, remaining) + '...[截断]';
+        break;
+      }
+      result[k] = v;
+      remaining -= entry.length;
+    }
+    return result;
+  }
+
+  private estimateTokens(obj: any): number {
+    return Math.floor(JSON.stringify(obj).length / 2);
+  }
+}
+
+// 使用示例
+const compressor = new ToolResultCompressor();
+const weatherResult = { temperature: 28, feels_like: 30, humidity: 65, /* ... */ };
+const compressed = compressor.compress('get_weather', weatherResult);
+console.log(`原始: ${compressed._meta.original_tokens} tokens`);
+console.log(`压缩: ${compressed._meta.compressed_tokens} tokens`);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+)
+
+type ToolResultCompressor struct {
+	keyFieldsMap map[string][]string
+	maxTokensMap map[string]int
+}
+
+func NewToolResultCompressor() *ToolResultCompressor {
+	return &ToolResultCompressor{
+		keyFieldsMap: map[string][]string{
+			"get_weather": {"temperature", "description", "wind_speed"},
+			"web_search":  {"title", "snippet", "url"},
+			"run_python":  {"stdout"},
+		},
+		maxTokensMap: map[string]int{
+			"get_weather": 200,
+			"web_search":  300,
+			"run_python":  400,
+		},
+	}
+}
+
+func (c *ToolResultCompressor) Compress(toolName string, result map[string]interface{}) map[string]interface{} {
+	compressed := make(map[string]interface{})
+	keyFields := c.keyFieldsMap[toolName]
+	maxTokens := c.maxTokensMap[toolName]
+	if maxTokens == 0 { maxTokens = 500 }
+
+	if len(keyFields) > 0 {
+		for _, field := range keyFields {
+			if val, ok := result[field]; ok {
+				compressed[field] = c.truncate(val, maxTokens)
+			}
+		}
+	} else {
+		compressed = c.truncateDict(result, maxTokens)
+	}
+
+	originalTokens := c.estimateTokens(result)
+	compressedTokens := c.estimateTokens(compressed)
+	compressed["_meta"] = map[string]interface{}{
+		"tool":               toolName,
+		"original_tokens":    originalTokens,
+		"compressed_tokens":  compressedTokens,
+		"compression_ratio":  fmt.Sprintf("%.2f", float64(compressedTokens)/float64(max(originalTokens, 1))),
+	}
+	return compressed
+}
+
+func (c *ToolResultCompressor) ArchiveToVectorStore(toolName string, result map[string]interface{}, vectorStore VectorStore, refID string) string {
+	vectorStore.Store(refID, map[string]interface{}{
+		"tool":      toolName,
+		"result":    result,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+	return fmt.Sprintf("[%s结果已归档 | ref=%s | 如需详情可检索]", toolName, refID)
+}
+
+func (c *ToolResultCompressor) truncate(text interface{}, maxTokens int) string {
+	maxChars := maxTokens * 2
+	str := fmt.Sprintf("%v", text)
+	if len(str) > maxChars {
+		return str[:maxChars] + "...[已截断]"
+	}
+	return str
+}
+
+func (c *ToolResultCompressor) truncateDict(d map[string]interface{}, maxTokens int) map[string]interface{} {
+	result := make(map[string]interface{})
+	remaining := maxTokens * 2
+	for k, v := range d {
+		entryBytes, _ := json.Marshal(map[string]interface{}{k: v})
+		if len(entryBytes) > remaining {
+			result[k] = fmt.Sprintf("%v...[截断]", v)[:remaining]
+			break
+		}
+		result[k] = v
+		remaining -= len(entryBytes)
+	}
+	return result
+}
+
+func (c *ToolResultCompressor) estimateTokens(obj interface{}) int {
+	bytes, _ := json.Marshal(obj)
+	return len(bytes) / 2
+}
+
+func max(a, b int) int { if a > b { return a }; return b }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+
+public class ToolResultCompressor {
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    private static final Map&lt;String, List&lt;String&gt;&gt; KEY_FIELDS_MAP = new HashMap&lt;&gt;();
+    private static final Map&lt;String, Integer&gt; MAX_TOKENS_MAP = new HashMap&lt;&gt;();
+
+    static {
+        KEY_FIELDS_MAP.put("get_weather", Arrays.asList("temperature", "description", "wind_speed"));
+        KEY_FIELDS_MAP.put("web_search", Arrays.asList("title", "snippet", "url"));
+        KEY_FIELDS_MAP.put("run_python", Arrays.asList("stdout"));
+
+        MAX_TOKENS_MAP.put("get_weather", 200);
+        MAX_TOKENS_MAP.put("web_search", 300);
+        MAX_TOKENS_MAP.put("run_python", 400);
+    }
+
+    public Map&lt;String, Object&gt; compress(String toolName, Map&lt;String, Object&gt; result) {
+        Map&lt;String, Object&gt; compressed = new LinkedHashMap&lt;&gt;();
+        List&lt;String&gt; keyFields = KEY_FIELDS_MAP.getOrDefault(toolName, Collections.emptyList());
+        int maxTokens = MAX_TOKENS_MAP.getOrDefault(toolName, 500);
+
+        if (!keyFields.isEmpty()) {
+            for (String field : keyFields) {
+                if (result.containsKey(field)) {
+                    compressed.put(field, truncate(result.get(field), maxTokens));
+                }
+            }
+        } else {
+            compressed.putAll(truncateDict(result, maxTokens));
+        }
+
+        int originalTokens = estimateTokens(result);
+        int compressedTokens = estimateTokens(compressed);
+        Map&lt;String, Object&gt; meta = new LinkedHashMap&lt;&gt;();
+        meta.put("tool", toolName);
+        meta.put("original_tokens", originalTokens);
+        meta.put("compressed_tokens", compressedTokens);
+        meta.put("compression_ratio", Math.round((double) compressedTokens / Math.max(originalTokens, 1) * 100.0) / 100.0);
+        compressed.put("_meta", meta);
+        return compressed;
+    }
+
+    public String archiveToVectorStore(String toolName, Map&lt;String, Object&gt; result, VectorStore vectorStore, String refId) {
+        Map&lt;String, Object&gt; data = new LinkedHashMap&lt;&gt;();
+        data.put("tool", toolName);
+        data.put("result", result);
+        data.put("timestamp", java.time.Instant.now().toString());
+        vectorStore.store(refId, data);
+        return String.format("[%s结果已归档 | ref=%s | 如需详情可检索]", toolName, refId);
+    }
+
+    private String truncate(Object text, int maxTokens) {
+        int maxChars = maxTokens * 2;
+        String str = String.valueOf(text);
+        return str.length() > maxChars ? str.substring(0, maxChars) + "...[已截断]" : str;
+    }
+
+    private Map&lt;String, Object&gt; truncateDict(Map&lt;String, Object&gt; d, int maxTokens) {
+        Map&lt;String, Object&gt; result = new LinkedHashMap&lt;&gt;();
+        int remaining = maxTokens * 2;
+        for (Map.Entry&lt;String, Object&gt; entry : d.entrySet()) {
+            String entryStr = entry.getKey() + "=" + entry.getValue();
+            if (entryStr.length() > remaining) {
+                result.put(entry.getKey(), String.valueOf(entry.getValue()).substring(0, remaining) + "...[截断]");
+                break;
+            }
+            result.put(entry.getKey(), entry.getValue());
+            remaining -= entryStr.length();
+        }
+        return result;
+    }
+
+    private int estimateTokens(Object obj) {
+        try { return mapper.writeValueAsString(obj).length() / 2; }
+        catch (Exception e) { return 0; }
+    }
+}</pre></div>
 </div>
 
 <div class="quote">
@@ -881,9 +1891,8 @@ print(f"压缩率: {compressed['_meta']['compression_ratio']}")
 
 <p>LLM 生成的参数可能出错：city 传了数字、date 格式不对、缺少必填参数。用 Pydantic 可以在执行前拦截这些错误：</p>
 
-<div class="code-block">
-  <span class="code-label">Pydantic 工具参数验证与重试</span>
-<pre>from pydantic import BaseModel, Field, ValidationError
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from pydantic import BaseModel, Field, ValidationError
 from typing import Optional
 from datetime import datetime
 
@@ -982,7 +1991,321 @@ result = caller.call_tool("get_weather", raw_args, llm_client, weather_executor)
 #   字段 'city': String should have at least 1 character (当前值: )
 #   字段 'date': String should match pattern ^\d{4}-\d{2}-\d{2}$ (当前值: 2026/07/02)
 # → 重提示 LLM → LLM 修正为 '{"city": "北京", "date": "2026-07-02"}'
-# 第2次: 验证通过 → 执行成功</pre>
+# 第2次: 验证通过 → 执行成功</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {BaseModel, Field, ValidationError} from 'pydantic';
+// TypeScript has built-in types, no import needed for Optional
+import {datetime} from 'datetime';
+
+// ===== 工具参数的 Pydantic 模型 =====
+
+class WeatherParams {
+  // city: str = Field(..., description="城市名称", min_length=1, max_length=50)
+  // date: Optional[str] = Field(
+  // None,
+  // description = "日期，格式 YYYY-MM-DD",
+  // pattern = r"^\d{4}-\d{2}-\d{2}$"  # 正则约束格式
+  // )
+
+class PythonExecParams {
+  // code: str = Field(..., description="Python代码", min_length=1)
+  // timeout: Optional[int] = Field(30, description="超时秒数", ge=1, le=300)
+
+class SearchParams {
+  // query: str = Field(..., description="搜索关键词", min_length=1, max_length=200)
+  // max_results: Optional[int] = Field(5, description="最大结果数", ge=1, le=20)
+
+// ===== 验证 + 错误处理 + 重提示 =====
+
+class StructuredToolCaller {
+  /** docstring */
+
+  static readonly PARAM_MODELS = {;
+  // "get_weather": WeatherParams,
+  // "run_python": PythonExecParams,
+  // "web_search": SearchParams,
+  // }
+
+  static readonly MAX_RETRIES = 2;
+
+  // def call_tool(self, tool_name: str, raw_arguments: str,
+  // llm_client, tool_executor) -> dict:
+  /** docstring */
+
+  for (const attempt of range(self.MAX_RETRIES + 1)) {
+// ① 尝试解析和验证参数
+  try {
+  // args_dict = json.loads(raw_arguments)
+  // validated = self.PARAM_MODELS[tool_name](**args_dict)
+// 验证通过 → 执行
+  // result = tool_executor(tool_name, validated.model_dump())
+  return {"success": true, "result": result};
+
+  // except json.JSONDecodeError as e:
+  // error_msg = f"参数JSON格式错误: {e}"
+  } catch (ValidationError) {
+// ② Pydantic 校验失败 → 收集具体错误
+  // error_msg = self._format_validation_error(e)
+
+// ③ 校验失败 → 重提示 LLM 修正参数
+  if (attempt < self.MAX_RETRIES) {
+  console.log(`⚠️ 参数校验失败（第{attempt+1}次）: ${$1}`);
+  // correction_prompt = f"""你上一次调用工具 {tool_name} 的参数有错误：
+  // {error_msg}
+  // 请重新生成正确的函数调用参数。注意遵守以下约束：
+  // {self._get_constraints(tool_name)}"""
+  // raw_arguments = llm_client.chat(correction_prompt)
+  } else {
+// 超过重试次数 → 返回错误
+  return {"success": false, "error": error_msg};
+
+  // def _format_validation_error(self, e: ValidationError) -> str:
+  /** docstring */
+  // errors = []
+  for (const err of e.errors()) {
+  // field = ".".join(str(loc) for loc in err["loc"])
+  // errors.append(f"字段 '{field}': {err['msg']} (当前值: {err.get('input', '未提供')})")
+  return "\n".join(errors);
+
+  // def _get_constraints(self, tool_name: str) -> str:
+  /** docstring */
+  // model = self.PARAM_MODELS[tool_name]
+  // constraints = []
+  for (const [name, field] of model.model_fields.items()) {
+  // desc = field.description or ""
+  if (field.is_required()) {
+  // desc += " [必填]"
+  // constraints.append(f"  {name} ({field.annotation}): {desc}")
+  return "\n".join(constraints);
+
+// ===== 使用示例 =====
+
+  // caller = StructuredToolCaller()
+
+// LLM 生成了错误参数: city 传了空字符串，date 格式不对
+  // raw_args = '{"city": "", "date": "2026/07/02"}'
+
+  // result = caller.call_tool("get_weather", raw_args, llm_client, weather_executor)
+
+// 第1次: Pydantic 校验失败
+// ⚠️ 参数校验失败（第1次）:
+// 字段 'city': String should have at least 1 character (当前值: )
+// 字段 'date': String should match pattern ^\d{4}-\d{2}-\d{2}$ (当前值: 2026/07/02)
+// → 重提示 LLM → LLM 修正为 '{"city": "北京", "date": "2026-07-02"}'
+// 第2次: 验证通过 → 执行成功
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from pydantic import BaseModel, Field, ValidationError
+// from typing import Optional
+// from datetime import datetime
+
+// ===== 工具参数的 Pydantic 模型 =====
+
+// WeatherParams - CLI Agent class
+type WeatherParams struct {
+	// Python: city: str = Field(..., description="城市名称", min_length=1, max_length=50)
+	// Python: date: Optional[str] = Field(
+	// Python: None,
+	// Python: description="日期，格式 YYYY-MM-DD",
+	// Python: pattern=r"^\d{4}-\d{2}-\d{2}$"  # 正则约束格式
+	// Python: )
+
+// PythonExecParams - CLI Agent class
+type PythonExecParams struct {
+	// Python: code: str = Field(..., description="Python代码", min_length=1)
+	// Python: timeout: Optional[int] = Field(30, description="超时秒数", ge=1, le=300)
+
+// SearchParams - CLI Agent class
+type SearchParams struct {
+	// Python: query: str = Field(..., description="搜索关键词", min_length=1, max_length=200)
+	// Python: max_results: Optional[int] = Field(5, description="最大结果数", ge=1, le=20)
+
+// ===== 验证 + 错误处理 + 重提示 =====
+
+// StructuredToolCaller - CLI Agent class
+type StructuredToolCaller struct {
+
+	// Python: PARAM_MODELS = {
+	// Python: "get_weather": WeatherParams,
+	// Python: "run_python": PythonExecParams,
+	// Python: "web_search": SearchParams,
+	// Python: }
+
+	// Python: MAX_RETRIES = 2
+
+	// Python: def call_tool(self, tool_name: str, raw_arguments: str,
+	// Python: llm_client, tool_executor) -> dict:
+
+	for _, attempt := range range(self.MAX_RETRIES + 1) {
+// ① 尝试解析和验证参数
+	// try block
+	// Python: args_dict = json.loads(raw_arguments)
+	// Python: validated = self.PARAM_MODELS[tool_name](**args_dict)
+// 验证通过 → 执行
+	// Python: result = tool_executor(tool_name, validated.model_dump())
+	return {"success": true, "result": result}
+
+	// except block
+	// Python: error_msg = f"参数JSON格式错误: {e}"
+	// except block
+// ② Pydantic 校验失败 → 收集具体错误
+	// Python: error_msg = self._format_validation_error(e)
+
+// ③ 校验失败 → 重提示 LLM 修正参数
+	if attempt < self.MAX_RETRIES {
+	fmt.Println(f"⚠️ 参数校验失败（第{attempt+1}次）: {error_msg}")
+	// Python: correction_prompt = f"""你上一次调用工具 {tool_name} 的参数有错误：
+	// Python: {error_msg}
+	// Python: 请重新生成正确的函数调用参数。注意遵守以下约束：
+	// Python: {self._get_constraints(tool_name)}"""
+	// Python: raw_arguments = llm_client.chat(correction_prompt)
+	} else {
+// 超过重试次数 → 返回错误
+	return {"success": false, "error": error_msg}
+
+	// Python: def _format_validation_error(self, e: ValidationError) -> str:
+	// Python: errors = []
+	for _, err := range e.errors() {
+	// Python: field = ".".join(str(loc) for loc in err["loc"])
+	// Python: errors.append(f"字段 '{field}': {err['msg']} (当前值: {err.get('input', '未提供')})")
+	return "\n".join(errors)
+
+	// Python: def _get_constraints(self, tool_name: str) -> str:
+	// Python: model = self.PARAM_MODELS[tool_name]
+	// Python: constraints = []
+	// Python: for name, field in model.model_fields.items():
+	// Python: desc = field.description or ""
+	if field.is_required() {
+	// Python: desc += " [必填]"
+	// Python: constraints.append(f"  {name} ({field.annotation}): {desc}")
+	return "\n".join(constraints)
+
+// ===== 使用示例 =====
+
+	// Python: caller = StructuredToolCaller()
+
+// LLM 生成了错误参数: city 传了空字符串，date 格式不对
+	// Python: raw_args = '{"city": "", "date": "2026/07/02"}'
+
+	// Python: result = caller.call_tool("get_weather", raw_args, llm_client, weather_executor)
+
+// 第1次: Pydantic 校验失败
+// ⚠️ 参数校验失败（第1次）:
+// 字段 'city': String should have at least 1 character (当前值: )
+// 字段 'date': String should match pattern ^\d{4}-\d{2}-\d{2}$ (当前值: 2026/07/02)
+// → 重提示 LLM → LLM 修正为 '{"city": "北京", "date": "2026-07-02"}'
+// 第2次: 验证通过 → 执行成功
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from pydantic import BaseModel, Field, ValidationError
+    // from typing import Optional
+    // from datetime import datetime
+
+    // ===== 工具参数的 Pydantic 模型 =====
+
+public class WeatherParams {
+        // Python: city: str = Field(..., description="城市名称", min_length=1, max_length=50)
+        // Python: date: Optional[str] = Field(
+        // Python: None,
+        // Python: description="日期，格式 YYYY-MM-DD",
+        // Python: pattern=r"^\d{4}-\d{2}-\d{2}$"  # 正则约束格式
+        // Python: )
+
+public class PythonExecParams {
+        // Python: code: str = Field(..., description="Python代码", min_length=1)
+        // Python: timeout: Optional[int] = Field(30, description="超时秒数", ge=1, le=300)
+
+public class SearchParams {
+        // Python: query: str = Field(..., description="搜索关键词", min_length=1, max_length=200)
+        // Python: max_results: Optional[int] = Field(5, description="最大结果数", ge=1, le=20)
+
+    // ===== 验证 + 错误处理 + 重提示 =====
+
+public class StructuredToolCaller {
+
+        // Python: PARAM_MODELS = {
+        // Python: "get_weather": WeatherParams,
+        // Python: "run_python": PythonExecParams,
+        // Python: "web_search": SearchParams,
+        // Python: }
+
+        // Python: MAX_RETRIES = 2
+
+        // Python: def call_tool(self, tool_name: str, raw_arguments: str,
+        // Python: llm_client, tool_executor) -> dict:
+
+        for (var attempt : range(self.MAX_RETRIES + 1)) {
+    // ① 尝试解析和验证参数
+        // Python: try:
+        // Python: args_dict = json.loads(raw_arguments)
+        // Python: validated = self.PARAM_MODELS[tool_name](**args_dict)
+    // 验证通过 → 执行
+        // Python: result = tool_executor(tool_name, validated.model_dump())
+        return {"success": true, "result": result};
+
+        // Python: except json.JSONDecodeError as e:
+        // Python: error_msg = f"参数JSON格式错误: {e}"
+        // Python: except ValidationError as e:
+    // ② Pydantic 校验失败 → 收集具体错误
+        // Python: error_msg = self._format_validation_error(e)
+
+    // ③ 校验失败 → 重提示 LLM 修正参数
+        if (attempt < self.MAX_RETRIES) {
+        System.out.println(String.format("$1"));
+        // Python: correction_prompt = f"""你上一次调用工具 {tool_name} 的参数有错误：
+        // Python: {error_msg}
+        // Python: 请重新生成正确的函数调用参数。注意遵守以下约束：
+        // Python: {self._get_constraints(tool_name)}"""
+        // Python: raw_arguments = llm_client.chat(correction_prompt)
+        } else {
+    // 超过重试次数 → 返回错误
+        return {"success": false, "error": error_msg};
+
+        // Python: def _format_validation_error(self, e: ValidationError) -> str:
+        // Python: errors = []
+        for (var err : e.errors()) {
+        // Python: field = ".".join(str(loc) for loc in err["loc"])
+        // Python: errors.append(f"字段 '{field}': {err['msg']} (当前值: {err.get('input', '未提供')})")
+        return "\n".join(errors);
+
+        // Python: def _get_constraints(self, tool_name: str) -> str:
+        // Python: model = self.PARAM_MODELS[tool_name]
+        // Python: constraints = []
+        // Python: for name, field in model.model_fields.items():
+        // Python: desc = field.description or ""
+        if (field.is_required()) {
+        // Python: desc += " [必填]"
+        // Python: constraints.append(f"  {name} ({field.annotation}): {desc}")
+        return "\n".join(constraints);
+
+    // ===== 使用示例 =====
+
+        // Python: caller = StructuredToolCaller()
+
+    // LLM 生成了错误参数: city 传了空字符串，date 格式不对
+        // Python: raw_args = '{"city": "", "date": "2026/07/02"}'
+
+        // Python: result = caller.call_tool("get_weather", raw_args, llm_client, weather_executor)
+
+    // 第1次: Pydantic 校验失败
+    // ⚠️ 参数校验失败（第1次）:
+    // 字段 'city': String should have at least 1 character (当前值: )
+    // 字段 'date': String should match pattern ^\d{4}-\d{2}-\d{2}$ (当前值: 2026/07/02)
+    // → 重提示 LLM → LLM 修正为 '{"city": "北京", "date": "2026-07-02"}'
+    // 第2次: 验证通过 → 执行成功
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">输出格式约束技巧</h3>
@@ -1068,9 +2391,8 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<div class="code-block">
-  <span class="code-label">智能工具路由系统 — 完整代码</span>
-<pre>"""
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>"""
 SmartToolRouter: 意图识别 → 工具检索 → 参数验证 → 执行 → 结果压缩 全链路
 """
 import json
@@ -1312,7 +2634,749 @@ answer = router.process("帮我搜索最新的AI论文并用Python分析引用�
 #   1. 信息获取 → 最新的AI论文
 #   2. 代码执行 → 分析引用趋势
 # [工具检索] 命中 4 个候选工具: ['web_search', 'news_api', 'run_python', 'sql_executor']
-# → 参数验证通过 → 执行 → 结果压缩 → 整合回答</pre>
+# → 参数验证通过 → 执行 → 结果压缩 → 整合回答</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  /** docstring */
+  // SmartToolRouter: 意图识别 → 工具检索 → 参数验证 → 执行 → 结果压缩 全链路
+  /** docstring */
+// Node.js built-in or npm package for: json
+import * as uuid from 'uuid';
+// TypeScript has built-in types, no import needed for List, Dict, Any, Optional
+import {Enum} from 'enum';
+import {BaseModel, ValidationError} from 'pydantic';
+
+// ===== 6.10 意图识别 =====
+
+class IntentType {
+  static readonly INFO_QUERY = "信息获取";
+  static readonly CODE_EXEC = "代码执行";
+  static readonly FILE_OP = "文件操作";
+  static readonly COMM_INTERACT = "通信交互";
+
+class Intent {
+  // type: IntentType
+  // text: str
+  // target: str
+  // priority: int = 0
+  // depends_on: Optional[List[str]] = None
+
+class IntentClassifier {
+  /** docstring */
+
+  static readonly INTENT_PROMPT = """分析以下用户请求的意图，返回JSON：;
+  // 请求: "{query}"
+  // 请识别：
+  // 1. 意图类型: 信息获取/代码执行/文件操作/通信交互
+  // 2. 具体目标: 用户想要什么
+  // 3. 是否包含多个意图(复合请求)，如有则拆解
+
+  // 返回格式:
+  // {"intents": [{"type": "类型", "text": "原文片段", "target": "目标", "priority": 优先级数字}]}
+  // 如果意图间有依赖关系，在depends_on中指明前置意图的target。"""
+
+  // def classify(self, query: str, llm_client) -> List[Intent]:
+  // prompt = self.INTENT_PROMPT.format(query=query)
+  // response = llm_client.chat(prompt)
+  // parsed = json.loads(response)
+  // intents = [Intent(**i) for i in parsed["intents"]]
+  return intents;
+
+// ===== 6.11 Tool RAG =====
+
+class ToolRAG {
+  /** docstring */
+
+  constructor(vector_store, all_tools: Dict[]) {
+  // self.vector_store = vector_store
+  // self.all_tools = all_tools
+// 注册所有工具描述到向量库
+  for (const tool of all_tools) {
+  // text = self._tool_to_text(tool)
+  // self.vector_store.upsert(tool["function"]["name"], text)
+
+  // def _tool_to_text(self, tool: Dict) -> str:
+  // f = tool["function"]
+  // text = f"{f['name']}: {f['description']}"
+  for (const [pname, pinfo] of f.get("parameters", {}).get("properties", {}).items()) {
+  // text += f" | {pname}({pinfo.get('type','')}): {pinfo.get('description','')}"
+  return text;
+
+  // def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
+  /** docstring */
+  // results = self.vector_store.search(query, top_k=top_k)
+  // tool_names = [r["id"] for r in results]
+  return [t for t in self.all_tools if t["function"]["name"] in tool_names];
+
+// ===== 6.13 结构化验证 =====
+
+// 定义参数模型（按工具）
+class WeatherParams {
+  // city: str
+  // date: Optional[str] = None
+
+class SearchParams {
+  // query: str
+  // max_results: Optional[int] = 5
+
+class PythonParams {
+  // code: str
+  // timeout: Optional[int] = 30
+
+  static readonly PARAM_MODELS = {;
+  // "get_weather": WeatherParams,
+  // "web_search": SearchParams,
+  // "run_python": PythonParams,
+  // }
+
+// ===== 6.12 结果压缩 =====
+
+class ResultCompressor {
+  /** docstring */
+
+  static readonly KEY_FIELDS = {;
+  // "get_weather": ["temperature", "description", "wind_speed"],
+  // "web_search": ["title", "snippet", "url"],
+  // "run_python": ["stdout"],
+  // }
+  static readonly MAX_CHARS = 500;
+
+  // def compress(self, tool_name: str, result: Any) -> Dict:
+  // keys = self.KEY_FIELDS.get(tool_name, [])
+  // compressed = {}
+  if (isinstance(result, dict) && keys) {
+  for (const k of keys) {
+  if (k in result) {
+  // val = str(result[k])
+  // compressed[k] = val[:self.MAX_CHARS] if len(val) > self.MAX_CHARS else val
+  } else {
+  // compressed["summary"] = str(result)[:self.MAX_CHARS]
+  // compressed["_meta"] = {
+  // "tool": tool_name,
+  // "ref_id": str(uuid.uuid4())  # 用于向量库归档引用
+  // }
+  return compressed;
+
+// ===== 全链路路由 =====
+
+class SmartToolRouter {
+  /** docstring */
+
+  constructor(llm_client, vector_store, all_tools, tool_executor) {
+  // self.llm = llm_client
+  // self.intent_classifier = IntentClassifier()
+  // self.tool_rag = ToolRAG(vector_store, all_tools)
+  // self.result_compressor = ResultCompressor()
+  // self.tool_executor = tool_executor
+  // self.max_retries = 2
+
+  // def process(self, user_query: str) -> str:
+  /** docstring */
+
+// ① 意图识别
+  // intents = self.intent_classifier.classify(user_query, self.llm)
+  console.log(`[意图识别] 检测到 {len(intents)} 个意图:`);
+  for (const [i, intent] of enumerate(intents)) {
+  console.log(`  {i+1}. {intent.type.value} → {intent.target}`);
+
+// ② 按意图检索候选工具
+  // all_relevant_tools = []
+  for (const intent of intents) {
+  // tools = self.tool_rag.retrieve(intent.target, top_k=3)
+  // all_relevant_tools.extend(tools)
+// 去重
+  // seen = set()
+  // unique_tools = []
+  for (const t of all_relevant_tools) {
+  // name = t["function"]["name"]
+  if (name !in seen) {
+  // seen.add(name)
+  // unique_tools.append(t)
+
+  console.log(`[工具检索] 命中 {len(unique_tools)} 个候选工具: {[t['function']['name'] for t in unique_tools]}`);
+
+// ③ 让 LLM 在候选工具中选择 + 生成参数
+// 只传候选工具描述（JIT策略），而非全部工具
+  // tool_call_results = []
+  for (const intent of intents) {
+// 按意图过滤最相关工具
+  // intent_tools = self.tool_rag.retrieve(intent.target, top_k=3)
+
+// LLM 选择工具和参数
+  // llm_response = self.llm.call_with_tools(
+  // messages = [{"role": "user", "content": intent.text}],
+  // tools = intent_tools
+  // )
+
+  if (!llm_response.tool_calls) {
+// LLM 认为不需要工具 → 直接回答
+  // tool_call_results.append({
+  // "intent": intent.type.value,
+  // "direct_answer": llm_response.content
+  // })
+  continue;
+
+// ④ 结构化验证 + 执行 + 重试
+  for (const tool_call of llm_response.tool_calls) {
+  // result = self._execute_with_validation(
+  // tool_call.function.name,
+  // tool_call.function.arguments
+  // )
+
+// ⑤ 结果压缩
+  // compressed = self.result_compressor.compress(
+  // tool_call.function.name, result
+  // )
+  // tool_call_results.append({
+  // "intent": intent.type.value,
+  // "tool": tool_call.function.name,
+  // "result": compressed
+  // })
+
+// ⑥ LLM 整合所有结果，生成自然语言回答
+  // final_prompt = f"""用户原始请求: {user_query}
+  // 以下是为您收集的工具调用结果:
+  // {json.dumps(tool_call_results, ensure_ascii=False)}
+  // 请整合这些结果，给用户一个清晰有用的回答。"""
+
+  // final_answer = self.llm.chat(final_prompt)
+  return final_answer;
+
+  // def _execute_with_validation(self, tool_name: str, raw_args: str) -> Any:
+  /** docstring */
+  // param_model = PARAM_MODELS.get(tool_name)
+
+  for (const attempt of range(self.max_retries + 1)) {
+  try {
+  // args_dict = json.loads(raw_args)
+  if (param_model) {
+  // validated = param_model(**args_dict)
+  // args_dict = validated.model_dump()
+  return self.tool_executor(tool_name, args_dict);
+
+  // except (json.JSONDecodeError, ValidationError) as e:
+  if (attempt < self.max_retries) {
+  // error_detail = str(e)
+  // correction = self.llm.chat(
+  // f"工具 {tool_name} 参数校验失败: {error_detail}\n"
+  // f"请修正参数，确保符合约束。"
+  // )
+  // raw_args = correction
+  } else {
+  return {"error": `参数校验失败（已重试{self.max_retries}次）: {str(e)}`};
+
+// ===== 运行 =====
+
+  // router = SmartToolRouter(
+  // llm_client = my_llm,
+  // vector_store = my_vector_db,
+  // all_tools = ALL_50_TOOLS,
+  // tool_executor = execute_tool_function
+  // )
+
+  // answer = router.process("帮我搜索最新的AI论文并用Python分析引用趋势")
+// [意图识别] 检测到 2 个意图:
+// 1. 信息获取 → 最新的AI论文
+// 2. 代码执行 → 分析引用趋势
+// [工具检索] 命中 4 个候选工具: ['web_search', 'news_api', 'run_python', 'sql_executor']
+// → 参数验证通过 → 执行 → 结果压缩 → 整合回答
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: SmartToolRouter: 意图识别 → 工具检索 → 参数验证 → 执行 → 结果压缩 全链路
+// import json
+// import uuid
+// from typing import List, Dict, Any, Optional
+// from enum import Enum
+// from pydantic import BaseModel, ValidationError
+
+// ===== 6.10 意图识别 =====
+
+// IntentType - CLI Agent class
+type IntentType struct {
+	// Python: INFO_QUERY = "信息获取"
+	// Python: CODE_EXEC = "代码执行"
+	// Python: FILE_OP = "文件操作"
+	// Python: COMM_INTERACT = "通信交互"
+
+// Intent - CLI Agent class
+type Intent struct {
+	// Python: type: IntentType
+	// Python: text: str
+	// Python: target: str
+	// Python: priority: int = 0
+	// Python: depends_on: Optional[List[str]] = None
+
+// IntentClassifier - CLI Agent class
+type IntentClassifier struct {
+
+	// Python: INTENT_PROMPT = """分析以下用户请求的意图，返回JSON：
+	// Python: 请求: "{query}"
+	// Python: 请识别：
+	// Python: 1. 意图类型: 信息获取/代码执行/文件操作/通信交互
+	// Python: 2. 具体目标: 用户想要什么
+	// Python: 3. 是否包含多个意图(复合请求)，如有则拆解
+
+	// Python: 返回格式:
+	// Python: {"intents": [{"type": "类型", "text": "原文片段", "target": "目标", "priority": 优先级数字}]}
+	// Python: 如果意图间有依赖关系，在depends_on中指明前置意图的target。"""
+
+	// Python: def classify(self, query: str, llm_client) -> List[Intent]:
+	// Python: prompt = self.INTENT_PROMPT.format(query=query)
+	// Python: response = llm_client.chat(prompt)
+	// Python: parsed = json.loads(response)
+	// Python: intents = [Intent(**i) for i in parsed["intents"]]
+	return intents
+
+// ===== 6.11 Tool RAG =====
+
+// ToolRAG - CLI Agent class
+type ToolRAG struct {
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.vector_store = vector_store
+	// Python: self.all_tools = all_tools
+// 注册所有工具描述到向量库
+	for _, tool := range all_tools {
+	// Python: text = self._tool_to_text(tool)
+	// Python: self.vector_store.upsert(tool["function"]["name"], text)
+
+	// Python: def _tool_to_text(self, tool: Dict) -> str:
+	// Python: f = tool["function"]
+	// Python: text = f"{f['name']}: {f['description']}"
+	// Python: for pname, pinfo in f.get("parameters", {}).get("properties", {}).items():
+	// Python: text += f" | {pname}({pinfo.get('type','')}): {pinfo.get('description','')}"
+	return text
+
+	// Python: def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
+	// Python: results = self.vector_store.search(query, top_k=top_k)
+	// Python: tool_names = [r["id"] for r in results]
+	return [t for t in self.all_tools if t["function"]["name"] in tool_names]
+
+// ===== 6.13 结构化验证 =====
+
+// 定义参数模型（按工具）
+// WeatherParams - CLI Agent class
+type WeatherParams struct {
+	// Python: city: str
+	// Python: date: Optional[str] = None
+
+// SearchParams - CLI Agent class
+type SearchParams struct {
+	// Python: query: str
+	// Python: max_results: Optional[int] = 5
+
+// PythonParams - CLI Agent class
+type PythonParams struct {
+	// Python: code: str
+	// Python: timeout: Optional[int] = 30
+
+	// Python: PARAM_MODELS = {
+	// Python: "get_weather": WeatherParams,
+	// Python: "web_search": SearchParams,
+	// Python: "run_python": PythonParams,
+	// Python: }
+
+// ===== 6.12 结果压缩 =====
+
+// ResultCompressor - CLI Agent class
+type ResultCompressor struct {
+
+	// Python: KEY_FIELDS = {
+	// Python: "get_weather": ["temperature", "description", "wind_speed"],
+	// Python: "web_search": ["title", "snippet", "url"],
+	// Python: "run_python": ["stdout"],
+	// Python: }
+	// Python: MAX_CHARS = 500
+
+	// Python: def compress(self, tool_name: str, result: Any) -> Dict:
+	// Python: keys = self.KEY_FIELDS.get(tool_name, [])
+	// Python: compressed = {}
+	if isinstance(result, dict) and keys {
+	for _, k := range keys {
+	if k in result {
+	// Python: val = str(result[k])
+	// Python: compressed[k] = val[:self.MAX_CHARS] if len(val) > self.MAX_CHARS else val
+	} else {
+	// Python: compressed["summary"] = str(result)[:self.MAX_CHARS]
+	// Python: compressed["_meta"] = {
+	// Python: "tool": tool_name,
+	// Python: "ref_id": str(uuid.uuid4())  # 用于向量库归档引用
+	// Python: }
+	return compressed
+
+// ===== 全链路路由 =====
+
+// SmartToolRouter - CLI Agent class
+type SmartToolRouter struct {
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.llm = llm_client
+	// Python: self.intent_classifier = IntentClassifier()
+	// Python: self.tool_rag = ToolRAG(vector_store, all_tools)
+	// Python: self.result_compressor = ResultCompressor()
+	// Python: self.tool_executor = tool_executor
+	// Python: self.max_retries = 2
+
+	// Python: def process(self, user_query: str) -> str:
+
+// ① 意图识别
+	// Python: intents = self.intent_classifier.classify(user_query, self.llm)
+	fmt.Println(f"[意图识别] 检测到 {len(intents)} 个意图:")
+	// Python: for i, intent in enumerate(intents):
+	fmt.Println(f"  {i+1}. {intent.type.value} → {intent.target}")
+
+// ② 按意图检索候选工具
+	// Python: all_relevant_tools = []
+	for _, intent := range intents {
+	// Python: tools = self.tool_rag.retrieve(intent.target, top_k=3)
+	// Python: all_relevant_tools.extend(tools)
+// 去重
+	// Python: seen = set()
+	// Python: unique_tools = []
+	for _, t := range all_relevant_tools {
+	// Python: name = t["function"]["name"]
+	if name not in seen {
+	// Python: seen.add(name)
+	// Python: unique_tools.append(t)
+
+	fmt.Println(f"[工具检索] 命中 {len(unique_tools)} 个候选工具: {[t['function']['name'] for t in unique_tools]}")
+
+// ③ 让 LLM 在候选工具中选择 + 生成参数
+// 只传候选工具描述（JIT策略），而非全部工具
+	// Python: tool_call_results = []
+	for _, intent := range intents {
+// 按意图过滤最相关工具
+	// Python: intent_tools = self.tool_rag.retrieve(intent.target, top_k=3)
+
+// LLM 选择工具和参数
+	// Python: llm_response = self.llm.call_with_tools(
+	// Python: messages=[{"role": "user", "content": intent.text}],
+	// Python: tools=intent_tools
+	// Python: )
+
+	if not llm_response.tool_calls {
+// LLM 认为不需要工具 → 直接回答
+	// Python: tool_call_results.append({
+	// Python: "intent": intent.type.value,
+	// Python: "direct_answer": llm_response.content
+	// Python: })
+	continue
+
+// ④ 结构化验证 + 执行 + 重试
+	for _, tool_call := range llm_response.tool_calls {
+	// Python: result = self._execute_with_validation(
+	// Python: tool_call.function.name,
+	// Python: tool_call.function.arguments
+	// Python: )
+
+// ⑤ 结果压缩
+	// Python: compressed = self.result_compressor.compress(
+	// Python: tool_call.function.name, result
+	// Python: )
+	// Python: tool_call_results.append({
+	// Python: "intent": intent.type.value,
+	// Python: "tool": tool_call.function.name,
+	// Python: "result": compressed
+	// Python: })
+
+// ⑥ LLM 整合所有结果，生成自然语言回答
+	// Python: final_prompt = f"""用户原始请求: {user_query}
+	// Python: 以下是为您收集的工具调用结果:
+	// Python: {json.dumps(tool_call_results, ensure_ascii=False)}
+	// Python: 请整合这些结果，给用户一个清晰有用的回答。"""
+
+	// Python: final_answer = self.llm.chat(final_prompt)
+	return final_answer
+
+	// Python: def _execute_with_validation(self, tool_name: str, raw_args: str) -> Any:
+	// Python: param_model = PARAM_MODELS.get(tool_name)
+
+	for _, attempt := range range(self.max_retries + 1) {
+	// try block
+	// Python: args_dict = json.loads(raw_args)
+	if param_model {
+	// Python: validated = param_model(**args_dict)
+	// Python: args_dict = validated.model_dump()
+	return self.tool_executor(tool_name, args_dict)
+
+	// except block
+	if attempt < self.max_retries {
+	// Python: error_detail = str(e)
+	// Python: correction = self.llm.chat(
+	// Python: f"工具 {tool_name} 参数校验失败: {error_detail}\n"
+	// Python: f"请修正参数，确保符合约束。"
+	// Python: )
+	// Python: raw_args = correction
+	} else {
+	return {"error": f"参数校验失败（已重试{self.max_retries}次）: {str(e)}"}
+
+// ===== 运行 =====
+
+	// Python: router = SmartToolRouter(
+	// Python: llm_client=my_llm,
+	// Python: vector_store=my_vector_db,
+	// Python: all_tools=ALL_50_TOOLS,
+	// Python: tool_executor=execute_tool_function
+	// Python: )
+
+	// Python: answer = router.process("帮我搜索最新的AI论文并用Python分析引用趋势")
+// [意图识别] 检测到 2 个意图:
+// 1. 信息获取 → 最新的AI论文
+// 2. 代码执行 → 分析引用趋势
+// [工具检索] 命中 4 个候选工具: ['web_search', 'news_api', 'run_python', 'sql_executor']
+// → 参数验证通过 → 执行 → 结果压缩 → 整合回答
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: SmartToolRouter: 意图识别 → 工具检索 → 参数验证 → 执行 → 结果压缩 全链路
+    // import json
+    // import uuid
+    // from typing import List, Dict, Any, Optional
+    // from enum import Enum
+    // from pydantic import BaseModel, ValidationError
+
+    // ===== 6.10 意图识别 =====
+
+public class IntentType {
+        // Python: INFO_QUERY = "信息获取"
+        // Python: CODE_EXEC = "代码执行"
+        // Python: FILE_OP = "文件操作"
+        // Python: COMM_INTERACT = "通信交互"
+
+public class Intent {
+        // Python: type: IntentType
+        // Python: text: str
+        // Python: target: str
+        // Python: priority: int = 0
+        // Python: depends_on: Optional[List[str]] = None
+
+public class IntentClassifier {
+
+        // Python: INTENT_PROMPT = """分析以下用户请求的意图，返回JSON：
+        // Python: 请求: "{query}"
+        // Python: 请识别：
+        // Python: 1. 意图类型: 信息获取/代码执行/文件操作/通信交互
+        // Python: 2. 具体目标: 用户想要什么
+        // Python: 3. 是否包含多个意图(复合请求)，如有则拆解
+
+        // Python: 返回格式:
+        // Python: {"intents": [{"type": "类型", "text": "原文片段", "target": "目标", "priority": 优先级数字}]}
+        // Python: 如果意图间有依赖关系，在depends_on中指明前置意图的target。"""
+
+        // Python: def classify(self, query: str, llm_client) -> List[Intent]:
+        // Python: prompt = self.INTENT_PROMPT.format(query=query)
+        // Python: response = llm_client.chat(prompt)
+        // Python: parsed = json.loads(response)
+        // Python: intents = [Intent(**i) for i in parsed["intents"]]
+        return intents;
+
+    // ===== 6.11 Tool RAG =====
+
+public class ToolRAG {
+
+    public ToolRAG(vector_store, all_toolsList&lt;Dict>) {
+        // Python: self.vector_store = vector_store
+        // Python: self.all_tools = all_tools
+    // 注册所有工具描述到向量库
+        for (var tool : all_tools) {
+        // Python: text = self._tool_to_text(tool)
+        // Python: self.vector_store.upsert(tool["function"]["name"], text)
+
+        // Python: def _tool_to_text(self, tool: Dict) -> str:
+        // Python: f = tool["function"]
+        // Python: text = f"{f['name']}: {f['description']}"
+        // Python: for pname, pinfo in f.get("parameters", {}).get("properties", {}).items():
+        // Python: text += f" | {pname}({pinfo.get('type','')}): {pinfo.get('description','')}"
+        return text;
+
+        // Python: def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
+        // Python: results = self.vector_store.search(query, top_k=top_k)
+        // Python: tool_names = [r["id"] for r in results]
+        return [t for t in self.all_tools if t["function"]["name"] in tool_names];
+
+    // ===== 6.13 结构化验证 =====
+
+    // 定义参数模型（按工具）
+public class WeatherParams {
+        // Python: city: str
+        // Python: date: Optional[str] = None
+
+public class SearchParams {
+        // Python: query: str
+        // Python: max_results: Optional[int] = 5
+
+public class PythonParams {
+        // Python: code: str
+        // Python: timeout: Optional[int] = 30
+
+        // Python: PARAM_MODELS = {
+        // Python: "get_weather": WeatherParams,
+        // Python: "web_search": SearchParams,
+        // Python: "run_python": PythonParams,
+        // Python: }
+
+    // ===== 6.12 结果压缩 =====
+
+public class ResultCompressor {
+
+        // Python: KEY_FIELDS = {
+        // Python: "get_weather": ["temperature", "description", "wind_speed"],
+        // Python: "web_search": ["title", "snippet", "url"],
+        // Python: "run_python": ["stdout"],
+        // Python: }
+        // Python: MAX_CHARS = 500
+
+        // Python: def compress(self, tool_name: str, result: Any) -> Dict:
+        // Python: keys = self.KEY_FIELDS.get(tool_name, [])
+        // Python: compressed = {}
+        if (isinstance(result, dict) && keys) {
+        for (var k : keys) {
+        if (k in result) {
+        // Python: val = str(result[k])
+        // Python: compressed[k] = val[:self.MAX_CHARS] if len(val) > self.MAX_CHARS else val
+        } else {
+        // Python: compressed["summary"] = str(result)[:self.MAX_CHARS]
+        // Python: compressed["_meta"] = {
+        // Python: "tool": tool_name,
+        // Python: "ref_id": str(uuid.uuid4())  # 用于向量库归档引用
+        // Python: }
+        return compressed;
+
+    // ===== 全链路路由 =====
+
+public class SmartToolRouter {
+
+    public SmartToolRouter(llm_client, vector_store, all_tools, tool_executor) {
+        // Python: self.llm = llm_client
+        // Python: self.intent_classifier = IntentClassifier()
+        // Python: self.tool_rag = ToolRAG(vector_store, all_tools)
+        // Python: self.result_compressor = ResultCompressor()
+        // Python: self.tool_executor = tool_executor
+        // Python: self.max_retries = 2
+
+        // Python: def process(self, user_query: str) -> str:
+
+    // ① 意图识别
+        // Python: intents = self.intent_classifier.classify(user_query, self.llm)
+        System.out.println(String.format("$1"));
+        // Python: for i, intent in enumerate(intents):
+        System.out.println(String.format("$1"));
+
+    // ② 按意图检索候选工具
+        // Python: all_relevant_tools = []
+        for (var intent : intents) {
+        // Python: tools = self.tool_rag.retrieve(intent.target, top_k=3)
+        // Python: all_relevant_tools.extend(tools)
+    // 去重
+        // Python: seen = set()
+        // Python: unique_tools = []
+        for (var t : all_relevant_tools) {
+        // Python: name = t["function"]["name"]
+        if (name !in seen) {
+        // Python: seen.add(name)
+        // Python: unique_tools.append(t)
+
+        System.out.println(String.format("$1"));
+
+    // ③ 让 LLM 在候选工具中选择 + 生成参数
+    // 只传候选工具描述（JIT策略），而非全部工具
+        // Python: tool_call_results = []
+        for (var intent : intents) {
+    // 按意图过滤最相关工具
+        // Python: intent_tools = self.tool_rag.retrieve(intent.target, top_k=3)
+
+    // LLM 选择工具和参数
+        // Python: llm_response = self.llm.call_with_tools(
+        // Python: messages=[{"role": "user", "content": intent.text}],
+        // Python: tools=intent_tools
+        // Python: )
+
+        if (!llm_response.tool_calls) {
+    // LLM 认为不需要工具 → 直接回答
+        // Python: tool_call_results.append({
+        // Python: "intent": intent.type.value,
+        // Python: "direct_answer": llm_response.content
+        // Python: })
+        continue;
+
+    // ④ 结构化验证 + 执行 + 重试
+        for (var tool_call : llm_response.tool_calls) {
+        // Python: result = self._execute_with_validation(
+        // Python: tool_call.function.name,
+        // Python: tool_call.function.arguments
+        // Python: )
+
+    // ⑤ 结果压缩
+        // Python: compressed = self.result_compressor.compress(
+        // Python: tool_call.function.name, result
+        // Python: )
+        // Python: tool_call_results.append({
+        // Python: "intent": intent.type.value,
+        // Python: "tool": tool_call.function.name,
+        // Python: "result": compressed
+        // Python: })
+
+    // ⑥ LLM 整合所有结果，生成自然语言回答
+        // Python: final_prompt = f"""用户原始请求: {user_query}
+        // Python: 以下是为您收集的工具调用结果:
+        // Python: {json.dumps(tool_call_results, ensure_ascii=False)}
+        // Python: 请整合这些结果，给用户一个清晰有用的回答。"""
+
+        // Python: final_answer = self.llm.chat(final_prompt)
+        return final_answer;
+
+        // Python: def _execute_with_validation(self, tool_name: str, raw_args: str) -> Any:
+        // Python: param_model = PARAM_MODELS.get(tool_name)
+
+        for (var attempt : range(self.max_retries + 1)) {
+        // Python: try:
+        // Python: args_dict = json.loads(raw_args)
+        if (param_model) {
+        // Python: validated = param_model(**args_dict)
+        // Python: args_dict = validated.model_dump()
+        return self.tool_executor(tool_name, args_dict);
+
+        // Python: except (json.JSONDecodeError, ValidationError) as e:
+        if (attempt < self.max_retries) {
+        // Python: error_detail = str(e)
+        // Python: correction = self.llm.chat(
+        // Python: f"工具 {tool_name} 参数校验失败: {error_detail}\n"
+        // Python: f"请修正参数，确保符合约束。"
+        // Python: )
+        // Python: raw_args = correction
+        } else {
+        return {"error": f"参数校验失败（已重试{self.max_retries}次）: {str(e)}"};
+
+    // ===== 运行 =====
+
+        // Python: router = SmartToolRouter(
+        // Python: llm_client=my_llm,
+        // Python: vector_store=my_vector_db,
+        // Python: all_tools=ALL_50_TOOLS,
+        // Python: tool_executor=execute_tool_function
+        // Python: )
+
+        // Python: answer = router.process("帮我搜索最新的AI论文并用Python分析引用趋势")
+    // [意图识别] 检测到 2 个意图:
+    // 1. 信息获取 → 最新的AI论文
+    // 2. 代码执行 → 分析引用趋势
+    // [工具检索] 命中 4 个候选工具: ['web_search', 'news_api', 'run_python', 'sql_executor']
+    // → 参数验证通过 → 执行 → 结果压缩 → 整合回答
+    }
+}</pre></div>
 </div>
 
 <div class="summary-box">
@@ -1397,7 +3461,8 @@ function isBashCommandConcurrentSafe(command: string): boolean {
 <li><strong>中断机制</strong>：AwaitingUserConfirmation（需用户确认）时立即中断所有排队工具</li>
 </ul>
 
-<div class="code-block"><pre>// 伪代码：ToolConcurrencyController 核心结构
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 伪代码：ToolConcurrencyController 核心结构
 class ToolConcurrencyController {
   private concurrentQueue: ToolCall[] = [];  // 并发队列
   private serialQueue: ToolCall[] = [];       // 串行队列
@@ -1440,6 +3505,154 @@ class ToolConcurrencyController {
     }
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 伪代码：ToolConcurrencyController 核心结构
+  // class ToolConcurrencyController {
+  // private concurrentQueue: ToolCall[] = [];  // 并发队列
+  // private serialQueue: ToolCall[] = [];       // 串行队列
+  // private running: Map&lt;string, AbortController&gt; = new Map();
+
+  // addTool(toolCall: ToolCall, index: number): UIToolCall {
+  // if (this.isConcurrentSafe(toolCall.name, toolCall.args)) {
+  // // 只读工具：立即并发执行
+  // this.executeConcurrent(toolCall);
+  // } else {
+  // // 写工具：排队串行执行
+  // this.serialQueue.push(toolCall);
+  // this.tryExecuteNextSerial();
+  // }
+  return this.toUIToolCall(toolCall, index);;
+  // }
+
+  // private async executeConcurrent(toolCall: ToolCall) {
+  // const controller = new AbortController();
+  // this.running.set(toolCall.id, controller);
+  // try {
+  // const result = await executeTool(toolCall, controller.signal);
+  // this.onToolComplete(toolCall, result);
+  // } finally {
+  // this.running.delete(toolCall.id);
+  // }
+  // }
+
+  // private async tryExecuteNextSerial() {
+  // if (this.serialRunning) return;  // 已有串行任务在执行
+  // const next = this.serialQueue.shift();
+  // if (!next) return;
+  // this.serialRunning = true;
+  // try {
+  // const result = await executeTool(next);
+  // this.onToolComplete(next, result);
+  // } finally {
+  // this.serialRunning = false;
+  // this.tryExecuteNextSerial();  // 递归执行下一个
+  // }
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 伪代码：ToolConcurrencyController 核心结构
+// ToolConcurrencyController - CLI Agent class
+type ToolConcurrencyController struct {
+	// Python: private concurrentQueue: ToolCall[] = [];  // 并发队列
+	// Python: private serialQueue: ToolCall[] = [];       // 串行队列
+	// Python: private running: Map&lt;string, AbortController&gt; = new Map();
+
+	// Python: addTool(toolCall: ToolCall, index: number): UIToolCall {
+	// Python: if (this.isConcurrentSafe(toolCall.name, toolCall.args)) {
+	// Python: // 只读工具：立即并发执行
+	// Python: this.executeConcurrent(toolCall);
+	// Python: } else {
+	// Python: // 写工具：排队串行执行
+	// Python: this.serialQueue.push(toolCall);
+	// Python: this.tryExecuteNextSerial();
+	// Python: }
+	return this.toUIToolCall(toolCall, index);
+	// Python: }
+
+	// Python: private async executeConcurrent(toolCall: ToolCall) {
+	// Python: const controller = new AbortController();
+	// Python: this.running.set(toolCall.id, controller);
+	// Python: try {
+	// Python: const result = await executeTool(toolCall, controller.signal);
+	// Python: this.onToolComplete(toolCall, result);
+	// Python: } finally {
+	// Python: this.running.delete(toolCall.id);
+	// Python: }
+	// Python: }
+
+	// Python: private async tryExecuteNextSerial() {
+	// Python: if (this.serialRunning) return;  // 已有串行任务在执行
+	// Python: const next = this.serialQueue.shift();
+	// Python: if (!next) return;
+	// Python: this.serialRunning = true;
+	// Python: try {
+	// Python: const result = await executeTool(next);
+	// Python: this.onToolComplete(next, result);
+	// Python: } finally {
+	// Python: this.serialRunning = false;
+	// Python: this.tryExecuteNextSerial();  // 递归执行下一个
+	// Python: }
+	// Python: }
+	// Python: }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 伪代码：ToolConcurrencyController 核心结构
+public class ToolConcurrencyController {
+        // Python: private concurrentQueue: ToolCall[] = [];  // 并发队列
+        // Python: private serialQueue: ToolCall[] = [];       // 串行队列
+        // Python: private running: Map&lt;string, AbortController&gt; = new Map();
+
+        // Python: addTool(toolCall: ToolCall, index: number): UIToolCall {
+        // Python: if (this.isConcurrentSafe(toolCall.name, toolCall.args)) {
+        // Python: // 只读工具：立即并发执行
+        // Python: this.executeConcurrent(toolCall);
+        // Python: } else {
+        // Python: // 写工具：排队串行执行
+        // Python: this.serialQueue.push(toolCall);
+        // Python: this.tryExecuteNextSerial();
+        // Python: }
+        return this.toUIToolCall(toolCall, index);;
+        // Python: }
+
+        // Python: private async executeConcurrent(toolCall: ToolCall) {
+        // Python: const controller = new AbortController();
+        // Python: this.running.set(toolCall.id, controller);
+        // Python: try {
+        // Python: const result = await executeTool(toolCall, controller.signal);
+        // Python: this.onToolComplete(toolCall, result);
+        // Python: } finally {
+        // Python: this.running.delete(toolCall.id);
+        // Python: }
+        // Python: }
+
+        // Python: private async tryExecuteNextSerial() {
+        // Python: if (this.serialRunning) return;  // 已有串行任务在执行
+        // Python: const next = this.serialQueue.shift();
+        // Python: if (!next) return;
+        // Python: this.serialRunning = true;
+        // Python: try {
+        // Python: const result = await executeTool(next);
+        // Python: this.onToolComplete(next, result);
+        // Python: } finally {
+        // Python: this.serialRunning = false;
+        // Python: this.tryExecuteNextSerial();  // 递归执行下一个
+        // Python: }
+        // Python: }
+        // Python: }
+    }
+}</pre></div>
+</div>
 
 <h3 class="sub-heading">6.15.3 五层权限递进系统</h3>
 
@@ -1567,36 +3780,122 @@ function parseToolCallsFromText(text: string): ToolCall[] {
 
 <p>工具执行可能遇到临时性错误（429 限流、503 服务不可用、网络超时）。WaLiCode 使用指数退避重试：</p>
 
-<div class="code-block"><pre>async function executeToolWithRetry(
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>async function executeToolWithRetry(
   toolCall: ToolCall,
-  maxRetries: number = 3  // agent 模式 5 次
+  maxRetries: number = 3
 ): Promise&lt;ToolResult&gt; {
   let lastError: Error;
-
   for (let attempt = 0; attempt &lt;= maxRetries; attempt++) {
     try {
       return await executeTool(toolCall);
     } catch (err) {
       lastError = err;
-
-      // 判断是否可重试
       if (!isRetryable(err)) throw err;
-      if (attempt === maxRetries) throw err;
-
-      // 指数退避：1s → 2s → 4s → 8s
+      if (attempt === maxRetries throw err;
       const delayMs = Math.pow(2, attempt) * 1000;
       await abortableSleep(delayMs);
     }
   }
   throw lastError;
 }
-
 function isRetryable(err: Error): boolean {
   if (err instanceof HTTPError) {
     return [429, 500, 502, 503, 504].includes(err.status);
   }
   return err instanceof NetworkError || err instanceof TimeoutError;
 }</pre></div>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import asyncio
+
+async def execute_tool_with_retry(tool_call, max_retries=3):
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            return await execute_tool(tool_call)
+        except Exception as err:
+            last_error = err
+            if not is_retryable(err):
+                raise err
+            if attempt == max_retries:
+                raise err
+            delay_ms = 2 ** attempt * 1000
+            await asyncio.sleep(delay_ms / 1000)
+    raise last_error
+
+def is_retryable(err):
+    if hasattr(err, 'status_code'):
+        return err.status_code in (429, 500, 502, 503, 504)
+    return isinstance(err, (TimeoutError, ConnectionError))</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"errors"
+	"math""
+	"time"
+)
+
+func executeToolWithRetry(toolCall ToolCall, maxRetries int) (ToolResult, error) {
+	var lastError error
+	for attempt := 0; attempt &lt;= maxRetries; attempt++ {
+		result, err := executeTool(toolCall)
+		if err == nil {
+			return result, nil
+		}
+		lastError = err
+		if !isRetryable(err) {
+			return ToolResult{}, err
+		}
+		if attempt == maxRetries {
+			return ToolResult{}, err
+		}
+		delayMs := int(math.Pow(2, float64(attempt))) * 1000
+		time.Sleep(time.Duration(delayMs) * time.Millisecond)
+	}
+	return ToolResult{}, lastError
+}
+
+func isRetryable(err error) bool {
+	var httpErr *HTTPError
+	if errors.As(err, &amp;httpErr) {
+		switch httpErr.Status {
+		case 429, 500,2, 503, 504:
+			return true
+		}
+		return false
+	}
+	var netErr net.Error
+	return errors.As(err, &amp;netErr)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.Set;
+import java.util.concurrent.*;
+
+public class ToolRetryExecutor {
+    private static final Set&lt;Integer&gt; RETRYABLE_STATUS = Set.of(429, 500, 502, 503, 504);
+
+    public static ToolResult executeToolWithRetry(ToolCall toolCall, int maxRetries) throws Exception {
+        Exception lastError = null;
+        for (int attempt = 0; attempt &lt;= maxRetries; attempt++) {
+            try {
+                return executeTool(toolCall);
+            } catch (Exception err) {
+                lastError = err;
+                if (!isRetryable(err)) throw err;
+                if (attempt == maxRetries) throw err;
+                long delayMs = (long) Math.pow(2, attempt) * 1000;
+                Thread.sleep(delayMs);
+            }
+        }
+        throw lastError;
+    }
+
+    static boolean isRetryable(Exception err) {
+        if (err instanceof HTTPError) {
+            return RETRYABLE_STATUS.contains(((HTTPError) err).status);
+        }
+        return err instanceof TimeoutException || err instanceof java.net.SocketException;
+    }
+}</pre></div>
+</div>
 
 <p>重试策略的关键决策：</p>
 <ul>

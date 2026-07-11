@@ -278,9 +278,8 @@ window.CompressAnim = CompressAnim;
 
 <h3 class="sub-heading">压缩前后 Token 对比</h3>
 
-<div class="code-block">
-  <span class="code-label">上下文压缩前后 Token 数对比</span>
-<pre># ===== 模拟一次 30 轮对话的上下文膨胀 =====
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># ===== 模拟一次 30 轮对话的上下文膨胀 =====
 
 # 原始对话(无压缩)
 raw_tokens_per_turn = 150          # 每轮平均 150 token
@@ -337,16 +336,182 @@ for name, tokens in strategies.items():
 # 摘要      : 2200 tokens (压缩率 44.0%)
 # 滑动窗口  : 2000 tokens (压缩率 40.0%)
 # 选择性保留: 1850 tokens (压缩率 37.0%)
-# 语义保护型: 1800 tokens (压缩率 36.0%)</pre>
+# 语义保护型: 1800 tokens (压缩率 36.0%)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// ===== 模拟一次 30 轮对话的上下文膨胀 =====
+
+// 原始对话(无压缩)
+const rawTokensPerTurn = 150;       // 每轮平均 150 token
+const turns = 30;
+const totalRaw = rawTokensPerTurn * turns + 500; // +500 为 System Prompt
+console.log(`原始上下文: ${totalRaw} tokens`);  // 输出: 5000 tokens
+
+// ----- 策略 1: 截断 -----
+const truncated = rawTokensPerTurn * 10 + 500;
+console.log(`截断后:     ${truncated} tokens`);   // 输出: 2000 tokens
+
+// ----- 策略 2: 摘要 -----
+const summarized = 200 + rawTokensPerTurn * 10 + 500;
+console.log(`摘要后:     ${summarized} tokens`);   // 输出: 2200 tokens
+
+// ----- 策略 3: 滑动窗口 -----
+const sliding = truncated;
+console.log(`滑动窗口后: ${sliding} tokens`);      // 输出: 2000 tokens
+
+// ----- 策略 4: 选择性保留 -----
+const selected = rawTokensPerTurn * 8 + 500 + 150;
+console.log(`选择性保留后: ${selected} tokens`);    // 输出: 1850 tokens
+
+// ----- 策略 5: 语义保护型压缩 -----
+const semantic = 500 + rawTokensPerTurn * 6 + 300 + 100;
+console.log(`语义保护型后: ${semantic} tokens`);    // 输出: 1800 tokens
+
+// ===== 效果总结 =====
+console.log("\n--- 压缩效果对比 ---");
+const strategies: Record<string, number> = {
+    "原始":      totalRaw,
+    "截断":      truncated,
+    "摘要":      summarized,
+    "滑动窗口":  sliding,
+    "选择性保留": selected,
+    "语义保护型": semantic
+};
+for (const [name, tokens] of Object.entries(strategies)) {
+    const ratio = tokens / totalRaw;
+    console.log(`${name.padEnd(10)}: ${tokens} tokens (压缩率 ${(ratio * 100).toFixed(1)}%)`);
+}
+
+// 输出:
+// 原始      : 5000 tokens (压缩率 100.0%)
+// 截断      : 2000 tokens (压缩率 40.0%)
+// 摘要      : 2200 tokens (压缩率 44.0%)
+// 滑动窗口  : 2000 tokens (压缩率 40.0%)
+// 选择性保留: 1850 tokens (压缩率 37.0%)
+// 语义保护型: 1800 tokens (压缩率 36.0%)</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import "fmt"
+
+func main() {
+    // ===== 模拟一次 30 轮对话的上下文膨胀 =====
+
+    // 原始对话(无压缩)
+    rawTokensPerTurn := 150 // 每轮平均 150 token
+    turns := 30
+    totalRaw := rawTokensPerTurn*turns + 500 // +500 为 System Prompt
+    fmt.Printf("原始上下文: %d tokens\n", totalRaw) // 输出: 5000 tokens
+
+    // ----- 策略 1: 截断 -----
+    truncated := rawTokensPerTurn*10 + 500
+    fmt.Printf("截断后:     %d tokens\n", truncated) // 输出: 2000 tokens
+
+    // ----- 策略 2: 摘要 -----
+    summarized := 200 + rawTokensPerTurn*10 + 500
+    fmt.Printf("摘要后:     %d tokens\n", summarized) // 输出: 2200 tokens
+
+    // ----- 策略 3: 滑动窗口 -----
+    sliding := truncated
+    fmt.Printf("滑动窗口后: %d tokens\n", sliding) // 输出: 2000 tokens
+
+    // ----- 策略 4: 选择性保留 -----
+    selected := rawTokensPerTurn*8 + 500 + 150
+    fmt.Printf("选择性保留后: %d tokens\n", selected) // 输出: 1850 tokens
+
+    // ----- 策略 5: 语义保护型压缩 -----
+    semantic := 500 + rawTokensPerTurn*6 + 300 + 100
+    fmt.Printf("语义保护型后: %d tokens\n", semantic) // 输出: 1800 tokens
+
+    // ===== 效果总结 =====
+    fmt.Println("\n--- 压缩效果对比 ---")
+    strategies := []struct {
+        name   string
+        tokens int
+    }{
+        {"原始", totalRaw},
+        {"截断", truncated},
+        {"摘要", summarized},
+        {"滑动窗口", sliding},
+        {"选择性保留", selected},
+        {"语义保护型", semantic},
+    }
+    for _, s := range strategies {
+        ratio := float64(s.tokens) / float64(totalRaw)
+        fmt.Printf("%-10s: %d tokens (压缩率 %.1f%%)\n", s.name, s.tokens, ratio*100)
+    }
+
+    // 输出:
+    // 原始      : 5000 tokens (压缩率 100.0%)
+    // 截断      : 2000 tokens (压缩率 40.0%)
+    // 摘要      : 2200 tokens (压缩率 44.0%)
+    // 滑动窗口  : 2000 tokens (压缩率 40.0%)
+    // 选择性保留: 1850 tokens (压缩率 37.0%)
+    // 语义保护型: 1800 tokens (压缩率 36.0%)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class TokenCompressionComparison {
+    public static void main(String[] args) {
+        // ===== 模拟一次 30 轮对话的上下文膨胀 =====
+
+        // 原始对话(无压缩)
+        int rawTokensPerTurn = 150;  // 每轮平均 150 token
+        int turns = 30;
+        int totalRaw = rawTokensPerTurn * turns + 500; // +500 为 System Prompt
+        System.out.printf("原始上下文: %d tokens%n", totalRaw); // 输出: 5000 tokens
+
+        // ----- 策略 1: 截断 -----
+        int truncated = rawTokensPerTurn * 10 + 500;
+        System.out.printf("截断后:     %d tokens%n", truncated); // 输出: 2000 tokens
+
+        // ----- 策略 2: 摘要 -----
+        int summarized = 200 + rawTokensPerTurn * 10 + 500;
+        System.out.printf("摘要后:     %d tokens%n", summarized); // 输出: 2200 tokens
+
+        // ----- 策略 3: 滑动窗口 -----
+        int sliding = truncated;
+        System.out.printf("滑动窗口后: %d tokens%n", sliding); // 输出: 2000 tokens
+
+        // ----- 策略 4: 选择性保留 -----
+        int selected = rawTokensPerTurn * 8 + 500 + 150;
+        System.out.printf("选择性保留后: %d tokens%n", selected); // 输出: 1850 tokens
+
+        // ----- 策略 5: 语义保护型压缩 -----
+        int semantic = 500 + rawTokensPerTurn * 6 + 300 + 100;
+        System.out.printf("语义保护型后: %d tokens%n", semantic); // 输出: 1800 tokens
+
+        // ===== 效果总结 =====
+        System.out.println("\n--- 压缩效果对比 ---");
+        Map&lt;String, Integer&gt; strategies = new LinkedHashMap&lt;&gt;();
+        strategies.put("原始", totalRaw);
+        strategies.put("截断", truncated);
+        strategies.put("摘要", summarized);
+        strategies.put("滑动窗口", sliding);
+        strategies.put("选择性保留", selected);
+        strategies.put("语义保护型", semantic);
+
+        for (Map.Entry&lt;String, Integer&gt; entry : strategies.entrySet()) {
+            double ratio = (double) entry.getValue() / totalRaw;
+            System.out.printf("%-10s: %d tokens (压缩率 %.1f%%)%n",
+                entry.getKey(), entry.getValue(), ratio * 100);
+        }
+
+        // 输出:
+        // 原始      : 5000 tokens (压缩率 100.0%)
+        // 截断      : 2000 tokens (压缩率 40.0%)
+        // 摘要      : 2200 tokens (压缩率 44.0%)
+        // 滑动窗口  : 2000 tokens (压缩率 40.0%)
+        // 选择性保留: 1850 tokens (压缩率 37.0%)
+        // 语义保护型: 1800 tokens (压缩率 36.0%)
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">Solon AI 框架的 SummarizationInterceptor</h3>
 
 <p>Solon AI 是一个国产的 Java AI 框架,它提供了 <code>SummarizationInterceptor</code> 作为上下文压缩的内置方案。其核心思路是:当对话轮次超过阈值时,自动触发摘要压缩。</p>
 
-<div class="code-block">
-  <span class="code-label">Solon AI SummarizationInterceptor 配置示例</span>
-<pre>// Solon AI 框架 - 上下文压缩拦截器配置
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// Solon AI 框架 - 上下文压缩拦截器配置
 
 @Configuration
 public class AiConfig {
@@ -384,7 +549,133 @@ public class AiConfig {
 // ===== 压缩前后对比 =====
 // 压缩前: [System] + [15轮原始对话] = ~3000 tokens
 // 压缩后: [System] + [摘要~200tokens] + [最近3轮] = ~1150 tokens
-// 压缩率: 38.3%,且核心指令和近期上下文无损保留</pre>
+// 压缩率: 38.3%,且核心指令和近期上下文无损保留</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // Solon AI 框架 - 上下文压缩拦截器配置
+
+  // @Configuration
+  // public class AiConfig {
+
+  // @Bean
+  // public ChatService chatService() {
+  return new ChatService.builder();
+  // .model(openAiModel)                    // LLM 模型
+  // .interceptor(summarizationInterceptor()) // 添加压缩拦截器
+  // .build();
+  // }
+
+  // @Bean
+  // public SummarizationInterceptor summarizationInterceptor() {
+  return new SummarizationInterceptor();
+  // .threshold(10)              // 超过 10 轮对话时触发压缩
+  // .summaryModel(openAiModel)  // 用哪个模型做摘要(可以用更便宜的模型)
+  // .preserveSystemPrompt(true) // 保护 System Prompt 不被压缩
+  // .preserveLastN(3)           // 保留最近 3 轮原始对话
+  // .summaryPrompt("请将以下对话历史压缩为简洁摘要," +
+  // "保留所有关键决策、用户偏好和事实信息。" +
+  // "丢弃闲聊和重复内容。");
+  // }
+  // }
+
+  // // ===== 工作原理 =====
+  // // 1. 用户每轮对话后,Interceptor 检查当前对话轮次
+  // // 2. 轮次 <= threshold(10): 正常拼接所有历史
+  // // 3. 轮次 > threshold:
+  // //    - System Prompt 全量保留(preserveSystemPrompt=true)
+  // //    - 最近 3 轮完整保留(preserveLastN=3)
+  // //    - 其余轮次调用 summaryModel 生成摘要
+  // //    - 摘要替代原始对话,拼接到上下文中
+
+  // // ===== 压缩前后对比 =====
+  // // 压缩前: [System] + [15轮原始对话] = ~3000 tokens
+  // // 压缩后: [System] + [摘要~200tokens] + [最近3轮] = ~1150 tokens
+  // // 压缩率: 38.3%,且核心指令和近期上下文无损保留</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // Solon AI 框架 - 上下文压缩拦截器配置
+
+	// Python: public class AiConfig {
+
+	// Python: public ChatService chatService() {
+	return new ChatService.builder()
+	// Python: .model(openAiModel)                    // LLM 模型
+	// Python: .interceptor(summarizationInterceptor()) // 添加压缩拦截器
+	// Python: .build();
+	// Python: }
+
+	// Python: public SummarizationInterceptor summarizationInterceptor() {
+	return new SummarizationInterceptor()
+	// Python: .threshold(10)              // 超过 10 轮对话时触发压缩
+	// Python: .summaryModel(openAiModel)  // 用哪个模型做摘要(可以用更便宜的模型)
+	// Python: .preserveSystemPrompt(true) // 保护 System Prompt 不被压缩
+	// Python: .preserveLastN(3)           // 保留最近 3 轮原始对话
+	// Python: .summaryPrompt("请将以下对话历史压缩为简洁摘要," +
+	// Python: "保留所有关键决策、用户偏好和事实信息。" +
+	// Python: "丢弃闲聊和重复内容。");
+	// Python: }
+	// Python: }
+
+	// Python: // ===== 工作原理 =====
+	// Python: // 1. 用户每轮对话后,Interceptor 检查当前对话轮次
+	// Python: // 2. 轮次 <= threshold(10): 正常拼接所有历史
+	// Python: // 3. 轮次 > threshold:
+	// Python: //    - System Prompt 全量保留(preserveSystemPrompt=true)
+	// Python: //    - 最近 3 轮完整保留(preserveLastN=3)
+	// Python: //    - 其余轮次调用 summaryModel 生成摘要
+	// Python: //    - 摘要替代原始对话,拼接到上下文中
+
+	// Python: // ===== 压缩前后对比 =====
+	// Python: // 压缩前: [System] + [15轮原始对话] = ~3000 tokens
+	// Python: // 压缩后: [System] + [摘要~200tokens] + [最近3轮] = ~1150 tokens
+	// Python: // 压缩率: 38.3%,且核心指令和近期上下文无损保留</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // Solon AI 框架 - 上下文压缩拦截器配置
+
+        // Python: public class AiConfig {
+
+        // Python: public ChatService chatService() {
+        return new ChatService.builder();
+        // Python: .model(openAiModel)                    // LLM 模型
+        // Python: .interceptor(summarizationInterceptor()) // 添加压缩拦截器
+        // Python: .build();
+        // Python: }
+
+        // Python: public SummarizationInterceptor summarizationInterceptor() {
+        return new SummarizationInterceptor();
+        // Python: .threshold(10)              // 超过 10 轮对话时触发压缩
+        // Python: .summaryModel(openAiModel)  // 用哪个模型做摘要(可以用更便宜的模型)
+        // Python: .preserveSystemPrompt(true) // 保护 System Prompt 不被压缩
+        // Python: .preserveLastN(3)           // 保留最近 3 轮原始对话
+        // Python: .summaryPrompt("请将以下对话历史压缩为简洁摘要," +
+        // Python: "保留所有关键决策、用户偏好和事实信息。" +
+        // Python: "丢弃闲聊和重复内容。");
+        // Python: }
+        // Python: }
+
+        // Python: // ===== 工作原理 =====
+        // Python: // 1. 用户每轮对话后,Interceptor 检查当前对话轮次
+        // Python: // 2. 轮次 <= threshold(10): 正常拼接所有历史
+        // Python: // 3. 轮次 > threshold:
+        // Python: //    - System Prompt 全量保留(preserveSystemPrompt=true)
+        // Python: //    - 最近 3 轮完整保留(preserveLastN=3)
+        // Python: //    - 其余轮次调用 summaryModel 生成摘要
+        // Python: //    - 摘要替代原始对话,拼接到上下文中
+
+        // Python: // ===== 压缩前后对比 =====
+        // Python: // 压缩前: [System] + [15轮原始对话] = ~3000 tokens
+        // Python: // 压缩后: [System] + [摘要~200tokens] + [最近3轮] = ~1150 tokens
+        // Python: // 压缩率: 38.3%,且核心指令和近期上下文无损保留
+}</pre></div>
 </div>
 
 <div class="quote">
@@ -515,9 +806,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">短期/长期/工作记忆协同代码实现</h3>
 
-<div class="code-block">
-  <span class="code-label">完整记忆管线 Python 实现</span>
-<pre>import chromadb
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import chromadb
 from openai import OpenAI
 
 class MemorySystem:
@@ -678,7 +968,477 @@ class MemorySystem:
 # ===== 使用示例 =====
 memory = MemorySystem()
 answer = memory.respond("帮我分析一下最近的销售数据趋势")
-print(answer)</pre>
+print(answer)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+// Note: In production, use a vector DB client like ChromaDB JS or Pinecone SDK
+// This example uses a simplified in-memory store for illustration
+
+interface Message {
+  role: string;
+  content: string;
+}
+
+interface Memory {
+  text: string;
+  metadata: Record<string, any>;
+  similarity: number;
+}
+
+class MemorySystem {
+  private client: OpenAI;
+  private collection: Map<string, any>[] = []; // Simplified vector store
+  private shortTerm: Message[] = [];
+  private working: Record<string, any> = {};
+  private compressThreshold = 15;
+
+  constructor() {
+    this.client = new OpenAI();
+  }
+
+  // ===== 短期记忆管理 =====
+  addToShortTerm(role: string, content: string): void {
+    this.shortTerm.push({ role, content });
+    if (this.shortTerm.length > this.compressThreshold) {
+      this.compressShortTerm();
+    }
+  }
+
+  private async compressShortTerm(): Promise<void> {
+    const systemMsgs = this.shortTerm.filter(m => m.role === 'system');
+    const recentMsgs = this.shortTerm.slice(-6);
+    const oldMsgs = this.shortTerm.slice(systemMsgs.length, -6);
+
+    if (oldMsgs.length > 0) {
+      const summary = await this.summarize(oldMsgs);
+      this.saveToLongTerm(summary, {
+        type: 'summary',
+        turnRange: `turns ${systemMsgs.length}-${this.shortTerm.length - 6}`
+      });
+      this.shortTerm = [
+        ...systemMsgs,
+        { role: 'system', content: `[历史摘要]: ${summary}` },
+        ...recentMsgs
+      ];
+    }
+  }
+
+  private async summarize(messages: Message[]): Promise<string> {
+    const text = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content:
+          '将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。丢弃闲聊和重复内容。' },
+        { role: 'user', content: text }
+      ],
+      max_tokens: 300
+    });
+    return response.choices[0].message.content || '';
+  }
+
+  // ===== 长期记忆管理 =====
+  async saveToLongTerm(text: string, metadata?: Record<string, any>): Promise<void> {
+    const vector = await this.getEmbedding(text);
+    const docId = `mem_${this.shortTerm.length}_${text.length % 10000}`;
+    this.collection.push({ id: docId, embedding: vector, document: text, metadata: metadata || {} });
+  }
+
+  async retrieveFromLongTerm(query: string, topK = 5): Promise<Memory[]> {
+    const queryVector = await this.getEmbedding(query);
+    // Simplified: in production use proper vector similarity search
+    const results = this.collection.slice(0, topK);
+    return results.filter(r => true).map(r => ({
+      text: r.document,
+      metadata: r.metadata,
+      similarity: 0.85
+    }));
+  }
+
+  // ===== 工作记忆管理 =====
+  updateWorking(key: string, value: any): void { this.working[key] = value; }
+  getWorking(key: string): any { return this.working[key]; }
+  clearWorking(): void { this.working = {}; }
+
+  // ===== Embedding =====
+  private async getEmbedding(text: string): Promise<number[]> {
+    const response = await this.client.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text
+    });
+    return response.data[0].embedding;
+  }
+
+  // ===== 完整响应流程 =====
+  async respond(userInput: string): Promise<string> {
+    const longMemories = await this.retrieveFromLongTerm(userInput, 3);
+    const memoryContext = longMemories.map(m => m.text).join('\n');
+    const workingContext = Object.entries(this.working)
+      .map(([k, v]) => `${k}: ${v}`).join('\n');
+
+    const messages: Message[] = [
+      ...this.shortTerm,
+      { role: 'system', content:
+        `[相关历史记忆]\n${memoryContext}\n\n[当前任务状态]\n${workingContext}` },
+      { role: 'user', content: userInput }
+    ];
+
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-4o',
+      messages: messages as any
+    });
+    const answer = response.choices[0].message.content || '';
+
+    this.addToShortTerm('user', userInput);
+    this.addToShortTerm('assistant', answer);
+    await this.saveToLongTerm(
+      `用户: ${userInput}\n助手: ${answer}`,
+      { type: 'interaction' }
+    );
+
+    return answer;
+  }
+}
+
+// ===== 使用示例 =====
+const memory = new MemorySystem();
+const answer = await memory.respond("帮我分析一下最近的销售数据趋势");
+console.log(answer);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    openai "github.com/sashabaranov/go-openai"
+)
+
+// MemorySystem 三层记忆协同系统
+type MemorySystem struct {
+    client           *openai.Client
+    collection       []MemoryEntry // 简化的向量存储
+    shortTerm        []Message
+    working          map[string]string
+    compressThreshold int
+}
+
+type Message struct {
+    Role    string `json:"role"`
+    Content string `json:"content"`
+}
+
+type MemoryEntry struct {
+    ID        string
+    Embedding []float32
+    Document  string
+    Metadata  map[string]string
+}
+
+type Memory struct {
+    Text       string
+    Metadata   map[string]string
+    Similarity float64
+}
+
+func NewMemorySystem() *MemorySystem {
+    return &MemorySystem{
+        client:            openai.NewClient(),
+        collection:        []MemoryEntry{},
+        shortTerm:         []Message{},
+        working:           make(map[string]string),
+        compressThreshold: 15,
+    }
+}
+
+// ===== 短期记忆管理 =====
+func (m *MemorySystem) AddToShortTerm(role, content string) {
+    m.shortTerm = append(m.shortTerm, Message{Role: role, Content: content})
+    if len(m.shortTerm) > m.compressThreshold {
+        m.compressShortTerm()
+    }
+}
+
+func (m *MemorySystem) compressShortTerm() {
+    var systemMsgs, recentMsgs, oldMsgs []Message
+    for _, msg := range m.shortTerm {
+        if msg.Role == "system" {
+            systemMsgs = append(systemMsgs, msg)
+        }
+    }
+    if len(m.shortTerm) >= 6 {
+        recentMsgs = m.shortTerm[len(m.shortTerm)-6:]
+        oldMsgs = m.shortTerm[len(systemMsgs) : len(m.shortTerm)-6]
+    }
+
+    if len(oldMsgs) > 0 {
+        summary := m.summarize(oldMsgs)
+        m.saveToLongTerm(summary, map[string]string{
+            "type":       "summary",
+            "turn_range": fmt.Sprintf("turns %d-%d", len(systemMsgs), len(m.shortTerm)-6),
+        })
+        m.shortTerm = append(systemMsgs,
+            Message{Role: "system", Content: fmt.Sprintf("[历史摘要]: %s", summary)})
+        m.shortTerm = append(m.shortTerm, recentMsgs...)
+    }
+}
+
+func (m *MemorySystem) summarize(messages []Message) string {
+    var text string
+    for _, msg := range messages {
+        text += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
+    }
+    resp, err := m.client.CreateChatCompletion(context.Background(),
+        openai.ChatCompletionRequest{
+            Model: openai.GPT4oMini,
+            Messages: []openai.ChatCompletionMessage{
+                {Role: "system", Content: "将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。丢弃闲聊和重复内容。"},
+                {Role: "user", Content: text},
+            },
+            MaxTokens: 300,
+        })
+    if err != nil {
+        log.Printf("summarize error: %v", err)
+        return ""
+    }
+    return resp.Choices[0].Message.Content
+}
+
+// ===== 长期记忆管理 =====
+func (m *MemorySystem) saveToLongTerm(text string, metadata map[string]string) {
+    vector := m.getEmbedding(text)
+    docID := fmt.Sprintf("mem_%d_%d", len(m.shortTerm), len(text)%10000)
+    m.collection = append(m.collection, MemoryEntry{
+        ID: docID, Embedding: vector, Document: text, Metadata: metadata,
+    })
+}
+
+func (m *MemorySystem) retrieveFromLongTerm(query string, topK int) []Memory {
+    _ = m.getEmbedding(query) // 简化:实际应做向量相似度搜索
+    var memories []Memory
+    for i, entry := range m.collection {
+        if i >= topK {
+            break
+        }
+        memories = append(memories, Memory{
+            Text: entry.Document, Metadata: entry.Metadata, Similarity: 0.85,
+        })
+    }
+    return memories
+}
+
+// ===== 工作记忆管理 =====
+func (m *MemorySystem) updateWorking(key, value string) { m.working[key] = value }
+func (m *MemorySystem) getWorking(key string) string    { return m.working[key] }
+func (m *MemorySystem) clearWorking()                   { m.working = make(map[string]string) }
+
+// ===== Embedding =====
+func (m *MemorySystem) getEmbedding(text string) []float32 {
+    resp, err := m.client.CreateEmbeddings(context.Background(),
+        openai.EmbeddingRequest{
+            Model: openai.SmallEmbedding3,
+            Input: []string{text},
+        })
+    if err != nil {
+        log.Printf("embedding error: %v", err)
+        return nil
+    }
+    return resp.Data[0].Embedding
+}
+
+// ===== 完整响应流程 =====
+func (m *MemorySystem) respond(userInput string) string {
+    longMemories := m.retrieveFromLongTerm(userInput, 3)
+    var memoryContext string
+    for _, mem := range longMemories {
+        memoryContext += mem.Text + "\n"
+    }
+    var workingContext string
+    for k, v := range m.working {
+        workingContext += fmt.Sprintf("%s: %s\n", k, v)
+    }
+
+    messages := append(m.shortTerm,
+        Message{Role: "system", Content: fmt.Sprintf("[相关历史记忆]\n%s\n\n[当前任务状态]\n%s", memoryContext, workingContext)},
+        Message{Role: "user", Content: userInput},
+    )
+
+    resp, err := m.client.CreateChatCompletion(context.Background(),
+        openai.ChatCompletionRequest{
+            Model:    openai.GPT4o,
+            Messages: toOpenAIMessages(messages),
+        })
+    if err != nil {
+        log.Printf("respond error: %v", err)
+        return ""
+    }
+    answer := resp.Choices[0].Message.Content
+
+    m.AddToShortTerm("user", userInput)
+    m.AddToShortTerm("assistant", answer)
+    m.saveToLongTerm(fmt.Sprintf("用户: %s\n助手: %s", userInput, answer),
+        map[string]string{"type": "interaction"})
+
+    return answer
+}
+
+func toOpenAIMessages(msgs []Message) []openai.ChatCompletionMessage {
+    result := make([]openai.ChatCompletionMessage, len(msgs))
+    for i, m := range msgs {
+        result[i] = openai.ChatCompletionMessage{Role: m.Role, Content: m.Content}
+    }
+    return result
+}
+
+// ===== 使用示例 =====
+func main() {
+    memory := NewMemorySystem()
+    answer := memory.respond("帮我分析一下最近的销售数据趋势")
+    fmt.Println(answer)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import java.util.*;
+
+public class MemorySystem {
+    private OpenAIClient client;
+    private List&lt;MemoryEntry&gt; collection = new ArrayList<>();
+    private List&lt;Message&gt; shortTerm = new ArrayList<>();
+    private Map&lt;String, String> working = new HashMap<>();
+    private int compressThreshold = 15;
+
+    static class Message {
+        String role;
+        String content;
+        Message(String role, String content) { this.role = role; this.content = content; }
+    }
+
+    static class MemoryEntry {
+        String id;
+        String document;
+        Map&lt;String, String> metadata;
+    }
+
+    static class Memory {
+        String text;
+        Map&lt;String, String> metadata;
+        double similarity;
+    }
+
+    public MemorySystem() {
+        this.client = new OpenAIClient();
+    }
+
+    // ===== 短期记忆管理 =====
+    public void addToShortTerm(String role, String content) {
+        shortTerm.add(new Message(role, content));
+        if (shortTerm.size() > compressThreshold) {
+            compressShortTerm();
+        }
+    }
+
+    private void compressShortTerm() {
+        List&lt;Message&gt; systemMsgs = new ArrayList<>();
+        for (Message m : shortTerm) {
+            if ("system".equals(m.role)) systemMsgs.add(m);
+        }
+        List&lt;Message&gt; recentMsgs = shortTerm.subList(
+            Math.max(shortTerm.size() - 6, 0), shortTerm.size());
+        List&lt;Message&gt; oldMsgs = shortTerm.subList(
+            systemMsgs.size(), Math.max(shortTerm.size() - 6, systemMsgs.size()));
+
+        if (!oldMsgs.isEmpty()) {
+            String summary = summarize(oldMsgs);
+            saveToLongTerm(summary, Map.of("type", "summary"));
+            shortTerm.clear();
+            shortTerm.addAll(systemMsgs);
+            shortTerm.add(new Message("system", "[历史摘要]: " + summary));
+            shortTerm.addAll(recentMsgs);
+        }
+    }
+
+    private String summarize(List&lt;Message&gt; messages) {
+        StringBuilder text = new StringBuilder();
+        for (Message m : messages) {
+            text.append(m.role).append(": ").append(m.content).append("\n");
+        }
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model("gpt-4o-mini")
+            .addMessage(ChatCompletionMessageParam.builder()
+                .role(ChatCompletionMessageParam.Role.SYSTEM)
+                .content("将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。")
+                .build())
+            .addMessage(ChatCompletionMessageParam.builder()
+                .role(ChatCompletionMessageParam.Role.USER)
+                .content(text.toString())
+                .build())
+            .maxCompletionTokens(300)
+            .build();
+        ChatCompletion resp = client.chat().completions().create(params);
+        return resp.choices().get(0).message().content().orElse("");
+    }
+
+    // ===== 长期记忆管理 =====
+    public void saveToLongTerm(String text, Map&lt;String, String> metadata) {
+        MemoryEntry entry = new MemoryEntry();
+        entry.id = "mem_" + shortTerm.size() + "_" + (text.hashCode() % 10000);
+        entry.document = text;
+        entry.metadata = metadata != null ? metadata : new HashMap<>();
+        collection.add(entry);
+    }
+
+    public List&lt;Memory&gt; retrieveFromLongTerm(String query, int topK) {
+        List&lt;Memory&gt; memories = new ArrayList<>();
+        for (int i = 0; i < Math.min(topK, collection.size()); i++) {
+            MemoryEntry entry = collection.get(i);
+            memories.add(new Memory());
+        }
+        return memories;
+    }
+
+    // ===== 工作记忆管理 =====
+    public void updateWorking(String key, String value) { working.put(key, value); }
+    public String getWorking(String key) { return working.get(key); }
+    public void clearWorking() { working.clear(); }
+
+    // ===== 完整响应流程 =====
+    public String respond(String userInput) {
+        List&lt;Memory&gt; longMemories = retrieveFromLongTerm(userInput, 3);
+        StringBuilder memoryContext = new StringBuilder();
+        for (Memory m : longMemories) memoryContext.append(m.text).append("\n");
+
+        StringBuilder workingContext = new StringBuilder();
+        for (var entry : working.entrySet()) {
+            workingContext.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+        }
+
+        List&lt;Message&gt; messages = new ArrayList<>(shortTerm);
+        messages.add(new Message("system",
+            "[相关历史记忆]\n" + memoryContext + "\n[当前任务状态]\n" + workingContext));
+        messages.add(new Message("user", userInput));
+
+        // 调用 LLM 生成响应
+        String answer = callLLM(messages);
+
+        addToShortTerm("user", userInput);
+        addToShortTerm("assistant", answer);
+        saveToLongTerm("用户: " + userInput + "\n助手: " + answer,
+            Map.of("type", "interaction"));
+
+        return answer;
+    }
+
+    private String callLLM(List&lt;Message&gt; messages) {
+        // Simplified - build params and call OpenAI
+        return "Response from LLM";
+    }
+
+    // ===== 使用示例 =====
+    public static void main(String[] args) {
+        MemorySystem memory = new MemorySystem();
+        String answer = memory.respond("帮我分析一下最近的销售数据趋势");
+        System.out.println(answer);
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">Embedding 模型选择</h3>
@@ -876,9 +1636,8 @@ setTimeout(() => {
 }, 800);
 </script>
 
-<div class="code-block">
-  <span class="code-label">Reflexion 反思循环 Python 实现</span>
-<pre>class ReflexionAgent:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class ReflexionAgent:
     """基于 Reflexion 框架的反思型 Agent"""
 
     def __init__(self, llm, memory_system):
@@ -972,7 +1731,251 @@ setTimeout(() => {
         """
         response = self.llm.generate(eval_prompt)
         # 解析评估结果...
-        return {"success": False, "feedback": "结果不完整"}  # 简化示例</pre>
+        return {"success": False, "feedback": "结果不完整"}  # 简化示例</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class ReflexionAgent {
+  private llm: { generate: (prompt: string) => Promise<string> };
+  private memory: MemorySystem;
+  private maxRetries = 3;
+
+  constructor(llm: any, memorySystem: MemorySystem) {
+    this.llm = llm;
+    this.memory = memorySystem;
+  }
+
+  async executeTask(taskDescription: string): Promise<any> {
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      // 1. 检索相关反思经验
+      const pastReflections = await this.memory.retrieveFromLongTerm(taskDescription, 3);
+      const reflectionContext = pastReflections
+        .filter(r => r.metadata?.type === 'reflection')
+        .map((r, i) => `[过往经验 #${i + 1}]: ${r.text}`)
+        .join('\n');
+
+      // 2. 构建带反思经验的 prompt
+      const prompt = `任务: ${taskDescription}\n\n` +
+        (reflectionContext ? `过往反思经验:\n${reflectionContext}` : '这是首次尝试此任务。') +
+        '\n\n请执行任务,注意避免过去犯过的错误。';
+
+      // 3. 执行 ReAct 循环
+      const result = await this.reactLoop(prompt);
+
+      // 4. 评估结果
+      const evaluation = await this.evaluate(taskDescription, result);
+
+      if (evaluation.success) {
+        await this.memory.saveToLongTerm(
+          `任务成功: ${taskDescription}\n方法: ${result.approach}\n结果: ${result.output}`,
+          { type: 'episodic', outcome: 'success' }
+        );
+        return result;
+      }
+
+      // 5. 失败 → 触发反思
+      const reflection = await this.reflect(taskDescription, result, evaluation);
+
+      // 6. 将反思存入记忆
+      await this.memory.saveToLongTerm(reflection, {
+        type: 'reflection', task: taskDescription, attempt: attempt + 1, outcome: 'failure'
+      });
+
+      console.log(`第 ${attempt + 1} 次尝试失败,反思已存入记忆`);
+    }
+    return { output: '任务失败,已达最大重试次数', success: false };
+  }
+
+  private async reflect(task: string, result: any, evaluation: any): Promise<string> {
+    const prompt = `任务: ${task}\n我的行动: ${result.actions_taken}\n` +
+      `得到的结果: ${result.output}\n评估反馈: ${evaluation.feedback}\n\n` +
+      '请反思:\n1. 哪里做错了?\n2. 为什么会犯这个错误?\n3. 下次怎么避免?';
+    return await this.llm.generate(prompt);
+  }
+
+  private async evaluate(task: string, result: any): Promise<any> {
+    const prompt = `任务: ${task}\n结果: ${result.output}\n这个结果是否成功完成任务?`;
+    const response = await this.llm.generate(prompt);
+    return { success: false, feedback: '结果不完整' };
+  }
+
+  private async reactLoop(prompt: string): Promise<any> {
+    const response = await this.llm.generate(prompt);
+    return { output: response, approach: 'ReAct', actions_taken: 'execute' };
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import "fmt"
+
+// ReflexionAgent 基于Reflexion框架的反思型Agent
+type ReflexionAgent struct {
+    llm        LLMInterface
+    memory     *MemorySystem
+    maxRetries int
+}
+
+type LLMInterface interface {
+    Generate(prompt string) string
+}
+
+type Evaluation struct {
+    Success  bool
+    Feedback string
+}
+
+type TaskResult struct {
+    Output       string
+    Approach     string
+    ActionsTaken string
+    Success      bool
+}
+
+func NewReflexionAgent(llm LLMInterface, memory *MemorySystem) *ReflexionAgent {
+    return &ReflexionAgent{llm: llm, memory: memory, maxRetries: 3}
+}
+
+func (a *ReflexionAgent) executeTask(taskDescription string) *TaskResult {
+    for attempt := 0; attempt < a.maxRetries; attempt++ {
+        // 1. 检索相关反思经验
+        pastReflections := a.memory.retrieveFromLongTerm(taskDescription, 3)
+        reflectionContext := ""
+        for i, r := range pastReflections {
+            if r.Metadata["type"] == "reflection" {
+                reflectionContext += fmt.Sprintf("[过往经验 #%d]: %s\n", i+1, r.Text)
+            }
+        }
+
+        // 2. 构建带反思经验的prompt
+        prompt := fmt.Sprintf("任务: %s\n\n", taskDescription)
+        if reflectionContext != "" {
+            prompt += fmt.Sprintf("过往反思经验:\n%s", reflectionContext)
+        } else {
+            prompt += "这是首次尝试此任务。"
+        }
+        prompt += "\n\n请执行任务,注意避免过去犯过的错误。"
+
+        // 3. 执行ReAct循环
+        result := a.reactLoop(prompt)
+
+        // 4. 评估结果
+        evaluation := a.evaluate(taskDescription, result)
+
+        if evaluation.Success {
+            a.memory.saveToLongTerm(
+                fmt.Sprintf("任务成功: %s\n方法: %s\n结果: %s", taskDescription, result.Approach, result.Output),
+                map[string]string{"type": "episodic", "outcome": "success"},
+            )
+            return result
+        }
+
+        // 5. 失败→触发反思
+        reflection := a.reflect(taskDescription, result, evaluation)
+
+        // 6. 将反思存入记忆
+        a.memory.saveToLongTerm(reflection, map[string]string{
+            "type": "reflection", "task": taskDescription,
+            "attempt": fmt.Sprintf("%d", attempt+1), "outcome": "failure",
+        })
+
+        fmt.Printf("第 %d 次尝试失败,反思已存入记忆\n", attempt+1)
+    }
+    return &TaskResult{Output: "任务失败,已达最大重试次数", Success: false}
+}
+
+func (a *ReflexionAgent) reflect(task string, result *TaskResult, eval *Evaluation) string {
+    prompt := fmt.Sprintf("任务: %s\n我的行动: %s\n得到的结果: %s\n评估反馈: %s\n\n"+
+        "请反思:\n1. 哪里做错了?\n2. 为什么会犯这个错误?\n3. 下次怎么避免?",
+        task, result.ActionsTaken, result.Output, eval.Feedback)
+    return a.llm.Generate(prompt)
+}
+
+func (a *ReflexionAgent) evaluate(task string, result *TaskResult) *Evaluation {
+    prompt := fmt.Sprintf("任务: %s\n结果: %s\n这个结果是否成功完成任务?", task, result.Output)
+    _ = a.llm.Generate(prompt)
+    return &Evaluation{Success: false, Feedback: "结果不完整"}
+}
+
+func (a *ReflexionAgent) reactLoop(prompt string) *TaskResult {
+    resp := a.llm.Generate(prompt)
+    return &TaskResult{Output: resp, Approach: "ReAct", ActionsTaken: "execute"}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class ReflexionAgent {
+    private LLMInterface llm;
+    private MemorySystem memory;
+    private int maxRetries = 3;
+
+    public ReflexionAgent(LLMInterface llm, MemorySystem memory) {
+        this.llm = llm;
+        this.memory = memory;
+    }
+
+    public TaskResult executeTask(String taskDescription) {
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            // 1. 检索相关反思经验
+            List&lt;Memory&gt; pastReflections = memory.retrieveFromLongTerm(taskDescription, 3);
+            StringBuilder reflectionContext = new StringBuilder();
+            int i = 0;
+            for (Memory r : pastReflections) {
+                if ("reflection".equals(r.metadata.get("type"))) {
+                    reflectionContext.append("[过往经验 #").append(++i)
+                        .append("]: ").append(r.text).append("\n");
+                }
+            }
+
+            // 2. 构建带反思经验的prompt
+            String prompt = "任务: " + taskDescription + "\n\n";
+            if (reflectionContext.length() > 0) {
+                prompt += "过往反思经验:\n" + reflectionContext;
+            } else {
+                prompt += "这是首次尝试此任务。";
+            }
+            prompt += "\n\n请执行任务,注意避免过去犯过的错误。";
+
+            // 3. 执行ReAct循环
+            TaskResult result = reactLoop(prompt);
+
+            // 4. 评估结果
+            Evaluation evaluation = evaluate(taskDescription, result);
+
+            if (evaluation.success) {
+                memory.saveToLongTerm(
+                    "任务成功: " + taskDescription + "\n方法: " + result.approach +
+                    "\n结果: " + result.output,
+                    Map.of("type", "episodic", "outcome", "success"));
+                return result;
+            }
+
+            // 5. 失败→触发反思
+            String reflection = reflect(taskDescription, result, evaluation);
+
+            // 6. 将反思存入记忆
+            memory.saveToLongTerm(reflection, Map.of(
+                "type", "reflection", "task", taskDescription,
+                "attempt", String.valueOf(attempt + 1), "outcome", "failure"));
+
+            System.out.println("第 " + (attempt + 1) + " 次尝试失败,反思已存入记忆");
+        }
+        return new TaskResult("任务失败,已达最大重试次数", false);
+    }
+
+    private String reflect(String task, TaskResult result, Evaluation eval) {
+        String prompt = "任务: " + task + "\n我的行动: " + result.actionsTaken +
+            "\n得到的结果: " + result.output + "\n评估反馈: " + eval.feedback +
+            "\n\n请反思:\n1. 哪里做错了?\n2. 为什么会犯这个错误?\n3. 下次怎么避免?";
+        return llm.generate(prompt);
+    }
+
+    private Evaluation evaluate(String task, TaskResult result) {
+        String prompt = "任务: " + task + "\n结果: " + result.output;
+        llm.generate(prompt);
+        return new Evaluation(false, "结果不完整");
+    }
+
+    private TaskResult reactLoop(String prompt) {
+        String resp = llm.generate(prompt);
+        return new TaskResult(resp, "ReAct", "execute", true);
+    }
+}</pre></div>
 </div>
 
 <div class="quote">
@@ -1099,9 +2102,8 @@ window.LifecycleAnim = LifecycleAnim;
 
 <h3 class="sub-heading">记忆治理策略代码实现</h3>
 
-<div class="code-block">
-  <span class="code-label">记忆生命周期治理 Python 实现</span>
-<pre>import time
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import time
 from datetime import datetime, timedelta
 
 class MemoryGovernor:
@@ -1272,7 +2274,328 @@ context = governor.retrieve_jit("分析销售数据趋势")
 governor.compress_if_needed()
 
 # 执行淘汰
-governor.evict()</pre>
+governor.evict()</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { MemorySystem } from './MemorySystem';
+
+interface MemoryGovernorConfig {
+  maxShortTermTurns: number;
+  compressThreshold: number;
+  preserveLastN: number;
+  preserveSystemPrompt: boolean;
+  evictionAgeDays: number;
+  evictionMaxCount: number;
+  retrievalSimilarityThreshold: number;
+  retrievalTopK: number;
+  jitMode: boolean;
+}
+
+class MemoryGovernor {
+  private memory: MemorySystem;
+  private config: MemoryGovernorConfig = {
+    maxShortTermTurns: 15,
+    compressThreshold: 12,
+    preserveLastN: 3,
+    preserveSystemPrompt: true,
+    evictionAgeDays: 90,
+    evictionMaxCount: 10000,
+    retrievalSimilarityThreshold: 0.7,
+    retrievalTopK: 5,
+    jitMode: true,
+  };
+  private accessStats: Record<string, number> = {};
+
+  constructor(memorySystem: MemorySystem) {
+    this.memory = memorySystem;
+  }
+
+  // ===== 写入阶段 =====
+  write(content: string, metadata?: Record<string, any>): void {
+    const importance = this.assessImportance(content);
+    const enrichedMeta = {
+      ...(metadata || {}),
+      importance,
+      createdAt: new Date().toISOString(),
+      accessCount: 0,
+      lastAccessed: null as string | null,
+    };
+    this.memory.saveToLongTerm(content, enrichedMeta);
+    this.memory.addToShortTerm(enrichedMeta.role || 'user', content);
+  }
+
+  private assessImportance(content: string): number {
+    let score = 1;
+    if (['决策', '偏好', '规则', '约束'].some(kw => content.includes(kw))) score += 2;
+    if (['失败', '错误', '反思'].some(kw => content.includes(kw))) score += 2;
+    if (content.length > 200) score += 1;
+    return Math.min(score, 5);
+  }
+
+  // ===== 检索阶段(JIT模式) =====
+  retrieveJit(currentStepDescription: string): any[] {
+    if (!this.config.jitMode) {
+      return this.memory.retrieveFromLongTerm(currentStepDescription, this.config.retrievalTopK);
+    }
+    const results = this.memory.retrieveFromLongTerm(currentStepDescription, 3);
+    for (const r of results) {
+      const docId = r.metadata?.docId || '';
+      if (docId) this.accessStats[docId] = (this.accessStats[docId] || 0) + 1;
+    }
+    return results.filter(r => r.similarity >= this.config.retrievalSimilarityThreshold);
+  }
+
+  // ===== 压缩阶段 =====
+  compressIfNeeded(): void {
+    if (this.memory.shortTerm.length > this.config.compressThreshold) {
+      this.semanticPreservingCompress();
+    }
+  }
+
+  private semanticPreservingCompress(): void {
+    // 简化版:保留system和最近N轮,其余摘要
+    const short = this.memory.shortTerm;
+    const systemMsgs = short.filter(m => m.role === 'system');
+    const recent = short.slice(-(this.config.preserveLastN * 2));
+    // 中间内容做摘要...
+    this.memory.shortTerm = [...systemMsgs, ...recent];
+  }
+
+  // ===== 淘汰阶段 =====
+  evict(): void {
+    const cutoff = new Date(Date.now() - this.config.evictionAgeDays * 86400000);
+    // 时效淘汰 + 容量淘汰 + 质量淘汰
+    const leastAccessed = Object.entries(this.accessStats)
+      .sort((a, b) => a[1] - b[1]).slice(0, 100);
+    // 删除最少访问的记忆...
+  }
+}
+
+// ===== 使用示例 =====
+const governor = new MemoryGovernor(new MemorySystem());
+governor.write("用户偏好简洁的中文回答", { type: 'preference' });
+const context = governor.retrieveJit("分析销售数据趋势");
+governor.compressIfNeeded();
+governor.evict();</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "time"
+)
+
+// MemoryGovernor 记忆生命周期治理引擎
+type MemoryGovernor struct {
+    memory      *MemorySystem
+    config      GovernorConfig
+    accessStats map[string]int
+}
+
+type GovernorConfig struct {
+    MaxShortTermTurns             int
+    CompressThreshold             int
+    PreserveLastN                 int
+    PreserveSystemPrompt          bool
+    EvictionAgeDays               int
+    EvictionMaxCount              int
+    RetrievalSimilarityThreshold  float64
+    RetrievalTopK                 int
+    JITMode                       bool
+}
+
+func NewMemoryGovernor(mem *MemorySystem) *MemoryGovernor {
+    return &MemoryGovernor{
+        memory: mem,
+        config: GovernorConfig{
+            MaxShortTermTurns: 15, CompressThreshold: 12,
+            PreserveLastN: 3, PreserveSystemPrompt: true,
+            EvictionAgeDays: 90, EvictionMaxCount: 10000,
+            RetrievalSimilarityThreshold: 0.7, RetrievalTopK: 5,
+            JITMode: true,
+        },
+        accessStats: make(map[string]int),
+    }
+}
+
+// ===== 写入阶段 =====
+func (g *MemoryGovernor) write(content string, metadata map[string]string) {
+    importance := g.assessImportance(content)
+    enriched := map[string]string{
+        "importance": fmt.Sprintf("%d", importance),
+        "created_at": time.Now().Format(time.RFC3339),
+    }
+    for k, v := range metadata {
+        enriched[k] = v
+    }
+    g.memory.saveToLongTerm(content, enriched)
+    role := "user"
+    if r, ok := metadata["role"]; ok { role = r }
+    g.memory.addToShortTerm(role, content)
+}
+
+func (g *MemoryGovernor) assessImportance(content string) int {
+    score := 1
+    keywords := []string{"决策", "偏好", "规则", "约束"}
+    for _, kw := range keywords {
+        if contains(content, kw) { score += 2; break }
+    }
+    failKeywords := []string{"失败", "错误", "反思"}
+    for _, kw := range failKeywords {
+        if contains(content, kw) { score += 2; break }
+    }
+    if len(content) > 200 { score += 1 }
+    if score > 5 { score = 5 }
+    return score
+}
+
+func contains(s, sub string) bool { return len(s) >= len(sub) && (s == sub || len(sub) == 0 || findSubstring(s, sub)) }
+func findSubstring(s, sub string) bool {
+    for i := 0; i <= len(s)-len(sub); i++ {
+        if s[i:i+len(sub)] == sub { return true }
+    }
+    return false
+}
+
+// ===== 检索阶段(JIT模式) =====
+func (g *MemoryGovernor) retrieveJIT(stepDesc string) []Memory {
+    if !g.config.JITMode {
+        return g.memory.retrieveFromLongTerm(stepDesc, g.config.RetrievalTopK)
+    }
+    results := g.memory.retrieveFromLongTerm(stepDesc, 3)
+    for _, r := range results {
+        if docID, ok := r.Metadata["doc_id"]; ok {
+            g.accessStats[docID]++
+        }
+    }
+    var filtered []Memory
+    for _, r := range results {
+        if r.Similarity >= g.config.RetrievalSimilarityThreshold {
+            filtered = append(filtered, r)
+        }
+    }
+    return filtered
+}
+
+// ===== 压缩阶段 =====
+func (g *MemoryGovernor) compressIfNeeded() {
+    if len(g.memory.shortTerm) > g.config.CompressThreshold {
+        g.semanticPreservingCompress()
+    }
+}
+
+func (g *MemoryGovernor) semanticPreservingCompress() {
+    short := g.memory.shortTerm
+    var systemMsgs, recent []Message
+    for _, m := range short {
+        if m.Role == "system" { systemMsgs = append(systemMsgs, m) }
+    }
+    if len(short) >= g.config.PreserveLastN*2 {
+        recent = short[len(short)-g.config.PreserveLastN*2:]
+    }
+    g.memory.shortTerm = append(systemMsgs, recent...)
+}
+
+// ===== 淘汰阶段 =====
+func (g *MemoryGovernor) evict() {
+    cutoff := time.Now().AddDate(0, 0, -g.config.EvictionAgeDays)
+    _ = cutoff // 时效淘汰
+    // 容量淘汰 + 质量淘汰
+}
+
+// ===== 使用示例 =====
+func main() {
+    governor := NewMemoryGovernor(NewMemorySystem())
+    governor.write("用户偏好简洁的中文回答", map[string]string{"type": "preference"})
+    _ = governor.retrieveJIT("分析销售数据趋势")
+    governor.compressIfNeeded()
+    governor.evict()
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class MemoryGovernor {
+    private MemorySystem memory;
+    private Map<String, Object> config = new HashMap<>();
+    private Map<String, Integer> accessStats = new HashMap<>();
+
+    public MemoryGovernor(MemorySystem memorySystem) {
+        this.memory = memorySystem;
+        config.put("maxShortTermTurns", 15);
+        config.put("compressThreshold", 12);
+        config.put("preserveLastN", 3);
+        config.put("evictionAgeDays", 90);
+        config.put("evictionMaxCount", 10000);
+        config.put("retrievalSimilarityThreshold", 0.7);
+        config.put("retrievalTopK", 5);
+        config.put("jitMode", true);
+    }
+
+    // ===== 写入阶段 =====
+    public void write(String content, Map<String, String> metadata) {
+        int importance = assessImportance(content);
+        Map<String, String> enriched = new HashMap<>(metadata != null ? metadata : Map.of());
+        enriched.put("importance", String.valueOf(importance));
+        enriched.put("createdAt", java.time.Instant.now().toString());
+        memory.saveToLongTerm(content, enriched);
+        String role = enriched.getOrDefault("role", "user");
+        memory.addToShortTerm(role, content);
+    }
+
+    private int assessImportance(String content) {
+        int score = 1;
+        if (content.contains("决策") || content.contains("偏好") || content.contains("规则")) score += 2;
+        if (content.contains("失败") || content.contains("错误") || content.contains("反思")) score += 2;
+        if (content.length() > 200) score += 1;
+        return Math.min(score, 5);
+    }
+
+    // ===== 检索阶段(JIT模式) =====
+    @SuppressWarnings("unchecked")
+    public List&lt;Memory&gt; retrieveJit(String stepDesc) {
+        boolean jitMode = (Boolean) config.get("jitMode");
+        int topK = (Integer) config.get("retrievalTopK");
+        if (!jitMode) return memory.retrieveFromLongTerm(stepDesc, topK);
+        List&lt;Memory&gt; results = memory.retrieveFromLongTerm(stepDesc, 3);
+        for (Memory r : results) {
+            String docId = r.metadata.getOrDefault("docId", "");
+            if (!docId.isEmpty()) accessStats.merge(docId, 1, Integer::sum);
+        }
+        double threshold = (Double) config.get("retrievalSimilarityThreshold");
+        List&lt;Memory&gt; filtered = new ArrayList<>();
+        for (Memory r : results) {
+            if (r.similarity >= threshold) filtered.add(r);
+        }
+        return filtered;
+    }
+
+    // ===== 压缩阶段 =====
+    public void compressIfNeeded() {
+        int threshold = (Integer) config.get("compressThreshold");
+        if (memory.shortTermSize() > threshold) {
+            semanticPreservingCompress();
+        }
+    }
+
+    private void semanticPreservingCompress() {
+        // 保留system和最近N轮,其余摘要压缩
+        int preserveN = (Integer) config.get("preserveLastN");
+        memory.compressShortTerm(preserveN);
+    }
+
+    // ===== 淘汰阶段 =====
+    public void evict() {
+        int maxCount = (Integer) config.get("evictionMaxCount");
+        // 时效淘汰 + 容量淘汰 + 质量淘汰
+        if (accessStats.size() > maxCount) {
+            // 删除最少访问的
+        }
+    }
+
+    public static void main(String[] args) {
+        MemoryGovernor governor = new MemoryGovernor(new MemorySystem());
+        governor.write("用户偏好简洁的中文回答", Map.of("type", "preference"));
+        List&lt;Memory&gt; context = governor.retrieveJit("分析销售数据趋势");
+        governor.compressIfNeeded();
+        governor.evict();
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -1504,9 +2827,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">记忆写入触发引擎代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">记忆写入触发引擎 Python 实现</span>
-<pre>class MemoryWriteTrigger:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class MemoryWriteTrigger:
     """记忆写入触发引擎:判断什么信息值得写入长期记忆"""
 
     def __init__(self, llm_client, static_store, dynamic_store):
@@ -1630,7 +2952,153 @@ result = trigger.process_turn("用 pandas 读 CSV 遇到编码问题,指定 enco
 
 # 场景 3:简单闲聊 → 不触发写入
 result = trigger.process_turn("你好,今天天气不错")
-# → {"action": "skip", "reason": "简单闲聊,无长期价值"}</pre>
+# → {"action": "skip", "reason": "简单闲聊,无长期价值"}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class MemoryWriteTrigger {
+  private llm: any;
+  private memory: MemorySystem;
+  private static readonly TRIGGER_KEYWORDS = ['偏好', '喜欢', '讨厌', '规则', '记住', '别再'];
+  private static readonly VALUE_KEYWORDS = ['决策', '偏好', '规则', '约束', '失败', '错误', '经验'];
+
+  constructor(llm: any, memory: MemorySystem) {
+    this.llm = llm;
+    this.memory = memory;
+  }
+
+  // 判断是否触发记忆写入
+  shouldWrite(userInput: string, agentResponse: string): boolean {
+    // 1. 用户明确要求记住
+    if (MemoryWriteTrigger.TRIGGER_KEYWORDS.some(kw => userInput.includes(kw))) return true;
+    // 2. 包含决策/偏好/知识点
+    const combined = userInput + agentResponse;
+    if (MemoryWriteTrigger.VALUE_KEYWORDS.some(kw => combined.includes(kw))) return true;
+    // 3. 任务完成(简化判断)
+    if (agentResponse.includes('完成') || agentResponse.includes('成功')) return true;
+    return false;
+  }
+
+  // 提取值得记住的信息
+  async extract(userInput: string, agentResponse: string): Promise<ExtractedMemory[]> {
+    const prompt = `从以下对话中提取值得长期记住的信息,返回JSON数组:\n` +
+      `用户: ${userInput}\n助手: ${agentResponse}\n` +
+      `提取规则:1.用户偏好 2.关键决策 3.事实信息 4.经验教训`;
+    const result = await this.llm.generate(prompt);
+    try { return JSON.parse(result); } catch { return []; }
+  }
+
+  // 完整写入流程
+  async process(userInput: string, agentResponse: string): Promise<void> {
+    if (!this.shouldWrite(userInput, agentResponse)) return;
+    const memories = await this.extract(userInput, agentResponse);
+    for (const mem of memories) {
+      const type = this.classify(mem.content);
+      if (type === 'static') {
+        this.memory.saveToLongTerm(mem.content, { type: 'preference', storage: 'config' });
+      } else {
+        this.memory.saveToLongTerm(mem.content, { type: 'experience', storage: 'vector' });
+      }
+    }
+  }
+
+  private classify(content: string): 'static' | 'dynamic' {
+    if (['偏好', '规则', '约束'].some(kw => content.includes(kw))) return 'static';
+    return 'dynamic';
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+// MemoryWriteTrigger 记忆写入触发引擎
+type MemoryWriteTrigger struct {
+    llm    LLMInterface
+    memory *MemorySystem
+}
+
+var triggerKeywords = []string{"偏好", "喜欢", "讨厌", "规则", "记住", "别再"}
+var valueKeywords = []string{"决策", "偏好", "规则", "约束", "失败", "错误", "经验"}
+
+func NewMemoryWriteTrigger(llm LLMInterface, mem *MemorySystem) *MemoryWriteTrigger {
+    return &MemoryWriteTrigger{llm: llm, memory: mem}
+}
+
+// 判断是否触发记忆写入
+func (t *MemoryWriteTrigger) shouldWrite(userInput, agentResponse string) bool {
+    for _, kw := range triggerKeywords {
+        if strings.Contains(userInput, kw) { return true }
+    }
+    combined := userInput + agentResponse
+    for _, kw := range valueKeywords {
+        if strings.Contains(combined, kw) { return true }
+    }
+    if strings.Contains(agentResponse, "完成") || strings.Contains(agentResponse, "成功") {
+        return true
+    }
+    return false
+}
+
+// 完整写入流程
+func (t *MemoryWriteTrigger) process(userInput, agentResponse string) {
+    if !t.shouldWrite(userInput, agentResponse) { return }
+    // 提取值得记住的信息
+    prompt := fmt.Sprintf("从以下对话中提取值得长期记住的信息:\n用户: %s\n助手: %s", userInput, agentResponse)
+    result := t.llm.Generate(prompt)
+    // 分类并写入
+    memType := t.classify(result)
+    metadata := map[string]string{"type": memType}
+    t.memory.saveToLongTerm(result, metadata)
+}
+
+func (t *MemoryWriteTrigger) classify(content string) string {
+    for _, kw := range []string{"偏好", "规则", "约束"} {
+        if strings.Contains(content, kw) { return "static" }
+    }
+    return "dynamic"
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class MemoryWriteTrigger {
+    private LLMInterface llm;
+    private MemorySystem memory;
+    private static final String[] TRIGGER_KEYWORDS = {"偏好", "喜欢", "讨厌", "规则", "记住", "别再"};
+    private static final String[] VALUE_KEYWORDS = {"决策", "偏好", "规则", "约束", "失败", "错误", "经验"};
+
+    public MemoryWriteTrigger(LLMInterface llm, MemorySystem memory) {
+        this.llm = llm;
+        this.memory = memory;
+    }
+
+    public boolean shouldWrite(String userInput, String agentResponse) {
+        for (String kw : TRIGGER_KEYWORDS) {
+            if (userInput.contains(kw)) return true;
+        }
+        String combined = userInput + agentResponse;
+        for (String kw : VALUE_KEYWORDS) {
+            if (combined.contains(kw)) return true;
+        }
+        if (agentResponse.contains("完成") || agentResponse.contains("成功")) return true;
+        return false;
+    }
+
+    public void process(String userInput, String agentResponse) {
+        if (!shouldWrite(userInput, agentResponse)) return;
+        String prompt = "从以下对话中提取值得长期记住的信息:\n用户: " + userInput +
+            "\n助手: " + agentResponse;
+        String result = llm.generate(prompt);
+        String type = classify(result);
+        memory.saveToLongTerm(result, Map.of("type", type));
+    }
+
+    private String classify(String content) {
+        String[] staticKws = {"偏好", "规则", "约束"};
+        for (String kw : staticKws) {
+            if (content.contains(kw)) return "static";
+        }
+        return "dynamic";
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -1753,9 +3221,8 @@ window.PollutionAnim = PollutionAnim;
 
 <h3 class="sub-heading">智能召回引擎代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">智能召回引擎 Python 实现(含污染防控)</span>
-<pre>class SmartRecallEngine:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class SmartRecallEngine:
     """智能召回引擎:精准召回 + 上下文污染防控"""
 
     def __init__(self, vector_db, llm_client, config=None):
@@ -1913,7 +3380,196 @@ results = engine.recall("今天有什么日程?", task_complexity="simple")
 
 # 复杂问题:召回 ≤5 条
 results = engine.recall("分析上个季度的销售趋势并给出优化建议", task_complexity="complex")
-# → 返回最多 5 条:1条核心指令 + 2条最近经验 + 2条补充知识</pre>
+# → 返回最多 5 条:1条核心指令 + 2条最近经验 + 2条补充知识</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class SmartRecallEngine {
+  private memory: MemorySystem;
+  private llm: any;
+  private maxRecall = 5;
+  private similarityThreshold = 0.7;
+
+  constructor(memory: MemorySystem, llm: any) {
+    this.memory = memory;
+    this.llm = llm;
+  }
+
+  // 三维度评分:意图匹配 × 时间衰减 × 频率加权
+  async recall(userInput: string, intent?: string): Promise<RecalledMemory[]> {
+    // 1. 向量检索候选记忆
+    const candidates = await this.memory.retrieveFromLongTerm(
+      intent || userInput, this.maxRecall * 2
+    );
+
+    // 2. 三维度评分
+    const scored = candidates.map(mem => ({
+      ...mem,
+      score: this.score(mem, intent || userInput),
+    }));
+
+    // 3. 排序+截断(≤5条)
+    scored.sort((a, b) => b.score - a.score);
+    let recalled = scored.slice(0, this.maxRecall);
+
+    // 4. 冲突检测:矛盾记忆取最新
+    recalled = this.resolveConflicts(recalled);
+
+    // 5. 相关性阈值过滤
+    recalled = recalled.filter(r => r.similarity >= this.similarityThreshold);
+
+    return recalled;
+  }
+
+  private score(mem: any, query: string): number {
+    const intentScore = mem.similarity;
+    const timeDecay = this.timeDecay(mem.metadata?.createdAt);
+    const frequency = Math.log10((mem.metadata?.accessCount || 1) + 1);
+    return intentScore * 0.6 + timeDecay * 0.3 + frequency * 0.1;
+  }
+
+  private timeDecay(createdAt?: string): number {
+    if (!createdAt) return 0.5;
+    const days = (Date.now() - new Date(createdAt).getTime()) / 86400000;
+    return Math.exp(-days / 30); // 30天衰减常数
+  }
+
+  private resolveConflicts(memories: any[]): any[] {
+    // 简化:按内容去重,保留最新的
+    const seen = new Map<string, any>();
+    for (const m of memories) {
+      const key = m.text.substring(0, 50);
+      const existing = seen.get(key);
+      if (!existing || (m.metadata?.createdAt > existing.metadata?.createdAt)) {
+        seen.set(key, m);
+      }
+    }
+    return Array.from(seen.values());
+  }
+}
+
+interface RecalledMemory {
+  text: string;
+  metadata: Record<string, any>;
+  similarity: number;
+  score: number;
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "math"
+    "sort"
+    "time"
+)
+
+// SmartRecallEngine 智能召回引擎
+type SmartRecallEngine struct {
+    memory              *MemorySystem
+    maxRecall           int
+    similarityThreshold float64
+}
+
+func NewSmartRecallEngine(mem *MemorySystem) *SmartRecallEngine {
+    return &SmartRecallEngine{
+        memory: mem, maxRecall: 5, similarityThreshold: 0.7,
+    }
+}
+
+// 三维度评分召回
+func (e *SmartRecallEngine) recall(userInput string) []ScoredMemory {
+    // 1. 向量检索候选
+    candidates := e.memory.retrieveFromLongTerm(userInput, e.maxRecall*2)
+
+    // 2. 评分
+    var scored []ScoredMemory
+    for _, mem := range candidates {
+        scored = append(scored, ScoredMemory{
+            Memory: mem,
+            Score:  e.score(mem, userInput),
+        })
+    }
+
+    // 3. 排序+截断
+    sort.Slice(scored, func(i, j int) bool { return scored[i].Score > scored[j].Score })
+    if len(scored) > e.maxRecall { scored = scored[:e.maxRecall] }
+
+    // 4. 相关性阈值过滤
+    var result []ScoredMemory
+    for _, s := range scored {
+        if s.Similarity >= e.similarityThreshold {
+            result = append(result, s)
+        }
+    }
+    return result
+}
+
+func (e *SmartRecallEngine) score(mem Memory, query string) float64 {
+    intentScore := mem.Similarity
+    timeDecay := e.timeDecay(mem.Metadata["created_at"])
+    frequency := 0.5 // 简化
+    return intentScore*0.6 + timeDecay*0.3 + frequency*0.1
+}
+
+func (e *SmartRecallEngine) timeDecay(createdAt string) float64 {
+    if createdAt == "" { return 0.5 }
+    t, err := time.Parse(time.RFC3339, createdAt)
+    if err != nil { return 0.5 }
+    days := time.Since(t).Hours() / 24
+    return math.Exp(-days / 30)
+}
+
+type ScoredMemory struct {
+    Memory
+    Score float64
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.stream.Collectors;
+
+public class SmartRecallEngine {
+    private MemorySystem memory;
+    private int maxRecall = 5;
+    private double similarityThreshold = 0.7;
+
+    public SmartRecallEngine(MemorySystem memory) {
+        this.memory = memory;
+    }
+
+    // 三维度评分召回
+    public List&lt;ScoredMemory&gt; recall(String userInput) {
+        // 1. 向量检索候选
+        List&lt;Memory&gt; candidates = memory.retrieveFromLongTerm(userInput, maxRecall * 2);
+
+        // 2. 评分
+        List&lt;ScoredMemory&gt; scored = candidates.stream()
+            .map(mem -> new ScoredMemory(mem, score(mem, userInput)))
+            .collect(Collectors.toList());
+
+        // 3. 排序+截断
+        scored.sort((a, b) -> Double.compare(b.score, a.score));
+        if (scored.size() > maxRecall) scored = scored.subList(0, maxRecall);
+
+        // 4. 相关性阈值过滤
+        return scored.stream()
+            .filter(s -> s.memory.similarity >= similarityThreshold)
+            .collect(Collectors.toList());
+    }
+
+    private double score(Memory mem, String query) {
+        double intentScore = mem.similarity;
+        double timeDecay = timeDecay(mem.metadata.get("created_at"));
+        double frequency = Math.log10(1 + 1);
+        return intentScore * 0.6 + timeDecay * 0.3 + frequency * 0.1;
+    }
+
+    private double timeDecay(String createdAt) {
+        if (createdAt == null) return 0.5;
+        long days = (System.currentTimeMillis() - java.time.Instant.parse(createdAt).toEpochMilli()) / 86400000;
+        return Math.exp(-days / 30.0);
+    }
+
+    static class ScoredMemory {
+        Memory memory;
+        double score;
+        ScoredMemory(Memory m, double s) { memory = m; score = s; }
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -2015,9 +3671,8 @@ setTimeout(() => {
 }, 600);
 </script>
 
-<div class="code-block">
-  <span class="code-label">Python - Prompt 动态组装引擎</span>
-<pre>class PromptAssembler:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class PromptAssembler:
     """每轮对话的 Prompt 动态组装引擎"""
 
     def __init__(self, system_prompt, tool_schemas, skill_triggers,
@@ -2069,7 +3724,174 @@ assembler = PromptAssembler(
 
 # 每轮调用
 messages = assembler.assemble("帮我审查这段代码", intent="代码审查")
-# → [system(fixed), system(memory), ...history..., user(current)]</pre>
+# → [system(fixed), system(memory), ...history..., user(current)]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class PromptAssembler {
+  private staticPrefix: string;
+  private memoryEngine: any;
+  private historyManager: any;
+
+  constructor(opts: {
+    systemPrompt: string;
+    toolSchemas: string;
+    skillTriggers: string;
+    memoryEngine: any;
+    chatHistoryManager: any;
+  }) {
+    // Layer 1: 静态层(整个会话不变)
+    this.staticPrefix = `${opts.systemPrompt}\n\n${opts.toolSchemas}\n\n${opts.skillTriggers}`;
+    this.memoryEngine = opts.memoryEngine;
+    this.historyManager = opts.chatHistoryManager;
+  }
+
+  async assemble(userInput: string, intent?: string): Promise<Message[]> {
+    const messages: Message[] = [];
+
+    // ===== Layer 1: 静态框架 =====
+    messages.push({ role: 'system', content: this.staticPrefix });
+
+    // ===== Layer 2: 记忆注入 =====
+    if (intent) {
+      const recalled = await this.memoryEngine.recall(intent, 5, 0.7);
+      if (recalled.length > 0) {
+        const memoryBlock = '# Relevant Memory\n' + recalled.join('\n');
+        messages.push({ role: 'system', content: memoryBlock });
+      }
+    }
+
+    // ===== Layer 3: 对话历史 =====
+    const history = this.historyManager.getHistory(50000);
+    messages.push(...history);
+
+    // ===== Layer 4: 当前请求 =====
+    messages.push({ role: 'user', content: userInput });
+
+    return messages;
+  }
+}
+
+interface Message { role: string; content: string; }
+
+// 使用示例
+const assembler = new PromptAssembler({
+  systemPrompt: '你是代码审查专家...',
+  toolSchemas: JSON.stringify(toolDefinitions),
+  skillTriggers: '<available_skills>...',
+  memoryEngine: vectorDb,
+  chatHistoryManager: historyMgr,
+});
+
+const messages = await assembler.assemble('帮我审查这段代码', '代码审查');</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import "encoding/json"
+
+// PromptAssembler 每轮对话的Prompt动态组装引擎
+type PromptAssembler struct {
+    staticPrefix   string
+    memoryEngine   *MemorySystem
+    historyManager *HistoryManager
+}
+
+type ChatMessage struct {
+    Role    string `json:"role"`
+    Content string `json:"content"`
+}
+
+func NewPromptAssembler(systemPrompt, toolSchemas, skillTriggers string,
+    memEngine *MemorySystem, histMgr *HistoryManager) *PromptAssembler {
+    return &PromptAssembler{
+        staticPrefix:   systemPrompt + "\n\n" + toolSchemas + "\n\n" + skillTriggers,
+        memoryEngine:   memEngine,
+        historyManager: histMgr,
+    }
+}
+
+func (a *PromptAssembler) assemble(userInput, intent string) []ChatMessage {
+    var messages []ChatMessage
+
+    // ===== Layer 1: 静态框架 =====
+    messages = append(messages, ChatMessage{Role: "system", Content: a.staticPrefix})
+
+    // ===== Layer 2: 记忆注入 =====
+    if intent != "" {
+        recalled := a.memoryEngine.retrieveFromLongTerm(intent, 5)
+        if len(recalled) > 0 {
+            memoryBlock := "# Relevant Memory\n"
+            for _, r := range recalled {
+                memoryBlock += r.Text + "\n"
+            }
+            messages = append(messages, ChatMessage{Role: "system", Content: memoryBlock})
+        }
+    }
+
+    // ===== Layer 3: 对话历史 =====
+    history := a.historyManager.getHistory(50000)
+    messages = append(messages, history...)
+
+    // ===== Layer 4: 当前请求 =====
+    messages = append(messages, ChatMessage{Role: "user", Content: userInput})
+
+    return messages
+}
+
+// 使用示例
+func main() {
+    schemas, _ := json.Marshal(toolDefinitions)
+    assembler := NewPromptAssembler(
+        "你是代码审查专家...", string(schemas), "<available_skills>...",
+        NewMemorySystem(), NewHistoryManager(),
+    )
+    messages := assembler.assemble("帮我审查这段代码", "代码审查")
+    _ = messages
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class PromptAssembler {
+    private String staticPrefix;
+    private MemorySystem memoryEngine;
+    private HistoryManager historyManager;
+
+    public PromptAssembler(String systemPrompt, String toolSchemas,
+            String skillTriggers, MemorySystem memEngine, HistoryManager histMgr) {
+        // Layer 1: 静态层(整个会话不变)
+        this.staticPrefix = systemPrompt + "\n\n" + toolSchemas + "\n\n" + skillTriggers;
+        this.memoryEngine = memEngine;
+        this.historyManager = histMgr;
+    }
+
+    public List&lt;ChatMessage&gt; assemble(String userInput, String intent) {
+        List&lt;ChatMessage&gt; messages = new ArrayList<>();
+
+        // ===== Layer 1: 静态框架 =====
+        messages.add(new ChatMessage("system", staticPrefix));
+
+        // ===== Layer 2: 记忆注入 =====
+        if (intent != null && !intent.isEmpty()) {
+            List&lt;Memory&gt; recalled = memoryEngine.retrieveFromLongTerm(intent, 5);
+            if (!recalled.isEmpty()) {
+                StringBuilder memoryBlock = new StringBuilder("# Relevant Memory\n");
+                for (Memory r : recalled) {
+                    memoryBlock.append(r.text).append("\n");
+                }
+                messages.add(new ChatMessage("system", memoryBlock.toString()));
+            }
+        }
+
+        // ===== Layer 3: 对话历史 =====
+        List&lt;ChatMessage&gt; history = historyManager.getHistory(50000);
+        messages.addAll(history);
+
+        // ===== Layer 4: 当前请求 =====
+        messages.add(new ChatMessage("user", userInput));
+
+        return messages;
+    }
+
+    static class ChatMessage {
+        String role; String content;
+        ChatMessage(String r, String c) { role = r; content = c; }
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -2184,9 +4006,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<div class="code-block">
-  <span class="code-label">Python - 四层泄压体系完整实现</span>
-<pre>class StateOverflowGuard:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class StateOverflowGuard:
     """多轮对话状态爆炸的完整解决方案:四层泄压体系"""
 
     def __init__(self, token_budget=200000, context_window=128000):
@@ -2270,7 +4091,247 @@ setTimeout(() => {
             return messages
         except (ContextOverflowError, BudgetExceededError) as e:
             # Layer 4: 兜底(紧急处理)
-            return self.emergency_handler(e)</pre>
+            return self.emergency_handler(e)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class StateOverflowGuard {
+  private tokenBudget: number;
+  private contextWindow: number;
+  private currentTokens = 0;
+  private compressor: SemanticCompressor;
+  private memoryGovernor: MemoryGovernor;
+
+  constructor(tokenBudget = 200000, contextWindow = 128000) {
+    this.tokenBudget = tokenBudget;
+    this.contextWindow = contextWindow;
+    this.compressor = new SemanticCompressor();
+    this.memoryGovernor = new MemoryGovernor();
+  }
+
+  // ===== Layer 1: 预防 =====
+  checkBudget(newTokens: number): boolean {
+    this.currentTokens += newTokens;
+    if (this.currentTokens > this.tokenBudget) {
+      throw new BudgetExceededError(
+        `Token预算耗尽: ${this.currentTokens}/${this.tokenBudget}建议开启新会话`
+      );
+    }
+    return true;
+  }
+
+  // ===== Layer 2: 压缩 =====
+  compressIfNeeded(messages: Message[]): Message[] {
+    const total = countTokens(messages);
+    const threshold = this.contextWindow * 0.8;
+    if (total > threshold) {
+      return this.compressor.compress(messages);
+    }
+    return messages;
+  }
+
+  // ===== Layer 3: 淘汰 =====
+  evictIfNeeded(messages: Message[]): Message[] {
+    const total = countTokens(messages);
+    const threshold = this.contextWindow * 0.6;
+    if (total > threshold) {
+      return this.memoryGovernor.evict(messages);
+    }
+    return messages;
+  }
+
+  // ===== Layer 4: 兜底 =====
+  emergencyHandler(error: Error): any {
+    if (error instanceof ContextOverflowError) {
+      return this.compressor.emergencyCompress();
+    } else if (error instanceof BudgetExceededError) {
+      return {
+        action: 'degrade',
+        message: '对话过长,建议开启新会话',
+        summary: this.memoryGovernor.archiveSession(),
+      };
+    }
+  }
+
+  // ===== 完整流程 =====
+  processTurn(messages: Message[], newTokens: number): Message[] | any {
+    try {
+      this.checkBudget(newTokens);
+      messages = this.compressIfNeeded(messages);
+      messages = this.evictIfNeeded(messages);
+      return messages;
+    } catch (e) {
+      return this.emergencyHandler(e as Error);
+    }
+  }
+}
+
+function countTokens(messages: Message[]): number {
+  return messages.reduce((sum, m) => sum + m.content.length / 4, 0);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+)
+
+// StateOverflowGuard 多轮对话状态爆炸的完整解决方案
+type StateOverflowGuard struct {
+    tokenBudget    int
+    contextWindow  int
+    currentTokens  int
+    compressor     *SemanticCompressor
+    memoryGovernor *MemoryGovernor
+}
+
+func NewStateOverflowGuard(tokenBudget, contextWindow int) *StateOverflowGuard {
+    return &StateOverflowGuard{
+        tokenBudget: tokenBudget, contextWindow: contextWindow,
+        compressor:     NewSemanticCompressor(),
+        memoryGovernor: NewMemoryGovernor(NewMemorySystem()),
+    }
+}
+
+// ===== Layer 1: 预防 =====
+func (g *StateOverflowGuard) checkBudget(newTokens int) error {
+    g.currentTokens += newTokens
+    if g.currentTokens > g.tokenBudget {
+        return fmt.Errorf("Token预算耗尽: %d/%d建议开启新会话", g.currentTokens, g.tokenBudget)
+    }
+    return nil
+}
+
+// ===== Layer 2: 压缩 =====
+func (g *StateOverflowGuard) compressIfNeeded(messages []Message) []Message {
+    total := countTokens(messages)
+    threshold := int(float64(g.contextWindow) * 0.8)
+    if total > threshold {
+        return g.compressor.compress(messages)
+    }
+    return messages
+}
+
+// ===== Layer 3: 淘汰 =====
+func (g *StateOverflowGuard) evictIfNeeded(messages []Message) []Message {
+    total := countTokens(messages)
+    threshold := int(float64(g.contextWindow) * 0.6)
+    if total > threshold {
+        return g.memoryGovernor.evictMessages(messages)
+    }
+    return messages
+}
+
+// ===== Layer 4: 兜底 =====
+func (g *StateOverflowGuard) emergencyHandler(err error) interface{} {
+    if isContextOverflow(err) {
+        return g.compressor.emergencyCompress()
+    }
+    if isBudgetExceeded(err) {
+        return map[string]interface{}{
+            "action":  "degrade",
+            "message": "对话过长,建议开启新会话",
+            "summary": g.memoryGovernor.archiveSession(),
+        }
+    }
+    return nil
+}
+
+// ===== 完整流程 =====
+func (g *StateOverflowGuard) processTurn(messages []Message, newTokens int) interface{} {
+    err := g.checkBudget(newTokens)
+    if err != nil {
+        return g.emergencyHandler(err)
+    }
+    messages = g.compressIfNeeded(messages)
+    messages = g.evictIfNeeded(messages)
+    return messages
+}
+
+func countTokens(messages []Message) int {
+    total := 0
+    for _, m := range messages {
+        total += len(m.Content) / 4
+    }
+    return total
+}
+
+func isContextOverflow(err error) bool { return false }
+func isBudgetExceeded(err error) bool  { return false }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class StateOverflowGuard {
+    private int tokenBudget;
+    private int contextWindow;
+    private int currentTokens = 0;
+    private SemanticCompressor compressor;
+    private MemoryGovernor memoryGovernor;
+
+    public StateOverflowGuard(int tokenBudget, int contextWindow) {
+        this.tokenBudget = tokenBudget;
+        this.contextWindow = contextWindow;
+        this.compressor = new SemanticCompressor();
+        this.memoryGovernor = new MemoryGovernor(new MemorySystem());
+    }
+
+    // ===== Layer 1: 预防 =====
+    public boolean checkBudget(int newTokens) throws BudgetExceededException {
+        currentTokens += newTokens;
+        if (currentTokens > tokenBudget) {
+            throw new BudgetExceededException(
+                "Token预算耗尽: " + currentTokens + "/" + tokenBudget + "建议开启新会话");
+        }
+        return true;
+    }
+
+    // ===== Layer 2: 压缩 =====
+    public List&lt;Message&gt; compressIfNeeded(List&lt;Message&gt; messages) {
+        int total = countTokens(messages);
+        int threshold = (int) (contextWindow * 0.8);
+        if (total > threshold) {
+            return compressor.compress(messages);
+        }
+        return messages;
+    }
+
+    // ===== Layer 3: 淘汰 =====
+    public List&lt;Message&gt; evictIfNeeded(List&lt;Message&gt; messages) {
+        int total = countTokens(messages);
+        int threshold = (int) (contextWindow * 0.6);
+        if (total > threshold) {
+            return memoryGovernor.evictMessages(messages);
+        }
+        return messages;
+    }
+
+    // ===== Layer 4: 兜底 =====
+    public Object emergencyHandler(Exception error) {
+        if (error instanceof ContextOverflowException) {
+            return compressor.emergencyCompress();
+        } else if (error instanceof BudgetExceededException) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("action", "degrade");
+            result.put("message", "对话过长,建议开启新会话");
+            result.put("summary", memoryGovernor.archiveSession());
+            return result;
+        }
+        return null;
+    }
+
+    // ===== 完整流程 =====
+    public Object processTurn(List&lt;Message&gt; messages, int newTokens) {
+        try {
+            checkBudget(newTokens);
+            messages = compressIfNeeded(messages);
+            messages = evictIfNeeded(messages);
+            return messages;
+        } catch (Exception e) {
+            return emergencyHandler(e);
+        }
+    }
+
+    private int countTokens(List&lt;Message&gt; messages) {
+        int total = 0;
+        for (Message m : messages) total += m.content.length() / 4;
+        return total;
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -2383,7 +4444,8 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <p><strong>规则摘要(generateRuleSummary)</strong>:纯规则提取关键信息,不调 AI。质量低但零成本、零延迟。</p>
 
-<div class="code-block"><pre>// AI 摘要的 System Prompt
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// AI 摘要的 System Prompt
 const COMPRESSION_SYSTEM_PROMPT = `你是一个对话压缩器。将长对话压缩为 500 字以内的摘要。
 必须保留:
 1. 用户的原始意图和需求
@@ -2423,6 +4485,142 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
     return generateRuleSummary(messages);
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // AI 摘要的 System Prompt
+  // const COMPRESSION_SYSTEM_PROMPT = `你是一个对话压缩器。将长对话压缩为 500 字以内的摘要。
+  // 必须保留:
+  // 1. 用户的原始意图和需求
+  // 2. 已执行的关键文件操作(创建/修改/删除)
+  // 3. 遇到的错误和解决方案
+  // 4. 做出的重要决策
+  // 5. 当前进度和下一步计划
+  // 可以省略:
+  // - 工具调用的详细参数
+  // - AI 的推理过程
+  // - 重复的失败尝试`;
+
+  // async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&gt; {
+  // const conversationText = messages.map(msg =&gt; {
+  // const content = typeof msg.content === 'string'
+  // ? msg.content : JSON.stringify(msg.content);
+  // const label = msg.role === 'user' ? '👤 用户'
+  // : msg.role === 'assistant' ? '🤖 助手'
+  // : msg.role === 'tool' ? '🔧 工具' : '📋 系统';
+  // // 截断过长内容(避免压缩本身消耗太多 token)
+  // const truncated = content.length &gt; 2000
+  // ? content.slice(0, 2000) + '\n... (已截断)' : content;
+  return `${label}:\n${truncated}`;;
+  // }).join('\n\n---\n\n');
+
+  // try {
+  // let fullResponse = '';
+  // for await (const event of ai.stream([
+  // { role: 'user', content: COMPRESSION_SYSTEM_PROMPT },
+  // { role: 'user', content: `请压缩以下对话历史:\n\n${conversationText}` },
+  // ], undefined, undefined, undefined, { disableTools: true })) {
+  // if (event.type === 'text') fullResponse += event.content || '';
+  // }
+  return fullResponse || generateRuleSummary(messages);;
+  // } catch (err) {
+  // // 降级为规则摘要
+  return generateRuleSummary(messages);;
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // AI 摘要的 System Prompt
+	// Python: const COMPRESSION_SYSTEM_PROMPT = `你是一个对话压缩器。将长对话压缩为 500 字以内的摘要。
+	// Python: 必须保留:
+	// Python: 1. 用户的原始意图和需求
+	// Python: 2. 已执行的关键文件操作(创建/修改/删除)
+	// Python: 3. 遇到的错误和解决方案
+	// Python: 4. 做出的重要决策
+	// Python: 5. 当前进度和下一步计划
+	// Python: 可以省略:
+	// Python: - 工具调用的详细参数
+	// Python: - AI 的推理过程
+	// Python: - 重复的失败尝试`;
+
+	// Python: async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&gt; {
+	// Python: const conversationText = messages.map(msg =&gt; {
+	// Python: const content = typeof msg.content === 'string'
+	// Python: ? msg.content : JSON.stringify(msg.content);
+	// Python: const label = msg.role === 'user' ? '👤 用户'
+	// Python: : msg.role === 'assistant' ? '🤖 助手'
+	// Python: : msg.role === 'tool' ? '🔧 工具' : '📋 系统';
+	// Python: // 截断过长内容(避免压缩本身消耗太多 token)
+	// Python: const truncated = content.length &gt; 2000
+	// Python: ? content.slice(0, 2000) + '\n... (已截断)' : content;
+	return `${label}:\n${truncated}`;
+	// Python: }).join('\n\n---\n\n');
+
+	// Python: try {
+	// Python: let fullResponse = '';
+	// Python: for await (const event of ai.stream([
+	// Python: { role: 'user', content: COMPRESSION_SYSTEM_PROMPT },
+	// Python: { role: 'user', content: `请压缩以下对话历史:\n\n${conversationText}` },
+	// Python: ], undefined, undefined, undefined, { disableTools: true })) {
+	// Python: if (event.type === 'text') fullResponse += event.content || '';
+	// Python: }
+	return fullResponse || generateRuleSummary(messages);
+	// Python: } catch (err) {
+	// Python: // 降级为规则摘要
+	return generateRuleSummary(messages);
+	// Python: }
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // AI 摘要的 System Prompt
+        // Python: const COMPRESSION_SYSTEM_PROMPT = `你是一个对话压缩器。将长对话压缩为 500 字以内的摘要。
+        // Python: 必须保留:
+        // Python: 1. 用户的原始意图和需求
+        // Python: 2. 已执行的关键文件操作(创建/修改/删除)
+        // Python: 3. 遇到的错误和解决方案
+        // Python: 4. 做出的重要决策
+        // Python: 5. 当前进度和下一步计划
+        // Python: 可以省略:
+        // Python: - 工具调用的详细参数
+        // Python: - AI 的推理过程
+        // Python: - 重复的失败尝试`;
+
+        // Python: async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&gt; {
+        // Python: const conversationText = messages.map(msg =&gt; {
+        // Python: const content = typeof msg.content === 'string'
+        // Python: ? msg.content : JSON.stringify(msg.content);
+        // Python: const label = msg.role === 'user' ? '👤 用户'
+        // Python: : msg.role === 'assistant' ? '🤖 助手'
+        // Python: : msg.role === 'tool' ? '🔧 工具' : '📋 系统';
+        // Python: // 截断过长内容(避免压缩本身消耗太多 token)
+        // Python: const truncated = content.length &gt; 2000
+        // Python: ? content.slice(0, 2000) + '\n... (已截断)' : content;
+        return `${label}:\n${truncated}`;;
+        // Python: }).join('\n\n---\n\n');
+
+        // Python: try {
+        // Python: let fullResponse = '';
+        // Python: for await (const event of ai.stream([
+        // Python: { role: 'user', content: COMPRESSION_SYSTEM_PROMPT },
+        // Python: { role: 'user', content: `请压缩以下对话历史:\n\n${conversationText}` },
+        // Python: ], undefined, undefined, undefined, { disableTools: true })) {
+        // Python: if (event.type === 'text') fullResponse += event.content || '';
+        // Python: }
+        return fullResponse || generateRuleSummary(messages);;
+        // Python: } catch (err) {
+        // Python: // 降级为规则摘要
+        return generateRuleSummary(messages);;
+        // Python: }
+        // Python: }
+}</pre></div>
+</div>
 
 <p><strong>降级策略</strong>:AI 摘要失败(API 错误、超时、返回空)时自动降级为规则摘要。为什么不直接报错?因为压缩是基础设施--如果压缩本身都能失败,那对话就没法继续了。规则摘要虽然质量低,但至少保留了基本信息,让对话能继续。</p>
 
@@ -2432,7 +4630,8 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
 
 <p>WaLiCode 的解决方案:<strong>增量压缩阈值</strong>--只有当 token 再次上升到上次压缩水平的 80% 时才再次压缩。</p>
 
-<div class="code-block"><pre>class ContextCompressor {
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class ContextCompressor {
   private lastCompressTokenLevel: number = 0; // 上次压缩时的 token 水平
 
   shouldCompress(currentTokens: number, maxTokens: number): boolean {
@@ -2456,13 +4655,105 @@ async function generateAiSummary(messages: ClaudeMessage[]): Promise&lt;string&g
     return this.applySummary(messages, summary);
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // class ContextCompressor {
+  // private lastCompressTokenLevel: number = 0; // 上次压缩时的 token 水平
+
+  // shouldCompress(currentTokens: number, maxTokens: number): boolean {
+  // const ratio = currentTokens / maxTokens;
+
+  // // 首次压缩:80% 阈值
+  // if (this.lastCompressTokenLevel === 0) {
+  return ratio &gt;= 0.8;;
+  // }
+
+  // // 后续压缩:必须超过上次压缩水平的 80%
+  // // 例如:上次在 80000 token 时压缩,这次必须到 80000 * 0.8 = 64000 才再压缩
+  // // 但由于压缩后降到了 ~50000,用户需要再聊 14000 token 才触发
+  // const threshold = this.lastCompressTokenLevel * 0.8;
+  return currentTokens &gt;= threshold;;
+  // }
+
+  // async compress(messages: ClaudeMessage[], maxTokens: number) {
+  // const summary = await generateAiSummary(messages);
+  // this.lastCompressTokenLevel = countTokens(messages);
+  return this.applySummary(messages, summary);;
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// ContextCompressor - CLI Agent class
+type ContextCompressor struct {
+	// Python: private lastCompressTokenLevel: number = 0; // 上次压缩时的 token 水平
+
+	// Python: shouldCompress(currentTokens: number, maxTokens: number): boolean {
+	// Python: const ratio = currentTokens / maxTokens;
+
+	// Python: // 首次压缩:80% 阈值
+	// Python: if (this.lastCompressTokenLevel === 0) {
+	return ratio &gt;= 0.8;
+	// Python: }
+
+	// Python: // 后续压缩:必须超过上次压缩水平的 80%
+	// Python: // 例如:上次在 80000 token 时压缩,这次必须到 80000 * 0.8 = 64000 才再压缩
+	// Python: // 但由于压缩后降到了 ~50000,用户需要再聊 14000 token 才触发
+	// Python: const threshold = this.lastCompressTokenLevel * 0.8;
+	return currentTokens &gt;= threshold;
+	// Python: }
+
+	// Python: async compress(messages: ClaudeMessage[], maxTokens: number) {
+	// Python: const summary = await generateAiSummary(messages);
+	// Python: this.lastCompressTokenLevel = countTokens(messages);
+	return this.applySummary(messages, summary);
+	// Python: }
+	// Python: }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+public class ContextCompressor {
+        // Python: private lastCompressTokenLevel: number = 0; // 上次压缩时的 token 水平
+
+        // Python: shouldCompress(currentTokens: number, maxTokens: number): boolean {
+        // Python: const ratio = currentTokens / maxTokens;
+
+        // Python: // 首次压缩:80% 阈值
+        // Python: if (this.lastCompressTokenLevel === 0) {
+        return ratio &gt;= 0.8;;
+        // Python: }
+
+        // Python: // 后续压缩:必须超过上次压缩水平的 80%
+        // Python: // 例如:上次在 80000 token 时压缩,这次必须到 80000 * 0.8 = 64000 才再压缩
+        // Python: // 但由于压缩后降到了 ~50000,用户需要再聊 14000 token 才触发
+        // Python: const threshold = this.lastCompressTokenLevel * 0.8;
+        return currentTokens &gt;= threshold;;
+        // Python: }
+
+        // Python: async compress(messages: ClaudeMessage[], maxTokens: number) {
+        // Python: const summary = await generateAiSummary(messages);
+        // Python: this.lastCompressTokenLevel = countTokens(messages);
+        return this.applySummary(messages, summary);;
+        // Python: }
+        // Python: }
+    }
+}</pre></div>
+</div>
 
 <h3 class="sub-heading">5.12.5 Provider/Reducer 可插拔架构</h3>
 
 <p>WaLiCode 的上下文管理采用<strong>Provider/Reducer 可插拔架构</strong>,这是生产级系统与 Demo 级系统的核心区别:</p>
 
 <p><strong>Provider 模式</strong>:可插拔的上下文来源,每个 Provider 负责一种类型的上下文。</p>
-<div class="code-block"><pre>interface ContextProvider {
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>interface ContextProvider {
   name: string;
   provide(): MessageContext[];
 }
@@ -2502,9 +4793,151 @@ class MilestoneProvider implements ContextProvider {
     }));
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // interface ContextProvider {
+  // name: string;
+  // provide(): MessageContext[];
+  // }
+
+  // // 文件上下文:当前打开的文件、最近修改的文件
+  // class FileProvider implements ContextProvider {
+  const name = 'FileProvider';;
+  // provide(): MessageContext[] {
+  return openFiles.map(f =&gt; ({;
+  // role: 'system',
+  // content: `当前文件: ${f.path}\n${f.content.slice(0, 2000)}`,
+  // priority: MessagePriority.High,
+  // }));
+  // }
+  // }
+
+  // // 任务上下文:当前任务的目标和进度
+  // class TaskProvider implements ContextProvider {
+  const name = 'TaskProvider';;
+  // provide(): MessageContext[] {
+  return [{;
+  // role: 'system',
+  // content: `当前任务: ${currentTask}`,
+  // priority: MessagePriority.Critical,
+  // }];
+  // }
+  // }
+
+  // // 里程碑上下文:关键决策记录
+  // class MilestoneProvider implements ContextProvider {
+  const name = 'MilestoneProvider';;
+  // provide(): MessageContext[] {
+  return milestones.map(m =&gt; ({;
+  // role: 'system',
+  // content: `[${m.type}] ${m.summary}`,
+  // priority: MessagePriority.High,
+  // }));
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: interface ContextProvider {
+	// Python: name: string;
+	// Python: provide(): MessageContext[];
+	// Python: }
+
+	// Python: // 文件上下文:当前打开的文件、最近修改的文件
+// FileProvider - CLI Agent class
+type FileProvider struct {
+	// Python: name = 'FileProvider';
+	// Python: provide(): MessageContext[] {
+	return openFiles.map(f =&gt; ({
+	// Python: role: 'system',
+	// Python: content: `当前文件: ${f.path}\n${f.content.slice(0, 2000)}`,
+	// Python: priority: MessagePriority.High,
+	// Python: }));
+	// Python: }
+	// Python: }
+
+	// Python: // 任务上下文:当前任务的目标和进度
+// TaskProvider - CLI Agent class
+type TaskProvider struct {
+	// Python: name = 'TaskProvider';
+	// Python: provide(): MessageContext[] {
+	return [{
+	// Python: role: 'system',
+	// Python: content: `当前任务: ${currentTask}`,
+	// Python: priority: MessagePriority.Critical,
+	// Python: }];
+	// Python: }
+	// Python: }
+
+	// Python: // 里程碑上下文:关键决策记录
+// MilestoneProvider - CLI Agent class
+type MilestoneProvider struct {
+	// Python: name = 'MilestoneProvider';
+	// Python: provide(): MessageContext[] {
+	return milestones.map(m =&gt; ({
+	// Python: role: 'system',
+	// Python: content: `[${m.type}] ${m.summary}`,
+	// Python: priority: MessagePriority.High,
+	// Python: }));
+	// Python: }
+	// Python: }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: interface ContextProvider {
+        // Python: name: string;
+        // Python: provide(): MessageContext[];
+        // Python: }
+
+        // Python: // 文件上下文:当前打开的文件、最近修改的文件
+public class FileProvider {
+        // Python: name = 'FileProvider';
+        // Python: provide(): MessageContext[] {
+        return openFiles.map(f =&gt; ({;
+        // Python: role: 'system',
+        // Python: content: `当前文件: ${f.path}\n${f.content.slice(0, 2000)}`,
+        // Python: priority: MessagePriority.High,
+        // Python: }));
+        // Python: }
+        // Python: }
+
+        // Python: // 任务上下文:当前任务的目标和进度
+public class TaskProvider {
+        // Python: name = 'TaskProvider';
+        // Python: provide(): MessageContext[] {
+        return [{;
+        // Python: role: 'system',
+        // Python: content: `当前任务: ${currentTask}`,
+        // Python: priority: MessagePriority.Critical,
+        // Python: }];
+        // Python: }
+        // Python: }
+
+        // Python: // 里程碑上下文:关键决策记录
+public class MilestoneProvider {
+        // Python: name = 'MilestoneProvider';
+        // Python: provide(): MessageContext[] {
+        return milestones.map(m =&gt; ({;
+        // Python: role: 'system',
+        // Python: content: `[${m.type}] ${m.summary}`,
+        // Python: priority: MessagePriority.High,
+        // Python: }));
+        // Python: }
+        // Python: }
+    }
+}</pre></div>
+</div>
 
 <p><strong>Reducer 模式</strong>:可插拔的裁剪策略,按不同策略裁剪消息。</p>
-<div class="code-block"><pre>interface MessageReducer {
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>interface MessageReducer {
   name: string;
   reduce(messages: MessageContext[], maxTokens: number): MessageContext[];
 }
@@ -2543,6 +4976,142 @@ class PriorityReducer implements MessageReducer {
     return result.sort((a, b) =&gt; a.timestamp - b.timestamp);
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // interface MessageReducer {
+  // name: string;
+  // reduce(messages: MessageContext[], maxTokens: number): MessageContext[];
+  // }
+
+  // class PriorityReducer implements MessageReducer {
+  const name = 'PriorityReducer';;
+
+  // reduce(messages: MessageContext[], maxTokens: number): MessageContext[] {
+  // // 第一轮:Critical 和 High 无条件保留
+  // // 第二轮:按优先级从高到低,在预算内逐条追加
+  // // 第三轮:按时间排序输出
+  // const result: MessageContext[] = [];
+  // let usedChars = 0;
+  // const maxChars = maxTokens * 4; // ~4 chars/token
+
+  // // Critical + High 无条件保留
+  // for (const msg of messages) {
+  // if (msg.priority === MessagePriority.Critical
+  // || msg.priority === MessagePriority.High) {
+  // result.push(msg);
+  // usedChars += msg.content.length;
+  // }
+  // }
+
+  // // 按优先级填充剩余预算
+  // for (const priority of [MessagePriority.Medium, MessagePriority.Low]) {
+  // for (const msg of messages) {
+  // if (msg.priority !== priority || result.includes(msg)) continue;
+  // if (usedChars + msg.content.length &gt; maxChars) continue;
+  // result.push(msg);
+  // usedChars += msg.content.length;
+  // }
+  // }
+
+  // // 按时间排序
+  return result.sort((a, b) =&gt; a.timestamp - b.timestamp);;
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: interface MessageReducer {
+	// Python: name: string;
+	// Python: reduce(messages: MessageContext[], maxTokens: number): MessageContext[];
+	// Python: }
+
+// PriorityReducer - CLI Agent class
+type PriorityReducer struct {
+	// Python: name = 'PriorityReducer';
+
+	// Python: reduce(messages: MessageContext[], maxTokens: number): MessageContext[] {
+	// Python: // 第一轮:Critical 和 High 无条件保留
+	// Python: // 第二轮:按优先级从高到低,在预算内逐条追加
+	// Python: // 第三轮:按时间排序输出
+	// Python: const result: MessageContext[] = [];
+	// Python: let usedChars = 0;
+	// Python: const maxChars = maxTokens * 4; // ~4 chars/token
+
+	// Python: // Critical + High 无条件保留
+	// Python: for (const msg of messages) {
+	// Python: if (msg.priority === MessagePriority.Critical
+	// Python: || msg.priority === MessagePriority.High) {
+	// Python: result.push(msg);
+	// Python: usedChars += msg.content.length;
+	// Python: }
+	// Python: }
+
+	// Python: // 按优先级填充剩余预算
+	// Python: for (const priority of [MessagePriority.Medium, MessagePriority.Low]) {
+	// Python: for (const msg of messages) {
+	// Python: if (msg.priority !== priority || result.includes(msg)) continue;
+	// Python: if (usedChars + msg.content.length &gt; maxChars) continue;
+	// Python: result.push(msg);
+	// Python: usedChars += msg.content.length;
+	// Python: }
+	// Python: }
+
+	// Python: // 按时间排序
+	return result.sort((a, b) =&gt; a.timestamp - b.timestamp);
+	// Python: }
+	// Python: }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: interface MessageReducer {
+        // Python: name: string;
+        // Python: reduce(messages: MessageContext[], maxTokens: number): MessageContext[];
+        // Python: }
+
+public class PriorityReducer {
+        // Python: name = 'PriorityReducer';
+
+        // Python: reduce(messages: MessageContext[], maxTokens: number): MessageContext[] {
+        // Python: // 第一轮:Critical 和 High 无条件保留
+        // Python: // 第二轮:按优先级从高到低,在预算内逐条追加
+        // Python: // 第三轮:按时间排序输出
+        // Python: const result: MessageContext[] = [];
+        // Python: let usedChars = 0;
+        // Python: const maxChars = maxTokens * 4; // ~4 chars/token
+
+        // Python: // Critical + High 无条件保留
+        // Python: for (const msg of messages) {
+        // Python: if (msg.priority === MessagePriority.Critical
+        // Python: || msg.priority === MessagePriority.High) {
+        // Python: result.push(msg);
+        // Python: usedChars += msg.content.length;
+        // Python: }
+        // Python: }
+
+        // Python: // 按优先级填充剩余预算
+        // Python: for (const priority of [MessagePriority.Medium, MessagePriority.Low]) {
+        // Python: for (const msg of messages) {
+        // Python: if (msg.priority !== priority || result.includes(msg)) continue;
+        // Python: if (usedChars + msg.content.length &gt; maxChars) continue;
+        // Python: result.push(msg);
+        // Python: usedChars += msg.content.length;
+        // Python: }
+        // Python: }
+
+        // Python: // 按时间排序
+        return result.sort((a, b) =&gt; a.timestamp - b.timestamp);;
+        // Python: }
+        // Python: }
+    }
+}</pre></div>
+</div>
 
 <p>消息优先级推断规则:</p>
 <ul>
@@ -2572,7 +5141,8 @@ class PriorityReducer implements MessageReducer {
 </table>
 </div>
 
-<div class="code-block"><pre>class MemoryService {
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class MemoryService {
   private userMemory: Map&lt;string, MemoryEntry&gt; = new Map();
   private projectMemory: Map&lt;string, MemoryEntry&gt; = new Map();
   private readonly MAX_ENTRIES = 20;
@@ -2609,6 +5179,136 @@ class PriorityReducer implements MessageReducer {
     return entries.map(e =&gt; `- ${e.value}`).join('\n');
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // class MemoryService {
+  // private userMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+  // private projectMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+  // private readonly MAX_ENTRIES = 20;
+
+  // set(scope: 'user' | 'project', key: string, value: string) {
+  // const store = scope === 'user' ? this.userMemory : this.projectMemory;
+
+  // // LRU 淘汰:超过 20 条时删除最久未访问的
+  // if (store.size &gt;= this.MAX_ENTRIES &amp;&amp; !store.has(key)) {
+  // const oldest = [...store.entries()]
+  // .sort((a, b) =&gt; a[1].lastAccessed - b[1].lastAccessed)[0];
+  // store.delete(oldest[0]);
+  // }
+
+  // store.set(key, { value, lastAccessed: Date.now() });
+  // }
+
+  // get(scope: 'user' | 'project', key: string): string | undefined {
+  // const store = scope === 'user' ? this.userMemory : this.projectMemory;
+  // const entry = store.get(key);
+  // if (entry) entry.lastAccessed = Date.now(); // LRU 更新
+  return entry?.value;;
+  // }
+
+  // // 生成记忆 Prompt 注入
+  // toPrompt(scope: 'user' | 'project' | 'both'): string {
+  // const entries: MemoryEntry[] = [];
+  // if (scope === 'user' || scope === 'both') {
+  // entries.push(...this.userMemory.values());
+  // }
+  // if (scope === 'project' || scope === 'both') {
+  // entries.push(...this.projectMemory.values());
+  // }
+  return entries.map(e =&gt; `- ${e.value}`).join('\n');;
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// MemoryService - CLI Agent class
+type MemoryService struct {
+	// Python: private userMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+	// Python: private projectMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+	// Python: private readonly MAX_ENTRIES = 20;
+
+	// Python: set(scope: 'user' | 'project', key: string, value: string) {
+	// Python: const store = scope === 'user' ? this.userMemory : this.projectMemory;
+
+	// Python: // LRU 淘汰:超过 20 条时删除最久未访问的
+	// Python: if (store.size &gt;= this.MAX_ENTRIES &amp;&amp; !store.has(key)) {
+	// Python: const oldest = [...store.entries()]
+	// Python: .sort((a, b) =&gt; a[1].lastAccessed - b[1].lastAccessed)[0];
+	// Python: store.delete(oldest[0]);
+	// Python: }
+
+	// Python: store.set(key, { value, lastAccessed: Date.now() });
+	// Python: }
+
+	// Python: get(scope: 'user' | 'project', key: string): string | undefined {
+	// Python: const store = scope === 'user' ? this.userMemory : this.projectMemory;
+	// Python: const entry = store.get(key);
+	// Python: if (entry) entry.lastAccessed = Date.now(); // LRU 更新
+	return entry?.value;
+	// Python: }
+
+	// Python: // 生成记忆 Prompt 注入
+	// Python: toPrompt(scope: 'user' | 'project' | 'both'): string {
+	// Python: const entries: MemoryEntry[] = [];
+	// Python: if (scope === 'user' || scope === 'both') {
+	// Python: entries.push(...this.userMemory.values());
+	// Python: }
+	// Python: if (scope === 'project' || scope === 'both') {
+	// Python: entries.push(...this.projectMemory.values());
+	// Python: }
+	return entries.map(e =&gt; `- ${e.value}`).join('\n');
+	// Python: }
+	// Python: }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+public class MemoryService {
+        // Python: private userMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+        // Python: private projectMemory: Map&lt;string, MemoryEntry&gt; = new Map();
+        // Python: private readonly MAX_ENTRIES = 20;
+
+        // Python: set(scope: 'user' | 'project', key: string, value: string) {
+        // Python: const store = scope === 'user' ? this.userMemory : this.projectMemory;
+
+        // Python: // LRU 淘汰:超过 20 条时删除最久未访问的
+        // Python: if (store.size &gt;= this.MAX_ENTRIES &amp;&amp; !store.has(key)) {
+        // Python: const oldest = [...store.entries()]
+        // Python: .sort((a, b) =&gt; a[1].lastAccessed - b[1].lastAccessed)[0];
+        // Python: store.delete(oldest[0]);
+        // Python: }
+
+        // Python: store.set(key, { value, lastAccessed: Date.now() });
+        // Python: }
+
+        // Python: get(scope: 'user' | 'project', key: string): string | undefined {
+        // Python: const store = scope === 'user' ? this.userMemory : this.projectMemory;
+        // Python: const entry = store.get(key);
+        // Python: if (entry) entry.lastAccessed = Date.now(); // LRU 更新
+        return entry?.value;;
+        // Python: }
+
+        // Python: // 生成记忆 Prompt 注入
+        // Python: toPrompt(scope: 'user' | 'project' | 'both'): string {
+        // Python: const entries: MemoryEntry[] = [];
+        // Python: if (scope === 'user' || scope === 'both') {
+        // Python: entries.push(...this.userMemory.values());
+        // Python: }
+        // Python: if (scope === 'project' || scope === 'both') {
+        // Python: entries.push(...this.projectMemory.values());
+        // Python: }
+        return entries.map(e =&gt; `- ${e.value}`).join('\n');;
+        // Python: }
+        // Python: }
+    }
+}</pre></div>
+</div>
 
 <div class="summary-box">
 <div class="summary-title">🔗 5.12 核心要点</div>
@@ -3082,7 +5782,6 @@ var ch05Questions = [
     ],
     answer: [1],
     explanation: '静态长期记忆(偏好/规则/知识)变化频率极低→存本地配置文件→直接注入System Prompt→不压缩。动态长期记忆(摘要/经验/模式)变化频率高→存向量数据库→按相关性语义检索→定期压缩摘要+淘汰。两者的存储方式、召回方式、压缩策略和更新频率都不同。'
-  }
   },
   {
     type: 'single',

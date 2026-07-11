@@ -427,9 +427,8 @@ workflow:
 <h3 class="sub-heading">步骤四：API 集成</h3>
 <p>配置完成后，点击「发布」按钮即可将应用发布为 API。Dify 提供 RESTful API 接口，支持流式（SSE）和阻塞式两种响应模式。以下是使用 Python 调用 Dify API 的完整代码示例，包含流式响应处理和错误处理逻辑：</p>
 
-<div class="code-block">
-  <span class="code-label">Dify API 调用（Python 流式响应）</span>
-<pre>import requests
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import requests
 import json
 
 DIFY_API = "https://api.dify.ai/v1"
@@ -472,7 +471,197 @@ def chat(query, conversation_id="", user="user-001"):
 
 if __name__ == "__main__":
     result = chat("如何使用 Dify 搭建客服机器人?")
-    print(f"\n\n完整回复: {result}")</pre>
+    print(f"\n\n完整回复: {result}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import fetch from 'node-fetch';
+
+const DIFY_API = 'https://api.dify.ai/v1';
+const API_KEY = 'app-xxx';
+
+const headers = {
+  'Authorization': `Bearer ${API_KEY}`,
+  'Content-Type': 'application/json'
+};
+
+async function chat(query: string, conversationId = '', user = 'user-001'): Promise&lt;string&gt; {
+  const response = await fetch(`${DIFY_API}/chat-messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      inputs: {},
+      query,
+      response_mode: 'streaming',
+      conversation_id: conversationId,
+      user
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`API 错误: ${response.status} - ${await response.text()}`);
+  }
+
+  let fullAnswer = '';
+  const body = response.body!;
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for await (const chunk of body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const data = line.replace(/^data: /, '');
+      if (data && data !== '[DONE]') {
+        const event = JSON.parse(data);
+        if (event.event === 'message') {
+          const text = event.answer || '';
+          fullAnswer += text;
+          process.stdout.write(text);
+        }
+      }
+    }
+  }
+  return fullAnswer;
+}
+
+// 使用
+const result = await chat('如何使用 Dify 搭建客服机器人?');
+console.log(`\n\n完整回复: ${result}`);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+const (
+	DifyAPI = "https://api.dify.ai/v1"
+	APIKey  = "app-xxx"
+)
+
+func chat(query, conversationID, user string) (string, error) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"inputs":          map[string]interface{}{},
+		"query":           query,
+		"response_mode":   "streaming",
+		"conversation_id": conversationID,
+		"user":            user,
+	})
+
+	req, _ := http.NewRequest("POST", DifyAPI+"/chat-messages", bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+APIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API 错误: %d - %s", resp.StatusCode, body)
+	}
+
+	fullAnswer := ""
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "" || data == "[DONE]" {
+			continue
+		}
+		var event map[string]interface{}
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+		if event["event"] == "message" {
+			chunk, _ := event["answer"].(string)
+			fullAnswer += chunk
+			fmt.Print(chunk)
+		}
+	}
+	return fullAnswer, nil
+}
+
+func main() {
+	result, _ := chat("如何使用 Dify 搭建客服机器人?", "", "user-001")
+	fmt.Printf("\n\n完整回复: %s\n", result)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.net.URI;
+import java.net.http.*;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+
+public class DifyClient {
+    private static final String DIFY_API = "https://api.dify.ai/v1";
+    private static final String API_KEY = "app-xxx";
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    public static String chat(String query, String conversationId, String user) throws Exception {
+        HttpClient client = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
+
+        String body = mapper.writeValueAsString(Map.of(
+            "inputs", Map.of(),
+            "query", query,
+            "response_mode", "streaming",
+            "conversation_id", conversationId,
+            "user", user
+        ));
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(DIFY_API + "/chat-messages"))
+            .header("Authorization", "Bearer " + API_KEY)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+
+        HttpResponse&lt;java.io.InputStream&gt; response = client.send(
+            request, HttpResponse.BodyHandlers.ofInputStream()
+        );
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API 错误: " + response.statusCode());
+        }
+
+        StringBuilder fullAnswer = new StringBuilder();
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(response.body()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) continue;
+                String data = line.replaceFirst("^data: ", "");
+                if (data.isEmpty() || data.equals("[DONE]")) continue;
+                JsonNode event = mapper.readTree(data);
+                if ("message".equals(event.path("event").asText())) {
+                    String chunk = event.path("answer").asText("");
+                    fullAnswer.append(chunk);
+                    System.out.print(chunk);
+                }
+            }
+        }
+        return fullAnswer.toString();
+    }
+
+    public static void main(String[] args) throws Exception {
+        String result = chat("如何使用 Dify 搭建客服机器人?", "", "user-001");
+        System.out.println("\n\n完整回复: " + result);
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 13.6 Coze 实战：Bot 开发 ===== -->

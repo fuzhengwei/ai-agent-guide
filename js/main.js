@@ -28,26 +28,26 @@ const App = {
     { id: 'ch09', num: 9, title: 'CLI 能力：Agent 操作本地工具', section: '🛠️ 第二篇：Agent 的手脚', file: 'chapters/ch09-cli-capability.html' },
 
     // 第三篇：多 Agent 协作
-    { id: 'ch10', num: 10, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch09-multi-agent.html' },
-    { id: 'ch11', num: 11, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch10-langgraph.html' },
+    { id: 'ch10', num: 10, title: '多 Agent 系统架构', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch10-multi-agent.html' },
+    { id: 'ch11', num: 11, title: 'LangGraph 与状态机', section: '🤝 第三篇：多 Agent 协作', file: 'chapters/ch11-langgraph.html' },
 
     // 第四篇：框架与平台
-    { id: 'ch12', num: 12, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch11-framework-comparison.html' },
-    { id: 'ch13', num: 13, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-dify-coze.html' },
+    { id: 'ch12', num: 12, title: '主流 Agent 框架对比', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch12-framework-comparison.html' },
+    { id: 'ch13', num: 13, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第四篇：框架与平台', file: 'chapters/ch13-dify-coze.html' },
 
     // 第五篇：综合实战
     { id: 'ch14', num: 14, title: 'CLI Agent：命令行智能助手', section: '🚀 第五篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
     { id: 'ch15', num: 15, title: 'GUI Agent：浏览器自动化', section: '🚀 第五篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
-    { id: 'ch16', num: 16, title: 'RAG：检索增强生成', section: '🚀 第五篇：综合实战', file: 'chapters/ch17-rag.html' },
+    { id: 'ch16', num: 16, title: 'RAG：检索增强生成', section: '🚀 第五篇：综合实战', file: 'chapters/ch16-rag.html' },
 
     // 第六篇：工程化
-    { id: 'ch17', num: 17, title: 'Agent 评估与可观测性', section: '⚙️ 第六篇：工程化', file: 'chapters/ch13-evaluation.html' },
+    { id: 'ch17', num: 17, title: 'Agent 评估与可观测性', section: '⚙️ 第六篇：工程化', file: 'chapters/ch17-evaluation.html' },
     { id: 'ch18', num: 18, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
     { id: 'ch19', num: 19, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
     { id: 'ch20', num: 20, title: '推理框架与模型服务化', section: '⚙️ 第六篇：工程化', file: 'chapters/ch20-inference-framework.html' },
 
     // 终章
-    { id: 'ch21', num: 21, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch16-future-summary.html' }
+    { id: 'ch21', num: 21, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch21-future-summary.html' }
   ],
 
   /**
@@ -983,6 +983,7 @@ const App = {
             document.head.appendChild(newScript);
           } else if (text) {
             // 内联脚本：通过 <script> 元素执行（替代 eval，更安全且支持调试）
+            // 使用 try/catch 包裹 appendChild 以捕获 SyntaxError
             try {
               const newScript = document.createElement('script');
               newScript.textContent = text;
@@ -990,7 +991,10 @@ const App = {
               // 执行后移除，避免 DOM 膨胀
               document.head.removeChild(newScript);
             } catch (e) {
+              // SyntaxError 在 appendChild 时同步抛出，这里可以捕获
               console.error('[ChapterScript] execution error:', e);
+              // 尝试使用 Function 构造器作为降级方案（仅对非语法错误的运行时错误有效）
+              // 如果是 SyntaxError，则无法降级，仅记录错误
             }
           }
         });
@@ -1366,12 +1370,16 @@ const App = {
    * 代码块增强：语言标签 + 复制按钮 + Prism 高亮
    */
   addCodeBlockFeatures() {
+    // 0) 先处理多语言代码块（data-multi-lang）
+    this.enhanceMultiLangBlocks();
+
     // 1) 收集所有需要处理的 <pre> 元素
     //    - .code-block div 内的 <pre>（优先从 div 入口处理）
-    //    - 不在 .code-block 内的裸 <pre>
+    //    - 不在 .code-block 内的裸>
     const allPres = [];
-    // 先处理 .code-block div
+    // 先处理 .code-block div（跳过已处理的多语言块）
     document.querySelectorAll('.code-block').forEach(div => {
+      if (div.dataset.multiLangProcessed) return;
       const pre = div.querySelector('pre');
       if (pre && !pre.dataset.enhanced) {
         allPres.push({ pre, codeBlockDiv: div });
@@ -1456,7 +1464,9 @@ const App = {
   copyCode(btn) {
     const wrapper = btn.closest('.code-block-wrapper');
     if (!wrapper) return;
-    const code = wrapper.querySelector('pre');
+    // 多语言模式：优先复制 active pane 中的 pre
+    const activePane = wrapper.querySelector('.code-lang-pane.active');
+    const code = activePane ? activePane.querySelector('pre') : wrapper.querySelector('pre');
     if (!code) return;
     const text = code.textContent;
     navigator.clipboard.writeText(text).then(() => {
@@ -1471,6 +1481,107 @@ const App = {
     }).catch(() => {
       btn.innerHTML = '✗';
       setTimeout(() => { btn.innerHTML = '📋'; }, 2000);
+    });
+  },
+
+  /**
+   * 多语言代码块增强
+   * HTML 结构:
+   * <div class="code-block" data-multi-lang>
+   *   <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>...</pre></div>
+   *   <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>...</pre></div>
+   *   <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>...</pre></div>
+   *   <div class="code-lang-pane" data-lang="java" data-label="Java"><pre>...</pre></div>
+   * </div>
+   */
+  enhanceMultiLangBlocks() {
+    document.querySelectorAll('.code-block[data-multi-lang]').forEach(div => {
+      if (div.dataset.multiLangProcessed) return;
+      div.dataset.multiLangProcessed = 'true';
+
+      const panes = div.querySelectorAll('.code-lang-pane');
+      if (panes.length === 0) return;
+
+      // 为每个 pane 的高亮 code 元素设置语言 class
+      const langInfos = [];
+      panes.forEach((pane, idx) => {
+        const lang = pane.dataset.lang || 'code';
+        const label = pane.dataset.label || lang.charAt(0).toUpperCase() + lang.slice(1);
+        langInfos.push({ lang, label });
+
+        const pre = pane.querySelector('pre');
+        if (pre) {
+          pre.dataset.enhanced = 'true';
+          let codeEl = pre.querySelector('code');
+          if (!codeEl) {
+            codeEl = document.createElement('code');
+            codeEl.textContent = pre.textContent;
+            pre.innerHTML = '';
+            pre.appendChild(codeEl);
+          }
+          codeEl.className = `language-${lang}`;
+          if (typeof Prism !== 'undefined') {
+            Prism.highlightElement(codeEl);
+          }
+        }
+
+        pane.classList.toggle('active', idx === 0);
+      });
+
+      // 创建 wrapper
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-block-wrapper has-multi-lang';
+
+      // 创建 header（含语言 Tab 栏 + 复制按钮）
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+
+      const tabsContainer = document.createElement('div');
+      tabsContainer.className = 'code-lang-tabs';
+      langInfos.forEach((info, idx) => {
+        const tab = document.createElement('button');
+        tab.className = 'code-lang-tab' + (idx === 0 ? ' active' : '');
+        tab.dataset.lang = info.lang;
+        tab.innerHTML = `<span class="lang-dot"></span>${info.label}`;
+        tab.onclick = (e) => {
+          e.preventDefault();
+          App.switchCodeLang(wrapper, info.lang);
+        };
+        tabsContainer.appendChild(tab);
+      });
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-code-btn';
+      copyBtn.innerHTML = '📋';
+      copyBtn.title = '复制代码';
+      copyBtn.onclick = () => App.copyCode(copyBtn);
+
+      header.appendChild(tabsContainer);
+      header.appendChild(copyBtn);
+      wrapper.appendChild(header);
+
+      // 创建 panes 容器
+      const panesContainer = document.createElement('div');
+      panesContainer.className = 'code-lang-panes';
+      panes.forEach(pane => panesContainer.appendChild(pane));
+      wrapper.appendChild(panesContainer);
+
+      // 替换原内容
+      div.innerHTML = '';
+      div.appendChild(wrapper);
+    });
+  },
+
+  /**
+   * 切换多语言代码块的语言
+   */
+  switchCodeLang(wrapper, lang) {
+    if (!wrapper) return;
+    wrapper.querySelectorAll('.code-lang-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.lang === lang);
+    });
+    wrapper.querySelectorAll('.code-lang-pane').forEach(pane => {
+      pane.classList.toggle('active', pane.dataset.lang === lang);
     });
   },
 

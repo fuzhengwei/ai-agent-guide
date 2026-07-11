@@ -455,89 +455,524 @@ setTimeout(() => {
 
 <h3 class="sub-heading">架构代码</h3>
 
-<div class="code-block">
-<span class="comment">"""cli_agent.py — 最小可用的 CLI Agent"""</span>
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>"""cli_agent.py — 最小可用的 CLI Agent"""
 
-<span class="cmd">class</span> <span class="str">CLIAgent</span>:
-    <span class="cmd">def</span> <span class="str">__init__</span>(self, llm_client, tool_schemas):
-        self.llm = llm_client            <span class="comment"># LLM 客户端</span>
-        self.schemas = tool_schemas       <span class="comment"># CLI 工具 Schema 注册表</span>
-        self.sandbox = CommandSandbox()   <span class="comment"># 安全执行沙箱</span>
-        self.risk_checker = RiskChecker() <span class="comment"># 风险等级校验</span>
+class CLIAgent:
+    def __init__(self, llm_client, tool_schemas):
+        self.llm = llm_client            # LLM 客户端
+        self.schemas = tool_schemas       # CLI 工具 Schema 注册表
+        self.sandbox = CommandSandbox()   # 安全执行沙箱
+        self.risk_checker = RiskChecker() # 风险等级校验
 
-    <span class="cmd">def</span> <span class="str">execute</span>(self, user_input: str, context: dict):
-        <span class="comment"># Step 1: 意图理解 + 命令生成（Function Calling）</span>
+    def execute(self, user_input: str, context: dict):
+        # Step 1: 意图理解 + 命令生成（Function Calling）
         response = self.llm.chat(
             messages=[
-                {<span class="cmd">"role"</span>: <span class="str">"system"</span>, <span class="cmd">"content"</span>: self._build_system_prompt()},
-                {<span class="cmd">"role"</span>: <span class="str">"user"</span>, <span class="cmd">"content"</span>: user_input}
+                {"role": "system", "content": self._build_system_prompt()},
+                {"role": "user", "content": user_input}
             ],
-            tools=self.schemas,  <span class="comment"># 注入 CLI Schema 作为 Function Calling 工具</span>
-            context=context      <span class="comment"># 携带当前目录、项目信息等上下文</span>
+            tools=self.schemas,  # 注入 CLI Schema 作为 Function Calling 工具
+            context=context      # 携带当前目录、项目信息等上下文
         )
 
-        <span class="comment"># Step 2: 解析 LLM 返回的工具调用</span>
+        # Step 2: 解析 LLM 返回的工具调用
         tool_calls = response.tool_calls
-        <span class="cmd">if not</span> tool_calls:
-            <span class="cmd">return</span> response.content  <span class="comment"># LLM 直接回答，无需执行命令</span>
+        if not tool_calls:
+            return response.content  # LLM 直接回答，无需执行命令
 
         results = []
-        <span class="cmd">for</span> call <span class="cmd">in</span> tool_calls:
-            <span class="comment"># Step 3: 风险校验</span>
+        for call in tool_calls:
+            # Step 3: 风险校验
             risk = self.risk_checker.check(call.name, call.arguments)
-            <span class="cmd">if</span> risk == <span class="str">"blocked"</span>:
-                results.append({<span class="cmd">"error"</span>: <span class="str">"该操作被安全策略阻止"</span>})
-                <span class="cmd">continue</span>
-            <span class="cmd">if</span> risk == <span class="str">"needs_confirm"</span>:
-                <span class="cmd">if not</span> self._ask_user_confirm(call):
-                    results.append({<span class="cmd">"error"</span>: <span class="str">"用户取消操作"</span>})
-                    <span class="cmd">continue</span>
+            if risk == "blocked":
+                results.append({"error": "该操作被安全策略阻止"})
+                continue
+            if risk == "needs_confirm":
+                if not self._ask_user_confirm(call):
+                    results.append({"error": "用户取消操作"})
+                    continue
 
-            <span class="comment"># Step 4: 沙箱执行</span>
-            shell_cmd = self._render_shell(call)  <span class="comment"># Schema → Shell 命令</span>
+            # Step 4: 沙箱执行
+            shell_cmd = self._render_shell(call)  # Schema → Shell 命令
             output = self.sandbox.run(shell_cmd)
             results.append(output)
 
-        <span class="comment"># Step 5: 结果格式化返回</span>
-        <span class="cmd">return</span> self.llm.summarize(results)
+        # Step 5: 结果格式化返回
+        return self.llm.summarize(results)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>/** cli_agent.ts — 最小可用的 CLI Agent */
+
+import { OpenAI } from 'openai';
+import { CommandSandbox } from './sandbox';
+import { RiskChecker } from './risk-checker';
+
+interface ToolCall {
+  name: string;
+  arguments: Record&lt;string, unknown&gt;;
+}
+
+interface LLMResponse {
+  content: string;
+  tool_calls?: ToolCall[];
+}
+
+class CLIAgent {
+  private llm: OpenAI;
+  private schemas: any[];
+  private sandbox: CommandSandbox;
+  private riskChecker: RiskChecker;
+
+  constructor(llmClient: OpenAI, toolSchemas: any[]) {
+    this.llm = llmClient;              // LLM 客户端
+    this.schemas = toolSchemas;        // CLI 工具 Schema 注册表
+    this.sandbox = new CommandSandbox();   // 安全执行沙箱
+    this.riskChecker = new RiskChecker();  // 风险等级校验
+  }
+
+  async execute(userInput: string, context: Record&lt;string, unknown&gt;): Promise&lt;string&gt; {
+    // Step 1: 意图理解 + 命令生成（Function Calling）
+    const response = await this.llm.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: this.buildSystemPrompt() },
+        { role: 'user', content: userInput }
+      ],
+      tools: this.schemas,  // 注入 CLI Schema 作为 Function Calling 工具
+    });
+
+    const message = response.choices[0].message;
+
+    // Step 2: 解析 LLM 返回的工具调用
+    const toolCalls = message.tool_calls || [];
+    if (toolCalls.length === 0) {
+      return message.content || '';  // LLM 直接回答，无需执行命令
+    }
+
+    const results: any[] = [];
+    for (const call of toolCalls) {
+      const fnName = call.function.name;
+      const fnArgs = JSON.parse(call.function.arguments);
+
+      // Step 3: 风险校验
+      const risk = this.riskChecker.check(fnName, fnArgs);
+      if (risk === 'blocked') {
+        results.push({ error: '该操作被安全策略阻止' });
+        continue;
+      }
+      if (risk === 'needs_confirm') {
+        if (!this.askUserConfirm(call)) {
+          results.push({ error: '用户取消操作' });
+          continue;
+        }
+      }
+
+      // Step 4: 沙箱执行
+      const shellCmd = this.renderShell(fnName, fnArgs);  // Schema → Shell 命令
+      const output = this.sandbox.run(shellCmd);
+      results.push(output);
+    }
+
+    // Step 5: 结果格式化返回
+    return this.llm.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: '请将以下命令执行结果格式化为用户友好的回复。' },
+        { role: 'user', content: JSON.stringify(results) }
+      ]
+    }).then(r =&gt; r.choices[0].message.content || '');
+  }
+
+  private buildSystemPrompt(): string { return ''; }
+  private renderShell(name: string, args: any): string { return ''; }
+  private askUserConfirm(call: any): boolean { return false; }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+// cli_agent.go — 最小可用的 CLI Agent
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+type CLIAgent struct {
+	LLM         *openai.Client
+	Schemas     []interface{}
+	Sandbox     *CommandSandbox
+	RiskChecker *RiskChecker
+}
+
+func NewCLIAgent(llmClient *openai.Client, toolSchemas []interface{}) *CLIAgent {
+	return &CLIAgent{
+		LLM:         llmClient,              // LLM 客户端
+		Schemas:     toolSchemas,            // CLI 工具 Schema 注册表
+		Sandbox:     NewCommandSandbox(),    // 安全执行沙箱
+		RiskChecker: NewRiskChecker(),       // 风险等级校验
+	}
+}
+
+func (a *CLIAgent) Execute(ctx context.Context, userInput string, contextData map[string]interface{}) (string, error) {
+	// Step 1: 意图理解 + 命令生成（Function Calling）
+	resp, err := a.LLM.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: openai.GPT4o,
+		Messages: []openai.ChatCompletionMessage{
+			{Role: openai.ChatMessageRoleSystem, Content: a.buildSystemPrompt()},
+			{Role: openai.ChatMessageRoleUser, Content: userInput},
+		},
+		Tools: a.schemasToTools(), // 注入 CLI Schema 作为 Function Calling 工具
+	})
+	if err != nil {
+		return "", err
+	}
+
+	msg := resp.Choices[0].Message
+
+	// Step 2: 解析 LLM 返回的工具调用
+	if len(msg.ToolCalls) == 0 {
+		return msg.Content, nil // LLM 直接回答，无需执行命令
+	}
+
+	var results []map[string]interface{}
+	for _, call := range msg.ToolCalls {
+		var args map[string]interface{}
+		json.Unmarshal([]byte(call.Function.Arguments), &args)
+
+		// Step 3: 风险校验
+		risk := a.RiskChecker.Check(call.Function.Name, args)
+		if risk == "blocked" {
+			results = append(results, map[string]interface{}{"error": "该操作被安全策略阻止"})
+			continue
+		}
+		if risk == "needs_confirm" {
+			if !a.askUserConfirm(call) {
+				results = append(results, map[string]interface{}{"error": "用户取消操作"})
+				continue
+			}
+		}
+
+		// Step 4: 沙箱执行
+		shellCmd := a.renderShell(call.Function.Name, args) // Schema → Shell 命令
+		output := a.Sandbox.Run(shellCmd)
+		results = append(results, output)
+	}
+
+	// Step 5: 结果格式化返回
+	resultsJSON, _ := json.Marshal(results)
+	summaryResp, err := a.LLM.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: openai.GPT4o,
+		Messages: []openai.ChatCompletionMessage{
+			{Role: openai.ChatMessageRoleSystem, Content: "请将以下命令执行结果格式化为用户友好的回复。"},
+			{Role: openai.ChatMessageRoleUser, Content: string(resultsJSON)},
+		},
+	})
+	if err != nil {
+		return fmt.Sprintf("%v", results), nil
+	}
+	return summaryResp.Choices[0].Message.Content, nil
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import java.util.*;
+
+/** cli_agent.java — 最小可用的 CLI Agent */
+public class CLIAgent {
+    private OpenAIClient llm;              // LLM 客户端
+    private List&lt;Object&gt; schemas;         // CLI 工具 Schema 注册表
+    private CommandSandbox sandbox;        // 安全执行沙箱
+    private RiskChecker riskChecker;       // 风险等级校验
+
+    public CLIAgent(OpenAIClient llmClient, List&lt;Object&gt; toolSchemas) {
+        this.llm = llmClient;
+        this.schemas = toolSchemas;
+        this.sandbox = new CommandSandbox();
+        this.riskChecker = new RiskChecker();
+    }
+
+    public String execute(String userInput, Map&lt;String, Object&gt; context) {
+        // Step 1: 意图理解 + 命令生成（Function Calling）
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model("gpt-4o")
+            .addSystemMessage(buildSystemPrompt())
+            .addUserMessage(userInput)
+            .tools(schemas)  // 注入 CLI Schema 作为 Function Calling 工具
+            .build();
+        ChatCompletion response = llm.chat().completions().create(params);
+        ChatCompletionMessage msg = response.choices().get(0).message();
+
+        // Step 2: 解析 LLM 返回的工具调用
+        List&lt;ToolCall&gt; toolCalls = msg.toolCalls();
+        if (toolCalls == null || toolCalls.isEmpty()) {
+            return msg.content(); // LLM 直接回答，无需执行命令
+        }
+
+        List&lt;Map&lt;String, Object&gt;&gt; results = new ArrayList&lt;&gt;();
+        for (ToolCall call : toolCalls) {
+            String fnName = call.function().name();
+            Map&lt;String, Object&gt; fnArgs = parseArgs(call.function().arguments());
+
+            // Step 3: 风险校验
+            String risk = riskChecker.check(fnName, fnArgs);
+            if ("blocked".equals(risk)) {
+                results.add(Map.of("error", "该操作被安全策略阻止"));
+                continue;
+            }
+            if ("needs_confirm".equals(risk)) {
+                if (!askUserConfirm(call)) {
+                    results.add(Map.of("error", "用户取消操作"));
+                    continue;
+                }
+            }
+
+            // Step 4: 沙箱执行
+            String shellCmd = renderShell(fnName, fnArgs); // Schema → Shell 命令
+            Map&lt;String, Object&gt; output = sandbox.run(shellCmd);
+            results.add(output);
+        }
+
+        // Step 5: 结果格式化返回
+        return llm.chat().completions().create(ChatCompletionCreateParams.builder()
+            .model("gpt-4o")
+            .addSystemMessage("请将以下命令执行结果格式化为用户友好的回复。")
+            .addUserMessage(results.toString())
+            .build()
+        ).choices().get(0).message().content();
+    }
+}
+</pre></div>
 </div>
 
 <h3 class="sub-heading">安全沙箱实现</h3>
 
-<div class="code-block">
-<span class="cmd">class</span> <span class="str">CommandSandbox</span>:
-    <span class="comment">"""安全执行 Shell 命令的沙箱"""</span>
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import subprocess
 
-    ALLOWED_COMMANDS = {  <span class="comment"># Level 1 白名单</span>
-        <span class="str">"git status"</span>, <span class="str">"git log"</span>, <span class="str">"git diff"</span>,
-        <span class="str">"ls"</span>, <span class="str">"cat"</span>, <span class="str">"pwd"</span>, <span class="str">"echo"</span>,
-        <span class="str">"docker ps"</span>, <span class="str">"docker images"</span>,
-        <span class="str">"mvn dependency:tree"</span>, <span class="str">"mvn help"</span>,
+class CommandSandbox:
+    """安全执行 Shell 命令的沙箱"""
+
+    ALLOWED_COMMANDS = {  # Level 1 白名单
+        "git status", "git log", "git diff",
+        "ls", "cat", "pwd", "echo",
+        "docker ps", "docker images",
+        "mvn dependency:tree", "mvn help",
     }
 
-    BLOCKED_PATTERNS = [  <span class="comment"># Level 3 黑名单</span>
-        <span class="str">"rm -rf"</span>, <span class="str">"mkfs"</span>, <span class="str">"dd"</span>,
-        <span class="str">"shutdown"</span>, <span class="str">"reboot"</span>, <span class="str">":(){ :|:& };:"</span>,
+    BLOCKED_PATTERNS = [  # Level 3 黑名单
+        "rm -rf", "mkfs", "dd",
+        "shutdown", "reboot", ":(){ :|:& };:",
     ]
 
-    <span class="cmd">def</span> <span class="str">run</span>(self, command: str, timeout=30) -> dict:
-        <span class="comment"># 检查黑名单</span>
-        <span class="cmd">for</span> pattern <span class="cmd">in</span> self.BLOCKED_PATTERNS:
-            <span class="cmd">if</span> pattern <span class="cmd">in</span> command:
-                <span class="cmd">return</span> {<span class="cmd">"error"</span>: <span class="str">f"危险命令已被拦截: {pattern}"</span>}
+    def run(self, command: str, timeout=30) -> dict:
+        # 检查黑名单
+        for pattern in self.BLOCKED_PATTERNS:
+            if pattern in command:
+                return {"error": f"危险命令已被拦截: {pattern}"}
 
-        <span class="comment"># 子进程隔离执行，限制超时和资源</span>
+        # 子进程隔离执行，限制超时和资源
         proc = subprocess.run(
-            command, shell=<span class="cmd">True</span>,
-            capture_output=<span class="cmd">True</span>, text=<span class="cmd">True</span>,
+            command, shell=True,
+            capture_output=True, text=True,
             timeout=timeout,
             cwd=self.working_dir
         )
-        <span class="cmd">return</span> {
-            <span class="cmd">"exit_code"</span>: proc.returncode,
-            <span class="cmd">"stdout"</span>: proc.stdout[:5000],   <span class="comment"># 截断过长输出</span>
-            <span class="cmd">"stderr"</span>: proc.stderr[:2000],
+        return {
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout[:5000],   # 截断过长输出
+            "stderr": proc.stderr[:2000],
+        }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+class CommandSandbox {
+  // Level 1 白名单
+  static ALLOWED_COMMANDS = new Set([
+    'git status', 'git log', 'git diff',
+    'ls', 'cat', 'pwd', 'echo',
+    'docker ps', 'docker images',
+    'mvn dependency:tree', 'mvn help',
+  ]);
+
+  // Level 3 黑名单
+  static BLOCKED_PATTERNS = [
+    'rm -rf', 'mkfs', 'dd',
+    'shutdown', 'reboot', ':(){ :|:& };:',
+  ];
+
+  workingDir: string;
+
+  constructor(workingDir: string) {
+    this.workingDir = workingDir;
+  }
+
+  async run(command: string, timeout = 30): Promise&lt;Record&lt;string, string | number&gt;&gt; {
+    // 检查黑名单
+    for (const pattern of CommandSandbox.BLOCKED_PATTERNS) {
+      if (command.includes(pattern)) {
+        return { error: `危险命令已被拦截: ${pattern}` };
+      }
+    }
+
+    // 子进程隔离执行，限制超时和资源
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: this.workingDir,
+        timeout: timeout * 1000,
+        maxBuffer: 1024 * 1024,
+      });
+      return {
+        exit_code: 0,
+        stdout: stdout.slice(0, 5000),
+        stderr: stderr.slice(0, 2000),
+      };
+    } catch (e: any) {
+      return {
+        exit_code: e.code || 1,
+        stdout: (e.stdout || '').slice(0, 5000),
+        stderr: (e.stderr || '').slice(0, 2000),
+      };
+    }
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"os/exec"
+	"strings"
+	"time"
+)
+
+// CommandSandbox 安全执行 Shell 命令的沙箱
+type CommandSandbox struct {
+	workingDir string
+}
+
+// Level 1 白名单
+var allowedCommands = map[string]bool{
+	"git status": true, "git log": true, "git diff": true,
+	"ls": true, "cat": true, "pwd": true, "echo": true,
+	"docker ps": true, "docker images": true,
+	"mvn dependency:tree": true, "mvn help": true,
+}
+
+// Level 3 黑名单
+var blockedPatterns = []string{
+	"rm -rf", "mkfs", "dd",
+	"shutdown", "reboot", ":(){ :|:& };:",
+}
+
+func (s *CommandSandbox) Run(command string, timeout int) map[string]interface{} {
+	// 检查黑名单
+	for _, pattern := range blockedPatterns {
+		if strings.Contains(command, pattern) {
+			return map[string]interface{}{"error": "危险命令已被拦截: " + pattern}
+		}
+	}
+
+	// 子进程隔离执行，限制超时和资源
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = s.workingDir
+
+	timer := time.AfterFunc(time.Duration(timeout)*time.Second, func() {
+		cmd.Process.Kill()
+	})
+	defer timer.Stop()
+
+	stdout, stderr := "", ""
+	if out, err := cmd.Output(); err == nil {
+		stdout = string(out)
+	} else if ee, ok := err.(*exec.ExitError); ok {
+		stdout = string(ee.Stdout)
+		stderr = string(ee.Stderr)
+	}
+
+	// 截断过长输出
+	if len(stdout) > 5000 {
+		stdout = stdout[:5000]
+	}
+	if len(stderr) > 2000 {
+		stderr = stderr[:2000]
+	}
+
+	return map[string]interface{}{
+		"exit_code": cmd.ProcessState.ExitCode(),
+		"stdout":    stdout,
+		"stderr":    stderr,
+	}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class CommandSandbox {
+    private String workingDir;
+
+    // Level 1 白名单
+    private static final Set&lt;String&gt; ALLOWED_COMMANDS = Set.of(
+        "git status", "git log", "git diff",
+        "ls", "cat", "pwd", "echo",
+        "docker ps", "docker images",
+        "mvn dependency:tree", "mvn help"
+    );
+
+    // Level 3 黑名单
+    private static final List&lt;String&gt; BLOCKED_PATTERNS = List.of(
+        "rm -rf", "mkfs", "dd",
+        "shutdown", "reboot", ":(){ :|:& };:"
+    );
+
+    public CommandSandbox(String workingDir) {
+        this.workingDir = workingDir;
+    }
+
+    public Map&lt;String, Object&gt; run(String command, int timeout) {
+        // 检查黑名单
+        for (String pattern : BLOCKED_PATTERNS) {
+            if (command.contains(pattern)) {
+                return Map.of("error", "危险命令已被拦截: " + pattern);
+            }
         }
+
+        // 子进程隔离执行，限制超时和资源
+        try {
+            ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+            pb.directory(new File(workingDir));
+            pb.redirectErrorStream(false);
+
+            Process process = pb.start();
+
+            // 超时控制
+            if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return Map.of("error", "命令执行超时");
+            }
+
+            String stdout = readStream(process.getInputStream(), 5000);
+            String stderr = readStream(process.getErrorStream(), 2000);
+
+            Map&lt;String, Object&gt; result = new LinkedHashMap&lt;&gt;();
+            result.put("exit_code", process.exitValue());
+            result.put("stdout", stdout);
+            result.put("stderr", stderr);
+            return result;
+        } catch (Exception e) {
+            return Map.of("error", e.getMessage());
+        }
+    }
+
+    private String readStream(InputStream is, int maxLen) throws IOException {
+        String content = new String(is.readAllBytes());
+        if (content.length() > maxLen) {
+            content = content.substring(0, maxLen);
+        }
+        return content;
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 9.6 CLI Agent 的错误自愈 ===== -->

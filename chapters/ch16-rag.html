@@ -108,9 +108,8 @@ setTimeout(() => {
 
 <p>文档不能整篇丢给模型——上下文窗口有限，检索精度也不够。需要将长文档<strong>分块（Chunking）</strong>。</p>
 
-<div class="code-block">
-<span class="code-label">Python</span>
-<pre>from langchain.text_splitter import RecursiveCharacterTextSplitter
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # 递归字符分割器：按优先级依次尝试分隔符
 splitter = RecursiveCharacterTextSplitter(
@@ -125,7 +124,100 @@ chunks = splitter.split_text(long_document)
 print(f"文档被分为 {len(chunks)} 块")
 # chunk_size 太大 → 检索不精确、浪费 Token
 # chunk_size 太小 → 上下文断裂、语义不完整
-# 经验值：512-1024 字符，overlap 10-15%</pre>
+# 经验值：512-1024 字符，overlap 10-15%</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+
+// 递归字符分割器：按优先级依次尝试分隔符
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 512,        // 每块最大 512 字符
+  chunkOverlap: 64,      // 块间重叠 64 字符（保持上下文连贯）
+  separators: ['\n\n', '\n', '。', '！', '？', '，', ' ', ''],
+  keepSeparator: true
+});
+
+const chunks = await splitter.splitText(longDocument);
+
+console.log(`文档被分为 ${chunks.length} 块`);
+// chunk_size 太大 → 检索不精确、浪费 Token
+// chunk_size 太小 → 上下文断裂、语义不完整
+// 经验值：512-1024 字符，overlap 10-15%</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+// 递归字符分割器：按优先级依次尝试分隔符
+func splitText(text string, chunkSize, chunkOverlap int, separators []string) []string {
+	var chunks []string
+	for len(text) > chunkSize {
+		// 在 chunkSize 范围内找最佳分割点
+		end := chunkSize
+		for _, sep := range separators {
+			idx := strings.LastIndex(text[:end], sep)
+			 if idx > 0 {
+				end = idx + len(sep)
+				break
+			}
+		}
+		chunks = append(chunks, text[:end])
+		// 保留 overlap 重叠部分
+		start := end - chunkOverlap
+		if start < 0 {
+			start = 0
+		}
+		text = text[start:]
+	}
+	if len(text) > 0 {
+		chunks = append(chunks, text)
+	}
+	return chunks
+}
+
+func main() {
+	separators := []string{"\n\n", "\n", "。", "！", "？", "，", " ", ""}
+	chunks := splitText(longDocument, 512, 64, separators)
+	fmt.Printf("文档被分为 %d 块\n", len(chunks))
+	// chunk_size 太大 → 检索不精确、浪费 Token
+	// chunk_size 太小 → 上下文断裂、语义不完整
+	// 经验值：512-1024 字符，overlap 10-15%
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class TextSplitter {
+
+    // 递归字符分割器：按优先级依次尝试分隔符
+    public static List&lt;String&gt; splitText(String text, int chunkSize, int chunkOverlap, List&lt;String&gt; separators) {
+        List&lt;String&gt; chunks = new ArrayList&lt;&gt;();
+        while (text.length() > chunkSize) {
+            int end = chunkSize;
+            for (String sep : separators) {
+                int idx = text.substring(0, end).lastIndexOf(sep);
+                if (idx > 0) {
+                    end = idx + sep.length();
+                    break;
+                }
+            }
+            chunks.add(text.substring(0, end));
+            int start = Math.max(0, end - chunkOverlap);
+            text = text.substring(start);
+        }
+        if (!text.isEmpty()) {
+            chunks.add(text);
+        }
+        return chunks;
+    }
+
+    public static void main(String[] args) {
+        List&lt;String&gt; separators = Arrays.asList("\n\n", "\n", "。", "！", "？", "，", " ", "");
+        List&lt;String&gt; chunks = splitText(longDocument, 512, 64, separators);
+        System.out.println("文档被分为 " + chunks.size() + " 块");
+        // chunk_size 太大 → 检索不精确、浪费 Token
+        // chunk_size 太小 → 上下文断裂、语义不完整
+        // 经验值：512-1024 字符，overlap 10-15%
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-warning);">
@@ -152,9 +244,8 @@ print(f"文档被分为 {len(chunks)} 块")
 
 <p>把文本块转成<strong>向量</strong>（高维浮点数组），使语义相近的文本在向量空间中距离也近。</p>
 
-<div class="code-block">
-<span class="code-label">Python</span>
-<pre>from langchain_openai import OpenAIEmbeddings
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain_openai import OpenAIEmbeddings
 
 # 选择 Embedding 模型
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -165,7 +256,103 @@ vector = embeddings.embed_query("什么是 RAG？")
 
 # 批量向量化（生产环境推荐批量操作）
 texts = [chunk for chunk in chunks]
-vectors = embeddings.embed_documents(texts)</pre>
+vectors = embeddings.embed_documents(texts)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { OpenAIEmbeddings } from '@langchain/openai';
+
+// 选择 Embedding 模型
+const embeddings = new OpenAIEmbeddings({
+  model: 'text-embedding-3-small'
+});
+
+// 单文本向量化
+const vector = await embeddings.embedQuery('什么是 RAG？');
+// 返回 1536 维浮点数组，如 [0.012, -0.034, 0.056, ...]
+
+// 批量向量化（生产环境推荐批量操作）
+const texts = [...chunks];
+const vectors = await embeddings.embedDocuments(texts);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+// 调用 OpenAI Embedding API
+type EmbeddingRequest struct {
+	Model string   `json:"model"`
+	Input []string `json:"input"`
+}
+
+type EmbeddingResponse struct {
+	Data []struct {
+		Embedding []float64 `json:"embedding"`
+	} `json:"data"`
+}
+
+func embed(texts []string) ([][]float64, error) {
+	reqBody := EmbeddingRequest{
+		Model: "text-embedding-3-small",
+		Input: texts,
+	}
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", "https://api.openai.com/v1/embeddings", bytes.NewReader(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OPENAI_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result EmbeddingResponse
+	json.Unmarshal(body, &result)
+
+	var vectors [][]float64
+	for _, d := range result.Data {
+		vectors = append(vectors, d.Embedding)
+	}
+	return vectors, nil
+}
+
+func main() {
+	// 单文本向量化
+	vectors, _ := embed([]string{"什么是 RAG？"})
+	fmt.Printf("返回 %d 维浮点数组\n", len(vectors[0]))
+	// 返回 1536 维浮点数组，如 [0.012, -0.034, 0.056, ...]
+
+	// 批量向量化（生产环境推荐批量操作）
+	batchVectors, _ := embed(chunks)
+	fmt.Printf("批量向量化 %d 条文本\n", len(batchVectors))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.data.embedding.Embedding;
+import java.util.*;
+
+public class EmbeddingExample {
+    public static void main(String[] args) {
+        // 选择 Embedding 模型
+        OpenAiEmbeddingModel embeddings = OpenAiEmbeddingModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .modelName("text-embedding-3-small")
+            .build();
+
+        // 单文本向量化
+        Embedding vector = embeddings.embed("什么是 RAG？").content();
+        // 返回 1536 维浮点数组，如 [0.012, -0.034, 0.056, ...]
+        System.out.println("向量维度: " + vector.vector().length);
+
+        // 批量向量化（生产环境推荐批量操作）
+        List&lt;Embedding&gt; vectors = embeddings.embedAll(chunks).content();
+        System.out.println("批量向量化 " + vectors.size() + " 条文本");
+    }
+}</pre></div>
 </div>
 
 <div class="comparison-table">
@@ -211,9 +398,8 @@ vectors = embeddings.embed_documents(texts)</pre>
   </table>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · Chroma</span>
-<pre>import chromadb
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import chromadb
 
 # 创建客户端（数据持久化到磁盘）
 client = chromadb.PersistentClient(path="./vector_db")
@@ -230,7 +416,97 @@ collection.add(
     embeddings=vectors,                  # 向量
     metadatas=[{"source": "doc1"} for _ in chunks],  # 元数据
     ids=[f"chunk_{i}" for i in range(len(chunks))]   # 唯一 ID
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { ChromaClient } from 'chromadb';
+
+// 创建客户端（数据持久化到磁盘）
+const client = new ChromaClient({ path: './vector_db' });
+
+// 创建集合（相当于数据库表）
+const collection = await client.getOrCreateCollection({
+  name: 'knowledge_base',
+  metadata: { 'hnsw:space': 'cosine' }  // 使用余弦相似度
+});
+
+// 写入向量
+await collection.add({
+  documents: chunks,                    // 原始文本
+  embeddings: vectors,                  // 向量
+  metadatas: chunks.map(() => ({ source: 'doc1' })),  // 元数据
+  ids: chunks.map((_, i) => `chunk_${i}`)   // 唯一 ID
+});</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+)
+
+// 通过 ChromaDB REST API 操作
+type CollectionRequest struct {
+	Name     string            `json:"name"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+func main() {
+	baseURL := "http://localhost:8000/api/v1"
+
+	// 创建集合（相当于数据库表）
+	colReq := CollectionRequest{
+		Name:     "knowledge_base",
+		Metadata: map[string]string{"hnsw:space": "cosine"}, // 使用余弦相似度
+	}
+	jsonData, _ := json.Marshal(colReq)
+	resp, _ := http.Post(baseURL+"/collections", "application/json", bytes.NewReader(jsonData))
+	resp.Body.Close()
+
+	// 写入向量
+	addPayload := map[string]interface{}{
+		"documents":  chunks,                   // 原始文本
+		"embeddings": vectors,                  // 向量
+		"metadatas":  metadatas,                // 元数据
+		"ids":        ids,                      // 唯一 ID
+	}
+	jsonData, _ = json.Marshal(addPayload)
+	resp, _ = http.Post(baseURL+"/collections/knowledge_base/add", "application/json", bytes.NewReader(jsonData))
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println("写入结果:", string(body))
+	resp.Body.Close()
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import dev.langchain4j.store.embedding.chroma.ChromaEmbeddingStore;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.Metadata;
+import java.util.*;
+
+public class VectorStoreExample {
+    public static void main(String[] args) {
+        // 创建客户端（数据持久化到磁盘）
+        ChromaEmbeddingStore store = ChromaEmbeddingStore.builder()
+            .baseUrl("http://localhost:8000")
+            .collectionName("knowledge_base")
+            // 使用余弦相似度
+            .build();
+
+        // 写入向量
+        List&lt;String&gt; ids = new ArrayList&lt;&gt;();
+        List&lt;TextSegment&gt; segments = new ArrayList&lt;&gt;();
+        List&lt;Embedding&gt; embeddings = new ArrayList&lt;&gt;();
+
+        for (int i = 0; i &lt; chunks.size(); i++) {
+            Metadata metadata = Metadata.from("source", "doc1");
+            segments.add(TextSegment.from(chunks.get(i), metadata));
+            embeddings.add(embeddingsList.get(i));
+            ids.add("chunk_" + i);  // 唯一 ID
+        }
+
+        store.addAll(ids, embeddings, segments);
+        System.out.println("写入 " + ids.size() + " 条向量");
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 16.3 检索策略 ===== -->
@@ -280,9 +556,8 @@ results = collection.query(
 
 <p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
 
-<div class="code-block">
-<span class="code-label">Python · 混合检索</span>
-<pre>from langchain.retrievers import EnsembleRetriever
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Chroma
 
@@ -303,7 +578,179 @@ ensemble_retriever = EnsembleRetriever(
 )
 
 # 混合检索效果最好：语义匹配 + 关键词精准匹配
-docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</pre>
+docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { EnsembleRetriever } from 'langchain/retrievers/ensemble';
+import { Chroma } from '@langchain/community/vectorstores/chroma';
+import { BM25Retriever } from '@langchain/community/retrievers/bm25';
+
+// 1. 向量检索器（语义匹配）
+const vectorStore = await Chroma.fromExistingCollection({
+  collectionName: 'knowledge_base',
+  embedding: embeddings,
+});
+const vectorRetriever = vectorStore.asRetriever({ k: 10 });
+
+// 2. BM25 检索器（关键词匹配）
+const bm25Retriever = await BM25Retriever.fromDocuments(chunks);
+bm25Retriever.k = 10;
+
+// 3. 混合检索器（加权融合）
+const ensembleRetriever = new EnsembleRetriever({
+  retrievers: [bm25Retriever, vectorRetriever],
+  weights: [0.4, 0.6]  // BM25 占 40%，向量占 60%
+});
+
+// 混合检索效果最好：语义匹配 + 关键词精准匹配
+const docs = await ensembleRetriever.getRelevantDocuments('GPT-4o 的多模态能力');</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"sort"
+)
+
+// 简易 BM25 关键词检索
+type Doc struct {
+	Text     string
+	Score    float64
+}
+
+func bm25Search(query string, docs []string, topK int) []Doc {
+	// 简化版 BM25：基于词频打分
+	var results []Doc
+	queryTerms := splitWords(query)
+	for _, d := range docs {
+		score := 0.0
+		for _, term := range queryTerms {
+			score += termFrequency(d, term)
+		}
+		results = append(results, Doc{Text: d, Score: score})
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+	if len(results) > topK {
+		results = results[:topK]
+	}
+	return results
+}
+
+// 向量相似度检索（调用 Embedding API + 余弦相似度）
+func vectorSearch(query string, topK int) []Doc {
+	queryVec := embed(query)
+	var results []Doc
+	for _, d := range allDocs {
+		sim := cosineSimilarity(queryVec, d.Vector)
+		results = append(results, Doc{Text: d.Text, Score: sim})
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+	if len(results) > topK {
+		results = results[:topK]
+	}
+	return results
+}
+
+// 混合检索：BM25 + 向量 加权融合
+func hybridSearch(query string, topK int) []Doc {
+	bm25Results := bm25Search(query, chunks, topK)
+	vectorResults := vectorSearch(query, topK)
+
+	// 加权融合：BM25 占 40%，向量占 60%
+	merged := make(map[string]float64)
+	for _, d := range bm25Results {
+		merged[d.Text] += d.Score * 0.4
+	}
+	for _, d := range vectorResults {
+		merged[d.Text] += d.Score * 0.6
+	}
+
+	var results []Doc
+	for text, score := range merged {
+		results = append(results, Doc{Text: text, Score: score})
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+	if len(results) > 5 {
+		results = results[:5]
+	}
+	return results
+}
+
+func cosineSimilarity(a, b []float64) float64 {
+	dot, normA, normB := 0.0, 0.0, 0.0
+	for i := range a {
+		dot += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class HybridRetriever {
+
+    // 1. 向量检索（语义匹配）
+    public List&lt;TextSegment&gt; vectorSearch(String query, int topK) {
+        Embedding queryEmbedding = embeddingModel.embed(query).content();
+        List&lt;EmbeddingMatch&lt;TextSegment&gt;&gt; matches = embeddingStore
+            .findRelevant(queryEmbedding, topK)
+            .matches();
+        return matches.stream()
+            .map(EmbeddingMatch::embedded)
+            .collect(Collectors.toList());
+    }
+
+    // 2. BM25 关键词检索（简化版）
+    public List&lt;TextSegment&gt; bm25Search(String query, int topK) {
+        String[] queryTerms = query.split("\\s+");
+        Map&lt;TextSegment, Double&gt; scores = new HashMap&lt;&gt;();
+        for (TextSegment doc : allDocs) {
+            double score = 0.0;
+            for (String term : queryTerms) {
+                if (doc.text().contains(term)) {
+                    score += 1.0;
+                }
+            }
+            scores.put(doc, score);
+        }
+        return scores.entrySet().stream()
+            .sorted(Map.Entry.&lt;TextSegment, Double&gt;comparingByValue().reversed())
+            .limit(topK)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+    }
+
+    // 3. 混合检索：BM25 + 向量 加权融合
+    public List&lt;TextSegment&gt; hybridSearch(String query, int topK) {
+        List&lt;TextSegment&gt; bm25Results = bm25Search(query, topK);
+        List&lt;TextSegment&gt; vectorResults = vectorSearch(query, topK);
+
+        // 加权融合：BM25 占 40%，向量占 60%
+        Map&lt;TextSegment, Double&gt; merged = new LinkedHashMap&lt;&gt;();
+        for (int i = 0; i &lt; bm25Results.size(); i++) {
+            merged.merge(bm25Results.get(i), (topK - i) * 0.4, Double::sum);
+        }
+        for (int i = 0; i &lt; vectorResults.size(); i++) {
+            merged.merge(vectorResults.get(i), (topK - i) * 0.6, Double::sum);
+        }
+
+        return merged.entrySet().stream()
+            .sorted(Map.Entry.&lt;TextSegment, Double&gt;comparingByValue().reversed())
+            .limit(5)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">16.3.3 进阶：重排序（Reranker）</h3>
@@ -319,9 +766,8 @@ docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</p
   <p style="font-size: 13px; color: var(--color-text-tertiary);">Cross-Encoder 比 Bi-Encoder（向量检索）精度高，但速度慢 100 倍，所以只用在小规模候选集上。</p>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · 使用 Cohere Reranker</span>
-<pre>from langchain.retrievers import ContextualCompressionRetriever
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain.retrievers import ContextualCompressionRetriever
 from langchain_cohere import CohereRerank
 
 # 重排序模型
@@ -334,7 +780,139 @@ compression_retriever = ContextualCompressionRetriever(
 )
 
 # 最终结果：精度远超纯向量检索
-docs = compression_retriever.get_relevant_documents("Agent 如何管理长期记忆？")</pre>
+docs = compression_retriever.get_relevant_documents("Agent 如何管理长期记忆？")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
+import { CohereRerank } from '@langchain/cohere';
+
+// 重排序模型
+const reranker = new CohereRerank({ topN: 5 });  // 从候选集中选 Top-5
+
+// 压缩检索器：先向量检索召回 → 再重排序
+const compressionRetriever = new ContextualCompressionRetriever({
+  baseCompressor: reranker,
+  baseRetriever: vectorRetriever  // 先召回 Top-20
+});
+
+// 最终结果：精度远超纯向量检索
+const docs = await compressionRetriever.getRelevantDocuments('Agent 如何管理长期记忆？');</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"sort"
+)
+
+type RerankRequest struct {
+	Query     string   `json:"query"`
+	Documents []string `json:"documents"`
+	TopN      int      `json:"top_n"`
+}
+
+type RerankResponse struct {
+	Results []struct {
+		Index          int     `json:"index"`
+		RelevanceScore float64 `json:"relevance_score"`
+	} `json:"results"`
+}
+
+// 调用 Cohere Rerank API 对候选文档重排序
+func rerank(query string, candidates []string, topN int) []string {
+	reqBody := RerankRequest{
+		Query:     query,
+		Documents: candidates,
+		TopN:      topN,
+	}
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", "https://api.cohere.ai/v1/rerank", bytes.NewReader(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("COHERE_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return candidates[:topN]
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result RerankResponse
+	json.Unmarshal(body, &result)
+
+	// 按 relevance_score 降序排序
+	sort.Slice(result.Results, func(i, j int) bool {
+		return result.Results[i].RelevanceScore > result.Results[j].RelevanceScore
+	})
+
+	var reranked []string
+	for _, r := range result.Results {
+		reranked = append(reranked, candidates[r.Index])
+	}
+	return reranked
+}
+
+func main() {
+	// 先向量检索召回 Top-20
+	candidates := vectorSearch("Agent 如何管理长期记忆？", 20)
+	// 重排序选 Top-5
+	reranked := rerank("Agent 如何管理长期记忆？", candidates, 5)
+	fmt.Println("重排序结果:", reranked)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.http.okhttp.OkHttpApiBuilder;
+import dev.langchain4j.data.segment.TextSegment;
+import okhttp3.*;
+import com.fasterxml.jackson.databind.*;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class RerankExample {
+
+    // 调用 Cohere Rerank API 对候选文档重排序
+    public List&lt;String&gt; rerank(String query, List&lt;String&gt; candidates, int topN) throws Exception {
+        OkHttpClient client = new OkHttpClient();
+        ObjectMapper mapper = new ObjectMapper();
+
+        Map&lt;String, Object&gt; requestBody = new HashMap&lt;&gt;();
+        requestBody.put("query", query);
+        requestBody.put("documents", candidates);
+        requestBody.put("top_n", topN);
+
+        RequestBody body = RequestBody.create(
+            mapper.writeValueAsString(requestBody),
+            MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+            .url("https://api.cohere.ai/v1/rerank")
+            .post(body)
+            .addHeader("Authorization", "Bearer " + System.getenv("COHERE_API_KEY"))
+            .build();
+
+        Response response = client.newCall(request).execute();
+        JsonNode root = mapper.readTree(response.body().string());
+
+        List&lt;String&gt; reranked = new ArrayList&lt;&gt;();
+        for (JsonNode item : root.path("results")) {
+            int index = item.path("index").asInt();
+            reranked.add(candidates.get(index));
+        }
+        return reranked;
+    }
+
+    public static void main(String[] args) throws Exception {
+        RerankExample reranker = new RerankExample();
+
+        // 先向量检索召回 Top-20
+        List&lt;String&gt; candidates = vectorSearch("Agent 如何管理长期记忆？", 20);
+        // 重排序选 Top-5
+        List&lt;String&gt; reranked = reranker.rerank("Agent 如何管理长期记忆？", candidates, 5);
+        System.out.println("重排序结果: " + reranked);
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 16.4 RAG 高级优化 ===== -->
@@ -344,9 +922,8 @@ docs = compression_retriever.get_relevant_documents("Agent 如何管理长期记
 
 <p>用户提问往往模糊或口语化，直接检索效果差。先用 LLM <strong>改写 Query</strong>，提升检索质量。</p>
 
-<div class="code-block">
-<span class="code-label">Python · Query 改写</span>
-<pre>from langchain_openai import ChatOpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 
@@ -366,7 +943,83 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
 # 原始问题："Agent 怎么记住东西的？"
 # 改写后：["Agent 记忆系统架构", "Agent 短期记忆 长期记忆", "LLM memory management"]
 
-# 多查询并行检索，结果合并去重 → 召回率大幅提升</pre>
+# 多查询并行检索，结果合并去重 → 召回率大幅提升</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {ChatOpenAI} from 'langchain_openai';
+
+  const llm = ChatOpenAI(model="gpt-4o-mini");
+
+// 改写策略
+  const rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。;
+
+  // 用户问题：{question}
+
+  // 改写要求：
+  // 1. 提取核心关键词
+  // 2. 补充可能的同义词
+  // 3. 生成 3 个不同角度的查询
+
+  // 输出格式：JSON 数组，如 ["query1", "query2", "query3"]
+  /** docstring */
+
+// 原始问题："Agent 怎么记住东西的？"
+// 改写后：["Agent 记忆系统架构", "Agent 短期记忆 长期记忆", "LLM memory management"]
+
+// 多查询并行检索，结果合并去重 → 召回率大幅提升</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langchain_openai import ChatOpenAI
+
+	// Python: llm = ChatOpenAI(model="gpt-4o-mini")
+
+// 改写策略
+	// Python: rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
+
+	// Python: 用户问题：{question}
+
+	// Python: 改写要求：
+	// Python: 1. 提取核心关键词
+	// Python: 2. 补充可能的同义词
+	// Python: 3. 生成 3 个不同角度的查询
+
+	// Python: 输出格式：JSON 数组，如 ["query1", "query2", "query3"]
+
+// 原始问题："Agent 怎么记住东西的？"
+// 改写后：["Agent 记忆系统架构", "Agent 短期记忆 长期记忆", "LLM memory management"]
+
+// 多查询并行检索，结果合并去重 → 召回率大幅提升</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langchain_openai import ChatOpenAI
+
+        // Python: llm = ChatOpenAI(model="gpt-4o-mini")
+
+    // 改写策略
+        // Python: rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
+
+        // Python: 用户问题：{question}
+
+        // Python: 改写要求：
+        // Python: 1. 提取核心关键词
+        // Python: 2. 补充可能的同义词
+        // Python: 3. 生成 3 个不同角度的查询
+
+        // Python: 输出格式：JSON 数组，如 ["query1", "query2", "query3"]
+
+    // 原始问题："Agent 怎么记住东西的？"
+    // 改写后：["Agent 记忆系统架构", "Agent 短期记忆 长期记忆", "LLM memory management"]
+
+    // 多查询并行检索，结果合并去重 → 召回率大幅提升
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">16.4.2 HyDE（假设性文档嵌入）</h3>
@@ -406,9 +1059,8 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
 
 <p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
 
-<div class="code-block">
-<span class="code-label">Python · RAG as Tool</span>
-<pre>from langchain.tools import Tool
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain.tools import Tool
 from langchain.agents import create_react_agent, AgentExecutor
 
 def rag_search(query: str) -> str:
@@ -444,7 +1096,131 @@ agent = create_react_agent(llm, tools, prompt)
 executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 # 用户："你好" → Agent 不检索，直接回答
-# 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search</pre>
+# 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {Tool} from 'langchain.tools';
+import {create_react_agent, AgentExecutor} from 'langchain.agents';
+
+  // def rag_search(query: str) -> str:
+  /** docstring */
+// 1. Query 改写
+  const rewritten = llm.invoke(rewrite_prompt.format(question=query));
+
+// 2. 多查询并行检索
+  const all_docs = [];
+  for (const q of parse_queries(rewritten)) {
+  const docs = ensemble_retriever.get_relevant_documents(q);
+  // all_docs.extend(docs)
+
+// 3. 去重 + 重排序
+  const unique_docs = deduplicate(all_docs);
+  const ranked_docs = reranker.compress_documents(unique_docs, query);
+
+// 4. 返回拼接的上下文
+  return "\n\n".join([doc.page_content for doc in ranked_docs[:5]]);
+
+// 将 RAG 注册为 Agent 工具
+  const tools = [;
+  // Tool(
+  const name = "knowledge_search",;
+  const description = "搜索内部知识库，获取产品文档、技术文档、FAQ等信息。当需要查找具体信息时使用。",;
+  const func = rag_search;
+  // ),
+// ... 其他工具
+  // ]
+
+// Agent 自主决定何时检索
+  const agent = create_react_agent(llm, tools, prompt);
+  const executor = AgentExecutor(agent=agent, tools=tools, verbose=true);
+
+// 用户："你好" → Agent 不检索，直接回答
+// 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langchain.tools import Tool
+// from langchain.agents import create_react_agent, AgentExecutor
+
+	// Python: def rag_search(query: str) -> str:
+// 1. Query 改写
+	// Python: rewritten = llm.invoke(rewrite_prompt.format(question=query))
+
+// 2. 多查询并行检索
+	// Python: all_docs = []
+	for _, q := range parse_queries(rewritten) {
+	// Python: docs = ensemble_retriever.get_relevant_documents(q)
+	// Python: all_docs.extend(docs)
+
+// 3. 去重 + 重排序
+	// Python: unique_docs = deduplicate(all_docs)
+	// Python: ranked_docs = reranker.compress_documents(unique_docs, query)
+
+// 4. 返回拼接的上下文
+	return "\n\n".join([doc.page_content for doc in ranked_docs[:5]])
+
+// 将 RAG 注册为 Agent 工具
+	// Python: tools = [
+	// Python: Tool(
+	// Python: name="knowledge_search",
+	// Python: description="搜索内部知识库，获取产品文档、技术文档、FAQ等信息。当需要查找具体信息时使用。",
+	// Python: func=rag_search
+	// Python: ),
+// ... 其他工具
+	// Python: ]
+
+// Agent 自主决定何时检索
+	// Python: agent = create_react_agent(llm, tools, prompt)
+	// Python: executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+// 用户："你好" → Agent 不检索，直接回答
+// 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langchain.tools import Tool
+    // from langchain.agents import create_react_agent, AgentExecutor
+
+        // Python: def rag_search(query: str) -> str:
+    // 1. Query 改写
+        // Python: rewritten = llm.invoke(rewrite_prompt.format(question=query))
+
+    // 2. 多查询并行检索
+        // Python: all_docs = []
+        for (var q : parse_queries(rewritten)) {
+        // Python: docs = ensemble_retriever.get_relevant_documents(q)
+        // Python: all_docs.extend(docs)
+
+    // 3. 去重 + 重排序
+        // Python: unique_docs = deduplicate(all_docs)
+        // Python: ranked_docs = reranker.compress_documents(unique_docs, query)
+
+    // 4. 返回拼接的上下文
+        return "\n\n".join([doc.page_content for doc in ranked_docs[:5]]);
+
+    // 将 RAG 注册为 Agent 工具
+        // Python: tools = [
+        // Python: Tool(
+        // Python: name="knowledge_search",
+        // Python: description="搜索内部知识库，获取产品文档、技术文档、FAQ等信息。当需要查找具体信息时使用。",
+        // Python: func=rag_search
+        // Python: ),
+    // ... 其他工具
+        // Python: ]
+
+    // Agent 自主决定何时检索
+        // Python: agent = create_react_agent(llm, tools, prompt)
+        // Python: executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+    // 用户："你好" → Agent 不检索，直接回答
+    // 用户："我们的 API 限流策略是什么？" → Agent 调用 knowledge_search
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -534,9 +1310,8 @@ setTimeout(() => {
 }, 100);
 </script>
 
-<div class="code-block">
-<span class="code-label">Python · GraphRAG 核心流程（基于 LlamaIndex）</span>
-<pre>from llama_index.core import KnowledgeGraphIndex
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from llama_index.core import KnowledgeGraphIndex
 from llama_index.core.graph_stores import SimpleGraphStore
 from llama_index.llms.openai import OpenAI
 
@@ -566,7 +1341,115 @@ query_engine = kg_index.as_query_engine(
 # 3. 生成回答时，上下文 = 子图结构 + 原文片段
 response = query_engine.query("Agent 和 RAG 是什么关系？")
 # → 沿 "Agent" → "调用" → "RAG" → "属于" → "检索增强生成技术" 遍历
-# → 上下文包含完整关系链，而非孤立的文本块</pre>
+# → 上下文包含完整关系链，而非孤立的文本块</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {KnowledgeGraphIndex} from 'llama_index.core';
+import {SimpleGraphStore} from 'llama_index.core.graph_stores';
+import {OpenAI} from 'llama_index.llms.openai';
+
+// 1. 实体抽取 + 关系构建（LLM 自动完成）
+  const llm = OpenAI(model="gpt-4o-mini");
+
+// KnowledgeGraphIndex 自动从文档中抽取实体和关系
+  const kg_index = KnowledgeGraphIndex.from_documents(;
+  // documents,
+  const llm = llm,;
+  const max_triplets_per_chunk = 5,  # 每个块最多抽取 5 个三元组;
+  const include_embeddings = true     # 同时生成实体嵌入;
+  // )
+
+// 抽取的三元组示例：
+// ("RAG", "属于", "检索增强生成技术")
+// ("向量数据库", "用于", "RAG")
+// ("Agent", "调用", "RAG")
+
+// 2. 子图检索：从问题实体出发，沿关系边遍历
+  const query_engine = kg_index.as_query_engine(;
+  const include_text = true,     # 同时返回原文片段;
+  const similarity_top_k = 5,    # 返回 Top-5 相关子图;
+  const graph_depth = 2          # 图遍历深度 2 跳;
+  // )
+
+// 3. 生成回答时，上下文 = 子图结构 + 原文片段
+  const response = query_engine.query("Agent 和 RAG 是什么关系？");
+// → 沿 "Agent" → "调用" → "RAG" → "属于" → "检索增强生成技术" 遍历
+// → 上下文包含完整关系链，而非孤立的文本块</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from llama_index.core import KnowledgeGraphIndex
+// from llama_index.core.graph_stores import SimpleGraphStore
+// from llama_index.llms.openai import OpenAI
+
+// 1. 实体抽取 + 关系构建（LLM 自动完成）
+	// Python: llm = OpenAI(model="gpt-4o-mini")
+
+// KnowledgeGraphIndex 自动从文档中抽取实体和关系
+	// Python: kg_index = KnowledgeGraphIndex.from_documents(
+	// Python: documents,
+	// Python: llm=llm,
+	// Python: max_triplets_per_chunk=5,  # 每个块最多抽取 5 个三元组
+	// Python: include_embeddings=True     # 同时生成实体嵌入
+	// Python: )
+
+// 抽取的三元组示例：
+// ("RAG", "属于", "检索增强生成技术")
+// ("向量数据库", "用于", "RAG")
+// ("Agent", "调用", "RAG")
+
+// 2. 子图检索：从问题实体出发，沿关系边遍历
+	// Python: query_engine = kg_index.as_query_engine(
+	// Python: include_text=True,     # 同时返回原文片段
+	// Python: similarity_top_k=5,    # 返回 Top-5 相关子图
+	// Python: graph_depth=2          # 图遍历深度 2 跳
+	// Python: )
+
+// 3. 生成回答时，上下文 = 子图结构 + 原文片段
+	// Python: response = query_engine.query("Agent 和 RAG 是什么关系？")
+// → 沿 "Agent" → "调用" → "RAG" → "属于" → "检索增强生成技术" 遍历
+// → 上下文包含完整关系链，而非孤立的文本块</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from llama_index.core import KnowledgeGraphIndex
+    // from llama_index.core.graph_stores import SimpleGraphStore
+    // from llama_index.llms.openai import OpenAI
+
+    // 1. 实体抽取 + 关系构建（LLM 自动完成）
+        // Python: llm = OpenAI(model="gpt-4o-mini")
+
+    // KnowledgeGraphIndex 自动从文档中抽取实体和关系
+        // Python: kg_index = KnowledgeGraphIndex.from_documents(
+        // Python: documents,
+        // Python: llm=llm,
+        // Python: max_triplets_per_chunk=5,  # 每个块最多抽取 5 个三元组
+        // Python: include_embeddings=True     # 同时生成实体嵌入
+        // Python: )
+
+    // 抽取的三元组示例：
+    // ("RAG", "属于", "检索增强生成技术")
+    // ("向量数据库", "用于", "RAG")
+    // ("Agent", "调用", "RAG")
+
+    // 2. 子图检索：从问题实体出发，沿关系边遍历
+        // Python: query_engine = kg_index.as_query_engine(
+        // Python: include_text=True,     # 同时返回原文片段
+        // Python: similarity_top_k=5,    # 返回 Top-5 相关子图
+        // Python: graph_depth=2          # 图遍历深度 2 跳
+        // Python: )
+
+    // 3. 生成回答时，上下文 = 子图结构 + 原文片段
+        // Python: response = query_engine.query("Agent 和 RAG 是什么关系？")
+    // → 沿 "Agent" → "调用" → "RAG" → "属于" → "检索增强生成技术" 遍历
+    // → 上下文包含完整关系链，而非孤立的文本块
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">16.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
@@ -686,9 +1569,8 @@ setTimeout(() => {
 }, 100);
 </script>
 
-<div class="code-block">
-<span class="code-label">Python · Agentic RAG 实现（LangGraph）</span>
-<pre>from langgraph.graph import StateGraph, END
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END
 from typing import TypedDict, List
 
 class RAGState(TypedDict):
@@ -768,7 +1650,261 @@ agent_rag = workflow.compile()
 # 用户："你好" → decide 判断简单问题 → 直接生成
 # 用户："我们系统的限流策略和降级策略分别是什么？" →
 #   第1轮检索限流策略 → 反思：缺少降级策略 →
-#   第2轮检索降级策略 → 反思：信息充分 → 生成完整回答</pre>
+#   第2轮检索降级策略 → 反思：信息充分 → 生成完整回答</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {StateGraph, END} from 'langgraph.graph';
+// TypeScript has built-in types, no import needed for TypedDict, List
+
+class RAGState {
+  // question: str
+  // retrieved_docs: List[str]
+  // answer: str
+  // reflection: str       # 反思结果
+  // search_count: int     # 检索次数
+  // sufficient: bool      # 信息是否充分
+
+  // def decide_to_search(state: RAGState) -> str:
+  /** docstring */
+  // question = state["question"]
+// 简单问题不检索（如打招呼、算术题）
+  if (is_simple_question(question)) {
+  return "generate_direct";
+// 已有文档是否充分？
+  if (state.get("sufficient", false)) {
+  return "generate";
+// 最多检索 3 轮，防止死循环
+  if (state.get("search_count", 0) >= 3) {
+  return "generate";
+  return "search";
+
+  // def search(state: RAGState) -> RAGState:
+  /** docstring */
+  // question = state["question"]
+  // count = state.get("search_count", 0)
+
+// 第 2 轮起，根据反思结果改写 Query
+  if (count > 0) {
+  // question = llm_rewrite_query(question, state.get("reflection", ""))
+
+  // docs = hybrid_search(question, top_k=10)
+  // ranked_docs = reranker.rerank(docs, question, top_n=5)
+
+  // state["retrieved_docs"] = state.get("retrieved_docs", []) + ranked_docs
+  // state["search_count"] = count + 1
+  return state;
+
+  // def reflect(state: RAGState) -> RAGState:
+  /** docstring */
+  // prompt = f"""问题：{state['question']}
+  // 已有文档：{state['retrieved_docs']}
+  // 判断：当前文档是否足以完整回答问题？
+  // 如果不足，指出缺少什么信息。"""
+  // result = llm.invoke(prompt)
+  // state["reflection"] = result
+  // state["sufficient"] = "信息充分" in result
+  return state;
+
+  // def generate(state: RAGState) -> RAGState:
+  /** docstring */
+  // context = "\n\n".join(state["retrieved_docs"])
+  // state["answer"] = llm.invoke(f"基于以下信息回答问题：\n{context}\n\n问题：{state['question']}")
+  return state;
+
+// 构建工作流图
+  // workflow = StateGraph(RAGState)
+  // workflow.add_node("decide", decide_to_search)
+  // workflow.add_node("search", search)
+  // workflow.add_node("reflect", reflect)
+  // workflow.add_node("generate", generate)
+
+  // workflow.set_entry_point("decide")
+  // workflow.add_conditional_edges("decide", decide_to_search, {
+  // "search": "search",
+  // "generate": "generate",
+  // "generate_direct": "generate"
+  // })
+  // workflow.add_edge("search", "reflect")
+  // workflow.add_conditional_edges("reflect", lambda s: "search" if not s["sufficient"] and s["search_count"] < 3 else "generate")
+  // workflow.add_edge("generate", END)
+
+  // agent_rag = workflow.compile()
+
+// 用户："你好" → decide 判断简单问题 → 直接生成
+// 用户："我们系统的限流策略和降级策略分别是什么？" →
+// 第1轮检索限流策略 → 反思：缺少降级策略 →
+// 第2轮检索降级策略 → 反思：信息充分 → 生成完整回答
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from langgraph.graph import StateGraph, END
+// from typing import TypedDict, List
+
+// RAGState - CLI Agent class
+type RAGState struct {
+	// Python: question: str
+	// Python: retrieved_docs: List[str]
+	// Python: answer: str
+	// Python: reflection: str       # 反思结果
+	// Python: search_count: int     # 检索次数
+	// Python: sufficient: bool      # 信息是否充分
+
+	// Python: def decide_to_search(state: RAGState) -> str:
+	// Python: question = state["question"]
+// 简单问题不检索（如打招呼、算术题）
+	if is_simple_question(question) {
+	return "generate_direct"
+// 已有文档是否充分？
+	if state.get("sufficient", false) {
+	return "generate"
+// 最多检索 3 轮，防止死循环
+	if state.get("search_count", 0) >= 3 {
+	return "generate"
+	return "search"
+
+	// Python: def search(state: RAGState) -> RAGState:
+	// Python: question = state["question"]
+	// Python: count = state.get("search_count", 0)
+
+// 第 2 轮起，根据反思结果改写 Query
+	if count > 0 {
+	// Python: question = llm_rewrite_query(question, state.get("reflection", ""))
+
+	// Python: docs = hybrid_search(question, top_k=10)
+	// Python: ranked_docs = reranker.rerank(docs, question, top_n=5)
+
+	// Python: state["retrieved_docs"] = state.get("retrieved_docs", []) + ranked_docs
+	// Python: state["search_count"] = count + 1
+	return state
+
+	// Python: def reflect(state: RAGState) -> RAGState:
+	// Python: prompt = f"""问题：{state['question']}
+	// Python: 已有文档：{state['retrieved_docs']}
+	// Python: 判断：当前文档是否足以完整回答问题？
+	// Python: 如果不足，指出缺少什么信息。"""
+	// Python: result = llm.invoke(prompt)
+	// Python: state["reflection"] = result
+	// Python: state["sufficient"] = "信息充分" in result
+	return state
+
+	// Python: def generate(state: RAGState) -> RAGState:
+	// Python: context = "\n\n".join(state["retrieved_docs"])
+	// Python: state["answer"] = llm.invoke(f"基于以下信息回答问题：\n{context}\n\n问题：{state['question']}")
+	return state
+
+// 构建工作流图
+	// Python: workflow = StateGraph(RAGState)
+	// Python: workflow.add_node("decide", decide_to_search)
+	// Python: workflow.add_node("search", search)
+	// Python: workflow.add_node("reflect", reflect)
+	// Python: workflow.add_node("generate", generate)
+
+	// Python: workflow.set_entry_point("decide")
+	// Python: workflow.add_conditional_edges("decide", decide_to_search, {
+	// Python: "search": "search",
+	// Python: "generate": "generate",
+	// Python: "generate_direct": "generate"
+	// Python: })
+	// Python: workflow.add_edge("search", "reflect")
+	// Python: workflow.add_conditional_edges("reflect", lambda s: "search" if not s["sufficient"] and s["search_count"] < 3 else "generate")
+	// Python: workflow.add_edge("generate", END)
+
+	// Python: agent_rag = workflow.compile()
+
+// 用户："你好" → decide 判断简单问题 → 直接生成
+// 用户："我们系统的限流策略和降级策略分别是什么？" →
+// 第1轮检索限流策略 → 反思：缺少降级策略 →
+// 第2轮检索降级策略 → 反思：信息充分 → 生成完整回答
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from langgraph.graph import StateGraph, END
+    // from typing import TypedDict, List
+
+public class RAGState {
+        // Python: question: str
+        // Python: retrieved_docs: List[str]
+        // Python: answer: str
+        // Python: reflection: str       # 反思结果
+        // Python: search_count: int     # 检索次数
+        // Python: sufficient: bool      # 信息是否充分
+
+        // Python: def decide_to_search(state: RAGState) -> str:
+        // Python: question = state["question"]
+    // 简单问题不检索（如打招呼、算术题）
+        if (is_simple_question(question)) {
+        return "generate_direct";
+    // 已有文档是否充分？
+        if (state.get("sufficient", false)) {
+        return "generate";
+    // 最多检索 3 轮，防止死循环
+        if (state.get("search_count", 0) >= 3) {
+        return "generate";
+        return "search";
+
+        // Python: def search(state: RAGState) -> RAGState:
+        // Python: question = state["question"]
+        // Python: count = state.get("search_count", 0)
+
+    // 第 2 轮起，根据反思结果改写 Query
+        if (count > 0) {
+        // Python: question = llm_rewrite_query(question, state.get("reflection", ""))
+
+        // Python: docs = hybrid_search(question, top_k=10)
+        // Python: ranked_docs = reranker.rerank(docs, question, top_n=5)
+
+        // Python: state["retrieved_docs"] = state.get("retrieved_docs", []) + ranked_docs
+        // Python: state["search_count"] = count + 1
+        return state;
+
+        // Python: def reflect(state: RAGState) -> RAGState:
+        // Python: prompt = f"""问题：{state['question']}
+        // Python: 已有文档：{state['retrieved_docs']}
+        // Python: 判断：当前文档是否足以完整回答问题？
+        // Python: 如果不足，指出缺少什么信息。"""
+        // Python: result = llm.invoke(prompt)
+        // Python: state["reflection"] = result
+        // Python: state["sufficient"] = "信息充分" in result
+        return state;
+
+        // Python: def generate(state: RAGState) -> RAGState:
+        // Python: context = "\n\n".join(state["retrieved_docs"])
+        // Python: state["answer"] = llm.invoke(f"基于以下信息回答问题：\n{context}\n\n问题：{state['question']}")
+        return state;
+
+    // 构建工作流图
+        // Python: workflow = StateGraph(RAGState)
+        // Python: workflow.add_node("decide", decide_to_search)
+        // Python: workflow.add_node("search", search)
+        // Python: workflow.add_node("reflect", reflect)
+        // Python: workflow.add_node("generate", generate)
+
+        // Python: workflow.set_entry_point("decide")
+        // Python: workflow.add_conditional_edges("decide", decide_to_search, {
+        // Python: "search": "search",
+        // Python: "generate": "generate",
+        // Python: "generate_direct": "generate"
+        // Python: })
+        // Python: workflow.add_edge("search", "reflect")
+        // Python: workflow.add_conditional_edges("reflect", lambda s: "search" if not s["sufficient"] and s["search_count"] < 3 else "generate")
+        // Python: workflow.add_edge("generate", END)
+
+        // Python: agent_rag = workflow.compile()
+
+    // 用户："你好" → decide 判断简单问题 → 直接生成
+    // 用户："我们系统的限流策略和降级策略分别是什么？" →
+    // 第1轮检索限流策略 → 反思：缺少降级策略 →
+    // 第2轮检索降级策略 → 反思：信息充分 → 生成完整回答
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">16.8.3 Agentic RAG 什么时候触发检索？</h3>

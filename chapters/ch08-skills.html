@@ -3,7 +3,7 @@
 
 <div class="info-banner">
 <div class="banner-title">📌 本章目标</div>
-<p>第5章讲了单个工具的调用，第6章讲了工具的标准化协议（MCP）。本章讲工具的<strong>组合</strong>——把多个工具打包成一个"技能"，让 Agent 拥有更高层次的能力。</p>
+<p>第6章讲了 Function Calling 工具调用，第7章讲了工具的标准化协议（MCP）。本章讲工具的<strong>组合</strong>——把多个工具打包成一个"技能"，让 Agent 拥有更高层次的能力。</p>
 </div>
 
 <!-- ===== 8.1 从工具到技能 ===== -->
@@ -79,7 +79,8 @@ knowledge: |
 
 <p>Skill 以文件形式存储在 <code>skills/</code> 目录下，Agent 启动时扫描目录：</p>
 
-<div class="code-block"><pre>import os
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import os
 import yaml
 
 class SkillLoader:
@@ -118,12 +119,193 @@ class SkillLoader:
             lines.append(f"- {name}: {skill['description']} (触发词: {triggers})")
 
         return "\n".join(lines)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import * as fs from 'fs';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
+
+class SkillLoader {
+  private registry: Map&lt;string, any&gt; = new Map();
+
+  constructor(private skillsDir: string = 'skills') {}
+
+  scan(): void {
+    if (!fs.existsSync(this.skillsDir)) return;
+
+    for (const entry of fs.readdirSync(this.skillsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+
+      const skillFile = path.join(this.skillsDir, entry.name, 'skill.yml');
+      if (!fs.existsSync(skillFile)) continue;
+
+      const skillDef = yaml.load(fs.readFileSync(skillFile, 'utf-8')) as any;
+      skillDef.path = path.join(this.skillsDir, entry.name);
+      this.registry.set(skillDef.name, skillDef);
+    }
+
+    console.log(`加载了 ${this.registry.size} 个技能: ${[...this.registry.keys()]}`);
+  }
+
+  getSkillPrompt(): string {
+    if (this.registry.size === 0) return '';
+
+    const lines: string[] = ['你可以使用以下技能：'];
+    for (const [name, skill] of this.registry) {
+      const triggers = (skill.triggers || []).join(', ');
+      lines.push(`- ${name}: ${skill.description} (触发词: ${triggers})`);
+    }
+    return lines.join('\n');
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v3"
+)
+
+type SkillLoader struct {
+	SkillsDir string
+	Registry  map[string]map[string]interface{}
+}
+
+func NewSkillLoader(skillsDir string) *SkillLoader {
+	return &SkillLoader{
+		SkillsDir: skillsDir,
+		Registry:  make(map[string]map[string]interface{}),
+	}
+}
+
+func (sl *SkillLoader) Scan() error {
+	entries, err := os.ReadDir(sl.SkillsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		skillFile := filepath.Join(sl.SkillsDir, entry.Name(), "skill.yml")
+		data, err := os.ReadFile(skillFile)
+		if err != nil {
+			continue
+		}
+
+		var skillDef map[string]interface{}
+		if err := yaml.Unmarshal(data, &skillDef); err != nil {
+			continue
+		}
+		skillDef["path"] = filepath.Join(sl.SkillsDir, entry.Name())
+		if name, ok := skillDef["name"].(string); ok {
+			sl.Registry[name] = skillDef
+		}
+	}
+
+	keys := make([]string, 0, len(sl.Registry))
+	for k := range sl.Registry {
+		keys = append(keys, k)
+	}
+	fmt.Printf("加载了 %d 个技能: %v\n", len(sl.Registry), keys)
+	return nil
+}
+
+func (sl *SkillLoader) GetSkillPrompt() string {
+	if len(sl.Registry) == 0 {
+		return ""
+	}
+	lines := []string{"你可以使用以下技能："}
+	for name, skill := range sl.Registry {
+		triggers, _ := skill["triggers"].([]interface{})
+		triggerStrs := make([]string, len(triggers))
+		for i, t := range triggers {
+			triggerStrs[i] = fmt.Sprintf("%v", t)
+		}
+		desc, _ := skill["description"].(string)
+		lines = append(lines, fmt.Sprintf("- %s: %s (触发词: %s)", name, desc, joinStrings(triggerStrs, ", ")))
+	}
+	return joinStrings(lines, "\n")
+}
+
+func joinStrings(strs []string, sep string) string {
+	result := ""
+	for i, s := range strs {
+		if i &gt; 0 {
+			result += sep
+		}
+		result += s
+	}
+	return result
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import org.yaml.snakeyaml.Yaml;
+
+public class SkillLoader {
+    private String skillsDir;
+    private Map&lt;String, Map&lt;String, Object&gt;&gt; registry = new HashMap&lt;&gt;();
+
+    public SkillLoader(String skillsDir) {
+        this.skillsDir = skillsDir;
+    }
+
+    public void scan() {
+        Path dirPath = Paths.get(skillsDir);
+        if (!Files.exists(dirPath)) return;
+
+        try (var stream = Files.newDirectoryStream(dirPath)) {
+            for (var entry : stream) {
+                if (!Files.isDirectory(entry)) continue;
+
+                Path skillFile = entry.resolve("skill.yml");
+                if (!Files.exists(skillFile)) continue;
+
+                try (var reader = Files.newBufferedReader(skillFile)) {
+                    Yaml yaml = new Yaml();
+                    Map&lt;String, Object&gt; skillDef = yaml.load(reader);
+                    skillDef.put("path", entry.toString());
+                    String name = (String) skillDef.get("name");
+                    registry.put(name, skillDef);
+                }
+            }
+            System.out.printf("加载了 %d 个技能: %s%n", registry.size(), registry.keySet());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getSkillPrompt() {
+        if (registry.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder("你可以使用以下技能：\n");
+        for (var entry : registry.entrySet()) {
+            String name = entry.getKey();
+            Map&lt;String, Object&gt; skill = entry.getValue();
+            List&lt;String&gt; triggers = (List&lt;String&gt;) skill.getOrDefault("triggers", Collections.emptyList());
+            String desc = (String) skill.get("description");
+            sb.append(String.format("- %s: %s (触发词: %s)%n", name, desc, String.join(", ", triggers)));
+        }
+        return sb.toString();
+    }
+}
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.3.2 热重载</h3>
 
 <p>生产环境需要<strong>热重载</strong>——修改 Skill 文件后无需重启 Agent：</p>
 
-<div class="code-block"><pre>from watchdog.observers import Observer
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 class SkillHotReloader(FileSystemEventHandler):
@@ -143,6 +325,120 @@ observer.schedule(
     recursive=True
 )
 observer.start()</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import * as chokidar from 'chokidar';
+
+class SkillHotReloader {
+  constructor(private loader: SkillLoader) {}
+
+  start(): void {
+    chokidar.watch('skills/', {
+      ignored: /(^|[/\\])\./,
+      persistent: true
+    }).on('change', (filePath) => {
+      if (filePath.endsWith('skill.yml')) {
+        console.log('检测到 Skill 变更，重新加载...');
+        this.loader.scan();
+      }
+    });
+    console.log('热重载监控已启动');
+  }
+}
+
+// 启动热重载监控
+const reloader = new SkillHotReloader(loader);
+reloader.start();
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"path/filepath"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
+)
+
+type SkillHotReloader struct {
+	Loader *SkillLoader
+}
+
+func NewSkillHotReloader(loader *SkillLoader) *SkillHotReloader {
+	return &SkillHotReloader{Loader: loader}
+}
+
+func (r *SkillHotReloader) Start() error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	err = watcher.Add("skills/")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("热重载监控已启动")
+	for {
+		select {
+		case event := &lt;-watcher.Events:
+			if filepath.Ext(event.Name) == ".yml" && event.Has(fsnotify.Write) {
+				fmt.Println("检测到 Skill 变更，重新加载...")
+				r.Loader.Scan()
+			}
+		case err := &lt;-watcher.Errors:
+			fmt.Printf("监控错误: %v\n", err)
+		}
+	}
+}
+
+// 启动热重载监控
+reloader := NewSkillHotReloader(loader)
+go reloader.Start()
+time.Sleep(time.Hour)
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.nio.file.*;
+import static java.nio.file.StandardWatchEventKinds.*;
+
+public class SkillHotReloader {
+    private final SkillLoader loader;
+    private WatchService watchService;
+
+    public SkillHotReloader(SkillLoader loader) {
+        this.loader = loader;
+    }
+
+    public void start() throws Exception {
+        watchService = FileSystems.getDefault().newWatchService();
+        Path skillsDir = Paths.get("skills/");
+        skillsDir.register(watchService, ENTRY_MODIFY);
+
+        System.out.println("热重载监控已启动");
+        new Thread(() -> {
+            while (true) {
+                try {
+                    WatchKey key = watchService.take();
+                    for (WatchEvent&lt;?&gt; event : key.pollEvents()) {
+                        Path changedFile = (Path) event.context();
+                        if (changedFile.toString().endsWith("skill.yml")) {
+                            System.out.println("检测到 Skill 变更，重新加载...");
+                            loader.scan();
+                        }
+                    }
+                    key.reset();
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
+    }
+}
+
+// 启动热重载监控
+SkillHotReloader reloader = new SkillHotReloader(loader);
+reloader.start();
+</pre></div>
+</div>
 
 <!-- ===== 8.4 Skills 的懒加载 ===== -->
 <h2 class="section-heading">8.4 Skills 的懒加载</h2>
@@ -162,7 +458,8 @@ observer.start()</pre></div>
 </table>
 </div>
 
-<div class="code-block"><pre>class LazySkillManager:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class LazySkillManager:
     def __init__(self, loader: SkillLoader):
         self.loader = loader
         self.activated: set = set()  # 已激活的 Skill
@@ -198,6 +495,170 @@ observer.start()</pre></div>
             for t in skill.get("tools", [])
         )
         return f"- {skill['name']} (已激活)\n  工具:\n{tools_desc}\n  策略:\n{skill.get('knowledge', '')}"</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class LazySkillManager {
+  private activated: Set&lt;string&gt; = new Set();
+
+  constructor(private loader: SkillLoader) {}
+
+  getPrompt(userMessage: string = ''): string {
+    const lines: string[] = [];
+
+    // 第一层：始终列出所有 Skill 名称（简短）
+    for (const [name, skill] of this.loader.registry) {
+      const triggers: string[] = skill.triggers || [];
+      // 第二层：触发词匹配 → 激活完整定义
+      if (triggers.some(t =&gt; userMessage.includes(t))) {
+        this.activated.add(name);
+        lines.push(this.formatFullSkill(skill));
+      } else {
+        // 第一层：只注入名称和描述
+        lines.push(`- ${name}: ${skill.description}`);
+      }
+    }
+
+    // 第三层：已激活但用户消息不匹配的，保持激活
+    for (const name of this.activated) {
+      const alreadyListed = lines.some(l =&gt; l.startsWith(`- ${name}:`));
+      if (!alreadyListed) {
+        const skill = this.loader.registry.get(name);
+        if (skill) lines.push(this.formatFullSkill(skill));
+      }
+    }
+
+    return '\n你可以使用以下技能：\n' + lines.join('\n');
+  }
+
+  private formatFullSkill(skill: any): string {
+    const toolsDesc = (skill.tools || [])
+      .map((t: any) =&gt; `  - ${t.name}: ${t.description}`)
+      .join('\n');
+    return `- ${skill.name} (已激活)\n  工具:\n${toolsDesc}\n  策略:\n${skill.knowledge || ''}`;
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+type LazySkillManager struct {
+	Loader    *SkillLoader
+	Activated map[string]bool
+}
+
+func NewLazySkillManager(loader *SkillLoader) *LazySkillManager {
+	return &LazySkillManager{
+		Loader:    loader,
+		Activated: make(map[string]bool),
+	}
+}
+
+func (m *LazySkillManager) GetPrompt(userMessage string) string {
+	var lines []string
+
+	// 第一层：始终列出所有 Skill 名称（简短）
+	for name, skill := range m.Loader.Registry {
+		triggers, _ := skill["triggers"].([]interface{})
+		matched := false
+		for _, t := range triggers {
+			if strings.Contains(userMessage, fmt.Sprintf("%v", t)) {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			m.Activated[name] = true
+			lines = append(lines, m.formatFullSkill(skill))
+		} else {
+			desc, _ := skill["description"].(string)
+			lines = append(lines, fmt.Sprintf("- %s: %s", name, desc))
+		}
+	}
+
+	// 第三层：已激活但用户消息不匹配的，保持激活
+	for name := range m.Activated {
+		alreadyListed := false
+		for _, l := range lines {
+			if strings.HasPrefix(l, fmt.Sprintf("- %s:", name)) {
+				alreadyListed = true
+				break
+			}
+		}
+		if !alreadyListed {
+			skill, ok := m.Loader.Registry[name]
+			if ok {
+				lines = append(lines, m.formatFullSkill(skill))
+			}
+		}
+	}
+
+	return "\n你可以使用以下技能：\n" + strings.Join(lines, "\n")
+}
+
+func (m *LazySkillManager) formatFullSkill(skill map[string]interface{}) string {
+	tools, _ := skill["tools"].([]interface{})
+	var toolLines []string
+	for _, t := range tools {
+		tool, _ := t.(map[string]interface{})
+		toolLines = append(toolLines, fmt.Sprintf("  - %v: %v", tool["name"], tool["description"]))
+	}
+	knowledge, _ := skill["knowledge"].(string)
+	return fmt.Sprintf("- %v (已激活)\n  工具:\n%s\n  策略:\n%s", skill["name"], strings.Join(toolLines, "\n"), knowledge)
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class LazySkillManager {
+    private SkillLoader loader;
+    private Set&lt;String&gt; activated = new HashSet&lt;&gt;();
+
+    public LazySkillManager(SkillLoader loader) {
+        this.loader = loader;
+    }
+
+    public String getPrompt(String userMessage) {
+        List&lt;String&gt; lines = new ArrayList&lt;&gt;();
+
+        // 第一层：始终列出所有 Skill 名称（简短）
+        for (var entry : loader.getRegistry().entrySet()) {
+            String name = entry.getKey();
+            Map&lt;String, Object&gt; skill = entry.getValue();
+            List&lt;String&gt; triggers = (List&lt;String&gt;) skill.getOrDefault("triggers", Collections.emptyList());
+            boolean matched = triggers.stream().anyMatch(userMessage::contains);
+            if (matched) {
+                activated.add(name);
+                lines.add(formatFullSkill(skill));
+            } else {
+                lines.add(String.format("- %s: %s", name, skill.get("description")));
+            }
+        }
+
+        // 第三层：已激活但用户消息不匹配的，保持激活
+        for (String name : activated) {
+            boolean alreadyListed = lines.stream().anyMatch(l -&gt; l.startsWith("- " + name + ":"));
+            if (!alreadyListed) {
+                Map&lt;String, Object&gt; skill = loader.getRegistry().get(name);
+                if (skill != null) lines.add(formatFullSkill(skill));
+            }
+        }
+
+        return "\n你可以使用以下技能：\n" + String.join("\n", lines);
+    }
+
+    private String formatFullSkill(Map&lt;String, Object&gt; skill) {
+        List&lt;Map&lt;String, Object&gt;&gt; tools = (List&lt;Map&lt;String, Object&gt;&gt;) skill.getOrDefault("tools", Collections.emptyList());
+        String toolsDesc = tools.stream()
+            .map(t -&gt; String.format("  - %s: %s", t.get("name"), t.get("description")))
+            .reduce((a, b) -&gt; a + "\n" + b)
+            .orElse("");
+        return String.format("- %s (已激活)\n  工具:\n%s\n  策略:\n%s",
+            skill.get("name"), toolsDesc, skill.getOrDefault("knowledge", ""));
+    }
+}
+</pre></div>
+</div>
 
 <!-- ===== 8.5 Skill 匹配与调度 ===== -->
 <h2 class="section-heading">8.5 Skill 匹配与调度</h2>
@@ -284,7 +745,8 @@ knowledge: |
 
 <p>对应的 Python 实现：</p>
 
-<div class="code-block"><pre># skills/weather-advisor/main.py
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/weather-advisor/main.py
 def get_weather(city: str, date: str = "today") -> dict:
     # ... 同第2章实现 ...
 
@@ -305,6 +767,97 @@ def get_clothing_advice(temperature: float, weather: str) -> dict:
         advice.append("避免户外活动")
 
     return {"advice": "、".join(advice)}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// skills/weather-advisor/main.ts
+function getWeather(city: string, date: string = 'today'): Record&lt;string, unknown&gt; {
+  // ... 同第2章实现 ...
+}
+
+function getClothingAdvice(temperature: number, weather: string): { advice: string } {
+  const advice: string[] = [];
+  if (temperature &lt; 10) {
+    advice.push('厚外套、围巾、手套');
+  } else if (temperature &lt; 20) {
+    advice.push('薄外套或毛衣');
+  } else if (temperature &lt; 28) {
+    advice.push('长袖衬衫');
+  } else {
+    advice.push('短袖、短裤');
+  }
+
+  if (weather.includes('雨')) {
+    advice.push('带伞');
+  }
+  if (weather.includes('雷')) {
+    advice.push('避免户外活动');
+  }
+
+  return { advice: advice.join('、') };
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+func getWeather(city string, date string) map[string]interface{} {
+	// ... 同第2章实现 ...
+	return nil
+}
+
+func getClothingAdvice(temperature float64, weather string) map[string]interface{} {
+	var advice []string
+	if temperature &lt; 10 {
+		advice = append(advice, "厚外套、围巾、手套")
+	} else if temperature &lt; 20 {
+		advice = append(advice, "薄外套或毛衣")
+	} else if temperature &lt; 28 {
+		advice = append(advice, "长袖衬衫")
+	} else {
+		advice = append(advice, "短袖、短裤")
+	}
+
+	if strings.Contains(weather, "雨") {
+		advice = append(advice, "带伞")
+	}
+	if strings.Contains(weather, "雷") {
+		advice = append(advice, "避免户外活动")
+	}
+
+	return map[string]interface{}{"advice": strings.Join(advice, "、")}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class WeatherAdvisor {
+    // skills/weather-advisor/WeatherAdvisor.java
+    public static Map&lt;String, Object&gt; getWeather(String city, String date) {
+        // ... 同第2章实现 ...
+        return null;
+    }
+
+    public static Map&lt;String, Object&gt; getClothingAdvice(double temperature, String weather) {
+        List&lt;String&gt; advice = new ArrayList&lt;&gt;();
+        if (temperature &lt; 10) {
+            advice.add("厚外套、围巾、手套");
+        } else if (temperature &lt; 20) {
+            advice.add("薄外套或毛衣");
+        } else if (temperature &lt; 28) {
+            advice.add("长袖衬衫");
+        } else {
+            advice.add("短袖、短裤");
+        }
+
+        if (weather.contains("雨")) {
+            advice.add("带伞");
+        }
+        if (weather.contains("雷")) {
+            advice.add("避免户外活动");
+        }
+
+        Map&lt;String, Object&gt; result = new HashMap&lt;&gt;();
+        result.put("advice", String.join("、", advice));
+        return result;
+    }
+}
+</pre></div>
+</div>
 
 <!-- ===== 8.8 Skill 市场：未来的应用商店 ===== -->
 <h2 class="section-heading">8.8 Skill 市场：未来的应用商店</h2>
@@ -378,7 +931,8 @@ error_handling:
   permission_denied: "无权限读取该文件，请确认访问权限"
   file_too_large: "文件超过 10MB 限制，请使用 offset/limit 分段读取"</pre></div>
 
-<div class="code-block"><pre># skills/base/read_file/main.py
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/base/read_file/main.py
 import os
 import pathlib
 
@@ -413,6 +967,174 @@ class ReadFileSkill:
             if limit:
                 lines = lines[:limit]
             return {"type": "text", "content": "".join(lines), "lines": len(lines)}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// skills/base/read_file/main.ts
+import * as fs from 'fs';
+import * as path from 'path';
+
+class ReadFileSkill {
+  /** 基础 Skill：单工具封装，侧重防御性编程 */
+
+  private readonly ALLOWED_EXTENSIONS = new Set([
+    '.txt', '.md', '.py', '.json', '.yaml', '.yml', '.csv', '.jpg', '.png'
+  ]);
+  private readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  execute(filePath: string, offset?: number, limit?: number): Record&lt;string, unknown&gt; {
+    // 1. 路径穿越防御
+    const resolved = path.resolve(filePath);
+    if (resolved.includes('..') || !resolved.startsWith(process.cwd())) {
+      return { error: '路径穿越攻击被拦截，禁止访问' };
+    }
+
+    // 2. 扩展名白名单
+    const ext = path.extname(resolved).toLowerCase();
+    if (!this.ALLOWED_EXTENSIONS.has(ext)) {
+      return { error: `不支持的文件类型: ${ext}` };
+    }
+
+    // 3. 文件大小限制
+    const stats = fs.statSync(resolved);
+    if (stats.size > this.MAX_FILE_SIZE) {
+      return { error: `文件超过 ${this.MAX_FILE_SIZE / 1024 / 1024}MB 限制` };
+    }
+
+    // 4. 执行核心逻辑
+    if (['.jpg', '.png'].includes(ext)) {
+      return { type: 'image', path: resolved };
+    }
+
+    const content = fs.readFileSync(resolved, 'utf-8');
+    let lines = content.split('\n');
+    if (offset) {
+      lines = lines.slice(offset - 1); // 1-indexed
+    }
+    if (limit) {
+      lines = lines.slice(0, limit);
+    }
+    return { type: 'text', content: lines.join('\n'), lines: lines.length };
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+type ReadFileSkill struct {
+	AllowedExtensions map[string]bool
+	MaxFileSize      int64
+}
+
+func NewReadFileSkill() *ReadFileSkill {
+	return &ReadFileSkill{
+		AllowedExtensions: map[string]bool{
+			".txt": true, ".md": true, ".py": true, ".json": true,
+			".yaml": true, ".yml": true, ".csv": true, ".jpg": true, ".png": true,
+		},
+		MaxFileSize: 10 * 1024 * 1024, // 10MB
+	}
+}
+
+func (s *ReadFileSkill) Execute(pathStr string, offset, limit int) map[string]interface{} {
+	// 1. 路径穿越防御
+	resolved, _ := filepath.Abs(pathStr)
+	cwd, _ := os.Getwd()
+	if strings.Contains(resolved, "..") || !strings.HasPrefix(resolved, cwd) {
+		return map[string]interface{}{"error": "路径穿越攻击被拦截，禁止访问"}
+	}
+
+	// 2. 扩展名白名单
+	ext := filepath.Ext(resolved)
+	if !s.AllowedExtensions[ext] {
+		return map[string]interface{}{"error": fmt.Sprintf("不支持的文件类型: %s", ext)}
+	}
+
+	// 3. 文件大小限制
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	if info.Size() &gt; s.MaxFileSize {
+		return map[string]interface{}{"error": fmt.Sprintf("文件超过 %dMB 限制", s.MaxFileSize/1024/1024)}
+	}
+
+	// 4. 执行核心逻辑
+	if ext == ".jpg" || ext == ".png" {
+		return map[string]interface{}{"type": "image", "path": resolved}
+	}
+
+	data, err := os.ReadFile(resolved)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+	lines := strings.Split(string(data), "\n")
+	if offset &gt; 0 {
+		lines = lines[offset-1:]
+	}
+	if limit &gt; 0 && limit &lt; len(lines) {
+		lines = lines[:limit]
+	}
+	return map[string]interface{}{
+		"type":    "text",
+		"content": strings.Join(lines, "\n"),
+		"lines":   len(lines),
+	}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+
+public class ReadFileSkill {
+    /** 基础 Skill：单工具封装，侧重防御性编程 */
+
+    private static final Set&lt;String&gt; ALLOWED_EXTENSIONS = Set.of(
+        ".txt", ".md", ".py", ".json", ".yaml", ".yml", ".csv", ".jpg", ".png"
+    );
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    public Map&lt;String, Object&gt; execute(String path, Integer offset, Integer limit) {
+        // 1. 路径穿越防御
+        Path resolved = Paths.get(path).toAbsolutePath().normalize();
+        String cwd = System.getProperty("user.dir");
+        if (resolved.toString().contains("..") || !resolved.startsWith(cwd)) {
+            return Map.of("error", "路径穿越攻击被拦截，禁止访问");
+        }
+
+        // 2. 扩展名白名单
+        String ext = resolved.toString().substring(resolved.toString().lastIndexOf("."));
+        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+            return Map.of("error", "不支持的文件类型: " + ext);
+        }
+
+        try {
+            // 3. 文件大小限制
+            long size = Files.size(resolved);
+            if (size &gt; MAX_FILE_SIZE) {
+                return Map.of("error", "文件超过 " + (MAX_FILE_SIZE / 1024 / 1024) + "MB 限制");
+            }
+
+            // 4. 执行核心逻辑
+            if (ext.equals(".jpg") || ext.equals(".png")) {
+                return Map.of("type", "image", "path", resolved.toString());
+            }
+
+            List&lt;String&gt; allLines = Files.readAllLines(resolved);
+            int start = offset != null ? offset - 1 : 0;
+            int end = limit != null ? Math.min(start + limit, allLines.size()) : allLines.size();
+            List&lt;String&gt; lines = allLines.subList(start, end);
+            return Map.of("type", "text", "content", String.join("\n", lines), "lines", lines.size());
+        } catch (IOException e) {
+            return Map.of("error", e.getMessage());
+        }
+    }
+}
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.9.2 复合 Skill：多工具组合 + 调用策略</h3>
 
@@ -524,7 +1246,8 @@ permissions:
 </table>
 </div>
 
-<div class="code-block"><pre># 步骤 1：模式识别 — 从项目日志中提取重复模式
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 步骤 1：模式识别 — 从项目日志中提取重复模式
 import re
 from collections import Counter
 
@@ -558,8 +1281,197 @@ patterns = extract_patterns(logs)
 #   {"pattern": ["read_file", "generate_report"], "count": 15},
 #   {"pattern": ["get_weather", "get_clothing_advice"], "count": 12},
 # ]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 步骤 1：模式识别 — 从项目日志中提取重复模式
+import * as re from 'regex';
 
-<div class="code-block"><pre># 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
+interface PatternResult {
+  pattern: string[];
+  count: number;
+}
+
+function extractPatterns(executionLogs: string[]): PatternResult[] {
+  /** 从 Agent 执行日志中识别重复的工具调用模式 */
+  // 解析工具调用序列
+  const sequences: string[][] = [];
+  let currentSeq: string[] = [];
+
+  for (const log of executionLogs) {
+    if (log.includes('tool_call:')) {
+      const match = log.match(/tool_call: (\w+)/);
+      if (match) currentSeq.push(match[1]);
+    } else if (log.includes('response:')) {
+      if (currentSeq.length &gt; 0) {
+        sequences.push([...currentSeq]);
+        currentSeq = [];
+      }
+    }
+  }
+
+  // 统计高频模式（长度 &gt;= 2）
+  const counter = new Map&lt;string, number&gt;();
+  for (const seq of sequences) {
+    if (seq.length &gt;= 2) {
+      const key = seq.join(' → ');
+      counter.set(key, (counter.get(key) || 0) + 1);
+    }
+  }
+
+  return Array.from(counter.entries())
+    .map(([key, count]) =&gt; ({ pattern: key.split(' → '), count }))
+    .sort((a, b) =&gt; b.count - a.count)
+    .slice(0, 5);
+}
+
+// 示例输出
+const patterns = extractPatterns(logs);
+// [
+//   { pattern: ["read_file", "lint_check", "security_scan"], count: 23 },
+//   { pattern: ["read_file", "generate_report"], count: 15 },
+//   { pattern: ["get_weather", "get_clothing_advice"], count: 12 },
+// ]
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+// 步骤 1：模式识别 — 从项目日志中提取重复模式
+func ExtractPatterns(executionLogs []string) []map[string]interface{} {
+	/** 从 Agent 执行日志中识别重复的工具调用模式 */
+	// 解析工具调用序列
+	var sequences [][]string
+	var currentSeq []string
+
+	toolCallRegex := regexp.MustCompile(`tool_call: (\w+)`)
+
+	for _, log := range executionLogs {
+		if strings.Contains(log, "tool_call:") {
+			match := toolCallRegex.FindStringSubmatch(log)
+			if len(match) &gt; 1 {
+				currentSeq = append(currentSeq, match[1])
+			}
+		} else if strings.Contains(log, "response:") {
+			if len(currentSeq) &gt; 0 {
+				sequences = append(sequences, currentSeq)
+				currentSeq = nil
+			}
+		}
+	}
+
+	// 统计高频模式（长度 &gt;= 2）
+	counter := make(map[string]int)
+	patternMap := make(map[string][]string)
+	for _, seq := range sequences {
+		if len(seq) &gt;= 2 {
+			key := strings.Join(seq, " → ")
+			counter[key]++
+			patternMap[key] = seq
+		}
+	}
+
+	type kv struct {
+		key   string
+		count int
+	}
+	var sorted []kv
+	for k, v := range counter {
+		sorted = append(sorted, kv{k, v})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].count &gt; sorted[j].count
+	})
+
+	var result []map[string]interface{}
+	for i, kv := range sorted {
+		if i &gt;= 5 {
+			break
+		}
+		result = append(result, map[string]interface{}{
+			"pattern": patternMap[kv.key],
+			"count":   kv.count,
+		})
+	}
+	return result
+}
+
+// 示例输出
+// patterns := ExtractPatterns(logs)
+// [
+//   {"pattern": ["read_file", "lint_check", "security_scan"], "count": 23},
+//   {"pattern": ["read_file", "generate_report"], "count": 15},
+//   {"pattern": ["get_weather", "get_clothing_advice"], "count": 12},
+// ]
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.regex.*;
+import java.util.stream.*;
+
+// 步骤 1：模式识别 — 从项目日志中提取重复模式
+public class PatternExtractor {
+
+    public static List&lt;Map&lt;String, Object&gt;&gt; extractPatterns(List&lt;String&gt; executionLogs) {
+        /** 从 Agent 执行日志中识别重复的工具调用模式 */
+        // 解析工具调用序列
+        List&lt;List&lt;String&gt;&gt; sequences = new ArrayList&lt;&gt;();
+        List&lt;String&gt; currentSeq = new ArrayList&lt;&gt;();
+
+        Pattern toolCallPattern = Pattern.compile("tool_call: (\\\\w+)");
+
+        for (String log : executionLogs) {
+            if (log.contains("tool_call:")) {
+                Matcher matcher = toolCallPattern.matcher(log);
+                if (matcher.find()) {
+                    currentSeq.add(matcher.group(1));
+                }
+            } else if (log.contains("response:")) {
+                if (!currentSeq.isEmpty()) {
+                    sequences.add(new ArrayList&lt;&gt;(currentSeq));
+                    currentSeq.clear();
+                }
+            }
+        }
+
+        // 统计高频模式（长度 &gt;= 2）
+        Map&lt;String, Integer&gt; counter = new HashMap&lt;&gt;();
+        Map&lt;String, List&lt;String&gt;&gt; patternMap = new HashMap&lt;&gt;();
+
+        for (List&lt;String&gt; seq : sequences) {
+            if (seq.size() &gt;= 2) {
+                String key = String.join(" → ", seq);
+                counter.merge(key, 1, Integer::sum);
+                patternMap.put(key, seq);
+            }
+        }
+
+        return counter.entrySet().stream()
+            .sorted((a, b) -&gt; b.getValue().compareTo(a.getValue()))
+            .limit(5)
+            .map(e -&gt; {
+                Map&lt;String, Object&gt; m = new LinkedHashMap&lt;&gt;();
+                m.put("pattern", patternMap.get(e.getKey()));
+                m.put("count", e.getValue());
+                return m;
+            })
+            .collect(Collectors.toList());
+    }
+}
+
+// 示例输出
+// List&lt;Map&lt;String, Object&gt;&gt; patterns = PatternExtractor.extractPatterns(logs);
+// [
+//   {pattern: ["read_file", "lint_check", "security_scan"], count: 23},
+//   {pattern: ["read_file", "generate_report"], count: 15},
+//   {pattern: ["get_weather", "get_clothing_advice"], count: 12},
+// ]
+</pre></div>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
 def pattern_to_skill_yaml(pattern: list[str], count: int) -> str:
     """将高频工具调用模式转化为 Skill 定义模板"""
     skill_name = f"{pattern[0]}-workflow"
@@ -587,6 +1499,116 @@ knowledge: |
 {knowledge}"""
 
 # 输出：code-reviewer 的初始 YAML 定义</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
+function patternToSkillYaml(pattern: string[], count: number): string {
+  /** 将高频工具调用模式转化为 Skill 定义模板 */
+  const skillName = `${pattern[0]}-workflow`;
+
+  const toolsYaml: string[] = [];
+  for (let i = 0; i &lt; pattern.length; i++) {
+    toolsYaml.push(
+      `  - name: ${pattern[i]}` +
+      `\n    description: 第${i + 1}步：${pattern[i]}` +
+      `\n    parameters:` +
+      `\n      input_from_previous: { type: string, default: null }`
+    );
+  }
+
+  const knowledge = '## 调用策略\n' +
+    pattern.map((tool, i) =&gt; `${i + 1}. 调用 ${tool}`).join('\n');
+
+  return `name: ${skillName}
+version: 0.1.0
+description: 从 ${count} 次项目实践中提炼的工具编排模式
+layer: compound
+triggers: ["${pattern[0]}"]
+
+tools:
+${toolsYaml.join('\n')}
+
+knowledge: |
+${knowledge}`;
+}
+
+// 输出：code-reviewer 的初始 YAML 定义
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+// 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
+func PatternToSkillYaml(pattern []string, count int) string {
+	/** 将高频工具调用模式转化为 Skill 定义模板 */
+	skillName := fmt.Sprintf("%s-workflow", pattern[0])
+
+	var toolsYaml []string
+	for i, tool := range pattern {
+		toolsYaml = append(toolsYaml, fmt.Sprintf(
+			"  - name: %s\n    description: 第%d步：%s\n    parameters:\n      input_from_previous: { type: string, default: null }",
+			tool, i+1, tool,
+		))
+	}
+
+	var steps []string
+	for i, tool := range pattern {
+		steps = append(steps, fmt.Sprintf("%d. 调用 %s", i+1, tool))
+	}
+	knowledge := "## 调用策略\n" + strings.Join(steps, "\n")
+
+	return fmt.Sprintf(`name: %s
+version: 0.1.0
+description: 从 %d 次项目实践中提炼的工具编排模式
+layer: compound
+triggers: ["%s"]
+
+tools:
+%s
+
+knowledge: |
+%s`, skillName, count, pattern[0], strings.Join(toolsYaml, "\n"), knowledge)
+}
+
+// 输出：code-reviewer 的初始 YAML 定义
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+// 步骤 2：抽象提炼 — 把模式转化为 Skill YAML
+public class PatternToYaml {
+
+    public static String patternToSkillYaml(List&lt;String&gt; pattern, int count) {
+        /** 将高频工具调用模式转化为 Skill 定义模板 */
+        String skillName = pattern.get(0) + "-workflow";
+
+        StringBuilder toolsYaml = new StringBuilder();
+        for (int i = 0; i &lt; pattern.size(); i++) {
+            toolsYaml.append(String.format(
+                "  - name: %s\n    description: 第%d步：%s\n    parameters:\n      input_from_previous: { type: string, default: null }%s",
+                pattern.get(i), i + 1, pattern.get(i),
+                i &lt; pattern.size() - 1 ? "\n" : ""
+            ));
+        }
+
+        StringBuilder steps = new StringBuilder();
+        for (int i = 0; i &lt; pattern.size(); i++) {
+            steps.append(String.format("%d. 调用 %s", i + 1, pattern.get(i)));
+            if (i &lt; pattern.size() - 1) steps.append("\n");
+        }
+        String knowledge = "## 调用策略\n" + steps.toString();
+
+        return String.format(
+            "name: %s\nversion: 0.1.0\ndescription: 从 %d 次项目实践中提炼的工具编排模式\n" +
+            "layer: compound\ntriggers: [\"%s\"]\n\ntools:\n%s\n\nknowledge: |\n%s",
+            skillName, count, pattern.get(0), toolsYaml.toString(), knowledge
+        );
+    }
+}
+
+// 输出：code-reviewer 的初始 YAML 定义
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.10.2 Skill 的版本迭代策略</h3>
 
@@ -605,7 +1627,8 @@ knowledge: |
 </table>
 </div>
 
-<div class="code-block"><pre># skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
 versions:
   - version: 2.0.0
     date: 2025-03-15
@@ -662,6 +1685,220 @@ class SkillVersionManager:
             "upgraded": f"{current} → {target_version}",
             "migration_steps": migrations
         }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
+/*
+versions:
+  - version: 2.0.0
+    date: 2025-03-15
+    changes:
+      - "MAJOR: 重构调用策略，支持多天天气批量查询"
+      - "MAJOR: 新增 get_travel_advice 工具"
+      - "MINOR: 穿衣建议增加雾霾场景"
+    migration_note: "多天查询需要传 date_list 参数，旧 date 参数仍兼容"
+  - version: 1.1.0
+    date: 2025-01-20
+    changes:
+      - "MINOR: 新增紫外线指数提醒"
+      - "PATCH: 修复 date='tomorrow' 解析错误"
+  - version: 1.0.0
+    date: 2024-11-01
+    changes:
+      - "初始稳定版本发布"
+      - "包含 get_weather + get_clothing_advice"
+*/
+
+// 版本管理器：自动处理兼容性
+class SkillVersionManager {
+  private installed: Map&lt;string, string&gt; = new Map();
+
+  checkCompatibility(skillName: string, requiredVersion: string): boolean {
+    /** 检查已安装版本是否满足需求 */
+    const installed = this.installed.get(skillName);
+    if (!installed) return false;
+    // SemVer 兼容性检查
+    const [reqMajor, reqMinor, reqPatch] = requiredVersion.split('.').map(Number);
+    const [instMajor, instMinor, instPatch] = installed.split('.').map(Number);
+    // MAJOR 必须一致，MINOR &gt;= 要求
+    return instMajor === reqMajor && instMinor &gt;= reqMinor;
+  }
+
+  upgrade(skillName: string, targetVersion: string): Record&lt;string, unknown&gt; {
+    /** 升级 Skill，返回迁移指南 */
+    const current = this.installed.get(skillName);
+    if (!current) return { error: `Skill ${skillName} 未安装` };
+
+    // 加载 CHANGELOG，检查是否需要迁移
+    const changelog = this.loadChangelog(skillName);
+    const migrations = changelog.filter(entry =&gt;
+      this.versionBetween(entry.version, current, targetVersion) &&
+      entry.changes.some((c: string) =&gt; c.startsWith('MAJOR'))
+    );
+
+    this.installed.set(skillName, targetVersion);
+    return {
+      upgraded: `${current} → ${targetVersion}`,
+      migration_steps: migrations
+    };
+  }
+
+  private loadChangelog(skillName: string): any[] { /* ... */ return []; }
+  private versionBetween(v: string, from: string, to: string): boolean { /* ... */ return true; }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
+// versions:
+//   - version: 2.0.0
+//     date: 2025-03-15
+//     changes:
+//       - "MAJOR: 重构调用策略，支持多天天气批量查询"
+//       - "MAJOR: 新增 get_travel_advice 工具"
+//       - "MINOR: 穿衣建议增加雾霾场景"
+//     migration_note: "多天查询需要传 date_list 参数，旧 date 参数仍兼容"
+//   - version: 1.1.0
+//     date: 2025-01-20
+//     changes:
+//       - "MINOR: 新增紫外线指数提醒"
+//       - "PATCH: 修复 date='tomorrow' 解析错误"
+//   - version: 1.0.0
+//     date: 2024-11-01
+//     changes:
+//       - "初始稳定版本发布"
+//       - "包含 get_weather + get_clothing_advice"
+
+// 版本管理器：自动处理兼容性
+type SkillVersionManager struct {
+	Installed map[string]string
+}
+
+func (m *SkillVersionManager) CheckCompatibility(skillName, requiredVersion string) bool {
+	installed, ok := m.Installed[skillName]
+	if !ok {
+		return false
+	}
+	// SemVer 兼容性检查
+	reqParts := strings.Split(requiredVersion, ".")
+	instParts := strings.Split(installed, ".")
+	reqMajor, _ := strconv.Atoi(reqParts[0])
+	reqMinor, _ := strconv.Atoi(reqParts[1])
+	instMajor, _ := strconv.Atoi(instParts[0])
+	instMinor, _ := strconv.Atoi(instParts[1])
+	// MAJOR 必须一致，MINOR &gt;= 要求
+	return instMajor == reqMajor && instMinor &gt;= reqMinor
+}
+
+func (m *SkillVersionManager) Upgrade(skillName, targetVersion string) map[string]interface{} {
+	current, ok := m.Installed[skillName]
+	if !ok {
+		return map[string]interface{}{"error": fmt.Sprintf("Skill %s 未安装", skillName)}
+	}
+
+	// 加载 CHANGELOG，检查是否需要迁移
+	changelog := m.loadChangelog(skillName)
+	var migrations []map[string]interface{}
+	for _, entry := range changelog {
+		if m.versionBetween(entry["version"].(string), current, targetVersion) {
+			changes, _ := entry["changes"].([]interface{})
+			for _, c := range changes {
+				if strings.HasPrefix(c.(string), "MAJOR") {
+					migrations = append(migrations, entry)
+					break
+				}
+			}
+		}
+	}
+
+	m.Installed[skillName] = targetVersion
+	return map[string]interface{}{
+		"upgraded":         fmt.Sprintf("%s → %s", current, targetVersion),
+		"migration_steps":  migrations,
+	}
+}
+
+func (m *SkillVersionManager) loadChangelog(skillName string) []map[string]interface{} { /* ... */ return nil }
+func (m *SkillVersionManager) versionBetween(v, from, to string) bool { /* ... */ return true }
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+// skills/weather-advisor/CHANGELOG.yml — Skill 版本变更记录
+/*
+versions:
+  - version: 2.0.0
+    date: 2025-03-15
+    changes:
+      - "MAJOR: 重构调用策略，支持多天天气批量查询"
+      - "MAJOR: 新增 get_travel_advice 工具"
+      - "MINOR: 穿衣建议增加雾霾场景"
+    migration_note: "多天查询需要传 date_list 参数，旧 date 参数仍兼容"
+  - version: 1.1.0
+    date: 2025-01-20
+    changes:
+      - "MINOR: 新增紫外线指数提醒"
+      - "PATCH: 修复 date='tomorrow' 解析错误"
+  - version: 1.0.0
+    date: 2024-11-01
+    changes:
+      - "初始稳定版本发布"
+      - "包含 get_weather + get_clothing_advice"
+*/
+
+// 版本管理器：自动处理兼容性
+public class SkillVersionManager {
+    private Map&lt;String, String&gt; installed = new HashMap&lt;&gt;();
+
+    public boolean checkCompatibility(String skillName, String requiredVersion) {
+        /** 检查已安装版本是否满足需求 */
+        String installedVersion = installed.get(skillName);
+        if (installedVersion == null) return false;
+        // SemVer 兼容性检查
+        String[] reqParts = requiredVersion.split("\\.");
+        String[] instParts = installedVersion.split("\\.");
+        int reqMajor = Integer.parseInt(reqParts[0]);
+        int reqMinor = Integer.parseInt(reqParts[1]);
+        int instMajor = Integer.parseInt(instParts[0]);
+        int instMinor = Integer.parseInt(instParts[1]);
+        // MAJOR 必须一致，MINOR &gt;= 要求
+        return instMajor == reqMajor && instMinor &gt;= reqMinor;
+    }
+
+    public Map&lt;String, Object&gt; upgrade(String skillName, String targetVersion) {
+        /** 升级 Skill，返回迁移指南 */
+        String current = installed.get(skillName);
+        if (current == null) {
+            return Map.of("error", "Skill " + skillName + " 未安装");
+        }
+
+        // 加载 CHANGELOG，检查是否需要迁移
+        List&lt;Map&lt;String, Object&gt;&gt; changelog = loadChangelog(skillName);
+        List&lt;Map&lt;String, Object&gt;&gt; migrations = new ArrayList&lt;&gt;();
+        for (var entry : changelog) {
+            if (versionBetween((String) entry.get("version"), current, targetVersion)) {
+                List&lt;String&gt; changes = (List&lt;String&gt;) entry.get("changes");
+                if (changes.stream().anyMatch(c -&gt; c.startsWith("MAJOR"))) {
+                    migrations.add(entry);
+                }
+            }
+        }
+
+        installed.put(skillName, targetVersion);
+        Map&lt;String, Object&gt; result = new HashMap&lt;&gt;();
+        result.put("upgraded", current + " → " + targetVersion);
+        result.put("migration_steps", migrations);
+        return result;
+    }
+
+    private List&lt;Map&lt;String, Object&gt;&gt; loadChangelog(String skillName) { /* ... */ return Collections.emptyList(); }
+    private boolean versionBetween(String v, String from, String to) { /* ... */ return true; }
+}
+</pre></div>
+</div>
 
 <div class="tip-banner">
 <div class="banner-title">💡 沉淀优先级</div>
@@ -716,7 +1953,8 @@ requires_approval:    # 哪些操作需要审批
 
 <p>声明只是声明，<strong>运行时拦截</strong>才是真正的防线。permissionGuard 是一个中间件，在每次工具调用前检查权限：</p>
 
-<div class="code-block"><pre># permissionGuard 中间件实现
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># permissionGuard 中间件实现
 class PermissionGuard:
     """WaLiCode 运行时拦截模式——在工具调用前检查权限"""
 
@@ -772,12 +2010,235 @@ class PermissionGuard:
             return {"status": "need_approval", "operation": operation}
 
         return {"status": "allow"}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// permissionGuard 中间件实现
+class PermissionGuard {
+  /** WaLiCode 运行时拦截模式——在工具调用前检查权限 */
+
+  // 黑名单：永远禁止的操作
+  private readonly BLOCKED_OPERATIONS: Record&lt;string, string&gt; = {
+    rm_rf: '禁止递归删除',
+    eval: '禁止动态代码执行',
+    exec_shell: '禁止直接执行 shell 命令（除非白名单）',
+  };
+
+  // 白名单：特定 Skill 的允许操作
+  private readonly ALLOWED_PER_SKILL: Record&lt;string, Record&lt;string, boolean&gt;&gt; = {
+    'file-manager': {
+      'filesystem.read': true,
+      'filesystem.write': true,
+      'filesystem.delete': false,
+    },
+    'weather-advisor': {
+      'network.http_get': true,
+      'network.http_post': false,
+    },
+  };
+
+  private readonly NEEDS_APPROVAL: Record&lt;string, string[]&gt; = {};
+
+  check(skillName: string, operation: string, params: Record&lt;string, unknown&gt;): {
+    status: string; reason?: string; operation?: string;
+  } {
+    /** 检查权限，返回 allow/deny/need_approval */
+    // 1. 黑名单检查（最高优先级）
+    if (this.BLOCKED_OPERATIONS[operation]) {
+      return { status: 'denied', reason: this.BLOCKED_OPERATIONS[operation] };
+    }
+
+    // 2. 白名单检查
+    const skillPerms = this.ALLOWED_PER_SKILL[skillName] || {};
+    if (!skillPerms[operation]) {
+      return {
+        status: 'denied',
+        reason: `Skill ${skillName} 未获得 ${operation} 权限`,
+      };
+    }
+
+    // 3. 参数级安全检查（如路径穿越、SSRF）
+    if (params.path) {
+      const path = params.path as string;
+      if (path.includes('..') || path.startsWith('/etc')) {
+        return { status: 'denied', reason: '路径穿越攻击被拦截' };
+      }
+    }
+
+    if (params.url) {
+      const url = params.url as string;
+      const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', 'internal.'];
+      if (blockedHosts.some(h =&gt; url.includes(h))) {
+        return { status: 'denied', reason: 'SSRF 攻击被拦截' };
+      }
+    }
+
+    // 4. 审批检查
+    const needsApproval = this.NEEDS_APPROVAL[skillName] || [];
+    if (needsApproval.includes(operation)) {
+      return { status: 'need_approval', operation };
+    }
+
+    return { status: 'allow' };
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+// permissionGuard 中间件实现
+type PermissionGuard struct {
+	// 黑名单：永远禁止的操作
+	BlockedOperations map[string]string
+	// 白名单：特定 Skill 的允许操作
+	AllowedPerSkill map[string]map[string]bool
+	// 需审批的操作
+	NeedsApproval map[string][]string
+}
+
+func NewPermissionGuard() *PermissionGuard {
+	return &PermissionGuard{
+		BlockedOperations: map[string]string{
+			"rm_rf":      "禁止递归删除",
+			"eval":       "禁止动态代码执行",
+			"exec_shell": "禁止直接执行 shell 命令（除非白名单）",
+		},
+		AllowedPerSkill: map[string]map[string]bool{
+			"file-manager": {
+				"filesystem.read":   true,
+				"filesystem.write":  true,
+				"filesystem.delete": false,
+			},
+			"weather-advisor": {
+				"network.http_get":  true,
+				"network.http_post": false,
+			},
+		},
+		NeedsApproval: map[string][]string{},
+	}
+}
+
+func (g *PermissionGuard) Check(skillName, operation string, params map[string]interface{}) map[string]interface{} {
+	/** 检查权限，返回 allow/deny/need_approval */
+	// 1. 黑名单检查（最高优先级）
+	if reason, ok := g.BlockedOperations[operation]; ok {
+		return map[string]interface{}{"status": "denied", "reason": reason}
+	}
+
+	// 2. 白名单检查
+	skillPerms, ok := g.AllowedPerSkill[skillName]
+	if !ok || !skillPerms[operation] {
+		return map[string]interface{}{
+			"status": "denied",
+			"reason": fmt.Sprintf("Skill %s 未获得 %s 权限", skillName, operation),
+		}
+	}
+
+	// 3. 参数级安全检查（如路径穿越、SSRF）
+	if path, ok := params["path"].(string); ok {
+		if strings.Contains(path, "..") || strings.HasPrefix(path, "/etc") {
+			return map[string]interface{}{"status": "denied", "reason": "路径穿越攻击被拦截"}
+		}
+	}
+
+	if url, ok := params["url"].(string); ok {
+		blockedHosts := []string{"localhost", "127.0.0.1", "0.0.0.0", "internal."}
+		for _, h := range blockedHosts {
+			if strings.Contains(url, h) {
+				return map[string]interface{}{"status": "denied", "reason": "SSRF 攻击被拦截"}
+			}
+		}
+	}
+
+	// 4. 审批检查
+	for _, op := range g.NeedsApproval[skillName] {
+		if op == operation {
+			return map[string]interface{}{"status": "need_approval", "operation": operation}
+		}
+	}
+
+	return map[string]interface{}{"status": "allow"}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+// permissionGuard 中间件实现
+public class PermissionGuard {
+    /** WaLiCode 运行时拦截模式——在工具调用前检查权限 */
+
+    // 黑名单：永远禁止的操作
+    private static final Map&lt;String, String&gt; BLOCKED_OPERATIONS = Map.of(
+        "rm_rf", "禁止递归删除",
+        "eval", "禁止动态代码执行",
+        "exec_shell", "禁止直接执行 shell 命令（除非白名单）"
+    );
+
+    // 白名单：特定 Skill 的允许操作
+    private static final Map&lt;String, Map&lt;String, Boolean&gt;&gt; ALLOWED_PER_SKILL = Map.of(
+        "file-manager", Map.of(
+            "filesystem.read", true,
+            "filesystem.write", true,
+            "filesystem.delete", false
+        ),
+        "weather-advisor", Map.of(
+            "network.http_get", true,
+            "network.http_post", false
+        )
+    );
+
+    private final Map&lt;String, List&lt;String&gt;&gt; needsApproval = new HashMap&lt;&gt;();
+
+    public Map&lt;String, Object&gt; check(String skillName, String operation, Map&lt;String, Object&gt; params) {
+        /** 检查权限，返回 allow/deny/need_approval */
+        // 1. 黑名单检查（最高优先级）
+        if (BLOCKED_OPERATIONS.containsKey(operation)) {
+            return Map.of("status", "denied", "reason", BLOCKED_OPERATIONS.get(operation));
+        }
+
+        // 2. 白名单检查
+        Map&lt;String, Boolean&gt; skillPerms = ALLOWED_PER_SKILL.getOrDefault(skillName, Collections.emptyMap());
+        if (!skillPerms.getOrDefault(operation, false)) {
+            return Map.of(
+                "status", "denied",
+                "reason", "Skill " + skillName + " 未获得 " + operation + " 权限"
+            );
+        }
+
+        // 3. 参数级安全检查（如路径穿越、SSRF）
+        if (params.containsKey("path")) {
+            String path = (String) params.get("path");
+            if (path.contains("..") || path.startsWith("/etc")) {
+                return Map.of("status", "denied", "reason", "路径穿越攻击被拦截");
+            }
+        }
+
+        if (params.containsKey("url")) {
+            String url = (String) params.get("url");
+            List&lt;String&gt; blockedHosts = List.of("localhost", "127.0.0.1", "0.0.0.0", "internal.");
+            if (blockedHosts.stream().anyMatch(url::contains)) {
+                return Map.of("status", "denied", "reason", "SSRF 攻击被拦截");
+            }
+        }
+
+        // 4. 审批检查
+        List&lt;String&gt; approvalList = needsApproval.getOrDefault(skillName, Collections.emptyList());
+        if (approvalList.contains(operation)) {
+            return Map.of("status", "need_approval", "operation", operation);
+        }
+
+        return Map.of("status", "allow");
+    }
+}
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.11.3 Layer 3：审批机制（ApprovalGate）</h3>
 
 <p>对于高危操作（删除文件、发送邮件、支付），Agent 必须<strong>暂停并等待用户确认</strong>：</p>
 
-<div class="code-block"><pre># 审批机制实现
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 审批机制实现
 class ApprovalGate:
     """WaLiCode ApprovalGate 模式——高危操作需用户确认"""
 
@@ -819,12 +2280,168 @@ guard_result = permission_guard.check("file-manager", "filesystem.write", {"path
 if guard_result["status"] == "need_approval":
     approval_id = approval_gate.request_approval("file-manager", "filesystem.write", {"path": "/data/report.csv"})
     # Agent 等待用户响应...</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 审批机制实现
+class ApprovalGate {
+  /** WaLiCode ApprovalGate 模式——高危操作需用户确认 */
+
+  private pending: Map&lt;string, Record&lt;string, unknown&gt;&gt; = new Map();
+
+  requestApproval(skillName: string, operation: string, params: Record&lt;string, unknown&gt;): string {
+    /** 请求审批，返回 approval_id */
+    const approvalId = `apr_${skillName}_${operation}_${Date.now()}`;
+    this.pending.set(approvalId, {
+      skill: skillName,
+      operation,
+      params,
+      status: 'pending',
+      created_at: Date.now(),
+    });
+    // 暂停执行，通知用户
+    console.log(`⚠️ 需要审批: ${skillName} 想执行 ${operation}`);
+    console.log(`   参数: ${JSON.stringify(params)}`);
+    console.log(`   请回复 /approve ${approvalId} 或 /reject ${approvalId}`);
+    return approvalId;
+  }
+
+  handleResponse(approvalId: string, approved: boolean): Record&lt;string, unknown&gt; {
+    /** 处理用户的审批响应 */
+    const request = this.pending.get(approvalId);
+    if (!request) return { error: '审批 ID 不存在' };
+
+    if (approved) {
+      request.status = 'approved';
+      return { status: 'approved', proceed: true };
+    } else {
+      request.status = 'rejected';
+      return { status: 'rejected', proceed: false };
+    }
+  }
+}
+
+// 使用示例
+const guardResult = permissionGuard.check('file-manager', 'filesystem.write', { path: '/data/report.csv' });
+if (guardResult.status === 'need_approval') {
+  const approvalId = approvalGate.requestApproval('file-manager', 'filesystem.write', { path: '/data/report.csv' });
+  // Agent 等待用户响应...
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"time"
+)
+
+// 审批机制实现
+type ApprovalGate struct {
+	Pending map[string]map[string]interface{}
+}
+
+func NewApprovalGate() *ApprovalGate {
+	return &ApprovalGate{
+		Pending: make(map[string]map[string]interface{}),
+	}
+}
+
+func (g *ApprovalGate) RequestApproval(skillName, operation string, params map[string]interface{}) string {
+	/** 请求审批，返回 approval_id */
+	approvalId := fmt.Sprintf("apr_%s_%s_%d", skillName, operation, time.Now().Unix())
+	g.Pending[approvalId] = map[string]interface{}{
+		"skill":      skillName,
+		"operation":   operation,
+		"params":      params,
+		"status":     "pending",
+		"created_at": time.Now().Unix(),
+	}
+	// 暂停执行，通知用户
+	fmt.Printf("⚠️ 需要审批: %s 想执行 %s\n", skillName, operation)
+	fmt.Printf("   参数: %v\n", params)
+	fmt.Printf("   请回复 /approve %s 或 /reject %s\n", approvalId, approvalId)
+	return approvalId
+}
+
+func (g *ApprovalGate) HandleResponse(approvalId string, approved bool) map[string]interface{} {
+	/** 处理用户的审批响应 */
+	request, ok := g.Pending[approvalId]
+	if !ok {
+		return map[string]interface{}{"error": "审批 ID 不存在"}
+	}
+
+	if approved {
+		request["status"] = "approved"
+		return map[string]interface{}{"status": "approved", "proceed": true}
+	}
+	request["status"] = "rejected"
+	return map[string]interface{}{"status": "rejected", "proceed": false}
+}
+
+// 使用示例
+// guardResult := permissionGuard.Check("file-manager", "filesystem.write", map[string]interface{}{"path": "/data/report.csv"})
+// if guardResult["status"] == "need_approval" {
+//   approvalId := approvalGate.RequestApproval("file-manager", "filesystem.write", map[string]interface{}{"path": "/data/report.csv"})
+//   // Agent 等待用户响应...
+// }
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.time.Instant;
+
+// 审批机制实现
+public class ApprovalGate {
+    /** WaLiCode ApprovalGate 模式——高危操作需用户确认 */
+
+    private Map&lt;String, Map&lt;String, Object&gt;&gt; pending = new HashMap&lt;&gt;();
+
+    public String requestApproval(String skillName, String operation, Map&lt;String, Object&gt; params) {
+        /** 请求审批，返回 approval_id */
+        String approvalId = String.format("apr_%s_%s_%d", skillName, operation, Instant.now().getEpochSecond());
+
+        Map&lt;String, Object&gt; request = new HashMap&lt;&gt;();
+        request.put("skill", skillName);
+        request.put("operation", operation);
+        request.put("params", params);
+        request.put("status", "pending");
+        request.put("created_at", Instant.now().getEpochSecond());
+        pending.put(approvalId, request);
+
+        // 暂停执行，通知用户
+        System.out.printf("⚠️ 需要审批: %s 想执行 %s%n", skillName, operation);
+        System.out.printf("   参数: %s%n", params);
+        System.out.printf("   请回复 /approve %s 或 /reject %s%n", approvalId, approvalId);
+        return approvalId;
+    }
+
+    public Map&lt;String, Object&gt; handleResponse(String approvalId, boolean approved) {
+        /** 处理用户的审批响应 */
+        Map&lt;String, Object&gt; request = pending.get(approvalId);
+        if (request == null) {
+            return Map.of("error", "审批 ID 不存在");
+        }
+
+        if (approved) {
+            request.put("status", "approved");
+            return Map.of("status", "approved", "proceed", true);
+        } else {
+            request.put("status", "rejected");
+            return Map.of("status", "rejected", "proceed", false);
+        }
+    }
+}
+
+// 使用示例
+// Map&lt;String, Object&gt; guardResult = permissionGuard.check("file-manager", "filesystem.write", Map.of("path", "/data/report.csv"));
+// if (guardResult.get("status").equals("need_approval")) {
+//     String approvalId = approvalGate.requestApproval("file-manager", "filesystem.write", Map.of("path", "/data/report.csv"));
+//     // Agent 等待用户响应...
+// }
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.11.4 Layer 4：审计日志</h3>
 
 <p>所有 Skill 调用必须<strong>可追溯</strong>——谁在什么时候调用了什么、参数是什么、结果是什么：</p>
 
-<div class="code-block"><pre># 审计日志实现
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 审计日志实现
 import sqlite3
 from datetime import datetime
 
@@ -867,7 +2484,7 @@ class SkillAuditLog:
         if risk_level:
             conditions.append(f"risk_level = '{risk_level}'")
         if since:
-            conditions.append(f"timestamp >= '{since}'")
+            conditions.append(f"timestamp &gt;= '{since}'")
 
         where = " AND ".join(conditions) if conditions else "1=1"
         rows = self.conn.execute(
@@ -878,12 +2495,271 @@ class SkillAuditLog:
 # 查询所有高风险调用（合规审查场景）
 high_risk_calls = audit_log.query(risk_level="critical")
 # → 返回所有 critical 级别的调用记录，供安全团队审查</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 审计日志实现
+import Database from 'better-sqlite3';
+
+class SkillAuditLog {
+  /** WaLiCode AuditTrail 模式——所有调用可追溯 */
+
+  private db: Database.Database;
+
+  constructor(dbPath: string = 'skill_audit.db') {
+    this.db = new Database(dbPath);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        skill_name TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        params TEXT NOT NULL,
+        result TEXT NOT NULL,
+        approved TEXT DEFAULT NULL,
+        risk_level TEXT NOT NULL
+      )
+    `);
+  }
+
+  log(sessionId: string, skillName: string, operation: string,
+      params: Record&lt;string, unknown&gt;, result: Record&lt;string, unknown&gt;,
+      approved: string | null = null, riskLevel: string = 'low'): void {
+    /** 记录一次 Skill 调用 */
+    this.db.prepare(
+      'INSERT INTO audit_log VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+      new Date().toISOString(), sessionId, skillName, operation,
+      JSON.stringify(params), JSON.stringify(result), approved, riskLevel
+    );
+  }
+
+  query(opts?: { skillName?: string; riskLevel?: string; since?: string }): Record&lt;string, unknown&gt;[] {
+    /** 查询审计日志（合规审查用） */
+    const conditions: string[] = [];
+    const values: string[] = [];
+
+    if (opts?.skillName) {
+      conditions.push('skill_name = ?');
+      values.push(opts.skillName);
+    }
+    if (opts?.riskLevel) {
+      conditions.push('risk_level = ?');
+      values.push(opts.riskLevel);
+    }
+    if (opts?.since) {
+      conditions.push('timestamp &gt;= ?');
+      values.push(opts.since);
+    }
+
+    const where = conditions.length &gt; 0 ? conditions.join(' AND ') : '1=1';
+    const rows = this.db.prepare(
+      `SELECT * FROM audit_log WHERE ${where} ORDER BY timestamp DESC LIMIT 100`
+    ).all(...values);
+
+    return rows as Record&lt;string, unknown&gt;[];
+  }
+}
+
+// 查询所有高风险调用（合规审查场景）
+const highRiskCalls = auditLog.query({ riskLevel: 'critical' });
+// → 返回所有 critical 级别的调用记录，供安全团队审查
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+// 审计日志实现
+type SkillAuditLog struct {
+	Db *sql.DB
+}
+
+func NewSkillAuditLog(dbPath string) *SkillAuditLog {
+	db, _ := sql.Open("sqlite3", dbPath)
+	db.Exec(`
+		CREATE TABLE IF NOT EXISTS audit_log (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			timestamp TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			skill_name TEXT NOT NULL,
+			operation TEXT NOT NULL,
+			params TEXT NOT NULL,
+			result TEXT NOT NULL,
+			approved TEXT DEFAULT NULL,
+			risk_level TEXT NOT NULL
+		)
+	`)
+	return &SkillAuditLog{Db: db}
+}
+
+func (l *SkillAuditLog) Log(sessionId, skillName, operation string,
+	params, result map[string]interface{}, approved, riskLevel string) {
+	/** 记录一次 Skill 调用 */
+	paramsJSON, _ := json.Marshal(params)
+	resultJSON, _ := json.Marshal(result)
+	l.Db.Exec(
+		"INSERT INTO audit_log VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
+		time.Now().Format(time.RFC3339), sessionId, skillName, operation,
+		string(paramsJSON), string(resultJSON), approved, riskLevel,
+	)
+}
+
+func (l *SkillAuditLog) Query(skillName, riskLevel, since string) []map[string]interface{} {
+	/** 查询审计日志（合规审查用） */
+	conditions := []string{}
+	args := []interface{}{}
+	if skillName != "" {
+		conditions = append(conditions, "skill_name = ?")
+		args = append(args, skillName)
+	}
+	if riskLevel != "" {
+		conditions = append(conditions, "risk_level = ?")
+		args = append(args, riskLevel)
+	}
+	if since != "" {
+		conditions = append(conditions, "timestamp &gt;= ?")
+		args = append(args, since)
+	}
+
+	where := "1=1"
+	if len(conditions) &gt; 0 {
+		where = fmt.Sprintf("%s", joinStrings(conditions, " AND "))
+	}
+
+	rows, _ := l.Db.Query(
+		fmt.Sprintf("SELECT * FROM audit_log WHERE %s ORDER BY timestamp DESC LIMIT 100", where),
+		args...,
+	)
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var ts, sid, skill, op, paramsStr, resultStr, approvedStr, risk sql.NullString
+		rows.Scan(&id, &ts, &sid, &skill, &op, &paramsStr, &resultStr, &approvedStr, &risk)
+		results = append(results, map[string]interface{}{
+			"id": id, "ts": ts.String, "sid": sid.String,
+			"skill": skill.String, "op": op.String,
+			"params": paramsStr.String, "result": resultStr.String,
+			"approved": approvedStr.String, "risk": risk.String,
+		})
+	}
+	return results
+}
+
+// 查询所有高风险调用（合规审查场景）
+// highRiskCalls := auditLog.Query("", "critical", "")
+// → 返回所有 critical 级别的调用记录，供安全团队审查
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.sql.*;
+import java.time.Instant;
+import java.util.*;
+import com.google.gson.Gson;
+
+// 审计日志实现
+public class SkillAuditLog {
+    /** WaLiCode AuditTrail 模式——所有调用可追溯 */
+
+    private Connection conn;
+    private Gson gson = new Gson();
+
+    public SkillAuditLog(String dbPath) throws SQLException {
+        conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+        conn.createStatement().execute(
+            "CREATE TABLE IF NOT EXISTS audit_log (" +
+            "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
+            "  timestamp TEXT NOT NULL," +
+            "  session_id TEXT NOT NULL," +
+            "  skill_name TEXT NOT NULL," +
+            "  operation TEXT NOT NULL," +
+            "  params TEXT NOT NULL," +
+            "  result TEXT NOT NULL," +
+            "  approved TEXT DEFAULT NULL," +
+            "  risk_level TEXT NOT NULL" +
+            ")"
+        );
+    }
+
+    public void log(String sessionId, String skillName, String operation,
+                    Map&lt;String, Object&gt; params, Map&lt;String, Object&gt; result,
+                    String approved, String riskLevel) throws SQLException {
+        /** 记录一次 Skill 调用 */
+        PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO audit_log VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        ps.setString(1, Instant.now().toString());
+        ps.setString(2, sessionId);
+        ps.setString(3, skillName);
+        ps.setString(4, operation);
+        ps.setString(5, gson.toJson(params));
+        ps.setString(6, gson.toJson(result));
+        ps.setString(7, approved);
+        ps.setString(8, riskLevel);
+        ps.executeUpdate();
+    }
+
+    public List&lt;Map&lt;String, Object&gt;&gt; query(String skillName, String riskLevel, String since) throws SQLException {
+        /** 查询审计日志（合规审查用） */
+        List&lt;String&gt; conditions = new ArrayList&lt;&gt;();
+        List&lt;String&gt; values = new ArrayList&lt;&gt;();
+
+        if (skillName != null) {
+            conditions.add("skill_name = ?");
+            values.add(skillName);
+        }
+        if (riskLevel != null) {
+            conditions.add("risk_level = ?");
+            values.add(riskLevel);
+        }
+        if (since != null) {
+            conditions.add("timestamp &gt;= ?");
+            values.add(since);
+        }
+
+        String where = conditions.isEmpty() ? "1=1" : String.join(" AND ", conditions);
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT * FROM audit_log WHERE " + where + " ORDER BY timestamp DESC LIMIT 100"
+        );
+        for (int i = 0; i &lt; values.size(); i++) {
+            ps.setString(i + 1, values.get(i));
+        }
+
+        ResultSet rs = ps.executeQuery();
+        List&lt;Map&lt;String, Object&gt;&gt; results = new ArrayList&lt;&gt;();
+        while (rs.next()) {
+            Map&lt;String, Object&gt; row = new LinkedHashMap&lt;&gt;();
+            row.put("id", rs.getInt("id"));
+            row.put("ts", rs.getString("timestamp"));
+            row.put("sid", rs.getString("session_id"));
+            row.put("skill", rs.getString("skill_name"));
+            row.put("op", rs.getString("operation"));
+            row.put("params", rs.getString("params"));
+            row.put("result", rs.getString("result"));
+            row.put("approved", rs.getString("approved"));
+            row.put("risk", rs.getString("risk_level"));
+            results.add(row);
+        }
+        return results;
+    }
+}
+
+// 查询所有高风险调用（合规审查场景）
+// List&lt;Map&lt;String, Object&gt;&gt; highRiskCalls = auditLog.query(null, "critical", null);
+// → 返回所有 critical 级别的调用记录，供安全团队审查
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.11.5 Layer 5：沙箱隔离</h3>
 
 <p>最危险的操作（如支付、访问生产数据库）应该在<strong>沙箱</strong>中执行——限制网络和文件系统访问：</p>
 
-<div class="code-block"><pre># 沙箱执行器实现（基于 subprocess + 资源限制）
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 沙箱执行器实现（基于 subprocess + 资源限制）
 import subprocess
 import tempfile
 
@@ -939,6 +2815,251 @@ class SandboxExecutor:
             "exit_code": result.returncode,
             "sandbox": True
         }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 沙箱执行器实现（基于 child_process + 资源限制）
+import { execFile } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+class SandboxExecutor {
+  /** WaLiCode SandboxExecutor 模式——危险 Skill 在沙箱中执行 */
+
+  private readonly SANDBOX_CONFIG: Record&lt;string, {
+    network: string; filesystem: string; maxMemory: string;
+    maxCpuTime: number; allowedDomains: string[];
+  }&gt; = {
+    'payment-skill': {
+      network: 'restricted',
+      filesystem: 'read_only',
+      maxMemory: '256MB',
+      maxCpuTime: 30,
+      allowedDomains: ['api.payment.com'],
+    },
+    'database-query': {
+      network: 'restricted',
+      filesystem: 'none',
+      maxMemory: '512MB',
+      maxCpuTime: 60,
+      allowedDomains: ['db.internal.com'],
+    },
+  };
+
+  executeInSandbox(skillName: string, toolName: string, params: Record&lt;string, unknown&gt;): Promise&lt;Record&lt;string, unknown&gt;&gt; {
+    /** 在沙箱中执行 Skill 工具 */
+    const config = this.SANDBOX_CONFIG[skillName];
+    if (!config) {
+      // 无沙箱配置 → 正常执行
+      return this.executeNormal(skillName, toolName, params);
+    }
+
+    return new Promise((resolve) =&gt; {
+      // 将调用序列化为临时脚本
+      const script = this.serializeCall(skillName, toolName, params);
+      const scriptPath = path.join(os.tmpdir(), `skill_${Date.now()}.js`);
+      fs.writeFileSync(scriptPath, script);
+
+      // 在受限环境中执行
+      execFile('node', [scriptPath], {
+        timeout: config.maxCpuTime * 1000,
+        env: {
+          ...process.env,
+          SKILL_SANDBOX: 'true',
+          ALLOWED_DOMAINS: config.allowedDomains.join(','),
+          MAX_MEMORY: config.maxMemory,
+        },
+      }, (err, stdout, stderr) =&gt; {
+        resolve({
+          stdout: stdout || '',
+          stderr: stderr || (err?.message || ''),
+          exitCode: err ? 1 : 0,
+          sandbox: true,
+        });
+      });
+    });
+  }
+
+  private serializeCall(skillName: string, toolName: string, params: Record&lt;string, unknown&gt;): string {
+    return `// Auto-generated sandbox script\n` +
+      `const skill = require('./skills/${skillName}');\n` +
+      `skill.${toolName}(${JSON.stringify(params)});`;
+  }
+
+  private async executeNormal(skillName: string, toolName: string, params: Record&lt;string, unknown&gt;): Promise&lt;Record&lt;string, unknown&gt;&gt; {
+    return { error: 'No sandbox config found, executing normally' };
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+)
+
+// 沙箱执行器实现（基于 subprocess + 资源限制）
+type SandboxExecutor struct {
+	SandboxConfig map[string]map[string]interface{}
+}
+
+func NewSandboxExecutor() *SandboxExecutor {
+	return &SandboxExecutor{
+		SandboxConfig: map[string]map[string]interface{}{
+			"payment-skill": {
+				"network":         "restricted",
+				"filesystem":      "read_only",
+				"max_memory":       "256MB",
+				"max_cpu_time":    30,
+				"allowed_domains": []string{"api.payment.com"},
+			},
+			"database-query": {
+				"network":         "restricted",
+				"filesystem":      "none",
+				"max_memory":       "512MB",
+				"max_cpu_time":    60,
+				"allowed_domains": []string{"db.internal.com"},
+			},
+		},
+	}
+}
+
+func (s *SandboxExecutor) ExecuteInSandbox(skillName, toolName string, params map[string]interface{}) map[string]interface{} {
+	/** 在沙箱中执行 Skill 工具 */
+	config, ok := s.SandboxConfig[skillName]
+	if !ok {
+		// 无沙箱配置 → 正常执行
+		return s.executeNormal(skillName, toolName, params)
+	}
+
+	// 将调用序列化为临时脚本
+	script := s.serializeCall(skillName, toolName, params)
+	tmpDir, _ := os.MkdirTemp("", "skill_*")
+	scriptPath := filepath.Join(tmpDir, "run.py")
+	os.WriteFile(scriptPath, []byte(script), 0644)
+
+	// 在受限环境中执行
+	maxCpuTime := int(config["max_cpu_time"].(int))
+	domains := config["allowed_domains"].([]string)
+	domainStrs := make([]string, len(domains))
+	for i, d := range domains {
+		domainStrs[i] = fmt.Sprintf("%v", d)
+	}
+
+	cmd := exec.Command("python3", scriptPath)
+	cmd.Env = append(os.Environ(),
+		"SKILL_SANDBOX=true",
+		fmt.Sprintf("ALLOWED_DOMAINS=%s", joinStrings(domainStrs, ",")),
+		fmt.Sprintf("MAX_MEMORY=%v", config["max_memory"]),
+	)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+
+	exitCode := 0
+	if err != nil {
+		exitCode = 1
+	}
+
+	return map[string]interface{}{
+		"stdout":   stdout.String(),
+		"stderr":   stderr.String(),
+		"exit_code": exitCode,
+		"sandbox":  true,
+	}
+}
+
+func (s *SandboxExecutor) serializeCall(skillName, toolName string, params map[string]interface{}) string {
+	return fmt.Sprintf("# Auto-generated sandbox script\nimport %s\n", skillName)
+}
+
+func (s *SandboxExecutor) executeNormal(skillName, toolName string, params map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{"error": "No sandbox config found"}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+
+// 沙箱执行器实现（基于 ProcessBuilder + 资源限制）
+public class SandboxExecutor {
+    /** WaLiCode SandboxExecutor 模式——危险 Skill 在沙箱中执行 */
+
+    private static final Map&lt;String, Map&lt;String, Object&gt;&gt; SANDBOX_CONFIG = new HashMap&lt;&gt;();
+
+    static {
+        Map&lt;String, Object&gt; paymentConfig = new HashMap&lt;&gt;();
+        paymentConfig.put("network", "restricted");
+        paymentConfig.put("filesystem", "read_only");
+        paymentConfig.put("max_memory", "256MB");
+        paymentConfig.put("max_cpu_time", 30);
+        paymentConfig.put("allowed_domains", List.of("api.payment.com"));
+        SANDBOX_CONFIG.put("payment-skill", paymentConfig);
+
+        Map&lt;String, Object&gt; dbConfig = new HashMap&lt;&gt;();
+        dbConfig.put("network", "restricted");
+        dbConfig.put("filesystem", "none");
+        dbConfig.put("max_memory", "512MB");
+        dbConfig.put("max_cpu_time", 60);
+        dbConfig.put("allowed_domains", List.of("db.internal.com"));
+        SANDBOX_CONFIG.put("database-query", dbConfig);
+    }
+
+    public Map&lt;String, Object&gt; executeInSandbox(String skillName, String toolName, Map&lt;String, Object&gt; params) throws Exception {
+        /** 在沙箱中执行 Skill 工具 */
+        Map&lt;String, Object&gt; config = SANDBOX_CONFIG.get(skillName);
+        if (config == null) {
+            // 无沙箱配置 → 正常执行
+            return executeNormal(skillName, toolName, params);
+        }
+
+        // 将调用序列化为临时脚本
+        String script = serializeCall(skillName, toolName, params);
+        Path scriptPath = Files.createTempFile("skill_", ".py");
+        Files.writeString(scriptPath, script);
+
+        // 在受限环境中执行
+        int maxCpuTime = (int) config.get("max_cpu_time");
+        List&lt;String&gt; allowedDomains = (List&lt;String&gt;) config.get("allowed_domains");
+
+        ProcessBuilder pb = new ProcessBuilder("python3", scriptPath.toString());
+        pb.environment().put("SKILL_SANDBOX", "true");
+        pb.environment().put("ALLOWED_DOMAINS", String.join(",", allowedDomains));
+        pb.environment().put("MAX_MEMORY", (String) config.get("max_memory"));
+
+        pb.redirectErrorStream(false);
+        Process proc = pb.start();
+
+        // 设置超时
+        if (!proc.waitFor(maxCpuTime, TimeUnit.SECONDS)) {
+            proc.destroyForcibly();
+        }
+
+        String stdout = new String(proc.getInputStream().readAllBytes());
+        String stderr = new String(proc.getErrorStream().readAllBytes());
+        int exitCode = proc.exitValue();
+
+        Map&lt;String, Object&gt; result = new HashMap&lt;&gt;();
+        result.put("stdout", stdout);
+        result.put("stderr", stderr);
+        result.put("exit_code", exitCode);
+        result.put("sandbox", true);
+        return result;
+    }
+
+    private String serializeCall(String skillName, String toolName, Map&lt;String, Object&gt; params) {
+        return "# Auto-generated sandbox script\nimport " + skillName + "\n";
+    }
+
+    private Map&lt;String, Object&gt; executeNormal(String skillName, String toolName, Map&lt;String, Object&gt; params) {
+        return Map.of("error", "No sandbox config found");
+    }
+}
+</pre></div>
+</div>
 
 <div class="tip-banner">
 <div class="banner-title">💡 安全分层原则</div>
@@ -1018,7 +3139,8 @@ knowledge: |
 
 <h3 class="sub-heading">8.12.2 Step 2：Python 实现</h3>
 
-<div class="code-block"><pre># skills/compound/report-generator/main.py
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/compound/report-generator/main.py
 import json
 import statistics
 from pathlib import Path
@@ -1125,6 +3247,7 @@ class ReportGeneratorSkill:
                     "message": f"需要审批才能写入文件: {output_path}"
                 }
             elif check["status"] == "denied":
+
                 return {"error": check["reason"]}
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -1141,12 +3264,505 @@ class ReportGeneratorSkill:
                 if isinstance(val, (int, float)):
                     numeric.append(key)
         return numeric</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// skills/compound/report-generator/main.ts
+import * as fs from 'fs';
+import * as path from 'path';
+
+class ReportGeneratorSkill {
+  /** 企业级报表生成 Skill——带 permissionGuard */
+
+  constructor(private guard?: PermissionGuard) {}
+
+  fetchData(source: string, query?: string, format: string = 'json'): Record<string, unknown> {
+    /** 从数据源获取原始数据 */
+    if (source.startsWith('http')) {
+      // API 数据源（带超时和分页）
+      // 使用 fetch API
+      const params = query ? `?query=${query}` : '';
+      // In production: const response = await fetch(source + params);
+      return { data: [], source };
+    } else if (source.endsWith('.csv') || source.endsWith('.json')) {
+      // 文件数据源（带安全检查）
+      if (this.guard) {
+        const check = this.guard.check('report-generator', 'filesystem.read', { path: source });
+        if (check.status === 'denied') {
+          return { error: check.reason };
+        }
+      }
+      const content = fs.readFileSync(source, 'utf-8');
+      if (source.endsWith('.json')) {
+        return { data: JSON.parse(content), source };
+      } else {
+        // Parse CSV
+        const lines = content.split('\n');
+        const headers = lines[0].split(',');
+        const data = lines.slice(1).map(line => {
+          const values = line.split(',');
+          const row: Record<string, string> = {};
+          headers.forEach((h, i) => { row[h.trim()] = values[i]?.trim() || ''; });
+          return row;
+        });
+        return { data, source };
+      }
+    }
+    return { error: `不支持的数据源类型: ${source}` };
+  }
+
+  analyzeData(data: Record<string, unknown>[], metrics?: string[], groupBy?: string): Record<string, unknown> {
+    /** 分析数据，计算统计指标 */
+    if (!data || data.length === 0) return { error: '数据为空，无法分析' };
+
+    metrics = metrics || ['sum', 'avg', 'max', 'min'];
+    const numericFields = this.findNumericFields(data);
+    const results: Record<string, unknown> = {};
+
+    for (const field of numericFields) {
+      const values = data.map(row => Number(row[field] || 0)).filter(v => !isNaN(v));
+      const fieldStats: Record<string, number> = {};
+      for (const m of metrics) {
+        if (m === 'sum') fieldStats.sum = values.reduce((a, b) => a + b, 0);
+        else if (m === 'avg') fieldStats.avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        else if (m === 'max') fieldStats.max = values.length ? Math.max(...values) : 0;
+        else if (m === 'min') fieldStats.min = values.length ? Math.min(...values) : 0;
+      }
+      results[field] = fieldStats;
+    }
+
+    if (groupBy) {
+      const groups: Record<string, number> = {};
+      for (const row of data) {
+        const key = String(row[groupBy] || 'unknown');
+        groups[key] = (groups[key] || 0) + 1;
+      }
+      results.groups = groups;
+    }
+
+    return { analysis: results, data_count: data.length, fields: numericFields };
+  }
+
+  renderReport(analysis: Record<string, unknown>, template: string = 'default',
+               outputFormat: string = 'markdown'): Record<string, unknown> {
+    /** 渲染报表 */
+    const stats = analysis.analysis as Record<string, any>;
+    const count = analysis.data_count as number;
+
+    let report = '# 数据报表\n\n';
+    report += `> 生成时间: ${new Date().toLocaleString()}\n`;
+    report += `> 数据量: ${count} 条\n\n`;
+
+    report += '## 统计指标\n\n';
+    report += '| 字段 | 求和 | 平均值 | 最大值 | 最小值 |\n';
+    report += '|------|------|--------|--------|--------|\n';
+    for (const [field, fieldStats] of Object.entries(stats)) {
+      if (field === 'groups') continue;
+      const fs2 = fieldStats as Record<string, number>;
+      report += `| ${field} | ${fs2.sum ?? '-'} | ${fs2.avg ?? '-'} | ${fs2.max ?? '-'} | ${fs2.min ?? '-'} |\n`;
+    }
+
+    if (stats.groups) {
+      report += '\n## 分组统计\n\n';
+      for (const [group, groupCount] of Object.entries(stats.groups as Record<string, number>)) {
+        report += `- **${group}**: ${groupCount} 条\n`;
+      }
+    }
+
+    const outputPath = `reports/report_${Date.now()}.md`;
+    if (this.guard) {
+      const check = this.guard.check('report-generator', 'filesystem.write', { path: outputPath });
+      if (check.status === 'need_approval') {
+        return { report, approval_needed: true, message: `需要审批才能写入文件: ${outputPath}` };
+      } else if (check.status === 'denied') {
+        return { error: check.reason };
+      }
+    }
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, report, 'utf-8');
+    return { report, output_path: outputPath, written: true };
+  }
+
+  private findNumericFields(data: Record<string, unknown>[]): string[] {
+    /** 自动检测数值型字段 */
+    const numeric: string[] = [];
+    if (data.length > 0) {
+      for (const [key, val] of Object.entries(data[0])) {
+        if (typeof val === 'number') numeric.push(key);
+      }
+    }
+    return numeric;
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// skills/compound/report-generator/main.go
+type ReportGeneratorSkill struct {
+	Guard *PermissionGuard
+}
+
+func NewReportGeneratorSkill(guard *PermissionGuard) *ReportGeneratorSkill {
+	return &ReportGeneratorSkill{Guard: guard}
+}
+
+func (s *ReportGeneratorSkill) FetchData(source, query, format string) map[string]interface{} {
+	/** 从数据源获取原始数据 */
+	if strings.HasPrefix(source, "http") {
+		// API 数据源（带超时和分页）
+		return map[string]interface{}{"data": nil, "source": source}
+	} else if strings.HasSuffix(source, ".csv") || strings.HasSuffix(source, ".json") {
+		// 文件数据源（带安全检查）
+		if s.Guard != nil {
+			check := s.Guard.Check("report-generator", "filesystem.read", map[string]interface{}{"path": source})
+			if check["status"] == "denied" {
+				return map[string]interface{}{"error": check["reason"]}
+			}
+		}
+		data, err := os.ReadFile(source)
+		if err != nil {
+			return map[string]interface{}{"error": err.Error()}
+		}
+		if strings.HasSuffix(source, ".json") {
+			var result interface{}
+			json.Unmarshal(data, &result)
+			return map[string]interface{}{"data": result, "source": source}
+		}
+		// Parse CSV
+		lines := strings.Split(string(data), "\n")
+		if len(lines) <= 1 {
+			return map[string]interface{}{"data": []map[string]string{}, "source": source}
+		}
+		headers := strings.Split(lines[0], ",")
+		var rows []map[string]string
+		for _, line := range lines[1:] {
+			if line == "" { continue }
+			values := strings.Split(line, ",")
+			row := make(map[string]string)
+			for i, h := range headers {
+				if i < len(values) {
+					row[strings.TrimSpace(h)] = strings.TrimSpace(values[i])
+				}
+			}
+			rows = append(rows, row)
+		}
+		return map[string]interface{}{"data": rows, "source": source}
+	}
+	return map[string]interface{}{"error": fmt.Sprintf("不支持的数据源类型: %s", source)}
+}
+
+func (s *ReportGeneratorSkill) AnalyzeData(data []map[string]interface{}, metrics []string, groupBy string) map[string]interface{} {
+	/** 分析数据，计算统计指标 */
+	if len(data) == 0 {
+		return map[string]interface{}{"error": "数据为空，无法分析"}
+	}
+	if metrics == nil {
+		metrics = []string{"sum", "avg", "max", "min"}
+	}
+	numericFields := s.findNumericFields(data)
+	results := make(map[string]interface{})
+	for _, field := range numericFields {
+		var values []float64
+		for _, row := range data {
+			if val, ok := row[field]; ok {
+				if num, err := toFloat64(val); err == nil {
+					values = append(values, num)
+				}
+			}
+		}
+		fieldStats := make(map[string]interface{})
+		for _, m := range metrics {
+			switch m {
+			case "sum":
+				sum := 0.0
+				for _, v := range values { sum += v }
+				fieldStats["sum"] = sum
+			case "avg":
+				if len(values) > 0 {
+					sum := 0.0
+					for _, v := range values { sum += v }
+					fieldStats["avg"] = sum / float64(len(values))
+				} else { fieldStats["avg"] = 0 }
+			case "max":
+				if len(values) > 0 {
+					maxVal := values[0]
+					for _, v := range values { if v > maxVal { maxVal = v } }
+					fieldStats["max"] = maxVal
+				} else { fieldStats["max"] = 0 }
+			case "min":
+				if len(values) > 0 {
+					minVal := values[0]
+					for _, v := range values { if v < minVal { minVal = v } }
+					fieldStats["min"] = minVal
+				} else { fieldStats["min"] = 0 }
+			}
+		}
+		results[field] = fieldStats
+	}
+	if groupBy != "" {
+		groups := make(map[string]int)
+		for _, row := range data {
+			key := fmt.Sprintf("%v", row[groupBy])
+			groups[key]++
+		}
+		results["groups"] = groups
+	}
+	return map[string]interface{}{"analysis": results, "data_count": len(data), "fields": numericFields}
+}
+
+func (s *ReportGeneratorSkill) RenderReport(analysis map[string]interface{}, template, outputFormat string) map[string]interface{} {
+	/** 渲染报表 */
+	stats, _ := analysis["analysis"].(map[string]interface{})
+	count, _ := analysis["data_count"].(int)
+
+	report := "# 数据报表\n\n"
+	report += fmt.Sprintf("> 生成时间: %s\n", time.Now().Format("2006-01-02 15:04"))
+	report += fmt.Sprintf("> 数据量: %d 条\n\n", count)
+	report += "## 统计指标\n\n"
+	report += "| 字段 | 求和 | 平均值 | 最大值 | 最小值 |\n"
+	report += "|------|------|--------|--------|--------|\n"
+	for field, fsRaw := range stats {
+		if field == "groups" { continue }
+		fs, _ := fsRaw.(map[string]interface{})
+		report += fmt.Sprintf("| %s | %v | %v | %v | %v |\n",
+			field, fs["sum"], fs["avg"], fs["max"], fs["min"])
+	}
+	if groups, ok := stats["groups"].(map[string]int); ok {
+		report += "\n## 分组统计\n\n"
+		for group, groupCount := range groups {
+			report += fmt.Sprintf("- **%s**: %d 条\n", group, groupCount)
+		}
+	}
+
+	outputPath := fmt.Sprintf("reports/report_%s.md", time.Now().Format("20060102_150405"))
+	if s.Guard != nil {
+		check := s.Guard.Check("report-generator", "filesystem.write", map[string]interface{}{"path": outputPath})
+		if check["status"] == "need_approval" {
+			return map[string]interface{}{"report": report, "approval_needed": true, "message": fmt.Sprintf("需要审批才能写入文件: %s", outputPath)}
+		} else if check["status"] == "denied" {
+			return map[string]interface{}{"error": check["reason"]}
+		}
+	}
+	os.MkdirAll(filepath.Dir(outputPath), 0755)
+	os.WriteFile(outputPath, []byte(report), 0644)
+	return map[string]interface{}{"report": report, "output_path": outputPath, "written": true}
+}
+
+func (s *ReportGeneratorSkill) findNumericFields(data []map[string]interface{}) []string {
+	var numeric []string
+	if len(data) > 0 {
+		for key, val := range data[0] {
+			switch val.(type) {
+			case int, int64, float64, float32:
+				numeric = append(numeric, key)
+			}
+		}
+	}
+	sort.Strings(numeric)
+	return numeric
+}
+
+func toFloat64(val interface{}) (float64, error) {
+	switch v := val.(type) {
+	case int:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case string:
+		return strconv.ParseFloat(v, 64)
+	}
+	return 0, fmt.Errorf("not numeric")
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.nio.file.*;
+import java.time.*;
+import java.util.*;
+import com.google.gson.Gson;
+
+// skills/compound/report-generator/ReportGeneratorSkill.java
+public class ReportGeneratorSkill {
+    /** 企业级报表生成 Skill——带 permissionGuard */
+
+    private PermissionGuard guard;
+    private Gson gson = new Gson();
+
+    public ReportGeneratorSkill(PermissionGuard guard) {
+        this.guard = guard;
+    }
+
+    public Map&lt;String, Object&gt; fetchData(String source, String query, String format) {
+        /** 从数据源获取原始数据 */
+        if (source.startsWith("http")) {
+            // API 数据源（带超时和分页）
+            // In production: use HttpClient with timeout
+            return Map.of("data", List.of(), "source", source);
+        } else if (source.endsWith(".csv") || source.endsWith(".json")) {
+            // 文件数据源（带安全检查）
+            if (guard != null) {
+                Map&lt;String, Object&gt; check = guard.check("report-generator", "filesystem.read", Map.of("path", source));
+                if (check.get("status").equals("denied")) {
+                    return Map.of("error", check.get("reason"));
+                }
+            }
+            try {
+                String content = Files.readString(Paths.get(source));
+                if (source.endsWith(".json")) {
+                    Object data = gson.fromJson(content, Object.class);
+                    return Map.of("data", data, "source", source);
+                } else {
+                    // Parse CSV
+                    String[] lines = content.split("\n");
+                    String[] headers = lines[0].split(",");
+                    List&lt;Map&lt;String, String&gt;&gt; data = new ArrayList&lt;&gt;();
+                    for (int i = 1; i &lt; lines.length; i++) {
+                        String[] values = lines[i].split(",");
+                        Map&lt;String, String&gt; row = new HashMap&lt;&gt;();
+                        for (int j = 0; j &lt; headers.length && j &lt; values.length; j++) {
+                            row.put(headers[j].trim(), values[j].trim());
+                        }
+                        data.add(row);
+                    }
+                    return Map.of("data", data, "source", source);
+                }
+            } catch (IOException e) {
+                return Map.of("error", e.getMessage());
+            }
+        }
+        return Map.of("error", "不支持的数据源类型: " + source);
+    }
+
+    public Map&lt;String, Object&gt; analyzeData(List&lt;Map&lt;String, Object&gt;&gt; data, List&lt;String&gt; metrics, String groupBy) {
+        /** 分析数据，计算统计指标 */
+        if (data == null || data.isEmpty()) {
+            return Map.of("error", "数据为空，无法分析");
+        }
+
+        if (metrics == null) metrics = List.of("sum", "avg", "max", "min");
+        List&lt;String&gt; numericFields = findNumericFields(data);
+        Map&lt;String, Object&gt; results = new LinkedHashMap&lt;&gt;();
+
+        for (String field : numericFields) {
+            List&lt;Double&gt; values = new ArrayList&lt;&gt;();
+            for (Map&lt;String, Object&gt; row : data) {
+                Object val = row.get(field);
+                if (val instanceof Number) {
+                    values.add(((Number) val).doubleValue());
+                }
+            }
+            Map&lt;String, Object&gt; fieldStats = new LinkedHashMap&lt;&gt;();
+            for (String m : metrics) {
+                switch (m) {
+                    case "sum":
+                        fieldStats.put("sum", values.stream().mapToDouble(d -> d).sum());
+                        break;
+                    case "avg":
+                        fieldStats.put("avg", values.isEmpty() ? 0 : values.stream().mapToDouble(d -> d).average().orElse(0));
+                        break;
+                    case "max":
+                        fieldStats.put("max", values.isEmpty() ? 0 : values.stream().mapToDouble(d -> d).max().orElse(0));
+                        break;
+                    case "min":
+                        fieldStats.put("min", values.isEmpty() ? 0 : values.stream().mapToDouble(d -> d).min().orElse(0));
+                        break;
+                }
+            }
+            results.put(field, fieldStats);
+        }
+
+        if (groupBy != null) {
+            Map&lt;String, Integer&gt; groups = new LinkedHashMap&lt;&gt;();
+            for (Map&lt;String, Object&gt; row : data) {
+                String key = String.valueOf(row.getOrDefault(groupBy, "unknown"));
+                groups.merge(key, 1, Integer::sum);
+            }
+            results.put("groups", groups);
+        }
+
+        Map&lt;String, Object&gt; result = new LinkedHashMap&lt;&gt;();
+        result.put("analysis", results);
+        result.put("data_count", data.size());
+        result.put("fields", numericFields);
+        return result;
+    }
+
+    public Map&lt;String, Object&gt; renderReport(Map&lt;String, Object&gt; analysis, String template, String outputFormat) {
+        /** 渲染报表 */
+        Map&lt;String, Object&gt; stats = (Map&lt;String, Object&gt;) analysis.get("analysis");
+        int count = (int) analysis.get("data_count");
+
+        StringBuilder report = new StringBuilder();
+        report.append("# 数据报表\n\n");
+        report.append("> 生成时间: ").append(LocalDateTime.now()).append("\n");
+        report.append("> 数据量: ").append(count).append(" 条\n\n");
+        report.append("## 统计指标\n\n");
+        report.append("| 字段 | 求和 | 平均值 | 最大值 | 最小值 |\n");
+        report.append("|------|------|--------|--------|--------|\n");
+        for (var entry : stats.entrySet()) {
+            if (entry.getKey().equals("groups")) continue;
+            Map&lt;String, Object&gt; fs = (Map&lt;String, Object&gt;) entry.getValue();
+            report.append(String.format("| %s | %s | %s | %s | %s |\n",
+                entry.getKey(), fs.getOrDefault("sum", "-"), fs.getOrDefault("avg", "-"),
+                fs.getOrDefault("max", "-"), fs.getOrDefault("min", "-")));
+        }
+        if (stats.containsKey("groups")) {
+            report.append("\n## 分组统计\n\n");
+            Map&lt;String, Integer&gt; groups = (Map&lt;String, Integer&gt;) stats.get("groups");
+            for (var entry : groups.entrySet()) {
+                report.append(String.format("- **%s**: %d 条\n", entry.getKey(), entry.getValue()));
+            }
+        }
+
+        String outputPath = "reports/report_" + System.currentTimeMillis() + ".md";
+        if (guard != null) {
+            Map&lt;String, Object&gt; check = guard.check("report-generator", "filesystem.write", Map.of("path", outputPath));
+            if (check.get("status").equals("need_approval")) {
+                return Map.of("report", report.toString(), "approval_needed", true,
+                    "message", "需要审批才能写入文件: " + outputPath);
+            } else if (check.get("status").equals("denied")) {
+                return Map.of("error", check.get("reason"));
+            }
+        }
+
+        try {
+            Files.createDirectories(Paths.get("reports"));
+            Files.writeString(Paths.get(outputPath), report.toString());
+        } catch (IOException e) {
+            return Map.of("error", e.getMessage());
+        }
+        return Map.of("report", report.toString(), "output_path", outputPath, "written", true);
+    }
+
+    private List&lt;String&gt; findNumericFields(List&lt;Map&lt;String, Object&gt;&gt; data) {
+        List&lt;String&gt; numeric = new ArrayList&lt;&gt;();
+        if (!data.isEmpty()) {
+            for (var entry : data.get(0).entrySet()) {
+                if (entry.getValue() instanceof Number) {
+                    numeric.add(entry.getKey());
+                }
+            }
+        }
+        return numeric;
+    }
+}
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.12.3 Step 3：测试</h3>
 
 <p>企业级 Skill 需要<strong>三层测试</strong>：单元测试（工具函数）、Prompt 测试（AI 调用策略）、安全测试（权限拦截）：</p>
 
-<div class="code-block"><pre># tests/test_report_generator.py
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># tests/test_report_generator.py
 import pytest
 from skills.compound.report_generator.main import ReportGeneratorSkill
 from skills.compound.report_generator.permission_guard import PermissionGuard
@@ -1246,6 +3862,274 @@ class TestSecurity:
         result = self.skill.fetch_data(source="http://127.0.0.1:8080/internal")
         assert "error" in result
         assert "SSRF" in result["error"] or "拦截" in result["error"]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// tests/test_report_generator.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ReportGeneratorSkill } from '../skills/compound/report-generator/main';
+import { PermissionGuard } from '../skills/compound/report-generator/permission_guard';
+
+describe('TestReportGenerator', () => {
+  /** 单元测试——验证工具函数逻辑 */
+  let skill: ReportGeneratorSkill;
+
+  beforeEach(() => {
+    skill = new ReportGeneratorSkill();
+  });
+
+  it('test_analyze_data_basic', () => {
+    /** 测试基本统计分析 */
+    const data = [
+      { name: 'A', value: 10 },
+      { name: 'B', value: 20 },
+      { name: 'C', value: 30 },
+    ];
+    const result = skill.analyzeData(data);
+    expect(result.data_count).toBe(3);
+    expect((result.analysis as any).value.sum).toBe(60);
+    expect((result.analysis as any).value.avg).toBe(20);
+  });
+
+  it('test_analyze_data_empty', () => {
+    /** 测试空数据返回错误 */
+    const result = skill.analyzeData([]);
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain('数据为空');
+  });
+
+  it('test_analyze_data_with_groups', () => {
+    /** 测试分组统计 */
+    const data = [
+      { department: '工程', salary: 15000 },
+      { department: '工程', salary: 18000 },
+      { department: '市场', salary: 12000 },
+    ];
+    const result = skill.analyzeData(data, undefined, 'department');
+    expect((result.analysis as any).groups['工程']).toBe(2);
+    expect((result.analysis as any).groups['市场']).toBe(1);
+  });
+
+  it('test_render_report_markdown', () => {
+    /** 测试 Markdown 报表生成 */
+    const analysis = {
+      analysis: { salary: { sum: 45000, avg: 15000 } },
+      data_count: 3,
+    };
+    const result = skill.renderReport(analysis);
+    expect(result.report).toContain('# 数据报表');
+    expect(result.report).toContain('salary');
+  });
+});
+
+describe('TestPromptIntegration', () => {
+  /** Prompt 测试——验证 AI 能正确调用 Skill */
+
+  const PROMPT_TEST_CASES = [
+    {
+      user_message: '帮我生成上周的销售报表',
+      expected_skill: 'report-generator',
+      expected_call_order: ['fetch_data', 'analyze_data', 'render_report'],
+    },
+    {
+      user_message: '分析一下各部门的工资分布',
+      expected_skill: 'report-generator',
+      expected_call_order: ['fetch_data', 'analyze_data'],
+    },
+  ];
+
+  it('test_skill_activation', () => {
+    /** 验证触发词能正确激活 Skill */
+    const manager = new LazySkillManager(loader);
+    for (const testCase of PROMPT_TEST_CASES) {
+      const prompt = manager.getPrompt(testCase.user_message);
+      expect(prompt).toContain('report-generator');
+      expect(prompt).toContain('(已激活)');
+    }
+  });
+});
+
+describe('TestSecurity', () => {
+  /** 安全测试——验证 permissionGuard 拦截 */
+  let guard: PermissionGuard;
+  let skill: ReportGeneratorSkill;
+
+  beforeEach(() => {
+    guard = new PermissionGuard();
+    skill = new ReportGeneratorSkill(guard);
+  });
+
+  it('test_path_traversal_blocked', () => {
+    /** 测试路径穿越被拦截 */
+    const result = skill.fetchData('/etc/passwd');
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain('拦截');
+  });
+
+  it('test_write_needs_approval', () => {
+    /** 测试写文件需要审批 */
+    const result = skill.renderReport({ analysis: {}, data_count: 0 });
+    expect(result.approval_needed === true || JSON.stringify(result).includes('审批')).toBeTruthy();
+  });
+
+  it('test_ssrf_blocked', () => {
+    /** 测试 SSRF 被拦截 */
+    const result = skill.fetchData('http://127.0.0.1:8080/internal');
+    expect(result.error).toBeDefined();
+    expect(result.error.includes('SSRF') || result.error.includes('拦截')).toBeTruthy();
+  });
+});
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"testing"
+)
+
+// tests/test_report_generator_test.go
+
+func TestAnalyzeDataBasic(t *testing.T) {
+	/** 测试基本统计分析 */
+	skill := NewReportGeneratorSkill(nil)
+	data := []map[string]interface{}{
+		{"name": "A", "value": 10},
+		{"name": "B", "value": 20},
+		{"name": "C", "value": 30},
+	}
+	result := skill.AnalyzeData(data, nil, "")
+	if result["data_count"].(int) != 3 {
+		t.Error("Expected data_count=3")
+	}
+	analysis := result["analysis"].(map[string]interface{})
+	valueStats := analysis["value"].(map[string]interface{})
+	if valueStats["sum"].(float64) != 60 {
+		t.Error("Expected sum=60")
+	}
+}
+
+func TestAnalyzeDataEmpty(t *testing.T) {
+	/** 测试空数据返回错误 */
+	skill := NewReportGeneratorSkill(nil)
+	result := skill.AnalyzeData([]map[string]interface{}{}, nil, "")
+	if _, ok := result["error"]; !ok {
+		t.Error("Expected error for empty data")
+	}
+}
+
+func TestAnalyzeDataWithGroups(t *testing.T) {
+	/** 测试分组统计 */
+	skill := NewReportGeneratorSkill(nil)
+	data := []map[string]interface{}{
+		{"department": "工程", "salary": 15000},
+		{"department": "工程", "salary": 18000},
+		{"department": "市场", "salary": 12000},
+	}
+	result := skill.AnalyzeData(data, nil, "department")
+	analysis := result["analysis"].(map[string]interface{})
+	groups := analysis["groups"].(map[string]int)
+	if groups["工程"] != 2 {
+		t.Error("Expected 工程=2")
+	}
+	if groups["市场"] != 1 {
+		t.Error("Expected 市场=1")
+	}
+}
+
+func TestPathTraversalBlocked(t *testing.T) {
+	/** 测试路径穿越被拦截 */
+	guard := NewPermissionGuard()
+	skill := NewReportGeneratorSkill(guard)
+	result := skill.FetchData("/etc/passwd", "", "json")
+	if _, ok := result["error"]; !ok {
+		t.Error("Expected error for path traversal")
+	}
+}
+
+func TestSSRFBlocked(t *testing.T) {
+	/** 测试 SSRF 被拦截 */
+	guard := NewPermissionGuard()
+	skill := NewReportGeneratorSkill(guard)
+	result := skill.FetchData("http://127.0.0.1:8080/internal", "", "json")
+	err, _ := result["error"].(string)
+	if err == "" || (err != "SSRF 攻击被拦截" && err != "路径穿越攻击被拦截") {
+		t.Error("Expected SSRF or path traversal block")
+	}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.*;
+
+// tests/TestReportGenerator.java
+public class TestReportGenerator {
+
+    private ReportGeneratorSkill skill;
+
+    @BeforeEach
+    void setUp() {
+        skill = new ReportGeneratorSkill(null);
+    }
+
+    @Test
+    @DisplayName("测试基本统计分析")
+    void testAnalyzeDataBasic() {
+        List&lt;Map&lt;String, Object&gt;&gt; data = List.of(
+            Map.of("name", "A", "value", 10),
+            Map.of("name", "B", "value", 20),
+            Map.of("name", "C", "value", 30)
+        );
+        Map&lt;String, Object&gt; result = skill.analyzeData(data, null, null);
+        assertEquals(3, result.get("data_count"));
+        Map&lt;String, Object&gt; analysis = (Map&lt;String, Object&gt;) result.get("analysis");
+        Map&lt;String, Object&gt; valueStats = (Map&lt;String, Object&gt;) analysis.get("value");
+        assertEquals(60.0, valueStats.get("sum"));
+        assertEquals(20.0, valueStats.get("avg"));
+    }
+
+    @Test
+    @DisplayName("测试空数据返回错误")
+    void testAnalyzeDataEmpty() {
+        Map&lt;String, Object&gt; result = skill.analyzeData(Collections.emptyList(), null, null);
+        assertTrue(result.containsKey("error"));
+        assertTrue(result.get("error").toString().contains("数据为空"));
+    }
+
+    @Test
+    @DisplayName("测试分组统计")
+    void testAnalyzeDataWithGroups() {
+        List&lt;Map&lt;String, Object&gt;&gt; data = List.of(
+            Map.of("department", "工程", "salary", 15000),
+            Map.of("department", "工程", "salary", 18000),
+            Map.of("department", "市场", "salary", 12000)
+        );
+        Map&lt;String, Object&gt; result = skill.analyzeData(data, null, "department");
+        Map&lt;String, Object&gt; analysis = (Map&lt;String, Object&gt;) result.get("analysis");
+        Map&lt;String, Integer&gt; groups = (Map&lt;String, Integer&gt;) analysis.get("groups");
+        assertEquals(2, groups.get("工程"));
+        assertEquals(1, groups.get("市场"));
+    }
+
+    @Test
+    @DisplayName("测试路径穿越被拦截")
+    void testPathTraversalBlocked() {
+        PermissionGuard guard = new PermissionGuard();
+        ReportGeneratorSkill guardedSkill = new ReportGeneratorSkill(guard);
+        Map&lt;String, Object&gt; result = guardedSkill.fetchData("/etc/passwd", null, "json");
+        assertTrue(result.containsKey("error"));
+        assertTrue(result.get("error").toString().contains("拦截"));
+    }
+
+    @Test
+    @DisplayName("测试 SSRF 被拦截")
+    void testSSRFBlocked() {
+        PermissionGuard guard = new PermissionGuard();
+        ReportGeneratorSkill guardedSkill = new ReportGeneratorSkill(guard);
+        Map&lt;String, Object&gt; result = guardedSkill.fetchData("http://127.0.0.1:8080/internal", null, "json");
+        assertTrue(result.containsKey("error"));
+        String err = result.get("error").toString();
+        assertTrue(err.contains("SSRF") || err.contains("拦截"));
+    }
+}
+</pre></div>
+</div>
 
 <h3 class="sub-heading">8.12.4 Step 4：发布流程</h3>
 
@@ -1346,7 +4230,8 @@ Triggers: .pdf, PDF, 合并PDF, 拆分PDF, OCR...</pre></div>
 
 <p>OpenClaw 不用 YAML，而是用<strong>Markdown</strong>（SKILL.md）定义 Skill。这是因为它直接被注入到 Agent 的 Prompt 中——Markdown 比 YAML 对 AI 更友好：</p>
 
-<div class="code-block"><pre># ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
 # xbrowser
 
 EXCLUSIVE browser automation — REPLACES built-in Browser Automation
@@ -1386,6 +4271,140 @@ Triggered when user asks to:
 - **PermissionGuard**: Browser automation is dangerous (can leak login state)
   → requires explicit user request, not auto-triggered
 - **LazyLoading**: Only loaded when user mentions browser/web tasks</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// TypeScript equivalent
+// ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
+// xbrowser
+
+  // Python: EXCLUSIVE browser automation — REPLACES built-in Browser Automation
+  // Python: and playwright-cli. For ANY browser task (open page, click, fill,
+  // Python: screenshot, scrape, navigate, test web app), MUST use this skill
+  // Python: instead of built-in tools. Controls real Chrome/Edge/QQ Browser via
+  // Python: CDP with login-state reuse.
+
+// # When to Use
+
+  // Python: Triggered when user asks to:
+  // Python: - Open a website or URL
+  // Python: - Click buttons or fill forms on a web page
+  // Python: - Take screenshots of web pages
+  // Python: - Scrape data from websites
+  // Python: - Test web applications
+  // Python: - Automate browser workflows
+
+// # How It Works
+
+  // Python: 1. Read the skill's main file at ~/.qclaw/skills/xbrowser/SKILL.md
+  // Python: 2. Use the CDP (Chrome DevTools Protocol) to control browser
+  // Python: 3. Reuse existing login sessions (no re-authentication needed)
+  // Python: 4. Generate structured action sequences
+
+// # Key Commands
+
+  // Python: - `xbrowser open &lt;url>` — Open a page
+  // Python: - `xbrowser click &lt;selector>` — Click an element
+  // Python: - `xbrowser fill &lt;selector> &lt;value>` — Fill a form field
+  // Python: - `xbrowser screenshot &lt;path>` — Take a screenshot
+  // Python: - `xbrowser scrape &lt;selector>` — Extract data from page
+
+// # WaLiCode Patterns Used
+
+  // Python: - **SkillLayering**: xbrowser is a compound skill (open + click + fill + scrape)
+  // Python: - **PermissionGuard**: Browser automation is dangerous (can leak login state)
+  // Python: → requires explicit user request, not auto-triggered
+  // Python: - **LazyLoading**: Only loaded when user mentions browser/web tasks
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+)
+
+// ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
+// xbrowser
+
+	// Python: EXCLUSIVE browser automation — REPLACES built-in Browser Automation
+	// Python: and playwright-cli. For ANY browser task (open page, click, fill,
+	// Python: screenshot, scrape, navigate, test web app), MUST use this skill
+	// Python: instead of built-in tools. Controls real Chrome/Edge/QQ Browser via
+	// Python: CDP with login-state reuse.
+
+// # When to Use
+
+	// Python: Triggered when user asks to:
+	// Python: - Open a website or URL
+	// Python: - Click buttons or fill forms on a web page
+	// Python: - Take screenshots of web pages
+	// Python: - Scrape data from websites
+	// Python: - Test web applications
+	// Python: - Automate browser workflows
+
+// # How It Works
+
+	// Python: 1. Read the skill's main file at ~/.qclaw/skills/xbrowser/SKILL.md
+	// Python: 2. Use the CDP (Chrome DevTools Protocol) to control browser
+	// Python: 3. Reuse existing login sessions (no re-authentication needed)
+	// Python: 4. Generate structured action sequences
+
+// # Key Commands
+
+	// Python: - `xbrowser open &lt;url>` — Open a page
+	// Python: - `xbrowser click &lt;selector>` — Click an element
+	// Python: - `xbrowser fill &lt;selector> &lt;value>` — Fill a form field
+	// Python: - `xbrowser screenshot &lt;path>` — Take a screenshot
+	// Python: - `xbrowser scrape &lt;selector>` — Extract data from page
+
+// # WaLiCode Patterns Used
+
+	// Python: - **SkillLayering**: xbrowser is a compound skill (open + click + fill + scrape)
+	// Python: - **PermissionGuard**: Browser automation is dangerous (can leak login state)
+	// Python: → requires explicit user request, not auto-triggered
+	// Python: - **LazyLoading**: Only loaded when user mentions browser/web tasks</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class AgentCode {
+    // ~/.qclaw/skills/xbrowser/SKILL.md — OpenClaw 真实 Skill 定义
+    // xbrowser
+
+        // Python: EXCLUSIVE browser automation — REPLACES built-in Browser Automation
+        // Python: and playwright-cli. For ANY browser task (open page, click, fill,
+        // Python: screenshot, scrape, navigate, test web app), MUST use this skill
+        // Python: instead of built-in tools. Controls real Chrome/Edge/QQ Browser via
+        // Python: CDP with login-state reuse.
+
+    // # When to Use
+
+        // Python: Triggered when user asks to:
+        // Python: - Open a website or URL
+        // Python: - Click buttons or fill forms on a web page
+        // Python: - Take screenshots of web pages
+        // Python: - Scrape data from websites
+        // Python: - Test web applications
+        // Python: - Automate browser workflows
+
+    // # How It Works
+
+        // Python: 1. Read the skill's main file at ~/.qclaw/skills/xbrowser/SKILL.md
+        // Python: 2. Use the CDP (Chrome DevTools Protocol) to control browser
+        // Python: 3. Reuse existing login sessions (no re-authentication needed)
+        // Python: 4. Generate structured action sequences
+
+    // # Key Commands
+
+        // Python: - `xbrowser open &lt;url>` — Open a page
+        // Python: - `xbrowser click &lt;selector>` — Click an element
+        // Python: - `xbrowser fill &lt;selector> &lt;value>` — Fill a form field
+        // Python: - `xbrowser screenshot &lt;path>` — Take a screenshot
+        // Python: - `xbrowser scrape &lt;selector>` — Extract data from page
+
+    // # WaLiCode Patterns Used
+
+        // Python: - **SkillLayering**: xbrowser is a compound skill (open + click + fill + scrape)
+        // Python: - **PermissionGuard**: Browser automation is dangerous (can leak login state)
+        // Python: → requires explicit user request, not auto-triggered
+        // Python: - **LazyLoading**: Only loaded when user mentions browser/web tasks
+    }
+}</pre></div>
+</div>
 
 <h3 class="sub-heading">8.13.3 OpenClaw 的 Skill 懒加载机制</h3>
 

@@ -314,9 +314,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">ReWOO 代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">Python: ReWOO 实现</span>
-<pre>from openai import OpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
 
 client = OpenAI()
 TOOLS = {"search": search_web, "weather": get_weather, "calc": calculate}
@@ -396,7 +395,345 @@ def rewoo_agent(question):
     return answer
 
 # 使用
-answer = rewoo_agent("北京今天天气如何？适合户外活动吗？")</pre>
+answer = rewoo_agent("北京今天天气如何？适合户外活动吗？")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+const client = new OpenAI();
+const TOOLS: Record<string, (input: string) => string> = {
+  search: search_web,
+  weather: get_weather,
+  calc: calculate
+};
+
+// ===== Phase 1: Planner =====
+const PLANNER_PROMPT = `你是一个规划器。根据用户问题，生成一系列步骤来解决问题。
+每一步用 #E 标记需要执行的工具调用。
+
+格式：
+Plan: 第一步的推理
+#E1 = tool_name("参数")
+Plan: 第二步的推理（可引用 #E1 的结果）
+#E2 = tool_name("参数")
+...
+
+问题: {question}`;
+
+async function plan_steps(question: string): Promise<string> {
+  // Phase 1: LLM 一次性规划所有步骤
+  const resp = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: PLANNER_PROMPT },
+      { role: 'user', content: question }
+    ]
+  });
+  return resp.choices[0].message.content!;
+}
+
+// ===== Phase 2: Worker =====
+function execute_steps(planText: string): Record<string, string> {
+  // Phase 2: 解析并执行所有 #E 工具调用
+  const results: Record<string, string> = {};
+  const regex = /#E(\d+)\s*=\s*(\w+)\(["']?(.*?)["']?\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(planText)) !== null) {
+    const stepId = match[1];
+    const toolName = match[2];
+    const toolInput = match[3];
+    if (toolName in TOOLS) {
+      results[`#E${stepId}`] = TOOLS[toolName](toolInput);
+    } else {
+      results[`#E${stepId}`] = `Error: ${toolName} not found`;
+    }
+  }
+  return results;
+}
+
+// ===== Phase 3: Solver =====
+const SOLVER_PROMPT = `根据以下规划和执行结果，给出最终答案。
+
+规划:
+{plan}
+
+执行结果:
+{results}
+
+请综合以上信息，给出完整答案。`;
+
+async function solve_answer(
+  planText: string,
+  results: Record<string, string>
+): Promise<string> {
+  // Phase 3: LLM 综合所有结果生成答案
+  let filledPlan = planText;
+  for (const [key, value] of Object.entries(results)) {
+    filledPlan = filledPlan.replaceAll(key, `[结果: ${value}]`);
+  }
+
+  const resp = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: SOLVER_PROMPT },
+      { role: 'user', content: `规划:\n${planText}\n\n执行结果:\n${filledPlan}` }
+    ]
+  });
+  return resp.choices[0].message.content!;
+}
+
+// ===== 完整流程 =====
+async function rewoo_agent(question: string): Promise<string> {
+  // ReWOO: Planner → Worker → Solver
+  const plan = await plan_steps(question);   // 1. 规划
+  const results = execute_steps(plan);        // 2. 执行
+  const answer = await solve_answer(plan, results); // 3. 求解
+  return answer;
+}
+
+// 使用
+const answer = await rewoo_agent('北京今天天气如何？适合户外活动吗？');</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+	"strings"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+var client = openai.NewClient()
+
+func searchWeb(input string) string { return "search: " + input }
+func getWeather(input string) string { return "weather: " + input }
+func calculate(input string) string { return "calc: " + input }
+
+var tools = map[string]func(string) string{
+	"search":  searchWeb,
+	"weather": getWeather,
+	"calc":    calculate,
+}
+
+// ===== Phase 1: Planner =====
+const plannerPrompt = `你是一个规划器。根据用户问题，生成一系列步骤来解决问题。
+每一步用 #E 标记需要执行的工具调用。
+
+格式：
+Plan: 第一步的推理
+#E1 = tool_name("参数")
+Plan: 第二步的推理（可引用 #E1 的结果）
+#E2 = tool_name("参数")
+...
+
+问题: %s`
+
+func planSteps(question string) (string, error) {
+	// Phase 1: LLM 一次性规划所有步骤
+	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model: openai.GPT4o,
+		Messages: []openai.ChatCompletionMessage{
+			{Role: openai.ChatMessageRoleSystem, Content: fmt.Sprintf(plannerPrompt, "{question}")},
+			{Role: openai.ChatMessageRoleUser, Content: question},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Message.Content, nil
+}
+
+// ===== Phase 2: Worker =====
+func executeSteps(planText string) map[string]string {
+	// Phase 2: 解析并执行所有 #E 工具调用
+	results := make(map[string]string)
+	re := regexp.MustCompile(`#E(\d+)\s*=\s*(\w+)\(["']?(.*?)["']?\)`)
+	matches := re.FindAllStringSubmatch(planText, -1)
+	for _, m := range matches {
+		stepID, toolName, toolInput := m[1], m[2], m[3]
+		if fn, ok := tools[toolName]; ok {
+			results["#E"+stepID] = fn(toolInput)
+		} else {
+			results["#E"+stepID] = fmt.Sprintf("Error: %s not found", toolName)
+		}
+	}
+	return results
+}
+
+// ===== Phase 3: Solver =====
+const solverPrompt = `根据以下规划和执行结果，给出最终答案。
+
+规划:
+%s
+
+执行结果:
+%s
+
+请综合以上信息，给出完整答案。`
+
+func solveAnswer(planText string, results map[string]string) (string, error) {
+	// Phase 3: LLM 综合所有结果生成答案
+	filledPlan := planText
+	for key, value := range results {
+		filledPlan = strings.ReplaceAll(filledPlan, key, fmt.Sprintf("[结果: %s]", value))
+	}
+
+	resultStr := ""
+	for k, v := range results {
+		resultStr += fmt.Sprintf("%s: %s\n", k, v)
+	}
+
+	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model: openai.GPT4o,
+		Messages: []openai.ChatCompletionMessage{
+			{Role: openai.ChatMessageRoleSystem, Content: solverPrompt},
+			{Role: openai.ChatMessageRoleUser, Content: fmt.Sprintf("规划:\n%s\n\n执行结果:\n%s", planText, filledPlan)},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Message.Content, nil
+}
+
+// ===== 完整流程 =====
+func rewooAgent(question string) (string, error) {
+	// ReWOO: Planner → Worker → Solver
+	plan, err := planSteps(question) // 1. 规划
+	if err != nil {
+		return "", err
+	}
+	results := executeSteps(plan) // 2. 执行
+	answer, err := solveAnswer(plan, results) // 3. 求解
+	if err != nil {
+		return "", err
+	}
+	return answer, nil
+}
+
+// 使用
+func main() {
+	answer, _ := rewooAgent("北京今天天气如何？适合户外活动吗？")
+	fmt.Println(answer)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class AgentCode {
+    static OpenAIClient client = new OpenAIClient();
+    static Map&lt;String, java.util.function.Function&lt;String, String&gt;&gt; tools = new HashMap&lt;&gt;();
+
+    static {
+        tools.put("search", AgentCode::searchWeb);
+        tools.put("weather", AgentCode::getWeather);
+        tools.put("calc", AgentCode::calculate);
+    }
+
+    static String searchWeb(String input) { return "search: " + input; }
+    static String getWeather(String input) { return "weather: " + input; }
+    static String calculate(String input) { return "calc: " + input; }
+
+    // ===== Phase 1: Planner =====
+    static final String PLANNER_PROMPT = """
+        你是一个规划器。根据用户问题，生成一系列步骤来解决问题。
+        每一步用 #E 标记需要执行的工具调用。
+
+        格式：
+        Plan: 第一步的推理
+        #E1 = tool_name("参数")
+        Plan: 第二步的推理（可引用 #E1 的结果）
+        #E2 = tool_name("参数")
+        ...
+
+        问题: %s""";
+
+    static String planSteps(String question) {
+        // Phase 1: LLM 一次性规划所有步骤
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model("gpt-4o")
+            .addMessage(ChatCompletionMessage.builder()
+                .role(ChatCompletionMessage.Role.SYSTEM)
+                .content(String.format(PLANNER_PROMPT, "{question}"))
+                .build())
+            .addMessage(ChatCompletionMessage.builder()
+                .role(ChatCompletionMessage.Role.USER)
+                .content(question)
+                .build())
+            .build();
+        ChatCompletion resp = client.chat().completions().create(params);
+        return resp.choices().get(0).message().content().orElse("");
+    }
+
+    // ===== Phase 2: Worker =====
+    static Map&lt;String, String&gt; executeSteps(String planText) {
+        // Phase 2: 解析并执行所有 #E 工具调用
+        Map&lt;String, String&gt; results = new LinkedHashMap&lt;&gt;();
+        Pattern pattern = Pattern.compile("#E(\\\\d+)\\\\s*=\\\\s*(\\\\w+)\\\\([\"']?(.*?)[\"']?\\\\)");
+        Matcher matcher = pattern.matcher(planText);
+        while (matcher.find()) {
+            String stepId = matcher.group(1);
+            String toolName = matcher.group(2);
+            String toolInput = matcher.group(3);
+            if (tools.containsKey(toolName)) {
+                results.put("#E" + stepId, tools.get(toolName).apply(toolInput));
+            } else {
+                results.put("#E" + stepId, "Error: " + toolName + " not found");
+            }
+        }
+        return results;
+    }
+
+    // ===== Phase 3: Solver =====
+    static final String SOLVER_PROMPT = """
+        根据以下规划和执行结果，给出最终答案。
+
+        规划:
+        %s
+
+        执行结果:
+        %s
+
+        请综合以上信息，给出完整答案。""";
+
+    static String solveAnswer(String planText, Map&lt;String, String&gt; results) {
+        // Phase 3: LLM 综合所有结果生成答案
+        String filledPlan = planText;
+        for (Map.Entry&lt;String, String&gt; entry : results.entrySet()) {
+            filledPlan = filledPlan.replace(entry.getKey(),
+                "[结果: " + entry.getValue() + "]");
+        }
+
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model("gpt-4o")
+            .addMessage(ChatCompletionMessage.builder()
+                .role(ChatCompletionMessage.Role.SYSTEM)
+                .content(SOLVER_PROMPT)
+                .build())
+            .addMessage(ChatCompletionMessage.builder()
+                .role(ChatCompletionMessage.Role.USER)
+                .content("规划:\\n" + planText + "\\n\\n执行结果:\\n" + filledPlan)
+                .build())
+            .build();
+        ChatCompletion resp = client.chat().completions().create(params);
+        return resp.choices().get(0).message().content().orElse("");
+    }
+
+    // ===== 完整流程 =====
+    static String rewooAgent(String question) {
+        // ReWOO: Planner → Worker → Solver
+        String plan = planSteps(question);           // 1. 规划
+        Map&lt;String, String&gt; results = executeSteps(plan); // 2. 执行
+        String answer = solveAnswer(plan, results);  // 3. 求解
+        return answer;
+    }
+
+    // 使用
+    public static void main(String[] args) {
+        String answer = rewooAgent("北京今天天气如何？适合户外活动吗？");
+        System.out.println(answer);
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-warning);">
@@ -475,9 +812,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">并行调用多个工具：代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">Python: LLM Compiler 并行执行</span>
-<pre>import asyncio
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import asyncio
 from openai import OpenAI
 
 client = OpenAI()
@@ -571,7 +907,297 @@ async def llm_compiler_agent(question):
 # 使用
 answer = await llm_compiler_agent(
     "北京、上海、广州三城市今天天气如何？哪个最适合户外活动？"
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Node.js built-in or npm package for: asyncio
+import OpenAI from 'openai';
+
+  const client = OpenAI();
+
+// ===== Step 1: 编译器生成并行计划 =====
+  const COMPILER_PROMPT = """根据用户问题，生成工具调用计划。;
+  // 标记依赖关系：如果一个调用需要另一个的结果，标注 depends_on。
+
+  // 输出JSON格式:
+  // [
+  // {"id": 1, "tool": "search", "args": {"query": "北京天气"},
+  // "depends_on": []},
+  // {"id": 2, "tool": "search", "args": {"query": "上海天气"},
+  // "depends_on": []},
+  // {"id": 3, "tool": "compare", "args": {"data_from": [1, 2]},
+  // "depends_on": [1, 2]}
+  // ]
+
+  // 问题: {question}"""
+
+  // async def compile_plan(question):
+  /** docstring */
+  const resp = client.chat.completions.create(;
+  const model = "gpt-4o",;
+  const messages = [{"role": "system", "content": COMPILER_PROMPT},;
+  // {"role": "user", "content": question}],
+  const response_format = {"type": "json_object"};
+  // )
+// Node.js built-in or npm package for: json
+  return json.loads(resp.choices[0].message.content);
+
+// ===== Step 2: 并行执行独立工具 =====
+  // async def execute_parallel(plan):
+  /** docstring */
+  const results = {};
+  const completed = set();
+
+  while (len(completed) < len(plan)) {
+// 找出所有依赖已完成的步骤
+  const ready = [step for step in plan;
+  // if step["id"] not in completed
+  // and all(d in completed for d in step["depends_on"])]
+
+  if (!ready) {
+  // break  # 防止死锁
+
+// 并行执行所有就绪步骤
+  const tasks = [];
+  for (const step of ready) {
+  const task = asyncio.create_task(;
+  // call_tool_async(step["tool"], step["args"], results)
+  // )
+  // tasks.append((step["id"], task))
+
+// 等待本轮所有任务完成
+  for (const [step_id, task] of tasks) {
+  // results[step_id] = await task
+  // completed.add(step_id)
+
+  return results;
+
+  // async def call_tool_async(tool_name, args, prev_results):
+  /** docstring */
+// 替换依赖引用为实际结果
+  if ("data_from" in args) {
+  // args["data"] = [prev_results[d] for d in args["data_from"]]
+
+// 模拟工具执行（实际项目中替换为真实API调用）
+  // await asyncio.sleep(1)  # 模拟网络延迟
+  return `${$1} 结果: ${$1}`;
+
+// ===== Step 3: Solver 综合答案 =====
+  // async def solve_with_results(question, plan, results):
+  /** docstring */
+  const resp = client.chat.completions.create(;
+  const model = "gpt-4o",;
+  const messages = [;
+  // {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
+  // {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
+  // ]
+  // )
+  return resp.choices[0].message.content;
+
+  // async def llm_compiler_agent(question):
+  /** docstring */
+  const plan = await compile_plan(question);
+  const results = await execute_parallel(plan);
+  const answer = solve_with_results(question, plan, results);
+  return answer;
+
+// 使用
+  const answer = await llm_compiler_agent(;
+  // "北京、上海、广州三城市今天天气如何？哪个最适合户外活动？"
+  // )</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import asyncio
+// from openai import OpenAI
+
+	// Python: client = OpenAI()
+
+// ===== Step 1: 编译器生成并行计划 =====
+	// Python: COMPILER_PROMPT = """根据用户问题，生成工具调用计划。
+	// Python: 标记依赖关系：如果一个调用需要另一个的结果，标注 depends_on。
+
+	// Python: 输出JSON格式:
+	// Python: [
+	// Python: {"id": 1, "tool": "search", "args": {"query": "北京天气"},
+	// Python: "depends_on": []},
+	// Python: {"id": 2, "tool": "search", "args": {"query": "上海天气"},
+	// Python: "depends_on": []},
+	// Python: {"id": 3, "tool": "compare", "args": {"data_from": [1, 2]},
+	// Python: "depends_on": [1, 2]}
+	// Python: ]
+
+	// Python: 问题: {question}"""
+
+	// Python: async def compile_plan(question):
+	// Python: resp = client.chat.completions.create(
+	// Python: model="gpt-4o",
+	// Python: messages=[{"role": "system", "content": COMPILER_PROMPT},
+	// Python: {"role": "user", "content": question}],
+	// Python: response_format={"type": "json_object"}
+	// Python: )
+// import json
+	return json.loads(resp.choices[0].message.content)
+
+// ===== Step 2: 并行执行独立工具 =====
+	// Python: async def execute_parallel(plan):
+	// Python: results = {}
+	// Python: completed = set()
+
+	// Python: while len(completed) < len(plan):
+// 找出所有依赖已完成的步骤
+	// Python: ready = [step for step in plan
+	// Python: if step["id"] not in completed
+	// Python: and all(d in completed for d in step["depends_on"])]
+
+	if not ready {
+	// Python: break  # 防止死锁
+
+// 并行执行所有就绪步骤
+	// Python: tasks = []
+	for _, step := range ready {
+	// Python: task = asyncio.create_task(
+	// Python: call_tool_async(step["tool"], step["args"], results)
+	// Python: )
+	// Python: tasks.append((step["id"], task))
+
+// 等待本轮所有任务完成
+	// Python: for step_id, task in tasks:
+	// Python: results[step_id] = await task
+	// Python: completed.add(step_id)
+
+	return results
+
+	// Python: async def call_tool_async(tool_name, args, prev_results):
+// 替换依赖引用为实际结果
+	if "data_from" in args {
+	// Python: args["data"] = [prev_results[d] for d in args["data_from"]]
+
+// 模拟工具执行（实际项目中替换为真实API调用）
+	// Python: await asyncio.sleep(1)  # 模拟网络延迟
+	return f"{tool_name} 结果: {args}"
+
+// ===== Step 3: Solver 综合答案 =====
+	// Python: async def solve_with_results(question, plan, results):
+	// Python: resp = client.chat.completions.create(
+	// Python: model="gpt-4o",
+	// Python: messages=[
+	// Python: {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
+	// Python: {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
+	// Python: ]
+	// Python: )
+	return resp.choices[0].message.content
+
+	// Python: async def llm_compiler_agent(question):
+	// Python: plan = await compile_plan(question)
+	// Python: results = await execute_parallel(plan)
+	// Python: answer = solve_with_results(question, plan, results)
+	return answer
+
+// 使用
+	// Python: answer = await llm_compiler_agent(
+	// Python: "北京、上海、广州三城市今天天气如何？哪个最适合户外活动？"
+	// Python: )</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import asyncio
+    // from openai import OpenAI
+
+        // Python: client = OpenAI()
+
+    // ===== Step 1: 编译器生成并行计划 =====
+        // Python: COMPILER_PROMPT = """根据用户问题，生成工具调用计划。
+        // Python: 标记依赖关系：如果一个调用需要另一个的结果，标注 depends_on。
+
+        // Python: 输出JSON格式:
+        // Python: [
+        // Python: {"id": 1, "tool": "search", "args": {"query": "北京天气"},
+        // Python: "depends_on": []},
+        // Python: {"id": 2, "tool": "search", "args": {"query": "上海天气"},
+        // Python: "depends_on": []},
+        // Python: {"id": 3, "tool": "compare", "args": {"data_from": [1, 2]},
+        // Python: "depends_on": [1, 2]}
+        // Python: ]
+
+        // Python: 问题: {question}"""
+
+        // Python: async def compile_plan(question):
+        // Python: resp = client.chat.completions.create(
+        // Python: model="gpt-4o",
+        // Python: messages=[{"role": "system", "content": COMPILER_PROMPT},
+        // Python: {"role": "user", "content": question}],
+        // Python: response_format={"type": "json_object"}
+        // Python: )
+    // import json
+        return json.loads(resp.choices[0].message.content);
+
+    // ===== Step 2: 并行执行独立工具 =====
+        // Python: async def execute_parallel(plan):
+        // Python: results = {}
+        // Python: completed = set()
+
+        // Python: while len(completed) < len(plan):
+    // 找出所有依赖已完成的步骤
+        // Python: ready = [step for step in plan
+        // Python: if step["id"] not in completed
+        // Python: and all(d in completed for d in step["depends_on"])]
+
+        if (!ready) {
+        // Python: break  # 防止死锁
+
+    // 并行执行所有就绪步骤
+        // Python: tasks = []
+        for (var step : ready) {
+        // Python: task = asyncio.create_task(
+        // Python: call_tool_async(step["tool"], step["args"], results)
+        // Python: )
+        // Python: tasks.append((step["id"], task))
+
+    // 等待本轮所有任务完成
+        // Python: for step_id, task in tasks:
+        // Python: results[step_id] = await task
+        // Python: completed.add(step_id)
+
+        return results;
+
+        // Python: async def call_tool_async(tool_name, args, prev_results):
+    // 替换依赖引用为实际结果
+        if ("data_from" in args) {
+        // Python: args["data"] = [prev_results[d] for d in args["data_from"]]
+
+    // 模拟工具执行（实际项目中替换为真实API调用）
+        // Python: await asyncio.sleep(1)  # 模拟网络延迟
+        return f"{tool_name} 结果: {args}";
+
+    // ===== Step 3: Solver 综合答案 =====
+        // Python: async def solve_with_results(question, plan, results):
+        // Python: resp = client.chat.completions.create(
+        // Python: model="gpt-4o",
+        // Python: messages=[
+        // Python: {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
+        // Python: {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
+        // Python: ]
+        // Python: )
+        return resp.choices[0].message.content;
+
+        // Python: async def llm_compiler_agent(question):
+        // Python: plan = await compile_plan(question)
+        // Python: results = await execute_parallel(plan)
+        // Python: answer = solve_with_results(question, plan, results)
+        return answer;
+
+    // 使用
+        // Python: answer = await llm_compiler_agent(
+        // Python: "北京、上海、广州三城市今天天气如何？哪个最适合户外活动？"
+        // Python: )
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
@@ -672,9 +1298,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">Reflexion 循环实现</h3>
 
-<div class="code-block">
-  <span class="code-label">Python: Reflexion 循环实现</span>
-<pre>from openai import OpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
 
 client = OpenAI()
 
@@ -762,7 +1387,283 @@ def evaluate_result(question, result):
 # 使用
 answer = reflexion_agent(
     "解释量子纠缠的原理，并说明它与经典关联的区别"
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+  const client = OpenAI();
+
+  const REFLECT_PROMPT = """你刚刚完成了一个任务，但结果不够好。;
+  // 回顾你的推理过程和执行结果，找出问题所在。
+
+  // 之前的尝试:
+  // {trajectory}
+
+  // 评估反馈:
+  // {evaluation}
+
+  // 请反思:
+  // 1. 哪一步推理出了问题？
+  // 2. 应该怎么做才更好？
+  // 3. 下次尝试时需要注意什么？
+
+  // 输出格式:
+  // Reflection: 你的反思内容"""
+
+function react_agent_with_context(question, context="") {
+  /** docstring */
+  const messages = [{"role": "system", "content": REACT_PROMPT + context}];
+  // messages.append({"role": "user", "content": question})
+  const trajectory = [];
+  for (const step of range(10)) {
+  const resp = client.chat.completions.create(model="gpt-4o", messages=messages);
+  const thought = resp.choices[0].message.content;
+  // trajectory.append(thought)
+  if ("finish" in thought.lower()) {
+  return {"answer": thought, "trajectory": "\n".join(trajectory)};
+  // messages.append({"role": "assistant", "content": thought})
+  return {"answer": thought, "trajectory": "\n".join(trajectory)};
+
+function reflexion_agent(question, max_trials=3) {
+  /** docstring */
+  const reflections = []  # 累积的反思经验;
+
+  for (const trial of range(max_trials)) {
+// 1. 执行任务（使用 ReAct + 历史反思作为额外上下文）
+  const context = "";
+  if (reflections) {
+  const context = `\n之前的反思经验:\n" + "\n`;
+
+  const result = react_agent_with_context(question, context);
+
+// 2. 评估结果质量
+  const evaluation = evaluate_result(question, result);
+
+  if (evaluation["score"] >= 0.8) {
+  return result;
+
+// 3. 反思推理过程
+  const reflection = client.chat.completions.create(;
+  const model = "gpt-4o",;
+  const messages = [;
+  // {"role": "system", "content": REFLECT_PROMPT},
+  // {"role": "user", "content":
+  // f"之前的尝试:\n{result['trajectory']}\n\n"
+  // f"评估反馈:\n{evaluation['feedback']}"}
+  // ]
+  // ).choices[0].message.content
+
+  // reflections.append(reflection)
+  console.log(`Trial {trial+1}: score={evaluation['score']:.2f}`);
+  console.log(`Reflection: {reflection[:100]}...`);
+
+  return result  # 达到最大尝试次数，返回最后结果;
+
+function evaluate_result(question, result) {
+  /** docstring */
+  const resp = client.chat.completions.create(;
+  const model = "gpt-4o",;
+  const messages = [;
+  // {"role": "system", "content":
+  // "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
+  // {"role": "user", "content":
+  // f"问题: {question}\n答案: {result['answer']}"}
+  // ],
+  const response_format = {"type": "json_object"};
+  // )
+// Node.js built-in or npm package for: json
+  return json.loads(resp.choices[0].message.content);
+
+// 使用
+  const answer = reflexion_agent(;
+  // "解释量子纠缠的原理，并说明它与经典关联的区别"
+  // )</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from openai import OpenAI
+
+	// Python: client = OpenAI()
+
+	// Python: REFLECT_PROMPT = """你刚刚完成了一个任务，但结果不够好。
+	// Python: 回顾你的推理过程和执行结果，找出问题所在。
+
+	// Python: 之前的尝试:
+	// Python: {trajectory}
+
+	// Python: 评估反馈:
+	// Python: {evaluation}
+
+	// Python: 请反思:
+	// Python: 1. 哪一步推理出了问题？
+	// Python: 2. 应该怎么做才更好？
+	// Python: 3. 下次尝试时需要注意什么？
+
+	// Python: 输出格式:
+	// Python: Reflection: 你的反思内容"""
+
+func react_agent_with_context() {
+	// Python: messages = [{"role": "system", "content": REACT_PROMPT + context}]
+	// Python: messages.append({"role": "user", "content": question})
+	// Python: trajectory = []
+	for _, step := range range(10) {
+	// Python: resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+	// Python: thought = resp.choices[0].message.content
+	// Python: trajectory.append(thought)
+	if "finish" in thought.lower() {
+	return {"answer": thought, "trajectory": "\n".join(trajectory)}
+	// Python: messages.append({"role": "assistant", "content": thought})
+	return {"answer": thought, "trajectory": "\n".join(trajectory)}
+
+func reflexion_agent() {
+	// Python: reflections = []  # 累积的反思经验
+
+	for _, trial := range range(max_trials) {
+// 1. 执行任务（使用 ReAct + 历史反思作为额外上下文）
+	// Python: context = ""
+	if reflections {
+	// Python: context = f"\n之前的反思经验:\n" + "\n".join(reflections)
+
+	// Python: result = react_agent_with_context(question, context)
+
+// 2. 评估结果质量
+	// Python: evaluation = evaluate_result(question, result)
+
+	if evaluation["score"] >= 0.8 {
+	return result
+
+// 3. 反思推理过程
+	// Python: reflection = client.chat.completions.create(
+	// Python: model="gpt-4o",
+	// Python: messages=[
+	// Python: {"role": "system", "content": REFLECT_PROMPT},
+	// Python: {"role": "user", "content":
+	// Python: f"之前的尝试:\n{result['trajectory']}\n\n"
+	// Python: f"评估反馈:\n{evaluation['feedback']}"}
+	// Python: ]
+	// Python: ).choices[0].message.content
+
+	// Python: reflections.append(reflection)
+	fmt.Println(f"Trial {trial+1}: score={evaluation['score']:.2f}")
+	fmt.Println(f"Reflection: {reflection[:100]}...")
+
+	return result  # 达到最大尝试次数，返回最后结果
+
+func evaluate_result() {
+	// Python: resp = client.chat.completions.create(
+	// Python: model="gpt-4o",
+	// Python: messages=[
+	// Python: {"role": "system", "content":
+	// Python: "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
+	// Python: {"role": "user", "content":
+	// Python: f"问题: {question}\n答案: {result['answer']}"}
+	// Python: ],
+	// Python: response_format={"type": "json_object"}
+	// Python: )
+// import json
+	return json.loads(resp.choices[0].message.content)
+
+// 使用
+	// Python: answer = reflexion_agent(
+	// Python: "解释量子纠缠的原理，并说明它与经典关联的区别"
+	// Python: )</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from openai import OpenAI
+
+        // Python: client = OpenAI()
+
+        // Python: REFLECT_PROMPT = """你刚刚完成了一个任务，但结果不够好。
+        // Python: 回顾你的推理过程和执行结果，找出问题所在。
+
+        // Python: 之前的尝试:
+        // Python: {trajectory}
+
+        // Python: 评估反馈:
+        // Python: {evaluation}
+
+        // Python: 请反思:
+        // Python: 1. 哪一步推理出了问题？
+        // Python: 2. 应该怎么做才更好？
+        // Python: 3. 下次尝试时需要注意什么？
+
+        // Python: 输出格式:
+        // Python: Reflection: 你的反思内容"""
+
+    public static void react_agent_with_context() {
+        // Python: messages = [{"role": "system", "content": REACT_PROMPT + context}]
+        // Python: messages.append({"role": "user", "content": question})
+        // Python: trajectory = []
+        for (var step : range(10)) {
+        // Python: resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+        // Python: thought = resp.choices[0].message.content
+        // Python: trajectory.append(thought)
+        if ("finish" in thought.lower()) {
+        return {"answer": thought, "trajectory": "\n".join(trajectory)};
+        // Python: messages.append({"role": "assistant", "content": thought})
+        return {"answer": thought, "trajectory": "\n".join(trajectory)};
+
+    public static void reflexion_agent() {
+        // Python: reflections = []  # 累积的反思经验
+
+        for (var trial : range(max_trials)) {
+    // 1. 执行任务（使用 ReAct + 历史反思作为额外上下文）
+        // Python: context = ""
+        if (reflections) {
+        // Python: context = f"\n之前的反思经验:\n" + "\n".join(reflections)
+
+        // Python: result = react_agent_with_context(question, context)
+
+    // 2. 评估结果质量
+        // Python: evaluation = evaluate_result(question, result)
+
+        if (evaluation["score"] >= 0.8) {
+        return result;
+
+    // 3. 反思推理过程
+        // Python: reflection = client.chat.completions.create(
+        // Python: model="gpt-4o",
+        // Python: messages=[
+        // Python: {"role": "system", "content": REFLECT_PROMPT},
+        // Python: {"role": "user", "content":
+        // Python: f"之前的尝试:\n{result['trajectory']}\n\n"
+        // Python: f"评估反馈:\n{evaluation['feedback']}"}
+        // Python: ]
+        // Python: ).choices[0].message.content
+
+        // Python: reflections.append(reflection)
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+
+        return result  # 达到最大尝试次数，返回最后结果;
+
+    public static void evaluate_result() {
+        // Python: resp = client.chat.completions.create(
+        // Python: model="gpt-4o",
+        // Python: messages=[
+        // Python: {"role": "system", "content":
+        // Python: "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
+        // Python: {"role": "user", "content":
+        // Python: f"问题: {question}\n答案: {result['answer']}"}
+        // Python: ],
+        // Python: response_format={"type": "json_object"}
+        // Python: )
+    // import json
+        return json.loads(resp.choices[0].message.content);
+
+    // 使用
+        // Python: answer = reflexion_agent(
+        // Python: "解释量子纠缠的原理，并说明它与经典关联的区别"
+        // Python: )
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
@@ -824,9 +1725,8 @@ answer = reflexion_agent(
 
 <h3 class="sub-heading">OpenAI 结构化输出 + Pydantic 验证</h3>
 
-<div class="code-block">
-  <span class="code-label">Python: 定义结构化输出 Schema</span>
-<pre>from pydantic import BaseModel, Field
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from pydantic import BaseModel, Field
 from openai import OpenAI
 from typing import List, Optional
 
@@ -907,7 +1807,265 @@ def validate_agent_response(response: AgentResponse):
 
 # 使用
 result = structured_agent("量子计算和经典计算的本质区别是什么？")
-validate_agent_response(result)</pre>
+validate_agent_response(result)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {BaseModel, Field} from 'pydantic';
+import OpenAI from 'openai';
+// TypeScript has built-in types, no import needed for List, Optional
+
+  const client = OpenAI();
+
+// ===== 1. 用 Pydantic 定义输出 Schema =====
+class AgentStep {
+  /** docstring */
+  // thought: str = Field(
+  // description = "对当前状态的推理分析"
+  // )
+  // action: str = Field(
+  // description = "要调用的工具名称",
+  // enum = ["search", "lookup", "calculate", "finish"]
+  // )
+  // action_input: str = Field(
+  // description = "工具的输入参数"
+  // )
+  // confidence: float = Field(
+  // description = "对当前推理的置信度 0-1",
+  // ge = 0, le=1
+  // )
+
+class AgentResponse {
+  /** docstring */
+  // steps: List[AgentStep] = Field(
+  // description = "推理步骤列表"
+  // )
+  // final_answer: Optional[str] = Field(
+  // description = "最终答案（仅当 action=finish 时提供）",
+  // default = None
+  // )
+  // needs_more_info: bool = Field(
+  // description = "是否需要更多信息才能回答"
+  // )
+
+// ===== 2. 用 OpenAI Structured Output 调用 =====
+function structured_agent(question) {
+  /** docstring */
+  // response = client.beta.chat.completions.parse(
+  // model = "gpt-4o-2024-08-06",
+  // messages = [
+  // {"role": "system", "content":
+  // "你是一个研究助手。分析问题并给出推理步骤。"},
+  // {"role": "user", "content": question}
+  // ],
+  // response_format = AgentResponse  # Pydantic 模型直接作为 Schema
+  // )
+
+// 3. 返回的是已验证的 Pydantic 对象
+  // result = response.choices[0].message.parsed
+
+// 类型安全！result.thought 是 str，result.confidence 是 float
+  for (const step of result.steps) {
+  console.log(`Thought: {step.thought}`);
+  console.log(`Action: {step.action}({step.action_input})`);
+  console.log(`Confidence: {step.confidence:.2f}`);
+
+  if (result.final_answer) {
+  console.log(`Answer: {result.final_answer}`);
+
+  return result;
+
+// ===== 3. Pydantic 自动验证 =====
+// 如果 LLM 输出的 confidence 超出 0-1 范围，Pydantic 会自动拒绝
+// 如果 action 不是枚举值之一，Pydantic 会自动拒绝
+// 如果 steps 是空列表，可以根据业务规则添加额外验证
+
+function validate_agent_response(response: AgentResponse) {
+  /** docstring */
+  if (!response.steps) {
+  // raise ValueError("Agent 必须至少输出一个推理步骤")
+  if (response.needs_more_info && response.final_answer) {
+  // raise ValueError("标注需要更多信息时不应有最终答案")
+  if (response.steps[-1].action == "finish" && !response.final_answer) {
+  // raise ValueError("finish 动作必须提供最终答案")
+  return true;
+
+// 使用
+  // result = structured_agent("量子计算和经典计算的本质区别是什么？")
+  // validate_agent_response(result)
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from pydantic import BaseModel, Field
+// from openai import OpenAI
+// from typing import List, Optional
+
+	// Python: client = OpenAI()
+
+// ===== 1. 用 Pydantic 定义输出 Schema =====
+// AgentStep - CLI Agent class
+type AgentStep struct {
+	// Python: thought: str = Field(
+	// Python: description="对当前状态的推理分析"
+	// Python: )
+	// Python: action: str = Field(
+	// Python: description="要调用的工具名称",
+	// Python: enum=["search", "lookup", "calculate", "finish"]
+	// Python: )
+	// Python: action_input: str = Field(
+	// Python: description="工具的输入参数"
+	// Python: )
+	// Python: confidence: float = Field(
+	// Python: description="对当前推理的置信度 0-1",
+	// Python: ge=0, le=1
+	// Python: )
+
+// AgentResponse - CLI Agent class
+type AgentResponse struct {
+	// Python: steps: List[AgentStep] = Field(
+	// Python: description="推理步骤列表"
+	// Python: )
+	// Python: final_answer: Optional[str] = Field(
+	// Python: description="最终答案（仅当 action=finish 时提供）",
+	// Python: default=None
+	// Python: )
+	// Python: needs_more_info: bool = Field(
+	// Python: description="是否需要更多信息才能回答"
+	// Python: )
+
+// ===== 2. 用 OpenAI Structured Output 调用 =====
+func structured_agent() {
+	// Python: response = client.beta.chat.completions.parse(
+	// Python: model="gpt-4o-2024-08-06",
+	// Python: messages=[
+	// Python: {"role": "system", "content":
+	// Python: "你是一个研究助手。分析问题并给出推理步骤。"},
+	// Python: {"role": "user", "content": question}
+	// Python: ],
+	// Python: response_format=AgentResponse  # Pydantic 模型直接作为 Schema
+	// Python: )
+
+// 3. 返回的是已验证的 Pydantic 对象
+	// Python: result = response.choices[0].message.parsed
+
+// 类型安全！result.thought 是 str，result.confidence 是 float
+	for _, step := range result.steps {
+	fmt.Println(f"Thought: {step.thought}")
+	fmt.Println(f"Action: {step.action}({step.action_input})")
+	fmt.Println(f"Confidence: {step.confidence:.2f}")
+
+	if result.final_answer {
+	fmt.Println(f"Answer: {result.final_answer}")
+
+	return result
+
+// ===== 3. Pydantic 自动验证 =====
+// 如果 LLM 输出的 confidence 超出 0-1 范围，Pydantic 会自动拒绝
+// 如果 action 不是枚举值之一，Pydantic 会自动拒绝
+// 如果 steps 是空列表，可以根据业务规则添加额外验证
+
+func validate_agent_response() {
+	if not response.steps {
+	// Python: raise ValueError("Agent 必须至少输出一个推理步骤")
+	if response.needs_more_info and response.final_answer {
+	// Python: raise ValueError("标注需要更多信息时不应有最终答案")
+	if response.steps[-1].action == "finish" and not response.final_answer {
+	// Python: raise ValueError("finish 动作必须提供最终答案")
+	return true
+
+// 使用
+	// Python: result = structured_agent("量子计算和经典计算的本质区别是什么？")
+	// Python: validate_agent_response(result)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from pydantic import BaseModel, Field
+    // from openai import OpenAI
+    // from typing import List, Optional
+
+        // Python: client = OpenAI()
+
+    // ===== 1. 用 Pydantic 定义输出 Schema =====
+public class AgentStep {
+        // Python: thought: str = Field(
+        // Python: description="对当前状态的推理分析"
+        // Python: )
+        // Python: action: str = Field(
+        // Python: description="要调用的工具名称",
+        // Python: enum=["search", "lookup", "calculate", "finish"]
+        // Python: )
+        // Python: action_input: str = Field(
+        // Python: description="工具的输入参数"
+        // Python: )
+        // Python: confidence: float = Field(
+        // Python: description="对当前推理的置信度 0-1",
+        // Python: ge=0, le=1
+        // Python: )
+
+public class AgentResponse {
+        // Python: steps: List[AgentStep] = Field(
+        // Python: description="推理步骤列表"
+        // Python: )
+        // Python: final_answer: Optional[str] = Field(
+        // Python: description="最终答案（仅当 action=finish 时提供）",
+        // Python: default=None
+        // Python: )
+        // Python: needs_more_info: bool = Field(
+        // Python: description="是否需要更多信息才能回答"
+        // Python: )
+
+    // ===== 2. 用 OpenAI Structured Output 调用 =====
+    public static void structured_agent() {
+        // Python: response = client.beta.chat.completions.parse(
+        // Python: model="gpt-4o-2024-08-06",
+        // Python: messages=[
+        // Python: {"role": "system", "content":
+        // Python: "你是一个研究助手。分析问题并给出推理步骤。"},
+        // Python: {"role": "user", "content": question}
+        // Python: ],
+        // Python: response_format=AgentResponse  # Pydantic 模型直接作为 Schema
+        // Python: )
+
+    // 3. 返回的是已验证的 Pydantic 对象
+        // Python: result = response.choices[0].message.parsed
+
+    // 类型安全！result.thought 是 str，result.confidence 是 float
+        for (var step : result.steps) {
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+
+        if (result.final_answer) {
+        System.out.println(String.format("$1"));
+
+        return result;
+
+    // ===== 3. Pydantic 自动验证 =====
+    // 如果 LLM 输出的 confidence 超出 0-1 范围，Pydantic 会自动拒绝
+    // 如果 action 不是枚举值之一，Pydantic 会自动拒绝
+    // 如果 steps 是空列表，可以根据业务规则添加额外验证
+
+    public static void validate_agent_response() {
+        if (!response.steps) {
+        // Python: raise ValueError("Agent 必须至少输出一个推理步骤")
+        if (response.needs_more_info && response.final_answer) {
+        // Python: raise ValueError("标注需要更多信息时不应有最终答案")
+        if (response.steps[-1].action == "finish" && !response.final_answer) {
+        // Python: raise ValueError("finish 动作必须提供最终答案")
+        return true;
+
+    // 使用
+        // Python: result = structured_agent("量子计算和经典计算的本质区别是什么？")
+        // Python: validate_agent_response(result)
+    }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -995,9 +2153,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">压缩前后 Token 对比</h3>
 
-<div class="code-block">
-  <span class="code-label">Python: 语义保护型压缩实现</span>
-<pre>from openai import OpenAI
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
 
 client = OpenAI()
 
@@ -1073,7 +2230,247 @@ def compare_compression(original_msgs, compressed_msgs):
 # 压缩后消息数 = 2(锁定) + 1(摘要) + 3*3(保留) = 12条  
 # 压缩后 token ≈ 800
 
-# 压缩率: 80% token节省！</pre>
+# 压缩率: 80% token节省！</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+  const client = OpenAI();
+
+function semantic_compress(messages, keep_recent=3) {
+  /** docstring */
+
+// 1. 锁定：System Prompt 和原始问题
+  const locked = messages[:2]  # system + user question;
+
+// 2. 保留：最近K步（完整不压缩）
+  const recent = messages[-(keep_recent * 3):]  # 每步3条(thought+action+obs);
+
+// 3. 压缩：中间所有步骤 → 一段摘要
+  const middle = messages[2:-(keep_recent * 3)];
+
+  if (len(middle) > 6) {
+  const summary = client.chat.completions.create(;
+  const model = "gpt-4o-mini",  # 用小模型压缩，节省成本;
+  const messages = [;
+  // {"role": "system", "content":
+  // "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
+  // "忽略冗余的推理过程，只保留结论性信息。"},
+  // {"role": "user", "content":
+  // f"对话历史:\n{format_messages(middle)}"}
+  // ]
+  // ).choices[0].message.content
+
+  const compressed_middle = [;
+  // {"role": "system", "content": f"[历史摘要] {summary}"}
+  // ]
+  } else {
+  const compressed_middle = middle;
+
+// 4. 组合：锁定 + 压缩 + 保留
+  return locked + compressed_middle + recent;
+
+function format_messages(messages) {
+  /** docstring */
+  const text = "";
+  for (const msg of messages) {
+  const role = msg["role"];
+  const content = msg["content"][:200]  # 每条截断到200字;
+  // text += f"[{role}] {content}\n"
+  return text;
+
+// ===== Token 对比示例 =====
+function compare_compression(original_msgs, compressed_msgs) {
+  /** docstring */
+function count_tokens(msgs) {
+// 粗略估算：1个中文字≈1.5token，1个英文词≈1token
+  const total = 0;
+  for (const msg of msgs) {
+  const content = msg["content"];
+  const chinese_chars = sum(1 for c in content if '\u4e00' <= c <= '\u9fff');
+  const english_words = len(content.split()) - chinese_chars;
+  // total += chinese_chars * 1.5 + english_words
+  return int(total);
+
+  const orig_tokens = count_tokens(original_msgs);
+  const comp_tokens = count_tokens(compressed_msgs);
+  const ratio = comp_tokens / orig_tokens;
+
+  console.log(`原始 token: ~${$1}`);
+  console.log(`压缩 token: ~${$1}`);
+  console.log(`压缩率: {(1-ratio)*100:.1f}%`);
+  return orig_tokens, comp_tokens;
+
+// ===== 实战数据 =====
+// 假设一个20步 ReAct 任务：
+// 原始消息数 = 2(system+question) + 20*3(steps) = 62条
+// 原始 token ≈ 4000
+
+// 压缩后消息数 = 2(锁定) + 1(摘要) + 3*3(保留) = 12条
+// 压缩后 token ≈ 800
+
+// 压缩率: 80% token节省！</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// from openai import OpenAI
+
+	// Python: client = OpenAI()
+
+func semantic_compress() {
+
+// 1. 锁定：System Prompt 和原始问题
+	// Python: locked = messages[:2]  # system + user question
+
+// 2. 保留：最近K步（完整不压缩）
+	// Python: recent = messages[-(keep_recent * 3):]  # 每步3条(thought+action+obs)
+
+// 3. 压缩：中间所有步骤 → 一段摘要
+	// Python: middle = messages[2:-(keep_recent * 3)]
+
+	if len(middle) > 6 {
+	// Python: summary = client.chat.completions.create(
+	// Python: model="gpt-4o-mini",  # 用小模型压缩，节省成本
+	// Python: messages=[
+	// Python: {"role": "system", "content":
+	// Python: "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
+	// Python: "忽略冗余的推理过程，只保留结论性信息。"},
+	// Python: {"role": "user", "content":
+	// Python: f"对话历史:\n{format_messages(middle)}"}
+	// Python: ]
+	// Python: ).choices[0].message.content
+
+	// Python: compressed_middle = [
+	// Python: {"role": "system", "content": f"[历史摘要] {summary}"}
+	// Python: ]
+	} else {
+	// Python: compressed_middle = middle
+
+// 4. 组合：锁定 + 压缩 + 保留
+	return locked + compressed_middle + recent
+
+func format_messages() {
+	// Python: text = ""
+	for _, msg := range messages {
+	// Python: role = msg["role"]
+	// Python: content = msg["content"][:200]  # 每条截断到200字
+	// Python: text += f"[{role}] {content}\n"
+	return text
+
+// ===== Token 对比示例 =====
+func compare_compression() {
+func count_tokens() {
+// 粗略估算：1个中文字≈1.5token，1个英文词≈1token
+	// Python: total = 0
+	for _, msg := range msgs {
+	// Python: content = msg["content"]
+	// Python: chinese_chars = sum(1 for c in content if '\u4e00' <= c <= '\u9fff')
+	// Python: english_words = len(content.split()) - chinese_chars
+	// Python: total += chinese_chars * 1.5 + english_words
+	return int(total)
+
+	// Python: orig_tokens = count_tokens(original_msgs)
+	// Python: comp_tokens = count_tokens(compressed_msgs)
+	// Python: ratio = comp_tokens / orig_tokens
+
+	fmt.Println(f"原始 token: ~{orig_tokens}")
+	fmt.Println(f"压缩 token: ~{comp_tokens}")
+	fmt.Println(f"压缩率: {(1-ratio)*100:.1f}%")
+	return orig_tokens, comp_tokens
+
+// ===== 实战数据 =====
+// 假设一个20步 ReAct 任务：
+// 原始消息数 = 2(system+question) + 20*3(steps) = 62条
+// 原始 token ≈ 4000
+
+// 压缩后消息数 = 2(锁定) + 1(摘要) + 3*3(保留) = 12条
+// 压缩后 token ≈ 800
+
+// 压缩率: 80% token节省！</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // from openai import OpenAI
+
+        // Python: client = OpenAI()
+
+    public static void semantic_compress() {
+
+    // 1. 锁定：System Prompt 和原始问题
+        // Python: locked = messages[:2]  # system + user question
+
+    // 2. 保留：最近K步（完整不压缩）
+        // Python: recent = messages[-(keep_recent * 3):]  # 每步3条(thought+action+obs)
+
+    // 3. 压缩：中间所有步骤 → 一段摘要
+        // Python: middle = messages[2:-(keep_recent * 3)]
+
+        if (len(middle) > 6) {
+        // Python: summary = client.chat.completions.create(
+        // Python: model="gpt-4o-mini",  # 用小模型压缩，节省成本
+        // Python: messages=[
+        // Python: {"role": "system", "content":
+        // Python: "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
+        // Python: "忽略冗余的推理过程，只保留结论性信息。"},
+        // Python: {"role": "user", "content":
+        // Python: f"对话历史:\n{format_messages(middle)}"}
+        // Python: ]
+        // Python: ).choices[0].message.content
+
+        // Python: compressed_middle = [
+        // Python: {"role": "system", "content": f"[历史摘要] {summary}"}
+        // Python: ]
+        } else {
+        // Python: compressed_middle = middle
+
+    // 4. 组合：锁定 + 压缩 + 保留
+        return locked + compressed_middle + recent;
+
+    public static void format_messages() {
+        // Python: text = ""
+        for (var msg : messages) {
+        // Python: role = msg["role"]
+        // Python: content = msg["content"][:200]  # 每条截断到200字
+        // Python: text += f"[{role}] {content}\n"
+        return text;
+
+    // ===== Token 对比示例 =====
+    public static void compare_compression() {
+    public static void count_tokens() {
+    // 粗略估算：1个中文字≈1.5token，1个英文词≈1token
+        // Python: total = 0
+        for (var msg : msgs) {
+        // Python: content = msg["content"]
+        // Python: chinese_chars = sum(1 for c in content if '\u4e00' <= c <= '\u9fff')
+        // Python: english_words = len(content.split()) - chinese_chars
+        // Python: total += chinese_chars * 1.5 + english_words
+        return int(total);
+
+        // Python: orig_tokens = count_tokens(original_msgs)
+        // Python: comp_tokens = count_tokens(compressed_msgs)
+        // Python: ratio = comp_tokens / orig_tokens
+
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        return orig_tokens, comp_tokens;
+
+    // ===== 实战数据 =====
+    // 假设一个20步 ReAct 任务：
+    // 原始消息数 = 2(system+question) + 20*3(steps) = 62条
+    // 原始 token ≈ 4000
+
+    // 压缩后消息数 = 2(锁定) + 1(摘要) + 3*3(保留) = 12条
+    // 压缩后 token ≈ 800
+
+    // 压缩率: 80% token节省！
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -1124,9 +2521,8 @@ def compare_compression(original_msgs, compressed_msgs):
 <!-- ===== 4.10 ReAct 的代码实现 ===== -->
 <h2 class="section-heading">4.10 用 50 行代码实现 ReAct</h2>
 
-<div class="code-block">
-  <span class="code-label">Python: 最简 ReAct 实现</span>
-<pre>import re
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import re
 from openai import OpenAI
 
 client = OpenAI()
@@ -1168,7 +2564,190 @@ def react_agent(question, max_steps=10):
     return "达到最大步数限制"
 
 # 使用
-answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
+answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai
+
+const client = new OpenAI();
+const TOOLS: Record&lt;string, (input: string) =&gt; string&gt; = {
+  search: searchWeb,
+  lookup: lookupKeyword,
+};
+
+const REACT_PROMPT = `...`; // ReAct 系统提示词
+
+async function reactAgent(question: string, maxSteps = 10): Promise&lt;string&gt; {
+  const messages: any[] = [
+    { role: "system", content: REACT_PROMPT },
+    { role: "user", content: question },
+  ];
+
+  for (let step = 0; step &lt; maxSteps; step++) {
+    // 1. LLM 生成 Thought + Action
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+    });
+    const output = response.choices[0].message.content || "";
+    messages.push({ role: "assistant", content: output });
+
+    // 2. 解析 Action
+    const actionMatch = output.match(/Action: (\w+)\((.*?)\)/);
+    if (!actionMatch) break;
+
+    const toolName = actionMatch[1];
+    const toolInput = actionMatch[2].replace(/^["']|["']$/g, "");
+
+    // 3. 检查是否完成
+    if (toolName === "finish") return toolInput;
+
+    // 4. 执行工具
+    const tool = TOOLS[toolName];
+    const result = tool ? tool(toolInput) : `Error: tool ${toolName} not found`;
+
+    // 5. 注入 Observation
+    messages.push({ role: "user", content: `Observation: ${result}` });
+  }
+
+  return "达到最大步数限制";
+}
+
+// 使用
+reactAgent("2024年诺贝尔物理学奖得主是谁？").then(console.log);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+	"strings"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+var tools = map[string]func(string) string{
+	"search": searchWeb,
+	"lookup": lookupKeyword,
+}
+
+func reactAgent(question string, maxSteps int) string {
+	client := openai.NewClient("") // API Key from env
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: reactPrompt},
+		{Role: openai.ChatMessageRoleUser, Content: question},
+	}
+
+	actionRe := regexp.MustCompile(`Action: (\w+)\((.*?)\)`)
+
+	for step := 0; step &lt; maxSteps; step++ {
+		// 1. LLM 生成 Thought + Action
+		resp, err := client.CreateChatCompletion(context.Background(),
+			openai.ChatCompletionRequest{
+				Model:gpt-4o",
+				Messages: messages,
+			})
+		if err != nil {
+			return err.Error()
+		}
+		output := resp.Choices[0].Message.Content
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleAssistant,
+			Content: output,
+		})
+
+		// 2. 解析 Action
+		matches := actionRe.FindStringSubmatch(output)
+		if matches == nil {
+			break
+		}
+		toolName := matches[1]
+		toolInput := strings.Trim(matches[2], `"'`)
+
+		// 3. 检查是否完成
+		if toolName == "finish" {
+			return toolInput
+		}
+
+		// 4. 执行工具
+		var result string
+		if tool, ok := tools[toolName]; ok {
+			result = tool(toolInput)
+		} else {
+			result = fmt.Sprintf("Error: tool %s not found", toolName)
+		}
+
+		// 5. 注入 Observation
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleUser,
+			Content: fmt.Sprintf("Observation: %s", result),
+		})
+	}
+
+	return "达到最大步数限制"
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class ReActAgent {
+
+    static OpenAIClient client = OpenAIClient.fromEnv();
+    static Map&lt;String, java.util.function.Function&lt;String, String&gt;&gt; tools = new HashMap&lt;&gt;();
+
+    static {
+        tools.put("search", ReActAgent::searchWeb);
+        tools.put("lookup", ReActAgent::lookupKeyword);
+    }
+
+    static final String REACT_PROMPT = "..."; // ReAct 系统提示词
+
+    public static String reactAgent(String question, int maxSteps) {
+        List&lt;ChatCompletionMessageParam&gt; messages = new ArrayList&lt;&gt;();
+        messages.add(ChatCompletionMessageParam.ofSystem(
+            ChatCompletionSystemMessageParam.builder()
+                .systemMessage(REACT_PROMPT).build()));
+        messages.add(ChatCompletionMessageParam.ofUser(
+            ChatCompletionUserMessageParam.builder()
+                .userMessage(question).build()));
+
+        Pattern actionRe = Pattern.compile("Action: (\\w+)\\((.*?)\\)");
+
+        for (int step = 0; step &lt; maxSteps; step++) {
+            // 1. LLM 生成 Thought + Action
+            ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+                .model("gpt-4o")
+                .messages(messages)
+                .build();
+            ChatCompletion response = client.chat().completions().create(params);
+            String output = response.choices().get(0).message().content().orElse("");
+            messages.add(ChatCompletionMessageParam.ofAssistant(
+                ChatCompletionAssistantMessageParam.builder()
+                    .assistantMessage(output).build()));
+
+            // 2. 解析 Action
+            Matcher m = actionRe.matcher(output);
+            if (!m.find()) break;
+
+            String toolName = m.group(1);
+            String toolInput = m.group(2).replaceAll("^[\"']|[\"']$", "");
+
+            // 3. 检查是否完成
+            if ("finish".equals(toolName)) return toolInput;
+
+            // 4. 执行工具
+            java.util.function.Function&lt;String, String&gt; tool = tools.get(toolName);
+            String result = tool != null ? tool.apply(toolInput)
+                : "Error: tool " + toolName + " not found";
+
+            // 5. 注入 Observation
+            messages.add(ChatCompletionMessageParam.ofUser(
+                ChatCompletionUserMessageParam.builder()
+                    .userMessage("Observation: " + result).build()));
+        }
+
+        return "达到最大步数限制";
+    }
+}</pre></div>
 </div>
 
 <p>核心就这几步：<strong>LLM 生成 → 解析 Action → 执行工具 → 注入 Observation → 循环</strong>。</p>
@@ -1284,7 +2863,8 @@ answer = react_agent("2024年诺贝尔物理学奖得主是谁？")</pre>
 
 <p>为什么需要两种模式？如果用 Agent 模式处理简单问答，AI 可能会"过度思考"——明明一句话能回答的问题，它非要调几个工具验证一下，浪费 token 和时间。反过来，用 Chat 模式处理编码任务，AI 无法自动连续执行多步操作，用户体验很差。</p>
 
-<div class="code-block"><pre>// 伪代码：双模式入口
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 伪代码：双模式入口
 interface AgentLoopConfig {
   mode: 'chat' | 'agent';
   maxRounds: number;          // chat: 1, agent: 20
@@ -1308,12 +2888,101 @@ async function runAgentLoop(
     round++;
   }
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 伪代码：双模式入口
+  // interface AgentLoopConfig {
+  // mode: 'chat' | 'agent';
+  // maxRounds: number;          // chat: 1, agent: 20
+  // maxToolCallsPerRound: number; // 默认 5
+  // maxTotalToolCalls: number;   // agent: 200
+  // maxRetries: number;          // chat: 3, agent: 5
+  // tokenBudget: number;         // agent: 200000
+  // }
+
+  // async function runAgentLoop(
+  // messages: Message[],
+  // config: AgentLoopConfig,
+  // callbacks: StreamingCallbacks
+  // ) {
+  // let round = 0;
+  // let totalToolCalls = 0;
+  // let totalTokens = 0;
+
+  // while (round &lt; config.maxRounds) {
+  // // ... 主循环逻辑
+  // round++;
+  // }
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 伪代码：双模式入口
+	// Python: interface AgentLoopConfig {
+	// Python: mode: 'chat' | 'agent';
+	// Python: maxRounds: number;          // chat: 1, agent: 20
+	// Python: maxToolCallsPerRound: number; // 默认 5
+	// Python: maxTotalToolCalls: number;   // agent: 200
+	// Python: maxRetries: number;          // chat: 3, agent: 5
+	// Python: tokenBudget: number;         // agent: 200000
+	// Python: }
+
+	// Python: async function runAgentLoop(
+	// Python: messages: Message[],
+	// Python: config: AgentLoopConfig,
+	// Python: callbacks: StreamingCallbacks
+	// Python: ) {
+	// Python: let round = 0;
+	// Python: let totalToolCalls = 0;
+	// Python: let totalTokens = 0;
+
+	// Python: while (round &lt; config.maxRounds) {
+	// Python: // ... 主循环逻辑
+	// Python: round++;
+	// Python: }
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 伪代码：双模式入口
+        // Python: interface AgentLoopConfig {
+        // Python: mode: 'chat' | 'agent';
+        // Python: maxRounds: number;          // chat: 1, agent: 20
+        // Python: maxToolCallsPerRound: number; // 默认 5
+        // Python: maxTotalToolCalls: number;   // agent: 200
+        // Python: maxRetries: number;          // chat: 3, agent: 5
+        // Python: tokenBudget: number;         // agent: 200000
+        // Python: }
+
+        // Python: async function runAgentLoop(
+        // Python: messages: Message[],
+        // Python: config: AgentLoopConfig,
+        // Python: callbacks: StreamingCallbacks
+        // Python: ) {
+        // Python: let round = 0;
+        // Python: let totalToolCalls = 0;
+        // Python: let totalTokens = 0;
+
+        // Python: while (round &lt; config.maxRounds) {
+        // Python: // ... 主循环逻辑
+        // Python: round++;
+        // Python: }
+        // Python: }
+}</pre></div>
+</div>
 
 <h3 class="sub-heading">4.13.2 Token Budget 管理</h3>
 
 <p>Agent 模式下 AI 会自动多轮执行，如果不加限制，一个复杂任务可能消耗几十万 token——用户可能一觉醒来收到天价账单。WaLiCode 设计了全局 Token Budget 机制：</p>
 
-<div class="code-block"><pre>// 伪代码：Token Budget 管理
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 伪代码：Token Budget 管理
 const GLOBAL_TOKEN_BUDGET = 200_000; // 20万 token 全局预算
 
 let totalTokensAcrossRounds = 0;
@@ -1335,6 +3004,88 @@ while (round &lt; maxRounds) {
   }
   round++;
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 伪代码：Token Budget 管理
+  // const GLOBAL_TOKEN_BUDGET = 200_000; // 20万 token 全局预算
+
+  // let totalTokensAcrossRounds = 0;
+
+  // while (round &lt; maxRounds) {
+  // // 检查全局预算
+  // if (totalTokensAcrossRounds &gt;= GLOBAL_TOKEN_BUDGET) {
+  // callbacks.onText('\n⚠️ 已达到全局 Token 预算限制，自动停止。');
+  // break;
+  // }
+
+  // // 流式接收 AI 输出
+  // for await (const event of ai.stream(currentMessages)) {
+  // if (event.type === 'text') {
+  // const deltaTokens = countTokens(event.content);
+  // totalTokensAcrossRounds += deltaTokens;
+  // // ... 实时累加
+  // }
+  // }
+  // round++;
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 伪代码：Token Budget 管理
+	// Python: const GLOBAL_TOKEN_BUDGET = 200_000; // 20万 token 全局预算
+
+	// Python: let totalTokensAcrossRounds = 0;
+
+	// Python: while (round &lt; maxRounds) {
+	// Python: // 检查全局预算
+	// Python: if (totalTokensAcrossRounds &gt;= GLOBAL_TOKEN_BUDGET) {
+	// Python: callbacks.onText('\n⚠️ 已达到全局 Token 预算限制，自动停止。');
+	// Python: break;
+	// Python: }
+
+	// Python: // 流式接收 AI 输出
+	// Python: for await (const event of ai.stream(currentMessages)) {
+	// Python: if (event.type === 'text') {
+	// Python: const deltaTokens = countTokens(event.content);
+	// Python: totalTokensAcrossRounds += deltaTokens;
+	// Python: // ... 实时累加
+	// Python: }
+	// Python: }
+	// Python: round++;
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 伪代码：Token Budget 管理
+        // Python: const GLOBAL_TOKEN_BUDGET = 200_000; // 20万 token 全局预算
+
+        // Python: let totalTokensAcrossRounds = 0;
+
+        // Python: while (round &lt; maxRounds) {
+        // Python: // 检查全局预算
+        // Python: if (totalTokensAcrossRounds &gt;= GLOBAL_TOKEN_BUDGET) {
+        // Python: callbacks.onText('\n⚠️ 已达到全局 Token 预算限制，自动停止。');
+        // Python: break;
+        // Python: }
+
+        // Python: // 流式接收 AI 输出
+        // Python: for await (const event of ai.stream(currentMessages)) {
+        // Python: if (event.type === 'text') {
+        // Python: const deltaTokens = countTokens(event.content);
+        // Python: totalTokensAcrossRounds += deltaTokens;
+        // Python: // ... 实时累加
+        // Python: }
+        // Python: }
+        // Python: round++;
+        // Python: }
+}</pre></div>
+</div>
 
 <p>关键设计点：</p>
 <ul>
@@ -1387,7 +3138,8 @@ while (round &lt; maxRounds) {
 
 <p>AI 模型有输出长度限制（如 4096 token）。当输出被截断时，<code>finish_reason</code> 会变成 <code>'length'</code> 而不是 <code>'stop'</code>。如果直接忽略，用户会看到半截代码或不完整的回答。WaLiCode 的方案是<strong>注入 "please continue" 自动恢复</strong>：</p>
 
-<div class="code-block"><pre>// 伪代码：截断恢复
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 伪代码：截断恢复
 for await (const event of ai.stream(currentMessages)) {
   if (event.type === 'text') {
     assistantContent += event.content;
@@ -1408,6 +3160,85 @@ if (wasTruncated &amp;&amp; round &lt; maxRounds) {
   wasTruncated = false;
   continue;  // 进入下一轮
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 伪代码：截断恢复
+  // for await (const event of ai.stream(currentMessages)) {
+  // if (event.type === 'text') {
+  // assistantContent += event.content;
+  // }
+  // if (event.type === 'finish') {
+  // if (event.finish_reason === 'length') {
+  // // 输出被 max_tokens 截断
+  const wasTruncated = true;;
+  // }
+  // }
+  // }
+
+  // if (wasTruncated &amp;&amp; round &lt; maxRounds) {
+  // // 注入 "please continue" 让 AI 从截断处继续
+  // currentMessages.push({ role: 'assistant', content: assistantContent });
+  // currentMessages.push({ role: 'user', content: '请继续输出，从刚才截断的地方接着写。' });
+  const assistantContent = '';  // 重置，新轮次会追加;
+  const wasTruncated = false;;
+  // continue;  // 进入下一轮
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 伪代码：截断恢复
+	// Python: for await (const event of ai.stream(currentMessages)) {
+	// Python: if (event.type === 'text') {
+	// Python: assistantContent += event.content;
+	// Python: }
+	// Python: if (event.type === 'finish') {
+	// Python: if (event.finish_reason === 'length') {
+	// Python: // 输出被 max_tokens 截断
+	// Python: wasTruncated = true;
+	// Python: }
+	// Python: }
+	// Python: }
+
+	// Python: if (wasTruncated &amp;&amp; round &lt; maxRounds) {
+	// Python: // 注入 "please continue" 让 AI 从截断处继续
+	// Python: currentMessages.push({ role: 'assistant', content: assistantContent });
+	// Python: currentMessages.push({ role: 'user', content: '请继续输出，从刚才截断的地方接着写。' });
+	// Python: assistantContent = '';  // 重置，新轮次会追加
+	// Python: wasTruncated = false;
+	// Python: continue;  // 进入下一轮
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 伪代码：截断恢复
+        // Python: for await (const event of ai.stream(currentMessages)) {
+        // Python: if (event.type === 'text') {
+        // Python: assistantContent += event.content;
+        // Python: }
+        // Python: if (event.type === 'finish') {
+        // Python: if (event.finish_reason === 'length') {
+        // Python: // 输出被 max_tokens 截断
+        // Python: wasTruncated = true;
+        // Python: }
+        // Python: }
+        // Python: }
+
+        // Python: if (wasTruncated &amp;&amp; round &lt; maxRounds) {
+        // Python: // 注入 "please continue" 让 AI 从截断处继续
+        // Python: currentMessages.push({ role: 'assistant', content: assistantContent });
+        // Python: currentMessages.push({ role: 'user', content: '请继续输出，从刚才截断的地方接着写。' });
+        // Python: assistantContent = '';  // 重置，新轮次会追加
+        // Python: wasTruncated = false;
+        // Python: continue;  // 进入下一轮
+        // Python: }
+}</pre></div>
+</div>
 
 <p>注意事项：</p>
 <ul>
@@ -1420,7 +3251,8 @@ if (wasTruncated &amp;&amp; round &lt; maxRounds) {
 
 <p>AI API 调用可能遇到临时性错误：429（限流）、503（服务不可用）、网络超时。直接报错会让用户重试，体验很差。WaLiCode 的方案是自动重试，指数退避：</p>
 
-<div class="code-block"><pre>// 伪代码：指数退避重试
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>// 伪代码：指数退避重试
 const MAX_RETRIES = 5;  // agent 模式
 
 for (let attempt = 0; attempt &lt;= MAX_RETRIES; attempt++) {
@@ -1447,6 +3279,103 @@ function isRetryable(err: Error): boolean {
   }
   return err instanceof NetworkError || err instanceof TimeoutError;
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // 伪代码：指数退避重试
+  // const MAX_RETRIES = 5;  // agent 模式
+
+  // for (let attempt = 0; attempt &lt;= MAX_RETRIES; attempt++) {
+  // try {
+  // // 尝试调用 AI API
+  // for await (const event of ai.stream(currentMessages)) {
+  // callbacks.onText(event.content, assistantContent);
+  // }
+  // break;  // 成功，跳出重试循环
+  // } catch (err) {
+  // if (!isRetryable(err)) throw err;  // 不可重试的错误直接抛出
+  // if (attempt === MAX_RETRIES) throw err;  // 重试次数用尽
+
+  // // 指数退避：1s → 2s → 4s → 8s → 16s
+  // const delayMs = Math.pow(2, attempt) * 1000;
+  // callbacks.onText(`\n⏳ 遇到临时错误，${delayMs/1000}s 后重试...`);
+  // await abortableSleep(delayMs);
+  // }
+  // }
+
+  // function isRetryable(err: Error): boolean {
+  // if (err instanceof HTTPError) {
+  return [429, 500, 502, 503, 504].includes(err.status);;
+  // }
+  return err instanceof NetworkError || err instanceof TimeoutError;;
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: // 伪代码：指数退避重试
+	// Python: const MAX_RETRIES = 5;  // agent 模式
+
+	// Python: for (let attempt = 0; attempt &lt;= MAX_RETRIES; attempt++) {
+	// Python: try {
+	// Python: // 尝试调用 AI API
+	// Python: for await (const event of ai.stream(currentMessages)) {
+	// Python: callbacks.onText(event.content, assistantContent);
+	// Python: }
+	// Python: break;  // 成功，跳出重试循环
+	// Python: } catch (err) {
+	// Python: if (!isRetryable(err)) throw err;  // 不可重试的错误直接抛出
+	// Python: if (attempt === MAX_RETRIES) throw err;  // 重试次数用尽
+
+	// Python: // 指数退避：1s → 2s → 4s → 8s → 16s
+	// Python: const delayMs = Math.pow(2, attempt) * 1000;
+	// Python: callbacks.onText(`\n⏳ 遇到临时错误，${delayMs/1000}s 后重试...`);
+	// Python: await abortableSleep(delayMs);
+	// Python: }
+	// Python: }
+
+	// Python: function isRetryable(err: Error): boolean {
+	// Python: if (err instanceof HTTPError) {
+	return [429, 500, 502, 503, 504].includes(err.status);
+	// Python: }
+	return err instanceof NetworkError || err instanceof TimeoutError;
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: // 伪代码：指数退避重试
+        // Python: const MAX_RETRIES = 5;  // agent 模式
+
+        // Python: for (let attempt = 0; attempt &lt;= MAX_RETRIES; attempt++) {
+        // Python: try {
+        // Python: // 尝试调用 AI API
+        // Python: for await (const event of ai.stream(currentMessages)) {
+        // Python: callbacks.onText(event.content, assistantContent);
+        // Python: }
+        // Python: break;  // 成功，跳出重试循环
+        // Python: } catch (err) {
+        // Python: if (!isRetryable(err)) throw err;  // 不可重试的错误直接抛出
+        // Python: if (attempt === MAX_RETRIES) throw err;  // 重试次数用尽
+
+        // Python: // 指数退避：1s → 2s → 4s → 8s → 16s
+        // Python: const delayMs = Math.pow(2, attempt) * 1000;
+        // Python: callbacks.onText(`\n⏳ 遇到临时错误，${delayMs/1000}s 后重试...`);
+        // Python: await abortableSleep(delayMs);
+        // Python: }
+        // Python: }
+
+        // Python: function isRetryable(err: Error): boolean {
+        // Python: if (err instanceof HTTPError) {
+        return [429, 500, 502, 503, 504].includes(err.status);;
+        // Python: }
+        return err instanceof NetworkError || err instanceof TimeoutError;;
+        // Python: }
+}</pre></div>
+</div>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"call","label":"调用 AI API","type":"start"},{"id":"success","label":"成功","type":"end"},{"id":"error","label":"出错","type":"decision"},{"id":"retryable","label":"可重试?\n(429/5xx/超时)","type":"decision"},{"id":"wait","label":"等待 2^n 秒\n(1→2→4→8→16)","type":"process"},{"id":"fail","label":"抛出错误","type":"end"}],"edges":[{"from":"call","to":"success","label":"成功"},{"from":"call","to":"error","label":"异常"},{"from":"error","to":"retryable"},{"from":"retryable","to":"wait","label":"是"},{"from":"retryable","to":"fail","label":"否"},{"from":"wait","to":"call","label":"重试"}]}'></div>
 
@@ -1455,7 +3384,8 @@ function isRetryable(err: Error): boolean {
 <p>两个额外的保护机制：</p>
 
 <p><strong>Idle Timeout（空闲超时）</strong>：10 分钟无活动自动停止。防止 Agent 在用户离开后继续烧钱。</p>
-<div class="code-block"><pre>const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
 
 let lastActivityTime = Date.now();
 
@@ -1470,9 +3400,71 @@ for await (const event of ai.stream(...)) {
   lastActivityTime = Date.now();
   // ...
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+
+  // let lastActivityTime = Date.now();
+
+  // // 在主循环中检查
+  // if (Date.now() - lastActivityTime &gt; IDLE_TIMEOUT_MS) {
+  // callbacks.onText('\n⚠️ 空闲超时，自动停止。');
+  // break;
+  // }
+
+  // // 每次收到事件时更新
+  // for await (const event of ai.stream(...)) {
+  const lastActivityTime = Date.now();;
+  // // ...
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+
+	// Python: let lastActivityTime = Date.now();
+
+	// Python: // 在主循环中检查
+	// Python: if (Date.now() - lastActivityTime &gt; IDLE_TIMEOUT_MS) {
+	// Python: callbacks.onText('\n⚠️ 空闲超时，自动停止。');
+	// Python: break;
+	// Python: }
+
+	// Python: // 每次收到事件时更新
+	// Python: for await (const event of ai.stream(...)) {
+	// Python: lastActivityTime = Date.now();
+	// Python: // ...
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+
+        // Python: let lastActivityTime = Date.now();
+
+        // Python: // 在主循环中检查
+        // Python: if (Date.now() - lastActivityTime &gt; IDLE_TIMEOUT_MS) {
+        // Python: callbacks.onText('\n⚠️ 空闲超时，自动停止。');
+        // Python: break;
+        // Python: }
+
+        // Python: // 每次收到事件时更新
+        // Python: for await (const event of ai.stream(...)) {
+        // Python: lastActivityTime = Date.now();
+        // Python: // ...
+        // Python: }
+}</pre></div>
+</div>
 
 <p><strong>413 反应式压缩</strong>：当 API 返回 413（请求体过大）时，紧急压缩上下文后重试。</p>
-<div class="code-block"><pre>try {
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>try {
   for await (const event of ai.stream(currentMessages)) {
     // ...
   }
@@ -1489,6 +3481,73 @@ for await (const event of ai.stream(...)) {
   }
   throw err;
 }</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // try {
+  // for await (const event of ai.stream(currentMessages)) {
+  // // ...
+  // }
+  // } catch (err) {
+  // if (err instanceof HTTPError &amp;&amp; err.status === 413) {
+  // // 请求体过大，紧急压缩上下文
+  // const summary = await generateAiSummary(currentMessages);
+  const currentMessages = [;
+  // { role: 'system', content: '之前的对话已压缩：' + summary },
+  // ...recentMessages  // 保留最近的几轮
+  // ];
+  // // 用压缩后的上下文重试
+  // continue;
+  // }
+  // throw err;
+  // }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: try {
+	// Python: for await (const event of ai.stream(currentMessages)) {
+	// Python: // ...
+	// Python: }
+	// Python: } catch (err) {
+	// Python: if (err instanceof HTTPError &amp;&amp; err.status === 413) {
+	// Python: // 请求体过大，紧急压缩上下文
+	// Python: const summary = await generateAiSummary(currentMessages);
+	// Python: currentMessages = [
+	// Python: { role: 'system', content: '之前的对话已压缩：' + summary },
+	// Python: ...recentMessages  // 保留最近的几轮
+	// Python: ];
+	// Python: // 用压缩后的上下文重试
+	// Python: continue;
+	// Python: }
+	// Python: throw err;
+	// Python: }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: try {
+        // Python: for await (const event of ai.stream(currentMessages)) {
+        // Python: // ...
+        // Python: }
+        // Python: } catch (err) {
+        // Python: if (err instanceof HTTPError &amp;&amp; err.status === 413) {
+        // Python: // 请求体过大，紧急压缩上下文
+        // Python: const summary = await generateAiSummary(currentMessages);
+        // Python: currentMessages = [
+        // Python: { role: 'system', content: '之前的对话已压缩：' + summary },
+        // Python: ...recentMessages  // 保留最近的几轮
+        // Python: ];
+        // Python: // 用压缩后的上下文重试
+        // Python: continue;
+        // Python: }
+        // Python: throw err;
+        // Python: }
+}</pre></div>
+</div>
 
 <p>413 压缩与正常压缩的区别：</p>
 <ul>

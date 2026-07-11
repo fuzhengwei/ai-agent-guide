@@ -382,9 +382,8 @@ setTimeout(() => {
   </ol>
 </div>
 
-<div class="code-block">
-  <span class="code-label">Python — Token 消耗估算工具</span>
-<pre>def estimate_agent_cost(
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def estimate_agent_cost(
     system_prompt_tokens: int = 500,
     tool_schemas_tokens: int = 2000,
     memory_inject_tokens: int = 3000,
@@ -431,7 +430,175 @@ result = estimate_agent_cost(rounds=5, model="gpt-4o")
 
 # 示例：20轮全项目重构，GPT-4o-mini
 result = estimate_agent_cost(rounds=20, model="gpt-4o-mini")
-# → {"total_input": 24500, "total_output": 16000, "cost": "$0.014"}</pre>
+# → {"total_input": 24500, "total_output": 16000, "cost": "$0.014"}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Token 消耗估算工具
+function estimateAgentCost(opts: {
+  systemPromptTokens?: number;
+  toolSchemasTokens?: number;
+  memoryInjectTokens?: number;
+  rounds?: number;
+  avgInputPerRound?: number;
+  avgOutputPerRound?: number;
+  model?: string;
+}): Record<string, number> {
+  const {
+    systemPromptTokens = 500,
+    toolSchemasTokens = 2000,
+    memoryInjectTokens = 3000,
+    rounds = 5,
+    avgInputPerRound = 1000,
+    avgOutputPerRound = 800,
+    model = 'gpt-4o'
+  } = opts;
+
+  const pricing: Record<string, { input: number; output: number; cached: number }> = {
+    'gpt-4o':      { input: 2.50, output: 10.00, cached: 1.25 },
+    'gpt-4o-mini': { input: 0.15, output: 0.60, cached: 0.075 },
+    'claude-3.5':  { input: 3.00, output: 15.00, cached: 1.50 },
+  };
+  const p = pricing[model];
+
+  // 第一轮：System Prompt + 工具Schema + 记忆注入 + 用户输入
+  const firstInput = systemPromptTokens + toolSchemasTokens + memoryInjectTokens + avgInputPerRound;
+  // 后续轮次：缓存System Prompt前缀 + 新增内容 + 工具返回
+  const laterInput = avgInputPerRound * (rounds - 1);
+
+  const totalInput = firstInput + laterInput;
+  const totalOutput = avgOutputPerRound * rounds;
+
+  // 假设50%的输入可命中缓存
+  const cachedInput = Math.floor(totalInput * 0.5);
+  const freshInput = totalInput - cachedInput;
+
+  const cost = (freshInput * p.input / 1_000_000
+    + cachedInput * p.cached / 1_000_000
+    + totalOutput * p.output / 1_000_000);
+
+  return {
+    total_input_tokens: totalInput,
+    total_output_tokens: totalOutput,
+    cached_tokens: cachedInput,
+    estimated_cost_usd: Math.round(cost * 10000) / 10000,
+    per_round_avg: Math.round(totalInput + totalOutput / rounds),
+  };
+}
+
+// 示例：5轮代码修改任务，GPT-4o
+const result1 = estimateAgentCost({ rounds: 5, model: 'gpt-4o' });
+// → {total_input: 11500, total_output: 4000, cost: "$0.059"}
+
+// 示例：20轮全项目重构，GPT-4o-mini
+const result2 = estimateAgentCost({ rounds: 20, model: 'gpt-4o-mini' });
+// → {total_input: 24500, total_output: 16000, cost: "$0.014"}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Token 消耗估算工具
+func estimateAgentCost(systemPromptTokens, toolSchemasTokens, memoryInjectTokens, rounds, avgInputPerRound, avgOutputPerRound int, model string) map[string]float64 {
+	if systemPromptTokens == 0 { systemPromptTokens = 500 }
+	if toolSchemasTokens == 0 { toolSchemasTokens = 2000 }
+	if memoryInjectTokens == 0 { memoryInjectTokens = 3000 }
+	if rounds == 0 { rounds = 5 }
+	if avgInputPerRound == 0 { avgInputPerRound = 1000 }
+	if avgOutputPerRound == 0 { avgOutputPerRound = 800 }
+	if model == "" { model = "gpt-4o" }
+
+	pricing := map[string]map[string]float64{
+		"gpt-4o":      {"input": 2.50, "output": 10.00, "cached": 1.25},
+		"gpt-4o-mini": {"input": 0.15, "output": 0.60, "cached": 0.075},
+		"claude-3.5":  {"input": 3.00, "output": 15.00, "cached": 1.50},
+	}
+	p := pricing[model]
+
+	// 第一轮：System Prompt + 工具Schema + 记忆注入 + 用户输入
+	firstInput := systemPromptTokens + toolSchemasTokens + memoryInjectTokens + avgInputPerRound
+	// 后续轮次
+	laterInput := avgInputPerRound * (rounds - 1)
+
+	totalInput := firstInput + laterInput
+	totalOutput := avgOutputPerRound * rounds
+
+	// 假设50%的输入可命中缓存
+	cachedInput := totalInput / 2
+	freshInput := totalInput - cachedInput
+
+	cost := float64(freshInput)*p["input"]/1_000_000 +
+		float64(cachedInput)*p["cached"]/1_000_000 +
+		float64(totalOutput)*p["output"]/1_000_000
+
+	return map[string]float64{
+		"total_input_tokens":  float64(totalInput),
+		"total_output_tokens": float64(totalOutput),
+		"cached_tokens":       float64(cachedInput),
+		"estimated_cost_usd":  math.Round(cost*10000) / 10000,
+		"per_round_avg":       float64(totalInput + totalOutput/rounds),
+	}
+}
+
+// 示例：5轮代码修改任务，GPT-4o
+result1 := estimateAgentCost(0, 0, 0, 5, 0, 0, "gpt-4o")
+// → {total_input: 11500, total_output: 4000, cost: "$0.059"}
+
+// 示例：20轮全项目重构，GPT-4o-mini
+result2 := estimateAgentCost(0, 0, 0, 20, 0, 0, "gpt-4o-mini")
+// → {total_input: 24500, total_output: 16000, cost: "$0.014"}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Token 消耗估算工具
+import java.util.*;
+
+public class TokenCostEstimator {
+    public static Map&lt;String, Double&gt; estimateAgentCost(
+            int systemPromptTokens, int toolSchemasTokens, int memoryInjectTokens,
+            int rounds, int avgInputPerRound, int avgOutputPerRound, String model) {
+        if (systemPromptTokens == 0) systemPromptTokens = 500;
+        if (toolSchemasTokens == 0) toolSchemasTokens = 2000;
+        if (memoryInjectTokens == 0) memoryInjectTokens = 3000;
+        if (rounds == 0) rounds = 5;
+        if (avgInputPerRound == 0) avgInputPerRound = 1000;
+        if (avgOutputPerRound == 0) avgOutputPerRound = 800;
+        if (model == null || model.isEmpty()) model = "gpt-4o";
+
+        Map&lt;String, Double&gt; pricing = Map.of(
+            "gpt-4o",      2.50,
+            "gpt-4o-mini", 0.15,
+            "claude-3.5",  3.00
+        );
+        double inputPrice = model.equals("gpt-4o") ? 2.50 : model.equals("gpt-4o-mini") ? 0.15 : 3.00;
+        double outputPrice = model.equals("gpt-4o") ? 10.00 : model.equals("gpt-4o-mini") ? 0.60 : 15.00;
+        double cachedPrice = inputPrice / 2;
+
+        // 第一轮：System Prompt + 工具Schema + 记忆注入 + 用户输入
+        int firstInput = systemPromptTokens + toolSchemasTokens + memoryInjectTokens + avgInputPerRound;
+        int laterInput = avgInputPerRound * (rounds - 1);
+
+        int totalInput = firstInput + laterInput;
+        int totalOutput = avgOutputPerRound * rounds;
+
+        // 假设50%的输入可命中缓存
+        int cachedInput = totalInput / 2;
+        int freshInput = totalInput - cachedInput;
+
+        double cost = freshInput * inputPrice / 1_000_000
+            + cachedInput * cachedPrice / 1_000_000
+            + totalOutput * outputPrice / 1_000_000;
+
+        Map&lt;String, Double&gt; result = new LinkedHashMap&lt;&gt;();
+        result.put("total_input_tokens", (double) totalInput);
+        result.put("total_output_tokens", (double) totalOutput);
+        result.put("cached_tokens", (double) cachedInput);
+        result.put("estimated_cost_usd", Math.round(cost * 10000) / 10000.0);
+        result.put("per_round_avg", (double) (totalInput + totalOutput / rounds));
+        return result;
+    }
+
+    public static void main(String[] args) {
+        // 示例：5轮代码修改任务，GPT-4o
+        Map&lt;String, Double&gt; result1 = estimateAgentCost(0, 0, 0, 5, 0, 0, "gpt-4o");
+        System.out.println(result1);
+        // → {total_input: 11500, total_output: 4000, cost: "$0.059"}
+
+        // 示例：20轮全项目重构，GPT-4o-mini
+        Map&lt;String, Double&gt; result2 = estimateAgentCost(0, 0, 0, 20, 0, 0, "gpt-4o-mini");
+        System.out.println(result2);
+        // → {total_input: 24500, total_output: 16000, cost: "$0.014"}
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 1.1.6 上下文窗口 Token 经济学 ===== -->
@@ -538,9 +705,8 @@ System Prompt                    ← 🔒放最后面，缓存完全失效</pre>
   </div>
 </div>
 
-<div class="code-block">
-  <span class="code-label">Python — 缓存友好的 Prompt 组装</span>
-<pre>def build_cache_friendly_prompt(system_msg, tools_schema, skills_desc, 
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def build_cache_friendly_prompt(system_msg, tools_schema, skills_desc, 
                                 memory_chunks, chat_history, user_input):
     """按缓存友好顺序组装 Prompt
     原则：固定前缀放最前面，动态内容放后面"""
@@ -571,7 +737,115 @@ System Prompt                    ← 🔒放最后面，缓存完全失效</pre>
 # 假设: 固定层2000token + 半固定层2000token + 10轮对话8000token + 当前500token
 # 第5轮请求: 前缀(2000固定+8000对话旧部分)可缓存 ≈ 50%命中率
 # 第10轮请求: 前缀(2000固定+16000对话旧部分)可缓存 ≈ 70%命中率
-# 成本节省: 50%~70%的输入Token按半价计费</pre>
+# 成本节省: 50%~70%的输入Token按半价计费</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 按缓存友好顺序组装 Prompt
+// 原则：固定前缀放最前面，动态内容放后面
+function buildCacheFriendlyPrompt(
+  systemMsg: string, toolsSchema: string, skillsDesc: string,
+  memoryChunks: string[], chatHistory: any[], userInput: string
+): any[] {
+  const messages: any[] = [];
+
+  // Layer 1: 固定层（100%缓存命中）
+  const systemContent = `${systemMsg}\n\n# Available Tools\n${toolsSchema}\n\n# Available Skills\n${skillsDesc}`;
+  messages.push({ role: 'system', content: systemContent });
+
+  // Layer 2: 半固定层（同会话内缓存命中）
+  if (memoryChunks && memoryChunks.length > 0) {
+    const memoryBlock = memoryChunks.map(m => `- ${m}`).join('\n');
+    messages.push({ role: 'system', content: `# Recalled Memory\n${memoryBlock}` });
+  }
+
+  // Layer 3: 动态层（不命中缓存但旧部分可命中）
+  for (const msg of chatHistory) {
+    messages.push(msg);
+  }
+
+  // Layer 4: 当前请求（完全不命中缓存）
+  messages.push({ role: 'user', content: userInput });
+
+  return messages;
+}
+
+// 缓存命中率估算
+// 假设: 固定层2000token + 半固定层2000token + 10轮对话8000token + 当前500token
+// 第5轮请求: 前缀(2000固定+8000对话旧部分)可缓存 ≈ 50%命中率
+// 第10轮请求: 前缀(2000固定+16000对话旧部分)可缓存 ≈ 70%命中率
+// 成本节省: 50%~70%的输入Token按半价计费</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 按缓存友好顺序组装 Prompt
+// 原则：固定前缀放最前面，动态内容放后面
+func buildCacheFriendlyPrompt(systemMsg, toolsSchema, skillsDesc string,
+	memoryChunks []string, chatHistory []map[string]string, userInput string) []map[string]string {
+	var messages []map[string]string
+
+	// Layer 1: 固定层（100%缓存命中）
+	systemContent := fmt.Sprintf("%s\n\n# Available Tools\n%s\n\n# Available Skills\n%s",
+		systemMsg, toolsSchema, skillsDesc)
+	messages = append(messages, map[string]string{"role": "system", "content": systemContent})
+
+	// Layer 2: 半固定层（同会话内缓存命中）
+	if len(memoryChunks) > 0 {
+		var lines []string
+		for _, m := range memoryChunks {
+			lines = append(lines, "- "+m)
+		}
+		memoryBlock := strings.Join(lines, "\n")
+		messages = append(messages, map[string]string{"role": "system", "content": "# Recalled Memory\n" + memoryBlock})
+	}
+
+	// Layer 3: 动态层（不命中缓存但旧部分可命中）
+	for _, msg := range chatHistory {
+		messages = append(messages, msg)
+	}
+
+	// Layer 4: 当前请求（完全不命中缓存）
+	messages = append(messages, map[string]string{"role": "user", "content": userInput})
+
+	return messages
+}
+
+// 缓存命中率估算
+// 假设: 固定层2000token + 半固定层2000token + 10轮对话8000token + 当前500token
+// 第5轮请求: 前缀(2000固定+8000对话旧部分)可缓存 ≈ 50%命中率
+// 第10轮请求: 前缀(2000固定+16000对话旧部分)可缓存 ≈ 70%命中率
+// 成本节省: 50%~70%的输入Token按半价计费</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 按缓存友好顺序组装 Prompt
+// 原则：固定前缀放最前面，动态内容放后面
+import java.util.*;
+
+public class CacheFriendlyPromptBuilder {
+    public static List&lt;Map&lt;String, String&gt;&gt; buildCacheFriendlyPrompt(
+            String systemMsg, String toolsSchema, String skillsDesc,
+            List&lt;String&gt; memoryChunks, List&lt;Map&lt;String, String&gt;&gt; chatHistory, String userInput) {
+        List&lt;Map&lt;String, String&gt;&gt; messages = new ArrayList&lt;&gt;();
+
+        // Layer 1: 固定层（100%缓存命中）
+        String systemContent = systemMsg + "\n\n# Available Tools\n" + toolsSchema
+            + "\n\n# Available Skills\n" + skillsDesc;
+        messages.add(Map.of("role", "system", "content", systemContent));
+
+        // Layer 2: 半固定层（同会话内缓存命中）
+        if (memoryChunks != null && !memoryChunks.isEmpty()) {
+            String memoryBlock = String.join("\n",
+                memoryChunks.stream().map(m -> "- " + m).toList());
+            messages.add(Map.of("role", "system", "content", "# Recalled Memory\n" + memoryBlock));
+        }
+
+        // Layer 3: 动态层（不命中缓存但旧部分可命中）
+        messages.addAll(chatHistory);
+
+        // Layer 4: 当前请求（完全不命中缓存）
+        messages.add(Map.of("role", "user", "content", userInput));
+
+        return messages;
+    }
+}
+
+// 缓存命中率估算
+// 假设: 固定层2000token + 半固定层2000token + 10轮对话8000token + 当前500token
+// 第5轮请求: 前缀(2000固定+8000对话旧部分)可缓存 ≈ 50%命中率
+// 第10轮请求: 前缀(2000固定+16000对话旧部分)可缓存 ≈ 70%命中率
+// 成本节省: 50%~70%的输入Token按半价计费</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -1060,9 +1334,8 @@ setTimeout(() => {
 
 <p>System Prompt 和 User Prompt 的区别是面试高频题。System Prompt 设定"你是谁、该怎么做"，User Prompt 表达"我要什么"。System Prompt 在整个对话中持续生效，像一个隐形的"工作手册"；User Prompt 是每次具体的请求。</p>
 
-<div class="code-block">
-  <span class="code-label">Python</span>
-<pre># System Prompt vs User Prompt 示例
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># System Prompt vs User Prompt 示例
 
 messages = [
     {
@@ -1074,7 +1347,7 @@ messages = [
     },
     {
         "role": "user", 
-        "content": "帮我审查这段代码："
+        "content": "帮我这段代码："
                    "eval(request.GET.get('expr'))"
     },
     {
@@ -1085,8 +1358,69 @@ messages = [
                    "建议：使用 ast.literal_eval() 或"
                    "正则白名单过滤输入。"
     }
-]
-</pre>
+]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// System Prompt vs User Prompt 示例
+
+const messages = [
+  {
+    role: "system" as const,
+    content: "你是一个专业的代码审查专家。"
+      + "只关注代码的安全性和性能问题。"
+      + "回答格式：先给出风险等级（高/中/低），"
+      + "再说明问题，最后给出修复建议。"
+  },
+  {
+    role: "user" as const,
+    content: "帮我审查这段代码："
+      + "eval(request.GET.get('expr'))"
+  },
+  {
+    role: "assistant" as const,
+    content: "风险等级：高\n"
+      + "问题：使用 eval() 执行用户输入，"
+      + "存在远程代码执行（RCE）漏洞。\n"
+      + "建议：使用 ast.literal_eval() 或"
+      + "正则白名单过滤输入。"
+  }
+];</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// System Prompt vs User Prompt 示例
+
+messages := []openai.ChatCompletionMessage{
+    {
+        Role:    openai.ChatMessageRoleSystem,
+        Content: "你是一个专业的代码审查专家。" +
+            "只关注代码的安全性和性能问题。" +
+            "回答格式：先给出风险等级（高/中/低），" +
+            "再说明问题，最后给出修复建议。",
+    },
+    {
+        Role:    openai.ChatMessageRoleUser,
+        Content: "帮我审查这段代码：eval(request.GET.get('expr'))",
+    },
+    {
+        Role:    openai.ChatMessageRoleAssistant,
+        Content: "风险等级：高\n" +
+            "问题：使用 eval() 执行用户输入，" +
+            "存在远程代码执行（RCE）漏洞。\n" +
+            "建议：使用 ast.literal_eval() 或正则白名单过滤输入。",
+    },
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// System Prompt vs User Prompt 示例
+
+List&lt;Map&lt;String, String&gt;&gt; messages = List.of(
+    Map.of("role", "system",
+        "content", "你是一个专业的代码审查专家。"
+            + "只关注代码的安全性和性能问题。"
+            + "回答格式：先给出风险等级（高/中/低），"
+            + "再说明问题，最后给出修复建议。"),
+    Map.of("role", "user",
+        "content", "帮我审查这段代码：eval(request.GET.get('expr'))"),
+    Map.of("role", "assistant",
+        "content", "风险等级：高\n"
+            + "问题：使用 eval() 执行用户输入，"
+            + "存在远程代码执行（RCE）漏洞。\n"
+            + "建议：使用 ast.literal_eval() 或正则白名单过滤输入。")
+);</pre></div>
 </div>
 
 <h3 class="sub-heading">六种高级 Prompt 技巧</h3>
@@ -1286,9 +1620,8 @@ setTimeout(() => {
 
 <p>把文本变成向量后，怎么判断两个向量"像不像"？有三种主流计算方式：<strong>余弦相似度</strong>（Cosine Similarity）衡量方向一致性，忽略向量长度，是最常用的方式；<strong>欧氏距离</strong>（Euclidean Distance）衡量空间绝对距离，对向量大小敏感；<strong>点积</strong>（Dot Product）同时考虑方向和大小，计算最快。</p>
 
-<div class="code-block">
-  <span class="code-label">Python</span>
-<pre>import numpy as np
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import numpy as np
 
 # 余弦相似度：衡量方向一致性，范围 [-1, 1]
 def cosine_similarity(a, b):
@@ -1308,8 +1641,124 @@ dog_vec = np.array([0.7, 0.3, 0.8, 0.2])    # "狗"
 car_vec = np.array([0.1, 0.9, 0.05, 0.8])   # "汽车"
 
 print("猫 vs 狗 余弦相似度:", cosine_similarity(cat_vec, dog_vec))    # ~0.95 (很像)
-print("猫 vs 汽车 余弦相似度:", cosine_similarity(cat_vec, car_vec))  # ~0.22 (不像)
-</pre>
+print("猫 vs 汽车 余弦相似度:", cosine_similarity(cat_vec, car_vec))  # ~0.22 (不像)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 余弦相似度：衡量方向一致性，范围 [-1, 1]
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i &lt; a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// 欧氏距离：衡量空间距离
+function euclideanDistance(a: number[], b: number[]): number {
+  let sum = 0;
+  for (let i = 0; i &lt; a.length; i++) {
+    sum += Math.pow(a[i] - b[i], 2);
+  }
+  return Math.sqrt(sum);
+}
+
+// 点积：考虑方向和大小
+function dotProduct(a: number[], b: number[]): number {
+  return a.reduce((sum, val, i) => sum + val * b[i], 0);
+}
+
+// 示例
+const catVec = [0.8, 0.2, 0.9, 0.1];   // "猫"
+const dogVec = [0.7, 0.3, 0.8, 0.2];   // "狗"
+const carVec = [0.1, 0.9, 0.05, 0.8];  // "汽车"
+
+console.log("猫 vs 狗 余弦相似度:", cosineSimilarity(catVec, dogVec));   // ~0.95 (很像)
+console.log("猫 vs 汽车 余弦相似度:", cosineSimilarity(catVec, carVec));  // ~0.22 (不像)</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"math"
+)
+
+// 余弦相似度：衡量方向一致性，范围 [-1, 1]
+func cosineSimilarity(a, b []float64) float64 {
+	dot, normA, normB := 0.0, 0.0, 0.0
+	for i := range a {
+		dot += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+// 欧氏距离：衡量空间距离
+func euclideanDistance(a, b []float64) float64 {
+	sum := 0.0
+	for i := range a {
+		diff := a[i] - b[i]
+		sum += diff * diff
+	}
+	return math.Sqrt(sum)
+}
+
+// 点积
+func dotProduct(a, b []float64) float64 {
+	dot := 0.0
+	for i := range a {
+		dot += a[i] * b[i]
+	}
+	return dot
+}
+
+func main() {
+	catVec := []float64{0.8, 0.2, 0.9, 0.1}  // "猫"
+	dogVec := []float64{0.7, 0.3, 0.8, 0.2}  // "狗"
+	carVec := []float64{0.1, 0.9, 0.05, 0.8} // "汽车"
+
+	fmt.Printf("猫 vs 狗 余弦相似度: %.4f\n", cosineSimilarity(catVec, dogVec))   // ~0.95
+	fmt.Printf("猫 vs 汽车 余弦相似度: %.4f\n", cosineSimilarity(catVec, carVec))  // ~0.22
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class VectorSimilarity {
+
+    // 余弦相似度：衡量方向一致性，范围 [-1, 1]
+    static double cosineSimilarity(double[] a, double[] b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i &lt; a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    // 欧氏距离：衡量空间距离
+    static double euclideanDistance(double[] a, double[] b) {
+        double sum = 0;
+        for (int i = 0; i &lt; a.length; i++) {
+            sum += Math.pow(a[i] - b[i], 2);
+        }
+        return Math.sqrt(sum);
+    }
+
+    // 点积
+    static double dotProduct(double[] a, double[] b) {
+        double dot = 0;
+        for (int i = 0; i &lt; a.length; i++) {
+            dot += a[i] * b[i];
+        }
+        return dot;
+    }
+
+    public static void main(String[] args) {
+        double[] catVec = {0.8, 0.2, 0.9, 0.1};   // "猫"
+        double[] dogVec = {0.7, 0.3, 0.8, 0.2};   // "狗"
+        double[] carVec = {0.1, 0.9, 0.05, 0.8};  // "汽车"
+
+        System.out.printf("猫 vs 狗 余弦相似度: %.4f%n", cosineSimilarity(catVec, dogVec));   // ~0.95
+        System.out.printf("猫 vs 汽车 余弦相似度: %.4f%n", cosineSimilarity(catVec, carVec));  // ~0.22
+    }
+}</pre></div>
 </div>
 
 <!-- SVG 动画：文本映射到向量空间 -->
@@ -1671,7 +2120,6 @@ var ch01Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '选择维度包括数据隐私、成本、能力上限、可控性和生态。品牌知名度不是技术决策依据。'
-  }
   },
   {
     type: 'single',

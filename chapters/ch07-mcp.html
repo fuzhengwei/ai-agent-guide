@@ -274,9 +274,8 @@ data: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"分析
 <!-- ===== 7.4 MCP Server 实现 ===== -->
 <h2 class="section-heading">7.4 编写一个 MCP Server</h2>
 
-<div class="code-block">
-  <span class="code-label">Python: 最简 MCP Server</span>
-<pre>from mcp import Server, Tool
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from mcp import Server, Tool
 from mcp.types import TextContent
 
 server = Server("my-tools-server")
@@ -312,7 +311,132 @@ def read_file(path: str) -> str:
 
 # 启动 Server
 if __name__ == "__main__":
-    server.run(transport="stdio")  # stdio 模式</pre>
+    server.run(transport="stdio")  # stdio 模式</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Server, Tool } from '@modelcontextprotocol/sdk/server';
+import { TextContent } from '@modelcontextprotocol/sdk/types';
+
+const server = new Server('my-tools-server');
+
+// 注册工具
+server.tool('search_web', { query: 'string' }, async (args) => {
+  /** 搜索互联网获取信息 */
+  const results = webSearch(args.query);
+  return [{ type: 'text', text: String(results) } as TextContent];
+});
+
+server.tool('get_weather', { city: 'string', unit: 'string' }, async (args) => {
+  /** 获取城市天气 */
+  const temp = weatherApi(args.city, args.unit || 'celsius');
+  return [{ type: 'text', text: `${args.city}: ${temp}°` } as TextContent];
+});
+
+// 注册资源
+server.resource('file://{path}', async (uri) => {
+  /** 读取本地文件 */
+  const fs = await import('fs/promises');
+  return await fs.readFile(uri.replace('file://', ''), 'utf-8');
+});
+
+// 启动 Server
+server.run({ transport: 'stdio' }); // stdio 模式</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    "os/exec"
+)
+
+// MCP Server: 最简MCP Server (Go示意)
+// Go MCP SDK: github.com/mark3labs/mcp-go
+
+func main() {
+    // 注册工具
+    registerTool("search_web", searchWeb)
+    registerTool("get_weather", getWeather)
+
+    // 注册资源
+    registerResource("file://{path}", readFile)
+
+    // 启动Server (stdio模式)
+    runStdio()
+}
+
+func searchWeb(ctx context.Context, args map[string]interface{}) (string, error) {
+    query := args["query"].(string)
+    results := webSearch(query)
+    return fmt.Sprintf("%v", results), nil
+}
+
+func getWeather(ctx context.Context, args map[string]interface{}) (string, error) {
+    city := args["city"].(string)
+    unit := "celsius"
+    if u, ok := args["unit"]; ok { unit = u.(string) }
+    temp := weatherApi(city, unit)
+    return fmt.Sprintf("%s: %d°", city, temp), nil
+}
+
+func readFile(ctx context.Context, path string) (string, error) {
+    data, err := os.ReadFile(path)
+    if err != nil { return "", err }
+    return string(data), nil
+}
+
+func runStdio() {
+    // stdio传输:通过os.Stdin/os.Stdout通信
+    _ = exec.Command("echo", "MCP Server running on stdio")
+}
+
+func webSearch(query string) []string { return []string{"result1", "result2"} }
+func weatherApi(city, unit string) int { return 25 }
+func registerTool(name string, handler interface{}) {}
+func registerResource(pattern string, handler interface{}) {}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpServerFeatures;
+import io.modelcontextprotocol.server.transport.StdioServerTransport;
+import io.modelcontextprotocol.spec.McpSchema.*;
+
+import java.util.*;
+
+public class MyToolsServer {
+    public static void main(String[] args) {
+        // 注册工具
+        var toolSpec1 = new Tool("search_web", "搜索互联网获取信息",
+            Map.of("type", "object",
+                   "properties", Map.of("query", Map.of("type", "string")),
+                   "required", List.of("query")));
+
+        var toolSpec2 = new Tool("get_weather", "获取城市天气",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "city", Map.of("type", "string"),
+                       "unit", Map.of("type", "string")),
+                   "required", List.of("city")));
+
+        var server = McpServer.createServer()
+            .withTool(toolSpec1, (exchange, req) -> {
+                String query = (String) req.get("query");
+                String results = webSearch(query);
+                return new CallToolResult(List.of(
+                    new Content("text", results)));
+            })
+            .withTool(toolSpec2, (exchange, req) -> {
+                String city = (String) req.get("city");
+                String unit = (String) req.getOrDefault("unit", "celsius");
+                int temp = weatherApi(city, unit);
+                return new CallToolResult(List.of(
+                    new Content("text", city + ": " + temp + "°")));
+            })
+            .build();
+
+        // 启动 Server (stdio模式)
+        server.run(new StdioServerTransport());
+    }
+
+    static String webSearch(String query) { return "搜索结果..."; }
+    static int weatherApi(String city, String unit) { return 25; }
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-accent); margin-top: 16px;">
@@ -366,9 +490,8 @@ if __name__ == "__main__":
   <strong>客户端核心流程</strong>：创建连接 → 初始化会话 → 列出能力 → 调用工具/读取资源/获取提示词 → 处理结果。每一步都是异步操作，需要使用 <code>async/await</code> 语法。
 </div>
 
-<div class="code-block">
-  <span class="code-label">Python: 完整 MCP 客户端（使用官方 mcp 库）</span>
-<pre>import asyncio
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import asyncio
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -412,7 +535,177 @@ async def main():
             )
             print("提示词:", prompt.messages[0].content.text)
 
-asyncio.run(main())</pre>
+asyncio.run(main())</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Client } from '@modelcontextprotocol/sdk/client';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
+
+async function main() {
+  // 1. 配置Server启动参数
+  const transport = new StdioClientTransport({
+    command: 'python',
+    args: ['mcp_server.py'],
+  });
+
+  // 2. 建立连接并创建会话
+  const client = new Client(
+    { name: 'my-agent', version: '1.0.0' },
+    { capabilities: {} }
+  );
+  await client.connect(transport);
+
+  // 3. 初始化握手（自动完成）
+  // 4. 列出可用工具
+  const tools = await client.listTools();
+  console.log('可用工具:', tools.tools.map(t => t.name));
+
+  // 5. 列出可用资源
+  const resources = await client.listResources();
+  console.log('可用资源:', resources.resources.map(r => r.uri));
+
+  // 6. 调用工具
+  const result = await client.callTool({
+    name: 'search_web',
+    arguments: { query: 'AI Agent MCP protocol', max_results: 5 },
+  });
+  console.log('搜索结果:', result.content);
+
+  // 7. 读取资源
+  const content = await client.readResource('file:///docs/api.md');
+  console.log('资源内容:', content.contents[0].text.substring(0, 200));
+
+  // 8. 获取提示词模板
+  const prompt = await client.getPrompt('code_review', {
+    language: 'python', code: 'def add(a,b): return a+b',
+  });
+  console.log('提示词:', prompt.messages[0].content.text);
+
+  await client.close();
+}
+
+main();</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "context"
+    "fmt"
+    "os/exec"
+)
+
+// MCP Client: 完整MCP客户端 (Go示意)
+// Go MCP SDK: github.com/mark3labs/mcp-go
+
+func main() {
+    ctx := context.Background()
+
+    // 1. 配置Server启动参数
+    cmd := exec.Command("python", "mcp_server.py")
+
+    // 2. 建立stdio连接
+    stdin, _ := cmd.StdinPipe()
+    stdout, _ := cmd.StdoutPipe()
+    cmd.Start()
+
+    // 3. 初始化握手
+    client := NewMCPClient(stdin, stdout)
+    client.Initialize(ctx)
+
+    // 4. 列出可用工具
+    tools, _ := client.ListTools(ctx)
+    fmt.Print("可用工具: ")
+    for _, t := range tools {
+        fmt.Printf("%s ", t.Name)
+    }
+    fmt.Println()
+
+    // 5. 列出可用资源
+    resources, _ := client.ListResources(ctx)
+    fmt.Print("可用资源: ")
+    for _, r := range resources {
+        fmt.Printf("%s ", r.URI)
+    }
+    fmt.Println()
+
+    // 6. 调用工具
+    result, _ := client.CallTool(ctx, "search_web",
+        map[string]interface{}{"query": "AI Agent MCP protocol", "max_results": 5})
+    fmt.Println("搜索结果:", result)
+
+    // 7. 读取资源
+    content, _ := client.ReadResource(ctx, "file:///docs/api.md")
+    fmt.Println("资源内容:", content[:200])
+
+    // 8. 获取提示词模板
+    prompt, _ := client.GetPrompt(ctx, "code_review",
+        map[string]string{"language": "python", "code": "def add(a,b): return a+b"})
+    fmt.Println("提示词:", prompt)
+
+    cmd.Wait()
+}
+
+// 简化的MCP Client结构
+type MCPClient struct { stdin, stdout interface{} }
+func NewMCPClient(stdin, stdout interface{}) *MCPClient { return &MCPClient{stdin, stdout} }
+func (c *MCPClient) Initialize(ctx context.Context)                                     {}
+func (c *MCPClient) ListTools(ctx context.Context) ([]Tool, error)                       { return []Tool{}, nil }
+func (c *MCPClient) ListResources(ctx context.Context) ([]Resource, error)               { return []Resource{}, nil }
+func (c *MCPClient) CallTool(ctx context.Context, name string, args map[string]interface{}) (string, error) { return "", nil }
+func (c *MCPClient) ReadResource(ctx context.Context, uri string) (string, error)        { return "", nil }
+func (c *MCPClient) GetPrompt(ctx context.Context, name string, args map[string]string) (string, error)    { return "", nil }
+type Tool struct{ Name string }
+type Resource struct{ URI string }</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.spec.McpSchema.*;
+
+import java.util.*;
+
+public class McpClientExample {
+    public static void main(String[] args) {
+        // 1. 配置Server启动参数
+        var transport = new StdioClientTransport.Builder()
+            .command("python")
+            .args("mcp_server.py")
+            .build();
+
+        // 2. 建立连接并创建会话
+        var client = McpClient.create(transport)
+            .clientInfo(new ClientInfo("my-agent", "1.0.0"))
+            .build();
+
+        // 3. 初始化握手
+        client.initialize();
+
+        // 4. 列出可用工具
+        ListToolsResult tools = client.listTools();
+        System.out.println("可用工具: " +
+            tools.tools().stream().map(t -> t.name()).toList());
+
+        // 5. 列出可用资源
+        ListResourcesResult resources = client.listResources();
+        System.out.println("可用资源: " +
+            resources.resources().stream().map(r -> r.uri()).toList());
+
+        // 6. 调用工具
+        CallToolResult result = client.callTool(
+            new CallToolRequest("search_web",
+                Map.of("query", "AI Agent MCP protocol", "max_results", 5)));
+        System.out.println("搜索结果: " + result.content());
+
+        // 7. 读取资源
+        ReadResourceResult content = client.readResource("file:///docs/api.md");
+        System.out.println("资源内容: " +
+            content.contents().get(0).text().substring(0, 200));
+
+        // 8. 获取提示词模板
+        GetPromptResult prompt = client.getPrompt(
+            new GetPromptRequest("code_review",
+                Map.of("language", "python", "code", "def add(a,b): return a+b")));
+        System.out.println("提示词: " +
+            prompt.messages().get(0).content().text());
+
+        client.close();
+    }
+}</pre></div>
 </div>
 
 <p>这段代码完整展示了 MCP 客户端的生命周期：通过 <code>StdioServerParameters</code> 指定 Server 的启动命令和参数，<code>stdio_client</code> 建立 stdio 传输通道，<code>ClientSession</code> 管理协议层会话。<code>session.initialize()</code> 完成能力协商握手，之后即可自由调用 <code>list_tools</code>、<code>call_tool</code>、<code>read_resource</code>、<code>get_prompt</code> 等方法。</p>
@@ -426,9 +719,8 @@ asyncio.run(main())</pre>
 
 <p>6.4 节展示了一个最简版的 Server，但生产级的 MCP Server 需要同时实现资源（Resources）、工具（Tools）和提示词（Prompts）三类能力，并正确处理生命周期。本节展示一个完整的天气数据 MCP Server，包含资源定义、工具注册和错误处理。</p>
 
-<div class="code-block">
-  <span class="code-label">Python: 完整 MCP Server（资源 + 工具 + 提示词）</span>
-<pre>import asyncio
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import asyncio
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
@@ -505,7 +797,199 @@ async def main():
             )
         )
 
-asyncio.run(main())</pre>
+asyncio.run(main())</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Server } from '@modelcontextprotocol/sdk/server';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
+import { Resource, Tool, TextContent } from '@modelcontextprotocol/sdk/types';
+
+const app = new Server('weather-data-server', '1.0.0');
+
+// ===== 资源:只读数据 =====
+app.listResources(async () => [
+  {
+    uri: 'weather://forecast/beijing',
+    name: '北京天气预报',
+    description: '北京未来7天天气',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'weather://forecast/shanghai',
+    name: '上海天气预报',
+    description: '上海未来7天天气',
+    mimeType: 'application/json',
+  },
+]);
+
+app.readResource(async (uri) => {
+  if (uri === 'weather://forecast/beijing') {
+    return '{"city":"北京","temp":25,"weather":"晴"}';
+  } else if (uri === 'weather://forecast/shanghai') {
+    return '{"city":"上海","temp":28,"weather":"多云"}';
+  }
+  throw new Error(`未知资源: ${uri}`);
+});
+
+// ===== 工具:可调用的函数 =====
+app.listTools(async () => [
+  {
+    name: 'get_weather',
+    description: '获取指定城市的实时天气',
+    inputSchema: {
+      type: 'object',
+      properties: { city: { type: 'string', description: '城市名称' } },
+      required: ['city'],
+    },
+  },
+]);
+
+app.callTool(async (name, args) => {
+  if (name === 'get_weather') {
+    const city = (args.city as string) || '北京';
+    return [{
+      type: 'text',
+      text: `{"city":"${city}","temp":25,"humidity":60}`,
+    } as TextContent];
+  }
+  throw new Error(`未知工具: ${name}`);
+});
+
+// ===== 启动Server =====
+const transport = new StdioServerTransport();
+await app.connect(transport);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+)
+
+// MCP Server: 完整MCP Server (Go示意)
+// Go MCP SDK: github.com/mark3labs/mcp-go
+
+type Resource struct {
+    URI         string `json:"uri"`
+    Name        string `json:"name"`
+    Description string `json:"description"`
+    MimeType    string `json:"mimeType"`
+}
+
+type Tool struct {
+    Name        string                 `json:"name"`
+    Description string                 `json:"description"`
+    InputSchema map[string]interface{} `json:"inputSchema"`
+}
+
+func main() {
+    ctx := context.Background()
+
+    // ===== 资源:只读数据 =====
+    resources := []Resource{
+        {URI: "weather://forecast/beijing", Name: "北京天气预报",
+         Description: "北京未来7天天气", MimeType: "application/json"},
+        {URI: "weather://forecast/shanghai", Name: "上海天气预报",
+         Description: "上海未来7天天气", MimeType: "application/json"},
+    }
+
+    // ===== 工具:可调用的函数 =====
+    tools := []Tool{
+        {Name: "get_weather", Description: "获取指定城市的实时天气",
+         InputSchema: map[string]interface{}{
+             "type": "object",
+             "properties": map[string]interface{}{
+                 "city": map[string]interface{}{"type": "string", "description": "城市名称"},
+             },
+             "required": []string{"city"},
+         }},
+    }
+
+    // 注册处理器
+    registerHandlers(resources, tools, handleReadResource, handleCallTool)
+
+    // ===== 启动Server (stdio) =====
+    runStdio(ctx)
+}
+
+func handleReadResource(ctx context.Context, uri string) (string, error) {
+    switch uri {
+    case "weather://forecast/beijing":
+        return `{"city":"北京","temp":25,"weather":"晴"}`, nil
+    case "weather://forecast/shanghai":
+        return `{"city":"上海","temp":28,"weather":"多云"}`, nil
+    default:
+        return "", fmt.Errorf("未知资源: %s", uri)
+    }
+}
+
+func handleCallTool(ctx context.Context, name string, args map[string]interface{}) (string, error) {
+    if name == "get_weather" {
+        city, _ := args["city"].(string)
+        if city == "" { city = "北京" }
+        return fmt.Sprintf(`{"city":"%s","temp":25,"humidity":60}`, city), nil
+    }
+    return "", fmt.Errorf("未知工具: %s", name)
+}
+
+func registerHandlers(res []Resource, tools []Tool, rrf func(context.Context, string) (string, error),
+    ctf func(context.Context, string, map[string]interface{}) (string, error)) {
+    _ = res; _ = tools; _ = rrf; _ = ctf
+}
+
+func runStdio(ctx context.Context) {
+    // stdio传输:通过os.Stdin/os.Stdout通信
+    _ = os.Stdin; _ = os.Stdout
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpServerFeatures.*;
+import io.modelcontextprotocol.server.transport.StdioServerTransport;
+import io.modelcontextprotocol.spec.McpSchema.*;
+
+import java.util.*;
+
+public class WeatherDataServer {
+    public static void main(String[] args) {
+        // ===== 资源:只读数据 =====
+        var resourceSpec1 = new ResourceSpec(
+            "weather://forecast/beijing", "北京天气预报",
+            "北京未来7天天气", "application/json");
+        var resourceSpec2 = new ResourceSpec(
+            "weather://forecast/shanghai", "上海天气预报",
+            "上海未来7天天气", "application/json");
+
+        // ===== 工具:可调用的函数 =====
+        var toolSpec = new ToolSpec("get_weather", "获取指定城市的实时天气",
+            Map.of("type", "object",
+                   "properties", Map.of("city",
+                       Map.of("type", "string", "description", "城市名称")),
+                   "required", List.of("city")));
+
+        var server = McpServer.createServer()
+            .withResource(resourceSpec1, (exchange, uri) -> {
+                if ("weather://forecast/beijing".equals(uri)) {
+                    return new ReadResourceResult(
+                        List.of(new ResourceContent(uri, "{\"city\":\"北京\",\"temp\":25,\"weather\":\"晴\"}", "application/json")));
+                } else if ("weather://forecast/shanghai".equals(uri)) {
+                    return new ReadResourceResult(
+                        List.of(new ResourceContent(uri, "{\"city\":\"上海\",\"temp\":28,\"weather\":\"多云\"}", "application/json")));
+                }
+                throw new IllegalArgumentException("未知资源: " + uri);
+            })
+            .withResource(resourceSpec2, (exchange, uri) -> {
+                // Same handler logic
+                return new ReadResourceResult(List.of());
+            })
+            .withTool(toolSpec, (exchange, request) -> {
+                String city = (String) request.getOrDefault("city", "北京");
+                return new CallToolResult(List.of(
+                    new Content("text",
+                        "{\"city\":\"" + city + "\",\"temp\":25,\"humidity\":60}")));
+            })
+            .build();
+
+        // ===== 启动Server =====
+        server.run(new StdioServerTransport());
+    }
+}</pre></div>
 </div>
 
 <p>这个 Server 实现了 MCP 的三大核心能力：<strong>Resources</strong> 通过 <code>@app.list_resources()</code> 和 <code>@app.read_resource()</code> 暴露天气数据；<strong>Tools</strong> 通过 <code>@app.list_tools()</code> 和 <code>@app.call_tool()</code> 提供天气查询函数；<strong>InitializationOptions</strong> 声明服务器能力和版本信息，供客户端在握手阶段读取。</p>

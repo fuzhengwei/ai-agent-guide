@@ -126,9 +126,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">LLM-as-Judge 示例</h3>
 
-<div class="code-block">
-  <span class="code-label">用 LLM 评估 Agent 输出质量</span>
-<pre>eval_prompt = """
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>eval_prompt = """
 你是一个严格的评估员。请评估以下 Agent 回答的质量。
 
 用户问题：{question}
@@ -162,7 +161,136 @@ for sample in test_dataset:
             reference=sample.reference
         )
     )
-    scores.append(parse_json(result))</pre>
+    scores.append(parse_json(result))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>const evalPrompt = `
+你是一个严格的评估员。请评估以下 Agent 回答的质量。
+
+用户问题：{question}
+Agent 回答：{answer}
+参考答案：{reference}
+
+请从以下维度打分（1-5分）：
+1. 准确性：回答是否正确，与参考答案一致
+2. 完整性：是否回答了问题的所有方面
+3. 相关性：回答是否切题，没有多余内容
+4. 表达清晰度：语言是否清晰易懂
+
+输出 JSON 格式：
+{
+  "accuracy": 4,
+  "completeness": 3,
+  "relevance": 5,
+  "clarity": 4,
+  "overall": 4,
+  "comments": "回答基本正确但缺少XX细节"
+}
+`;
+
+// 批量评估
+const scores = [];
+for (const sample of testDataset) {
+  const result = await judgeLlm.invoke(
+    evalPrompt
+      .replace('{question}', sample.question)
+      .replace('{answer}', sample.agentAnswer)
+      .replace('{reference}', sample.reference)
+  );
+  scores.push(JSON.parse(result));
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "strings"
+)
+
+const evalPrompt = `
+你是一个严格的评估员。请评估以下 Agent 回答的质量。
+
+用户问题：{question}
+Agent 回答：{answer}
+参考答案：{reference}
+
+请从以下维度打分（1-5分）：
+1. 准确性：回答是否正确，与参考答案一致
+2. 完整性：是否回答了问题的所有方面
+3. 相关性：回答是否切题，没有多余内容
+4. 表达清晰度：语言是否清晰易懂
+
+输出 JSON 格式：
+{
+  "accuracy": 4,
+  "completeness": 3,
+  "relevance": 5,
+  "clarity": 4,
+  "overall": 4,
+  "comments": "回答基本正确但缺少XX细节"
+}
+`
+
+// 批量评估
+func batchEvaluate(testDataset []Sample, judgeLlm LLMClient) []map[string]interface{} {
+    var scores []map[string]interface{}
+    for _, sample := range testDataset {
+        prompt := strings.ReplaceAll(evalPrompt, "{question}", sample.Question)
+        prompt = strings.ReplaceAll(prompt, "{answer}", sample.AgentAnswer)
+        prompt = strings.ReplaceAll(prompt, "{reference}", sample.Reference)
+        result := judgeLlm.Invoke(prompt)
+        var score map[string]interface{}
+        json.Unmarshal([]byte(result), &score)
+        scores = append(scores, score)
+    }
+    return scores
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+
+public class AgentEvaluator {
+    static final String EVAL_PROMPT = """
+            你是一个严格的评估员。请评估以下 Agent 回答的质量。
+
+            用户问题：{question}
+            Agent 回答：{answer}
+            参考答案：{reference}
+
+            请从以下维度打分（1-5分）：
+            1. 准确性：回答是否正确，与参考答案一致
+            2. 完整性：是否回答了问题的所有方面
+            3. 相关性：回答是否切题，没有多余内容
+            4. 表达清晰度：语言是否清晰易懂
+
+            输出 JSON 格式：
+            {
+              "accuracy": 4,
+              "completeness": 3,
+              "relevance": 5,
+              "clarity": 4,
+              "overall": 4,
+              "comments": "回答基本正确但缺少XX细节"
+            }
+            """;
+
+    // 批量评估
+    public List&lt;Map&lt;String, Object&gt;&gt; batchEvaluate(List&lt;Sample&gt; testDataset, LLMClient judgeLlm) {
+        List&lt;Map&lt;String, Object&gt;&gt; scores = new ArrayList&lt;&gt;();
+        ObjectMapper mapper = new ObjectMapper();
+        for (Sample sample : testDataset) {
+            String prompt = EVAL_PROMPT
+                .replace("{question}", sample.getQuestion())
+                .replace("{answer}", sample.getAgentAnswer())
+                .replace("{reference}", sample.getReference());
+            String result = judgeLlm.invoke(prompt);
+            try {
+                Map&lt;String, Object&gt; score = mapper.readValue(result, Map.class);
+                scores.add(score);
+            } catch (Exception e) {
+                scores.add(Map.of("error", e.getMessage()));
+            }
+        }
+        return scores;
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 17.4 可观测性 ===== -->
@@ -471,9 +599,8 @@ for sample in test_dataset:
 
 <h3 class="sub-heading">LangSmith 集成与评估代码</h3>
 
-<div class="code-block">
-  <span class="code-label">LangSmith 全链路集成：追踪 + 数据集 + 评估</span>
-<pre>import os
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import os
 from langsmith import Client, traceable
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import create_react_agent, AgentExecutor
@@ -543,16 +670,205 @@ results = evaluate(
     experiment_prefix="gpt4o-baseline"
 )
 print(f"评估结果: {results}")
-# 输出示例：正确率 0.67 | 简洁性 1.0</pre>
+# 输出示例：正确率 0.67 | 简洁性 1.0</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Client } from 'langsmith';
+import { ChatOpenAI } from '@langchain/openai';
+import { createReactAgent, AgentExecutor } from '@langchain/langgraph';
+import { Tool } from '@langchain/core/tools';
+import { DuckDuckGoSearchRun } from '@langchain/community/tools/duckduckgo_search';
+
+// 1. 配置环境变量
+process.env.LANGCHAIN_TRACING_V2 = 'true';
+process.env.LANGCHAIN_API_KEY = 'lsv2_pt_xxx';
+process.env.LANGCHAIN_PROJECT = 'ai-agent-eval';
+process.env.OPENAI_API_KEY = 'sk-xxx';
+
+// 2. 定义工具
+const searchTool = new DuckDuckGoSearchRun();
+const calcTool = new Tool({
+  name: 'calculator',
+  description: '用于数学计算，输入数学表达式',
+  func: async (expr: string) => String(eval(expr)),
+});
+
+// 3. 需要追踪的函数
+async function runQaAgent(question: string): Promise&lt;string&gt; {
+  const llm = new ChatOpenAI({ model: 'gpt-4o', temperature: 0 });
+  const tools = [searchTool, calcTool];
+  const agent = createReactAgent({ llm, tools });
+  const executor = new AgentExecutor({ agent, tools, verbose: true });
+  const result = await executor.invoke({ input: question });
+  return result.output;
+}
+
+// 4. 创建评估数据集
+const client = new Client();
+const dataset = await client.createDataset({
+  datasetName: 'qa-eval-v1',
+  description: '问答 Agent 评估集',
+});
+
+const examples = [
+  { inputs: { question: '北京今天天气？' }, outputs: { answer: '晴，25度' } },
+  { inputs: { question: '1+1等于几？' }, outputs: { answer: '2' } },
+  { inputs: { question: 'AI Agent 是什么？' }, outputs: { answer: 'AI Agent 是能自主使用工具完成任务的智能体' } },
+];
+await client.createExamples({ datasetId: dataset.id, examples });
+
+// 5. 定义评估器
+function correctness(run: any, example: any) {
+  const pred = run.outputs.output;
+  const ref = example.outputs.answer;
+  return { score: ref.includes(pred) ? 1.0 : 0.0 };
+}
+
+function conciseness(run: any, example: any) {
+  const pred = run.outputs.output;
+  const wordCount = pred.split(' ').length;
+  const score = wordCount <= 100 ? 1.0 : 0.5;
+  return { score, comment: `词数: ${wordCount}` };
+}
+
+// 6. 运行评估
+import { evaluate } from 'langsmith/evaluation';
+const results = await evaluate(runQaAgent, {
+  data: dataset.name,
+  evaluators: [correctness, conciseness],
+  experimentPrefix: 'gpt4o-baseline',
+});
+console.log(`评估结果: ${JSON.stringify(results)}`);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "os"
+)
+
+// 1. 配置环境变量
+func init() {
+    os.Setenv("LANGCHAIN_TRACING_V2", "true")
+    os.Setenv("LANGCHAIN_API_KEY", "lsv2_pt_xxx")
+    os.Setenv("LANGCHAIN_PROJECT", "ai-agent-eval")
+    os.Setenv("OPENAI_API_KEY", "sk-xxx")
+}
+
+// 2. 定义工具类型
+type Tool struct {
+    Name        string
+    Description string
+    Func        func(string) (string, error)
+}
+
+// 3. 需要追踪的函数
+func runQaAgent(question string, llm LLMClient, tools []Tool) (string, error) {
+    // 创建 Agent 执行器并调用
+    result, err := agentExecutor(question, llm, tools)
+    if err != nil {
+        return "", err
+    }
+    return result, nil
+}
+
+// 4. 评估数据集结构
+type EvalExample struct {
+    Inputs  map[string]string `json:"inputs"`
+    Outputs map[string]string `json:"outputs"`
+}
+
+// 5. 评估器
+type EvalResult struct {
+    Score   float64 `json:"score"`
+    Comment string  `json:"comment,omitempty"`
+}
+
+func correctness(pred, ref string) EvalResult {
+    if contains(pred, ref) {
+        return EvalResult{Score: 1.0}
+    }
+    return EvalResult{Score: 0.0}
+}
+
+func conciseness(pred string) EvalResult {
+    wordCount := len(splitWords(pred))
+    if wordCount <= 100 {
+        return EvalResult{Score: 1.0, Comment: fmt.Sprintf("词数: %d", wordCount)}
+    }
+    return EvalResult{Score: 0.5, Comment: fmt.Sprintf("词数: %d", wordCount)}
+}
+
+// 6. 运行评估
+func runEvaluation(agentFn func(string) (string, error), dataset []EvalExample) {
+    for i, ex := range dataset {
+        pred, err := agentFn(ex.Inputs["question"])
+        if err != nil {
+            fmt.Printf("Case %d: ERROR %v\n", i, err)
+            continue
+        }
+        c := correctness(pred, ex.Outputs["answer"])
+        fmt.Printf("Case %d: correctness=%.1f\n", i, c.Score)
+    }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class LangSmithEval {
+    // 1. 配置环境变量
+    static {
+        System.setProperty("LANGCHAIN_TRACING_V2", "true");
+        System.setProperty("LANGCHAIN_API_KEY", "lsv2_pt_xxx");
+        System.setProperty("LANGCHAIN_PROJECT", "ai-agent-eval");
+        System.setProperty("OPENAI_API_KEY", "sk-xxx");
+    }
+
+    // 2. 定义工具
+    static class Tool {
+        String name;
+        String description;
+        ToolFunc func;
+    }
+
+    // 3. 需要追踪的函数
+    public String runQaAgent(String question, LLMClient llm, List&lt;Tool&gt; tools) {
+        AgentExecutor executor = new AgentExecutor(llm, tools);
+        Map&lt;String, String&gt; result = executor.invoke(Map.of("input", question));
+        return result.get("output");
+    }
+
+    // 4. 评估数据集
+    static class EvalExample {
+        Map&lt;String, String&gt; inputs;
+        Map&lt;String, String&gt; outputs;
+    }
+
+    // 5. 评估器
+    public Map&lt;String, Object&gt; correctness(String pred, String ref) {
+        double score = pred.contains(ref) ? 1.0 : 0.0;
+        return Map.of("score", score);
+    }
+
+    public Map&lt;String, Object&gt; conciseness(String pred) {
+        int wordCount = pred.split("\\s+").length;
+        double score = wordCount <= 100 ? 1.0 : 0.5;
+        return Map.of("score", score, "comment", "词数: " + wordCount);
+    }
+
+    // 6. 运行评估
+    public void runEvaluation(List&lt;EvalExample&gt; dataset) {
+        for (int i = 0; i &lt; dataset.size(); i++) {
+            EvalExample ex = dataset.get(i);
+            String pred = runQaAgent(ex.inputs.get("question"), llm, tools);
+            Map&lt;String, Object&gt; c = correctness(pred, ex.outputs.get("answer"));
+            System.out.printf("Case %d: correctness=%.1f%n", i, c.get("score"));
+        }
+    }
+}</pre></div>
 </div>
 
 <p>上面的代码展示了 LangSmith 的完整工作流：先通过 <code>@traceable</code> 装饰器自动收集 Trace，再通过 <code>Client</code> 创建评估数据集和样本，最后用 <code>evaluate</code> 函数批量运行评估。每次评估都会在 LangSmith 平台生成一个实验记录，支持多版本对比分析。</p>
 
 <h3 class="sub-heading">Trace 分析与调试</h3>
 
-<div class="code-block">
-  <span class="code-label">LangSmith Trace 查询与分析</span>
-<pre>from langsmith import Client
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langsmith import Client
 from datetime import datetime, timedelta
 
 client = Client()
@@ -583,7 +899,133 @@ failed_runs = client.list_runs(
     error=True,
 )
 for run in failed_runs:
-    print(f"[ERROR] {run.name}: {run.error}")</pre>
+    print(f"[ERROR] {run.name}: {run.error}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { Client } from 'langsmith';
+
+const client = new Client();
+
+// 查询最近24小时的追踪记录
+const now = new Date();
+const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+const runs = await client.listRuns({
+  projectName: 'ai-agent-eval',
+  startTime: yesterday,
+  runType: 'chain',
+  error: false,
+});
+
+// 分析 Token 消耗与延迟
+for (const run of runs) {
+  const totalTokens = (run.promptTokens ?? 0) + (run.completionTokens ?? 0);
+  const latency = (new Date(run.endTime).getTime() - new Date(run.startTime).getTime()) / 1000;
+  console.log(`Run: ${run.name} | Tokens: ${totalTokens} | Latency: ${latency.toFixed(1)}s | Status: ${run.status}`);
+}
+
+// 找出耗时最长的 Top 5 请求
+const slowest = [...runs]
+  .sort((a, b) => {
+    const aDur = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
+    const bDur = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
+    return bDur - aDur;
+  })
+  .slice(0, 5);
+for (const run of slowest) {
+  const dur = (new Date(run.endTime).getTime() - new Date(run.startTime).getTime()) / 1000;
+  console.log(`[SLOW] ${run.name}: ${dur.toFixed(1)}s`);
+}
+
+// 导出失败 Trace 用于离线分析
+const failedRuns = await client.listRuns({
+  projectName: 'ai-agent-eval',
+  startTime: yesterday,
+  error: true,
+});
+for (const run of failedRuns) {
+  console.log(`[ERROR] ${run.name}: ${run.error}`);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    client := NewLangSmithClient()
+
+    // 查询最近24小时的追踪记录
+    now := time.Now()
+    yesterday := now.Add(-24 * time.Hour)
+    runs, err := client.ListRuns("ai-agent-eval", yesterday, now, "chain", false)
+    if err != nil {
+        panic(err)
+    }
+
+    // 分析 Token 消耗与延迟
+    for _, run := range runs {
+        totalTokens := run.PromptTokens + run.CompletionTokens
+        latency := run.EndTime.Sub(run.StartTime).Seconds()
+        fmt.Printf("Run: %s | Tokens: %d | Latency: %.1fs | Status: %s\n",
+            run.Name, totalTokens, latency, run.Status)
+    }
+
+    // 找出耗时最长的 Top 5 请求
+    sort.Slice(runs, func(i, j int) bool {
+        return runs[i].EndTime.Sub(runs[i].StartTime) > runs[j].EndTime.Sub(runs[j].StartTime)
+    })
+    for i, run := range runs {
+        if i >= 5 { break }
+        dur := run.EndTime.Sub(run.StartTime).Seconds()
+        fmt.Printf("[SLOW] %s: %.1fs\n", run.Name, dur)
+    }
+
+    // 导出失败 Trace 用于离线分析
+    failedRuns, _ := client.ListRuns("ai-agent-eval", yesterday, now, "", true)
+    for _, run := range failedRuns {
+        fmt.Printf("[ERROR] %s: %s\n", run.Name, run.Error)
+    }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.time.*;
+import java.util.*;
+import java.util.stream.*;
+
+public class TraceAnalyzer {
+    public static void main(String[] args) {
+        LangSmithClient client = new LangSmithClient();
+
+        // 查询最近24小时的追踪记录
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime yesterday = now.minusHours(24);
+        List&lt;Run&gt; runs = client.listRuns("ai-agent-eval", yesterday, now, "chain", false);
+
+        // 分析 Token 消耗与延迟
+        for (Run run : runs) {
+            int totalTokens = run.getPromptTokens() + run.getCompletionTokens();
+            double latency = Duration.between(run.getStartTime(), run.getEndTime()).toSeconds();
+            System.out.printf("Run: %s | Tokens: %d | Latency: %.1fs | Status: %s%n",
+                run.getName(), totalTokens, latency, run.getStatus());
+        }
+
+        // 找出耗时最长的 Top 5 请求
+        List&lt;Run&gt; slowest = runs.stream()
+            .sorted((a, b) -&gt; Long.compare(
+                Duration.between(b.getStartTime(), b.getEndTime()).toMillis(),
+                Duration.between(a.getStartTime(), a.getEndTime()).toMillis()))
+            .limit(5)
+            .collect(Collectors.toList());
+        for (Run run : slowest) {
+            double dur = Duration.between(run.getStartTime(), run.getEndTime()).toSeconds();
+            System.out.printf("[SLOW] %s: %.1fs%n", run.getName(), dur);
+        }
+
+        // 导出失败 Trace 用于离线分析
+        List&lt;Run&gt; failedRuns = client.listRuns("ai-agent-eval", yesterday, now, null, true);
+        for (Run run : failedRuns) {
+            System.out.printf("[ERROR] %s: %s%n", run.getName(), run.getError());
+        }
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 17.8 评估驱动开发（EDD）方法论 ===== -->
@@ -681,9 +1123,8 @@ for run in failed_runs:
 
 <h3 class="sub-heading">A/B 测试在 Agent 中的应用</h3>
 
-<div class="code-block">
-  <span class="code-label">Agent A/B 测试：对比两个版本的 Agent 表现</span>
-<pre>import random
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import random
 from dataclasses import dataclass
 from typing import Optional
 
@@ -728,16 +1169,240 @@ class AgentABTester:
                 "avg_tokens": sum(r["tokens"] for r in results) / n,
             }
         return {self.config.variant_a_name: stats(self.results_a),
-                self.config.variant_b_name: stats(self.results_b)}</pre>
+                self.config.variant_b_name: stats(self.results_b)}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>interface ABTestConfig {
+  experimentName: string;
+  variantAName: string;  // 对照组
+  variantBName: string;  // 实验组
+  trafficSplit: number;  // B 组流量比例
+  minSampleSize: number; // 最小样本量
+  metrics?: string[];    // 关注的指标列表
+}
+
+interface TestResult {
+  success: boolean;
+  latency: number;
+  tokens: number;
+}
+
+class AgentABTester {
+  private config: ABTestConfig;
+  private resultsA: TestResult[] = [];
+  private resultsB: TestResult[] = [];
+
+  constructor(config: ABTestConfig) {
+    this.config = config;
+  }
+
+  /** 根据用户 ID 确定性分配分组 */
+  assignVariant(userId: string): string {
+    const hashVal = (this.hashString(userId) % 100) / 100;
+    return hashVal < this.config.trafficSplit
+      ? this.config.variantBName
+      : this.config.variantAName;
+  }
+
+  /** 记录一次请求的结果 */
+  recordResult(variant: string, success: boolean, latency: number, tokens: number): void {
+    const result: TestResult = { success, latency, tokens };
+    if (variant === this.config.variantAName) {
+      this.resultsA.push(result);
+    } else {
+      this.resultsB.push(result);
+    }
+  }
+
+  /** 分析 A/B 测试结果 */
+  analyze(): Record&lt;string, any&gt; {
+    const stats = (results: TestResult[]) => {
+      if (results.length === 0) {
+        return { successRate: 0, avgLatency: 0, avgTokens: 0 };
+      }
+      const n = results.length;
+      return {
+        successRate: results.filter(r =&gt; r.success).length / n,
+        avgLatency: results.reduce((sum, r) =&gt; sum + r.latency, 0) / n,
+        avgTokens: results.reduce((sum, r) =&gt; sum + r.tokens, 0) / n,
+      };
+    };
+    return {
+      [this.config.variantAName]: stats(this.resultsA),
+      [this.config.variantBName]: stats(this.resultsB),
+    };
+  }
+
+  private hashString(s: string): number {
+    let hash = 0;
+    for (let i = 0; i &lt; s.length; i++) {
+      hash = ((hash &lt;&lt; 5) - hash) + s.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "hash/fnv"
+)
+
+// ABTestConfig A/B 测试配置
+type ABTestConfig struct {
+    ExperimentName string
+    VariantAName   string // 对照组
+    VariantBName   string // 实验组
+    TrafficSplit   float64 // B 组流量比例
+    MinSampleSize  int    // 最小样本量
+}
+
+type TestResult struct {
+    Success bool    `json:"success"`
+    Latency float64 `json:"latency"`
+    Tokens  int     `json:"tokens"`
+}
+
+type AgentABTester struct {
+    config  ABTestConfig
+    resultsA []TestResult
+    resultsB []TestResult
+}
+
+func NewAgentABTester(config ABTestConfig) *AgentABTester {
+    return &AgentABTester{config: config}
+}
+
+// AssignVariant 根据用户 ID 确定性分配分组
+func (t *AgentABTester) AssignVariant(userID string) string {
+    h := fnv.New32a()
+    h.Write([]byte(userID))
+    hashVal := float64(h.Sum32() % 100) / 100
+    if hashVal < t.config.TrafficSplit {
+        return t.config.VariantBName
+    }
+    return t.config.VariantAName
+}
+
+// RecordResult 记录一次请求的结果
+func (t *AgentABTester) RecordResult(variant string, success bool, latency float64, tokens int) {
+    result := TestResult{Success: success, Latency: latency, Tokens: tokens}
+    if variant == t.config.VariantAName {
+        t.resultsA = append(t.resultsA, result)
+    } else {
+        t.resultsB = append(t.resultsB, result)
+    }
+}
+
+// Analyze 分析 A/B 测试结果
+func (t *AgentABTester) Analyze() map[string]map[string]float64 {
+    stats := func(results []TestResult) map[string]float64 {
+        if len(results) == 0 {
+            return map[string]float64{"success_rate": 0, "avg_latency": 0, "avg_tokens": 0}
+        }
+        n := len(results)
+        successSum := 0
+        latencySum := 0.0
+        tokenSum := 0
+        for _, r := range results {
+            if r.Success { successSum++ }
+            latencySum += r.Latency
+            tokenSum += r.Tokens
+        }
+        return map[string]float64{
+            "success_rate": float64(successSum) / float64(n),
+            "avg_latency":  latencySum / float64(n),
+            "avg_tokens":   float64(tokenSum) / float64(n),
+        }
+    }
+    return map[string]map[string]float64{
+        t.config.VariantAName: stats(t.resultsA),
+        t.config.VariantBName: stats(t.resultsB),
+    }
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class AgentABTester {
+    // ABTestConfig 配置
+    static class ABTestConfig {
+        String experimentName;
+        String variantAName;   // 对照组
+        String variantBName;   // 实验组
+        double trafficSplit;   // B 组流量比例
+        int minSampleSize = 100;
+    }
+
+    static class TestResult {
+        boolean success;
+        double latency;
+        int tokens;
+        TestResult(boolean success, double latency, int tokens) {
+            this.success = success;
+            this.latency = latency;
+            this.tokens = tokens;
+        }
+    }
+
+    private ABTestConfig config;
+    private List&lt;TestResult&gt; resultsA = new ArrayList&lt;&gt;();
+    private List&lt;TestResult&gt; resultsB = new ArrayList&lt;&gt;();
+
+    public AgentABTester(ABTestConfig config) {
+        this.config = config;
+    }
+
+    /** 根据用户 ID 确定性分配分组 */
+    public String assignVariant(String userId) {
+        int hash = Math.abs(userId.hashCode());
+        double hashVal = (hash % 100) / 100.0;
+        return hashVal &lt; config.trafficSplit ? config.variantBName : config.variantAName;
+    }
+
+    /** 记录一次请求的结果 */
+    public void recordResult(String variant, boolean success, double latency, int tokens) {
+        TestResult result = new TestResult(success, latency, tokens);
+        if (variant.equals(config.variantAName)) {
+            resultsA.add(result);
+        } else {
+            resultsB.add(result);
+        }
+    }
+
+    /** 分析 A/B 测试结果 */
+    public Map&lt;String, Map&lt;String, Double&gt;&gt; analyze() {
+        return Map.of(
+            config.variantAName, stats(resultsA),
+            config.variantBName, stats(resultsB)
+        );
+    }
+
+    private Map&lt;String, Double&gt; stats(List&lt;TestResult&gt; results) {
+        if (results.isEmpty()) {
+            return Map.of("success_rate", 0.0, "avg_latency", 0.0, "avg_tokens", 0.0);
+        }
+        int n = results.size();
+        int successSum = 0;
+        double latencySum = 0;
+        int tokenSum = 0;
+        for (TestResult r : results) {
+            if (r.success) successSum++;
+            latencySum += r.latency;
+            tokenSum += r.tokens;
+        }
+        return Map.of(
+            "success_rate", (double) successSum / n,
+            "avg_latency", latencySum / n,
+            "avg_tokens", (double) tokenSum / n
+        );
+    }
+}</pre></div>
 </div>
 
 <p>A/B 测试是 Agent 线上迭代的核心手段。通过流量分割，将一部分用户导向新版本 Agent，对比关键指标（成功率、延迟、Token 消耗）的差异，决定是否全量发布。注意：Agent 的 A/B 测试需要更大的样本量，因为 LLM 输出方差大，单次请求的随机性可能掩盖真实差异。</p>
 
 <h3 class="sub-heading">回归测试设计</h3>
 
-<div class="code-block">
-  <span class="code-label">Agent 回归测试：确保改动不引入退化</span>
-<pre>import json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import json
 from pathlib import Path
 
 # 回归测试集结构
@@ -773,7 +1438,195 @@ class RegressionTestSuite:
 suite = RegressionTestSuite("tests/agent_regression_v1.json")
 report = suite.run(run_qa_agent, [correctness, conciseness])
 print(f"通过率: {report['pass_rate']:.0%}")
-print(f"退化用例: {len(report['regressions'])}")</pre>
+print(f"退化用例: {len(report['regressions'])}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import * as fs from 'fs';
+
+interface TestCase {
+  id: string;
+  input: string;
+  expected?: string;
+}
+
+interface TestResult {
+  case_id: string;
+  passed: boolean;
+  scores: Array&lt;{ score: number; comment?: string }&gt;;
+  input: string;
+}
+
+// 回归测试集
+class RegressionTestSuite {
+  private testCases: TestCase[];
+
+  constructor(testDataPath: string) {
+    this.testCases = JSON.parse(fs.readFileSync(testDataPath, 'utf-8'));
+  }
+
+  /** 运行回归测试，返回通过率和退化用例 */
+  run(
+    agentFn: (input: string) =&gt; Promise&lt;string&gt;,
+    evaluators: Array&lt;(pred: string, case: TestCase) =&gt; { score: number; comment?: string }&gt;
+  ): { passRate: number; regressions: TestResult[] } {
+    const results: TestResult[] = [];
+    for (const testCase of this.testCases) {
+      const pred = agentFn(testCase.input); // sync for example
+      const scores = evaluators.map(ev =&gt; ev(pred, testCase));
+      const passed = scores.every(s =&gt; s.score &gt;= 0.8);
+      results.push({
+        case_id: testCase.id,
+        passed,
+        scores,
+        input: testCase.input.slice(0, 50),
+      });
+    }
+    const passedCount = results.filter(r =&gt; r.passed).length;
+    const regressions = results.filter(r =&gt; !r.passed);
+    return {
+      passRate: passedCount / results.length,
+      regressions,
+    };
+  }
+}
+
+// 使用示例
+const suite = new RegressionTestSuite('tests/agent_regression_v1.json');
+const report = suite.run(runQaAgent, [correctness, conciseness]);
+console.log(`通过率: ${(report.passRate * 100).toFixed(0)}%`);
+console.log(`退化用例: ${report.regressions.length}`);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "os"
+)
+
+type TestCase struct {
+    ID      string `json:"id"`
+    Input   string `json:"input"`
+}
+
+type ScoreResult struct {
+    Score   float64 `json:"score"`
+    Comment string  `json:"comment,omitempty"`
+}
+
+type TestResult struct {
+    CaseID   string       `json:"case_id"`
+    Passed   bool         `json:"passed"`
+    Scores   []ScoreResult `json:"scores"`
+    Input    string       `json:"input"`
+}
+
+// RegressionTestSuite 回归测试集
+type RegressionTestSuite struct {
+    testCases []TestCase
+}
+
+func NewRegressionTestSuite(path string) (*RegressionTestSuite, error) {
+    data, err := os.ReadFile(path)
+    if err != nil {
+        return nil, err
+    }
+    var cases []TestCase
+    if err := json.Unmarshal(data, &cases); err != nil {
+        return nil, err
+    }
+    return &RegressionTestSuite{testCases: cases}, nil
+}
+
+// Run 运行回归测试
+func (s *RegressionTestSuite) Run(agentFn func(string) (string, error), evaluators []func(string, TestCase) ScoreResult) (float64, []TestResult) {
+    var results []TestResult
+    for _, c := range s.testCases {
+        pred, _ := agentFn(c.Input)
+        var scores []ScoreResult
+        for _, ev := range evaluators {
+            scores = append(scores, ev(pred, c))
+        }
+        passed := true
+        for _, sc := range scores {
+            if sc.Score < 0.8 { passed = false; break }
+        }
+        results = append(results, TestResult{
+            CaseID: c.ID,
+            Passed: passed,
+            Scores: scores,
+            Input:  truncate(c.Input, 50),
+        })
+    }
+    passedCount := 0
+    for _, r := range results {
+        if r.Passed { passedCount++ }
+    }
+    var regressions []TestResult
+    for _, r := range results {
+        if !r.Passed { regressions = append(regressions, r) }
+    }
+    return float64(passedCount) / float64(len(results)), regressions
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class RegressionTestSuite {
+    private List&lt;TestCase&gt; testCases;
+
+    static class TestCase {
+        public String id;
+        public String input;
+    }
+
+    static class ScoreResult {
+        public double score;
+        public String comment;
+        ScoreResult(double score) { this.score = score; }
+        ScoreResult(double score, String comment) { this.score = score; this.comment = comment; }
+    }
+
+    static class TestResult {
+        public String caseId;
+        public boolean passed;
+        public List&lt;ScoreResult&gt; scores;
+        public String input;
+    }
+
+    public RegressionTestSuite(String testDataPath) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        testCases = mapper.readValue(new File(testDataPath),
+            mapper.getTypeFactory().constructCollectionType(List.class, TestCase.class));
+    }
+
+    /** 运行回归测试 */
+    public Map&lt;String, Object&gt; run(
+            java.util.function.Function&lt;String, String&gt; agentFn,
+            List&lt;java.util.function.BiFunction&lt;String, TestCase, ScoreResult&gt;&gt; evaluators) {
+        List&lt;TestResult&gt; results = new ArrayList&lt;&gt;();
+        for (TestCase testCase : testCases) {
+            String pred = agentFn.apply(testCase.input);
+            List&lt;ScoreResult&gt; scores = new ArrayList&lt;&gt;();
+            for (var ev : evaluators) {
+                scores.add(ev.apply(pred, testCase));
+            }
+            boolean passed = scores.stream().allMatch(s -&gt; s.score &gt;= 0.8);
+            TestResult tr = new TestResult();
+            tr.caseId = testCase.id;
+            tr.passed = passed;
+            tr.scores = scores;
+            tr.input = testCase.input.substring(0, Math.min(50, testCase.input.length()));
+            results.add(tr);
+        }
+        long passedCount = results.stream().filter(r -&gt; r.passed).count();
+        List&lt;TestResult&gt; regressions = results.stream()
+            .filter(r -&gt; !r.passed)
+            .collect(Collectors.toList());
+        return Map.of(
+            "pass_rate", (double) passedCount / results.size(),
+            "regressions", regressions
+        );
+    }
+}</pre></div>
 </div>
 
 <p>回归测试是 EDD 方法论的安全网。每次修改 Agent 的 prompt、工具或模型后，都跑一遍回归测试集，确保改动不会引入退化。建议将回归测试集成到 CI/CD 流水线中，在每次 PR 合并前自动运行，退化用例数必须为 0 才允许合并。</p>
@@ -805,9 +1658,8 @@ print(f"退化用例: {len(report['regressions'])}")</pre>
   </table>
 </div>
 
-<div class="code-block">
-<span class="code-label">Python · Ragas 评估</span>
-<pre>from ragas import evaluate
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from ragas import evaluate
 from ragas.metrics import (
     faithfulness,            # 忠实度
     answer_relevancy,       # 回答相关性
@@ -852,16 +1704,159 @@ result = evaluate(
 
 print(result)
 # {'faithfulness': 0.85, 'answer_relevancy': 0.92, 
-#  'context_precision': 0.78, 'context_recall': 0.88}</pre>
+#  'context_precision': 0.78, 'context_recall': 0.88}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { evaluate } from 'ragas';
+import { faithfulness, answerRelevancy, contextPrecision, contextRecall } from 'ragas/metrics';
+import { ChatOpenAI } from '@langchain/openai';
+import { OpenAIEmbeddings } from '@langchain/openai';
+
+// 准备评估数据集
+const evalData = {
+  question: [
+    'Agent 的记忆系统有哪些类型？',
+    'MCP 协议解决了什么问题？',
+    'LangGraph 的 Checkpoint 机制有什么用？',
+  ],
+  answer: [
+    'Agent 的记忆分为短期记忆和长期记忆……',
+    'MCP 解决了工具定义不统一的问题……',
+    'Checkpoint 机制用于状态保存和人工干预……',
+  ],
+  contexts: [
+    ['短期记忆存储对话历史……', '长期记忆使用向量数据库……'],
+    ['MCP 之前每个框架有自己的工具格式……'],
+    ['LangGraph 的 Checkpoint 每步自动保存……'],
+  ],
+  ground_truth: [
+    '记忆分为短期记忆（对话历史）和长期记忆（向量存储）',
+    'MCP 统一了 Agent 与工具的连接标准',
+    '用于状态持久化、人工干预、错误恢复',
+  ],
+};
+
+// 运行评估
+const result = await evaluate({
+  dataset: evalData,
+  metrics: [faithfulness, answerRelevancy, contextPrecision, contextRecall],
+  llm: new ChatOpenAI({ model: 'gpt-4o' }),
+  embeddings: new OpenAIEmbeddings(),
+});
+
+console.log(result);
+// {'faithfulness': 0.85, 'answer_relevancy': 0.92,
+//  'context_precision': 0.78, 'context_recall': 0.88}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+)
+
+// EvalSample 评估样本
+type EvalSample struct {
+    Question    string
+    Answer      string
+    Contexts    []string
+    GroundTruth string
+}
+
+// EvalResult 评估结果
+type EvalResult struct {
+    Faithfulness      float64 `json:"faithfulness"`
+    AnswerRelevancy   float64 `json:"answer_relevancy"`
+    ContextPrecision  float64 `json:"context_precision"`
+    ContextRecall     float64 `json:"context_recall"`
+}
+
+func main() {
+    // 准备评估数据集
+    evalData := []EvalSample{
+        {
+            Question:    "Agent 的记忆系统有哪些类型？",
+            Answer:      "Agent 的记忆分为短期记忆和长期记忆……",
+            Contexts:    []string{"短期记忆存储对话历史……", "长期记忆使用向量数据库……"},
+            GroundTruth: "记忆分为短期记忆（对话历史）和长期记忆（向量存储）",
+        },
+        {
+            Question:    "MCP 协议解决了什么问题？",
+            Answer:      "MCP 解决了工具定义不统一的问题……",
+            Contexts:    []string{"MCP 之前每个框架有自己的工具格式……"},
+            GroundTruth: "MCP 统一了 Agent 与工具的连接标准",
+        },
+    }
+
+    // 运行评估（通过调用 ragas HTTP API 或 Python 服务）
+    result := evaluateRagas(evalData)
+    fmt.Printf("%+v\n", result)
+    // {Faithfulness:0.85 AnswerRelevancy:0.92 ContextPrecision:0.78 ContextRecall:0.88}
+}
+
+func evaluateRagas(samples []EvalSample) EvalResult {
+    // Go 生态中无原生 Ragas 库，通常通过 HTTP 调用 Python Ragas 服务
+    // 或使用通用 LLM 评估框架实现等效逻辑
+    return EvalResult{0.85, 0.92, 0.78, 0.88}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class RagasEvaluation {
+
+    // 评估样本
+    static class EvalSample {
+        String question;
+        String answer;
+        List&lt;String&gt; contexts;
+        String groundTruth;
+    }
+
+    // 评估结果
+    static class EvalResult {
+        double faithfulness;
+        double answerRelevancy;
+        double contextPrecision;
+        double contextRecall;
+
+        public String toString() {
+            return String.format("{faithfulness=%.2f, answer_relevancy=%.2f, " +
+                "context_precision=%.2f, context_recall=%.2f}",
+                faithfulness, answerRelevancy, contextPrecision, contextRecall);
+        }
+    }
+
+    public static void main(String[] args) {
+        // 准备评估数据集
+        List&lt;EvalSample&gt; evalData = new ArrayList&lt;&gt;();
+
+        EvalSample s1 = new EvalSample();
+        s1.question = "Agent 的记忆系统有哪些类型？";
+        s1.answer = "Agent 的记忆分为短期记忆和长期记忆……";
+        s1.contexts = Arrays.asList("短期记忆存储对话历史……", "长期记忆使用向量数据库……");
+        s1.groundTruth = "记忆分为短期记忆（对话历史）和长期记忆（向量存储）";
+        evalData.add(s1);
+
+        // 运行评估（Java 生态中通常通过 HTTP 调用 Python Ragas 服务）
+        EvalResult result = evaluateRagas(evalData);
+        System.out.println(result);
+        // {faithfulness=0.85, answer_relevancy=0.92, context_precision=0.78, context_recall=0.88}
+    }
+
+    static EvalResult evaluateRagas(List&lt;EvalSample&gt; samples) {
+        // Java 生态中无原生 Ragas 库
+        // 可通过 HTTP 调用 Python Ragas 服务，或使用 LangChain4j 的评估工具
+        EvalResult r = new EvalResult();
+        r.faithfulness = 0.85;
+        r.answerRelevancy = 0.92;
+        r.contextPrecision = 0.78;
+        r.contextRecall = 0.88;
+        return r;
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">17.9.2 DeepEval：通用 Agent 评估框架</h3>
 
 <p><strong>DeepEval</strong> 不局限于 RAG，提供更通用的 Agent 评估指标，支持单元测试风格的断言。</p>
 
-<div class="code-block">
-<span class="code-label">Python · DeepEval 评估</span>
-<pre>from deepeval import assert_test
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from deepeval import assert_test
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
     AnswerRelevancyMetric,
@@ -894,7 +1889,161 @@ correctness = GEval(
     criteria="""判断回答是否在事实上正确，逻辑是否严密，
     是否完整覆盖了用户问题的所有方面""",
     threshold=0.7
-)</pre>
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { assertTest, LLMTestCase } from 'deepeval';
+import {
+  AnswerRelevancyMetric,
+  FaithfulnessMetric,
+  HallucinationMetric,
+  ToxicityMetric,
+  GEval,
+} from 'deepeval/metrics';
+
+// 定义评估指标
+const answerRelevancy = new AnswerRelevancyMetric({ threshold: 0.7 });
+const faithfulness = new FaithfulnessMetric({ threshold: 0.8 });
+const hallucination = new HallucinationMetric({ threshold: 0.5 });
+
+// 创建测试用例（类似单元测试）
+const testCase = new LLMTestCase({
+  input: '什么是 ReAct 模式？',
+  actualOutput: 'ReAct 是让 LLM 在推理和行动之间交替的框架……',
+  expectedOutput: 'ReAct 让 Agent 在推理(Thought)和行动(Action)之间循环',
+  context: ['ReAct 模式由 Yao 等人提出，核心是 Thought-Action-Observation 循环'],
+});
+
+// 运行评估 + 断言（CI/CD 友好）
+assertTest(testCase, [answerRelevancy, faithfulness, hallucination]);
+// 如果任何指标低于阈值，测试失败 → CI 阻止发布
+
+// 自定义指标：用 G-Eval 定义你自己的评估标准
+const correctness = new GEval({
+  name: 'Correctness',
+  criteria: `判断回答是否在事实上正确，逻辑是否严密，
+  是否完整覆盖了用户问题的所有方面`,
+  threshold: 0.7,
+});</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "fmt"
+    "testing"
+)
+
+// LLMTestCase 测试用例
+type LLMTestCase struct {
+    Input          string
+    ActualOutput   string
+    ExpectedOutput string
+    Context        []string
+}
+
+// Metric 评估指标接口
+type Metric interface {
+    Measure(testCase LLMTestCase) float64
+    GetThreshold() float64
+    GetName() string
+}
+
+// AnswerRelevancyMetric 回答相关性指标
+type AnswerRelevancyMetric struct{ Threshold float64 }
+func (m AnswerRelevancyMetric) Measure(tc LLMTestCase) float64 { return 0.85 }
+func (m AnswerRelevancyMetric) GetThreshold() float64 { return m.Threshold }
+func (m AnswerRelevancyMetric) GetName() string { return "answer_relevancy" }
+
+// FaithfulnessMetric 忠实度指标
+type FaithfulnessMetric struct{ Threshold float64 }
+func (m FaithfulnessMetric) Measure(tc LLMTestCase) float64 { return 0.90 }
+func (m FaithfulnessMetric) GetThreshold() float64 { return m.Threshold }
+func (m FaithfulnessMetric) GetName() string { return "faithfulness" }
+
+// assertTest 断言测试
+func assertTest(t *testing.T, testCase LLMTestCase, metrics []Metric) {
+    for _, m := range metrics {
+        score := m.Measure(testCase)
+        if score < m.GetThreshold() {
+            t.Errorf("Metric %s: score %.2f < threshold %.2f → CI 阻止发布",
+                m.GetName(), score, m.GetThreshold())
+        }
+    }
+}
+
+func TestAgentOutput(t *testing.T) {
+    testCase := LLMTestCase{
+        Input:          "什么是 ReAct 模式？",
+        ActualOutput:   "ReAct 是让 LLM 在推理和行动之间交替的框架……",
+        ExpectedOutput: "ReAct 让 Agent 在推理(Thought)和行动(Action)之间循环",
+        Context:        []string{"ReAct 模式由 Yao 等人提出，核心是 Thought-Action-Observation 循环"},
+    }
+    assertTest(t, testCase, []Metric{
+        AnswerRelevancyMetric{Threshold: 0.7},
+        FaithfulnessMetric{Threshold: 0.8},
+    })
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.*;
+
+public class AgentEvalTest {
+
+    // 测试用例
+    static class LLMTestCase {
+        String input;
+        String actualOutput;
+        String expectedOutput;
+        List&lt;String&gt; context;
+    }
+
+    // 评估指标接口
+    interface Metric {
+        double measure(LLMTestCase testCase);
+        double getThreshold();
+        String getName();
+    }
+
+    // 回答相关性指标
+    static class AnswerRelevancyMetric implements Metric {
+        double threshold;
+        AnswerRelevancyMetric(double threshold) { this.threshold = threshold; }
+        public double measure(LLMTestCase tc) { return 0.85; }
+        public double getThreshold() { return threshold; }
+        public String getName() { return "answer_relevancy"; }
+    }
+
+    // 忠实度指标
+    static class FaithfulnessMetric implements Metric {
+        double threshold;
+        FaithfulnessMetric(double threshold) { this.threshold = threshold; }
+        public double measure(LLMTestCase tc) { return 0.90; }
+        public double getThreshold() { return threshold; }
+        public String getName() { return "faithfulness"; }
+    }
+
+    // 断言测试
+    void assertTest(LLMTestCase testCase, List&lt;Metric&gt; metrics) {
+        for (Metric m : metrics) {
+            double score = m.measure(testCase);
+            assertTrue(score &gt;= m.getThreshold(),
+                String.format("Metric %s: score %.2f &lt; threshold %.2f → CI 阻止发布",
+                    m.getName(), score, m.getThreshold()));
+        }
+    }
+
+    @Test
+    void testAgentOutput() {
+        LLMTestCase testCase = new LLMTestCase();
+        testCase.input = "什么是 ReAct 模式？";
+        testCase.actualOutput = "ReAct 是让 LLM 在推理和行动之间交替的框架……";
+        testCase.expectedOutput = "ReAct 让 Agent 在推理(Thought)和行动(Action)之间循环";
+        testCase.context = List.of("ReAct 模式由 Yao 等人提出，核心是 Thought-Action-Observation 循环");
+
+        assertTest(testCase, List.of(
+            new AnswerRelevancyMetric(0.7),
+            new FaithfulnessMetric(0.8)
+        ));
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">17.9.3 Ragas vs DeepEval 选型</h3>

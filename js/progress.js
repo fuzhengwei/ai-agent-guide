@@ -66,7 +66,7 @@ const Progress = {
   },
 
   /**
-   * 保存考试成绩
+   * 保存章测试成绩
    */
   saveQuizResult(chapterId, result) {
     const data = this.getAll();
@@ -76,6 +76,33 @@ const Progress = {
     };
     this.save(data);
     this.updateUI();
+  },
+
+  /**
+   * 保存综合考试成绩
+   */
+  saveExamScore(score, correct, total) {
+    const data = this.getAll();
+    if (!data.examScores) data.examScores = [];
+    data.examScores.push({
+      score,
+      correct,
+      total,
+      takenAt: Date.now()
+    });
+    // 只保留最近 20 次考试成绩
+    if (data.examScores.length > 20) {
+      data.examScores = data.examScores.slice(-20);
+    }
+    this.save(data);
+    this.updateUI();
+  },
+
+  /**
+   * 获取综合考试成绩列表
+   */
+  getExamScores() {
+    return this.getAll().examScores || [];
   },
 
   /**

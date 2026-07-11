@@ -314,7 +314,8 @@ setTimeout(() => {
 
 <div class="card">
   <div class="card-title">📦 完整示例：Playwright + GPT-4o Vision 自动填表</div>
-<pre><code class="language-python">import base64, json, openai
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import base64, json, openai
 from playwright.sync_api import sync_playwright
 
 client = openai.OpenAI(api_key="sk-xxx")
@@ -380,7 +381,259 @@ def run_gui_agent(url, goal, max_steps=10):
 
 # 使用示例：自动打开百度搜索"AI Agent"
 run_gui_agent("https://www.baidu.com", "在搜索框输入'AI Agent'并点击搜索按钮")
-</code></pre>
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+import { chromium } from 'playwright';
+
+const client = new OpenAI({ apiKey: 'sk-xxx' });
+
+function screenshotToBase64(page: import('playwright').Page): string {
+  const screenshotBytes = page.screenshot({ fullPage: false });
+  return screenshotBytes.toString('base64');
+}
+
+async function askGpt4oForAction(screenshotB64: string, userGoal: string, history: string[]): Promise&lt;any&gt; {
+  const messages = [
+    { role: 'system' as const, content: (
+      '你是一个浏览器自动化 Agent。根据截图决定下一步操作。'
+      + '返回 JSON 格式：{"action": "click|fill|scroll|done", '
+      + '"selector": "CSS选择器", "value": "输入内容", '
+      + '"reason": "操作原因"}'
+    )},
+    { role: 'user' as const, content: [
+      { type: 'text' as const, text: `用户目标：${userGoal}\n操作历史：${history}` },
+      { type: 'image_url' as const, image_url: {
+        url: `data:image/png;base64,${screenshotB64}`,
+        detail: 'high' as const
+      }}
+    ]}
+  ];
+  const resp = await client.chat.completions.create({
+    model: 'gpt-4o', messages, max_tokens: 300
+  });
+  return JSON.parse(resp.choices[0].message.content!);
+}
+
+function executeAction(page: import('playwright').Page, actionData: any): boolean {
+  const action = actionData.action;
+  const selector = actionData.selector || '';
+  if (action === 'click') {
+    page.click(selector, { timeout: 5000 });
+  } else if (action === 'fill') {
+    page.fill(selector, actionData.value || '', { timeout: 5000 });
+  } else if (action === 'scroll') {
+    page.mouse.wheel(0, 500);
+  } else if (action === 'done') {
+    return true;
+  }
+  return false;
+}
+
+async function runGuiAgent(url: string, goal: string, maxSteps = 10): Promise&lt;void&gt; {
+  const browser = await chromium.launch({ headless: false });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await page.goto(url);
+  const history: string[] = [];
+  for (let step = 0; step &lt; maxSteps; step++) {
+    const screenshotB64 = screenshotToBase64(page);
+    const actionData = await askGpt4oForAction(screenshotB64, goal, history);
+    history.push(`Step ${step + 1}: ${JSON.stringify(actionData)}`);
+    console.log(`Step ${step + 1}: ${actionData.action} → ${actionData.reason || ''}`);
+    if (executeAction(page, actionData)) {
+      console.log('✅ 任务完成！');
+      break;
+    }
+    page.waitForTimeout(1500);
+  }
+  await browser.close();
+}
+
+// 使用示例
+runGuiAgent('https://www.baidu.com', "在搜索框输入'AI Agent'并点击搜索按钮");
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"log"
+
+	openai "github.com/sashabaranov/go-openai"
+	"github.com/playwright-community/playwright-go"
+)
+
+func screenshotToBase64(page playwright.Page) string {
+	screenshotBytes, _ := page.Screenshot(playwright.PageScreenshotOptions{
+		FullPath: nil,
+		FullPage: false,
+	})
+	return base64.StdEncoding.EncodeToString(screenshotBytes)
+}
+
+func askGpt4oForAction(client *openai.Client, screenshotB64, userGoal string, history []string) map[string]interface{} {
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: (
+			"你是一个浏览器自动化 Agent。根据截图决定下一步操作。" +
+			"返回 JSON 格式：{\"action\": \"click|fill|scroll|done\", " +
+			"\"selector\": \"CSS选择器\", \"value\": \"输入内容\", " +
+			"\"reason\": \"操作原因\"}"
+		)},
+	}
+	// 构造多模态消息（图片+文本）
+	content := fmt.Sprintf("用户目标：%s\n操作历史：%v", userGoal, history)
+	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model:     openai.GPT4o,
+		MaxTokens: 300,
+		Messages:  append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleUser,
+			Content: content,
+		}),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	var result map[string]interface{}
+	json.Unmarshal([]byte(resp.Choices[0].Message.Content), &amp;result)
+	return result
+}
+
+func executeAction(page playwright.Page, actionData map[string]interface{}) bool {
+	action := actionData["action"].(string)
+	selector, _ := actionData["selector"].(string)
+	switch action {
+	case "click":
+		page.Click(selector, playwright.PageClickOptions{Timeout: 5000})
+	case "fill":
+		value, _ := actionData["value"].(string)
+		page.Fill(selector, value, playwright.PageFillOptions{Timeout: 5000})
+	case "scroll":
+		page.Mouse.Wheel(0, 500)
+	case "done":
+		return true
+	}
+	return false
+}
+
+func runGuiAgent(url, goal string, maxSteps int) {
+	pw, _ := playwright.Run()
+	browser, _ := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{Headless: false})
+	page, _ := browser.NewPage(playwright.BrowserNewPageOptions{
+		Viewport: &amp;playwright.Size{Width: 1280, Height: 800},
+	})
+	page.Goto(url)
+
+	client := openai.NewClient("sk-xxx")
+	var history []string
+	for step := 0; step &lt; maxSteps; step++ {
+		screenshotB64 := screenshotToBase64(page)
+		actionData := askGpt4oForAction(client, screenshotB64, goal, history)
+		history = append(history, fmt.Sprintf("Step %d: %v", step+1, actionData))
+		fmt.Printf("Step %d: %v → %v\n", step+1, actionData["action"], actionData["reason"])
+		if executeAction(page, actionData) {
+			fmt.Println("✅ 任务完成！")
+			break
+		}
+		page.WaitForTimeout(1500)
+	}
+	browser.Close()
+}
+
+func main() {
+	runGuiAgent("https://www.baidu.com", "在搜索框输入'AI Agent'并点击搜索按钮", 10)
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.*;
+import java.util.*;
+import java.util.Base64;
+
+public class GuiAgent {
+    static OpenAIClient client = new OpenAIClient();
+
+    static String screenshotToBase64(Page page) {
+        byte[] bytes = page.screenshot(new Page.ScreenshotOptions().setFullPage(false));
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    static Map&lt;String, Object&gt; askGpt4oForAction(String screenshotB64, String userGoal, List&lt;String&gt; history) {
+        List&lt;ChatCompletionMessageParam&gt; messages = new ArrayList&lt;&gt;();
+        messages.add(ChatCompletionMessageParam.builder()
+            .role(ChatCompletionMessageParam.Role.SYSTEM)
+            .content("你是一个浏览器自动化 Agent。根据截图决定下一步操作。"
+                + "返回 JSON 格式：{\"action\": \"click|fill|scroll|done\", "
+                + "\"selector\": \"CSS选择器\", \"value\": \"输入内容\", "
+                + "\"reason\": \"操作原因\"}")
+            .build());
+        messages.add(ChatCompletionMessageParam.builder()
+            .role(ChatCompletionMessageParam.Role.USER)
+            .content(String.format("用户目标：%s\n操作历史：%s", userGoal, history))
+            .build());
+
+        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+            .model("gpt-4o")
+            .messages(messages)
+            .maxTokens(300)
+            .build();
+        ChatCompletion resp = client.chat().completions().create(params);
+        // 实际实现中用 JSON 库解析返回内容
+        return new HashMap&lt;&gt;(); // parsed JSON
+    }
+
+    static boolean executeAction(Page page, Map&lt;String, Object&gt; actionData) {
+        String action = (String) actionData.get("action");
+        String selector = (String) actionData.getOrDefault("selector", "");
+        switch (action) {
+            case "click":
+                page.click(selector, new Page.ClickOptions().setTimeout(5000));
+                break;
+            case "fill":
+                page.fill(selector, (String) actionData.getOrDefault("value", ""),
+                    new Page.FillOptions().setTimeout(5000));
+                break;
+            case "scroll":
+                page.mouse().wheel(0, 500);
+                break;
+            case "done":
+                return true;
+        }
+        return false;
+    }
+
+    static void runGuiAgent(String url, String goal, int maxSteps) {
+        try (Playwright pw = Playwright.create()) {
+            Browser browser = pw.chromium().launch(
+                new BrowserType.LaunchOptions().setHeadless(false));
+            BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions().setViewportSize(1280, 800));
+            Page page = context.newPage();
+            page.navigate(url);
+            List&lt;String&gt; history = new ArrayList&lt;&gt;();
+            for (int step = 0; step &lt; maxSteps; step++) {
+                String screenshotB64 = screenshotToBase64(page);
+                Map&lt;String, Object&gt; actionData = askGpt4oForAction(screenshotB64, goal, history);
+                history.add(String.format("Step %d: %s", step + 1, actionData));
+                System.out.printf("Step %d: %s → %s%n", step + 1,
+                    actionData.get("action"), actionData.getOrDefault("reason", ""));
+                if (executeAction(page, actionData)) {
+                    System.out.println("✅ 任务完成！");
+                    break;
+                }
+                page.waitForTimeout(1500);
+            }
+            browser.close();
+        }
+    }
+
+    public static void main(String[] args) {
+        runGuiAgent("https://www.baidu.com", "在搜索框输入'AI Agent'并点击搜索按钮", 10);
+    }
+}
+</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">这段代码展示了 GUI Agent 的核心循环：截取页面截图 → 发送给 GPT-4o Vision 分析 → 解析返回的 JSON 指令 → 用 Playwright 执行操作 → 等待页面更新 → 进入下一轮。实际生产中还需要加入错误处理、重试逻辑、操作白名单校验等安全机制。</p>
 </div>
 
@@ -422,7 +675,8 @@ setTimeout(() => {
 
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">📦 完整示例：Claude Computer Use API 调用</div>
-<pre><code class="language-python">import anthropic, base64, json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import anthropic, base64, json
 
 client = anthropic.Anthropic(api_key="sk-ant-xxx")
 
@@ -484,7 +738,232 @@ def run_claude_computer_use(user_task, max_turns=15):
         messages.append({"role": "user", "content": tool_results})
 
 run_claude_computer_use("打开记事本，输入'明天开会'，保存到桌面")
-</code></pre>
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({ apiKey: 'sk-ant-xxx' });
+
+// 定义 Computer Use 工具
+const computerTool = {
+  type: 'computer_20241022' as const,
+  name: 'computer',
+  display_width_px: 1280,
+  display_height_px: 800,
+  display_number: 0,
+};
+
+function executeComputerAction(actionInput: any): any {
+  const action = actionInput.action;
+  if (action === 'screenshot') {
+    const screenshotB64 = takeScreenshotBase64();
+    return { type: 'image', source: { type: 'base64',
+      media_type: 'image/png', data: screenshotB64 } };
+  } else if (action === 'mouse_move') {
+    moveMouse(actionInput.coordinate);
+  } else if (action === 'left_click') {
+    clickMouse(actionInput.coordinate);
+  } else if (action === 'type') {
+    typeText(actionInput.text);
+  } else if (action === 'scroll') {
+    scroll(actionInput.coordinate || [0, 0],
+      actionInput.scroll_direction || 'down');
+  }
+  const screenshotB64 = takeScreenshotBase64();
+  return { type: 'image', source: { type: 'base64',
+    media_type: 'image/png', data: screenshotB64 } };
+}
+
+async function runClaudeComputerUse(userTask: string, maxTurns = 15): Promise&lt;void&gt; {
+  const messages: any[] = [{ role: 'user', content: userTask }];
+  for (let turn = 0; turn &lt; maxTurns; turn++) {
+    const response = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      tools: [computerTool],
+      messages,
+    });
+    if (response.stop_reason === 'end_turn') {
+      console.log('✅ Claude 表示任务完成');
+      break;
+    }
+    const toolResults: any[] = [];
+    for (const block of response.content) {
+      if (block.type === 'tool_use') {
+        const result = executeComputerAction(block.input);
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: block.id,
+          content: result,
+        });
+      }
+    }
+    messages.push({ role: 'assistant', content: response.content });
+    messages.push({ role: 'user', content: toolResults });
+  }
+}
+
+runClaudeComputerUse("打开记事本，输入'明天开会'，保存到桌面");
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"context"
+	"fmt"
+
+	anthropic "github.com/anthropics/anthropic-sdk-go"
+)
+
+func main() {
+	client := anthropic.NewClient(anthropic.WithAPIKey("sk-ant-xxx"))
+
+	computerTool := anthropic.ToolParam{
+		Type:             "computer_20241022",
+		Name:             "computer",
+		DisplayWidthPx:   1280,
+		DisplayHeightPx:  800,
+		DisplayNumber:    0,
+	}
+
+	runClaudeComputerUse(context.Background(), client, computerTool,
+		"打开记事本，输入'明天开会'，保存到桌面", 15)
+}
+
+func executeComputerAction(actionInput map[string]interface{}) map[string]interface{} {
+	action := actionInput["action"].(string)
+	if action == "screenshot" {
+		screenshotB64 := takeScreenshotBase64()
+		return map[string]interface{}{
+			"type":   "image",
+			"source": map[string]interface{}{"type": "base64", "media_type": "image/png", "data": screenshotB64},
+		}
+	} else if action == "mouse_move" {
+		moveMouse(actionInput["coordinate"].([]int))
+	} else if action == "left_click" {
+		clickMouse(actionInput["coordinate"].([]int))
+	} else if action == "type" {
+		typeText(actionInput["text"].(string))
+	} else if action == "scroll" {
+		coord, _ := actionInput["coordinate"].([]int)
+		dir, _ := actionInput["scroll_direction"].(string)
+		scroll(coord, dir)
+	}
+	screenshotB64 := takeScreenshotBase64()
+	return map[string]interface{}{
+		"type":   "image",
+		"source": map[string]interface{}{"type": "base64", "media_type": "image/png", "data": screenshotB64},
+	}
+}
+
+func runClaudeComputerUse(ctx context.Context, client anthropic.Client, tool anthropic.ToolParam, userTask string, maxTurns int) {
+	messages := []anthropic.MessageParam{
+		anthropic.NewUserMessage(anthropic.NewTextBlock(userTask)),
+	}
+	for turn := 0; turn &lt; maxTurns; turn++ {
+		resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
+			Model:     anthropic.ModelClaude3_5SonnetLatest,
+			MaxTokens: 4096,
+			Tools:     []anthropic.ToolUnionParam{{Tool: tool}},
+			Messages:  messages,
+		})
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if resp.StopReason == "end_turn" {
+			fmt.Println("✅ Claude 表示任务完成")
+			break
+		}
+		var toolResults []anthropic.ContentBlockParamUnion
+		for _, block := range resp.Content {
+			if block.Type == "tool_use" {
+				result := executeComputerAction(block.Input)
+				toolResults = append(toolResults, anthropic.NewToolResultBlock(block.ID, result))
+			}
+		}
+		messages = append(messages, anthropic.NewAssistantMessage(resp.Content...))
+		messages = append(messages, anthropic.NewUserMessage(toolResults...))
+	}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.*;
+import com.anthropic.models.messages.*;
+import java.util.*;
+
+public class ClaudeComputerUse {
+    static AnthropicClient client = AnthropicClient.builder()
+        .apiKey("sk-ant-xxx").build();
+
+    static final Map&lt;String, Object&gt; computerTool = Map.of(
+        "type", "computer_20241022",
+        "name", "computer",
+        "display_width_px", 1280,
+        "display_height_px", 800,
+        "display_number", 0
+    );
+
+    static Map&lt;String, Object&gt; executeComputerAction(Map&lt;String, Object&gt; actionInput) {
+        String action = (String) actionInput.get("action");
+        if ("screenshot".equals(action)) {
+            String screenshotB64 = takeScreenshotBase64();
+            return Map.of("type", "image", "source", Map.of(
+                "type", "base64", "media_type", "image/png", "data", screenshotB64));
+        } else if ("mouse_move".equals(action)) {
+            moveMouse((List&lt;Integer&gt;) actionInput.get("coordinate"));
+        } else if ("left_click".equals(action)) {
+            clickMouse((List&lt;Integer&gt;) actionInput.get("coordinate"));
+        } else if ("type".equals(action)) {
+            typeText((String) actionInput.get("text"));
+        } else if ("scroll".equals(action)) {
+            List&lt;Integer&gt; coord = (List&lt;Integer&gt;) actionInput.getOrDefault("coordinate", List.of(0, 0));
+            String dir = (String) actionInput.getOrDefault("scroll_direction", "down");
+            scroll(coord, dir);
+        }
+        String screenshotB64 = takeScreenshotBase64();
+        return Map.of("type", "image", "source", Map.of(
+            "type", "base64", "media_type", "image/png", "data", screenshotB64));
+    }
+
+    static void runClaudeComputerUse(String userTask, int maxTurns) {
+        List&lt;Message&gt; messages = new ArrayList&lt;&gt;();
+        messages.add(Message.user(userTask));
+
+        for (int turn = 0; turn &lt; maxTurns; turn++) {
+            MessageCreateParams params = MessageCreateParams.builder()
+                .model(Model.CLAUDE_3_5_SONNET_20241022)
+                .maxTokens(4096)
+                .tools(List.of(Tool.of(computerTool)))
+                .messages(messages)
+                .build();
+            MessageResponse response = client.messages().create(params);
+
+            if ("end_turn".equals(response.stopReason())) {
+                System.out.println("✅ Claude 表示任务完成");
+                break;
+            }
+
+            List&lt;Object&gt; toolResults = new ArrayList&lt;&gt;();
+            for (ContentBlock block : response.content()) {
+                if (block.type().equals("tool_use")) {
+                    Map&lt;String, Object&gt; result = executeComputerAction(block.input());
+                    toolResults.add(Map.of(
+                        "type", "tool_result",
+                        "tool_use_id", block.id(),
+                        "content", result
+                    ));
+                }
+            }
+            messages.add(Message.assistant(response.content()));
+            messages.add(Message.user(toolResults));
+        }
+    }
+
+    public static void main(String[] args) {
+        runClaudeComputerUse("打开记事本，输入'明天开会'，保存到桌面", 15);
+    }
+}
+</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">Claude Computer Use 的关键在于工具调用循环：每次 Claude 返回 tool_use 块时，Agent 需要执行对应的 computer 操作（截屏、点击、输入等），然后将结果（通常是新截图）作为 tool_result 返回给 Claude，Claude 根据新截图决定下一步操作，直到 stop_reason 为 end_turn 表示任务完成。注意 computer_tool 的 display_width_px 和 display_height_px 必须与实际屏幕分辨率匹配，否则坐标会偏差。</p>
 </div>
 
@@ -816,7 +1295,8 @@ setTimeout(() => {
 
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">📦 代码示例：组合检索引擎实现</div>
-<pre><code class="language-python">class CodeRetrievalEngine:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class CodeRetrievalEngine:
     """组合检索引擎：关键词→向量→AST→调用链"""
 
     def __init__(self, project_path, token_budget=8000):
@@ -880,7 +1360,7 @@ setTimeout(() => {
         for item in merged_results:
             snippet = item['snippet']
             token_count = estimate_tokens(snippet.code_text)
-            if used_tokens + token_count <= self.token_budget:
+            if used_tokens + token_count &lt;= self.token_budget:
                 budget_results.append(snippet)
                 used_tokens += token_count
             else:
@@ -904,7 +1384,324 @@ engine = CodeRetrievalEngine("/path/to/project", token_budget=8000)
 results = engine.search("修复 getUserId 方法的空指针异常")
 for r in results:
     print(f"[{r.file_path}:{r.start_line}] (score={r.relevance_score:.2f})")
-    print(r.code_text[:200])</code></pre>
+    print(r.code_text[:200])</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class CodeRetrievalEngine {
+  /** 组合检索引擎：关键词→向量→AST→调用链 */
+  private keywordSearcher: KeywordSearcher;
+  private embeddingSearcher: EmbeddingSearcher;
+  private astAnalyzer: ASTAnalyzer;
+  private callGraph: CallGraphAnalyzer;
+  private tokenBudget: number;
+
+  constructor(projectPath: string, tokenBudget = 8000) {
+    this.keywordSearcher = new KeywordSearcher(projectPath);
+    this.embeddingSearcher = new EmbeddingSearcher(projectPath);
+    this.astAnalyzer = new ASTAnalyzer(projectPath);
+    this.callGraph = new CallGraphAnalyzer(projectPath);
+    this.tokenBudget = tokenBudget;
+  }
+
+  search(query: string, maxResults = 20): SearchResult[] {
+    // Step 1: 关键词检索 — 精确定位入口
+    const keywordHits = this.keywordSearcher.search(query, 5);
+    const keyFiles = new Set(keywordHits.map(h =&gt; h.filePath));
+
+    // Step 2: 向量检索 — 语义扩展范围
+    let embeddingHits = this.embeddingSearcher.search(query, 10);
+    embeddingHits = this.filterByRelevance(embeddingHits, keyFiles);
+
+    // Step 3: AST 分析 — 理解类继承和依赖关系
+    const astContext = this.astAnalyzer.analyzeContext([...keyFiles]);
+    const relatedClasses = astContext.getRelatedClasses(2);
+
+    // Step 4: 调用链追踪 — 追踪执行路径
+    const entryPoints = keywordHits.slice(0, 3);
+    const callPaths = this.callGraph.trace(entryPoints, 5);
+
+    // 合并去重与排序
+    const allResults = this.mergeAndDeduplicate(
+      keywordHits, embeddingHits, relatedClasses, callPaths
+    );
+    return this.rankAndBudget(allResults);
+  }
+
+  private mergeAndDeduplicate(...resultSets: SearchResult[][]): MergedResult[] {
+    const fileScores = new Map&lt;string, MergedResult&gt;();
+    for (const results of resultSets) {
+      for (const item of results) {
+        const key = `${item.filePath}:${item.startLine}:${item.endLine}`;
+        if (!fileScores.has(key)) {
+          fileScores.set(key, { snippet: item, score: 0, hitCount: 0 });
+        }
+        const entry = fileScores.get(key)!;
+        entry.score += item.relevanceScore;
+        entry.hitCount += 1;
+      }
+    }
+    for (const [, entry] of fileScores) {
+      entry.score *= (1 + 0.2 * entry.hitCount);
+    }
+    return [...fileScores.values()].sort((a, b) =&gt; b.score - a.score);
+  }
+
+  private rankAndBudget(mergedResults: MergedResult[]): SearchResult[] {
+    const budgetResults: SearchResult[] = [];
+    let usedTokens = 0;
+    for (const item of mergedResults) {
+      const tokenCount = estimateTokens(item.snippet.codeText);
+      if (usedTokens + tokenCount &lt;= this.tokenBudget) {
+        budgetResults.push(item.snippet);
+        usedTokens += tokenCount;
+      } else {
+        break;
+      }
+    }
+    return budgetResults;
+  }
+
+  private filterByRelevance(hits: SearchResult[], keyFiles: Set&lt;string&gt;): SearchResult[] {
+    return hits.filter(hit =&gt;
+      keyFiles.has(hit.filePath) ||
+      this.astAnalyzer.hasDependency(hit.filePath, keyFiles)
+    );
+  }
+}
+
+// 使用示例
+const engine = new CodeRetrievalEngine("/path/to/project", 8000);
+const results = engine.search("修复 getUserId 方法的空指针异常");
+for (const r of results) {
+  console.log(`[${r.filePath}:${r.startLine}] (score=${r.relevanceScore.toFixed(2)})`);
+  console.log(r.codeText.slice(0, 200));
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"sort"
+)
+
+type SearchResult struct {
+	FilePath       string
+	StartLine      int
+	EndLine        int
+	CodeText       string
+	RelevanceScore float64
+}
+
+type MergedResult struct {
+	Snippet   SearchResult
+	Score     float64
+	HitCount  int
+}
+
+type CodeRetrievalEngine struct {
+	keywordSearcher  *KeywordSearcher
+	embeddingSearcher *EmbeddingSearcher
+	astAnalyzer      *ASTAnalyzer
+	callGraph        *CallGraphAnalyzer
+	tokenBudget      int
+}
+
+func NewCodeRetrievalEngine(projectPath string, tokenBudget int) *CodeRetrievalEngine {
+	return &amp;CodeRetrievalEngine{
+		keywordSearcher:  NewKeywordSearcher(projectPath),
+		embeddingSearcher: NewEmbeddingSearcher(projectPath),
+		astAnalyzer:      NewASTAnalyzer(projectPath),
+		callGraph:        NewCallGraphAnalyzer(projectPath),
+		tokenBudget:      tokenBudget,
+	}
+}
+
+func (e *CodeRetrievalEngine) Search(query string, maxResults int) []SearchResult {
+	// Step 1: 关键词检索
+	keywordHits := e.keywordSearcher.Search(query, 5)
+	keyFiles := make(map[string]bool)
+	for _, h := range keywordHits {
+		keyFiles[h.FilePath] = true
+	}
+
+	// Step 2: 向量检索
+	embeddingHits := e.embeddingSearcher.Search(query, 10)
+	embeddingHits = e.filterByRelevance(embeddingHits, keyFiles)
+
+	// Step 3: AST 分析
+	astContext := e.astAnalyzer.AnalyzeContext(keyFiles)
+	relatedClasses := astContext.GetRelatedClasses(2)
+
+	// Step 4: 调用链追踪
+	entryPoints := keywordHits[:3]
+	callPaths := e.callGraph.Trace(entryPoints, 5)
+
+	// 合并去重与排序
+	allResults := e.mergeAndDeduplicate(keywordHits, embeddingHits, relatedClasses, callPaths)
+	return e.rankAndBudget(allResults)
+}
+
+func (e *CodeRetrievalEngine) mergeAndDeduplicate(resultSets ...[]SearchResult) []MergedResult {
+	fileScores := make(map[string]*MergedResult)
+	for _, results := range resultSets {
+		for _, item := range results {
+			key := fmt.Sprintf("%s:%d:%d", item.FilePath, item.StartLine, item.EndLine)
+			if _, ok := fileScores[key]; !ok {
+				fileScores[key] = &amp;MergedResult{Snippet: item, Score: 0, HitCount: 0}
+			}
+			fileScores[key].Score += item.RelevanceScore
+			fileScores[key].HitCount++
+		}
+	}
+	for _, entry := range fileScores {
+		entry.Score *= (1 + 0.2 * float64(entry.HitCount))
+	}
+	var result []MergedResult
+	for _, v := range fileScores {
+		result = append(result, *v)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Score &gt; result[j].Score
+	})
+	return result
+}
+
+func (e *CodeRetrievalEngine) rankAndBudget(mergedResults []MergedResult) []SearchResult {
+	var budgetResults []SearchResult
+	usedTokens := 0
+	for _, item := range mergedResults {
+		tokenCount := estimateTokens(item.Snippet.CodeText)
+		if usedTokens + tokenCount &lt;= e.tokenBudget {
+			budgetResults = append(budgetResults, item.Snippet)
+			usedTokens += tokenCount
+		} else {
+			break
+		}
+	}
+	return budgetResults
+}
+
+func (e *CodeRetrievalEngine) filterByRelevance(hits []SearchResult, keyFiles map[string]bool) []SearchResult {
+	var filtered []SearchResult
+	for _, hit := range hits {
+		if keyFiles[hit.FilePath] || e.astAnalyzer.HasDependency(hit.FilePath, keyFiles) {
+			filtered = append(filtered, hit)
+		}
+	}
+	return filtered
+}
+
+func main() {
+	engine := NewCodeRetrievalEngine("/path/to/project", 8000)
+	results := engine.Search("修复 getUserId 方法的空指针异常", 20)
+	for _, r := range results {
+		fmt.Printf("[%s:%d] (score=%.2f)\n", r.FilePath, r.StartLine, r.RelevanceScore)
+		fmt.Println(r.CodeText[:200])
+	}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class CodeRetrievalEngine {
+    /** 组合检索引擎：关键词→向量→AST→调用链 */
+    private final KeywordSearcher keywordSearcher;
+    private final EmbeddingSearcher embeddingSearcher;
+    private final ASTAnalyzer astAnalyzer;
+    private final CallGraphAnalyzer callGraph;
+    private final int tokenBudget;
+
+    public CodeRetrievalEngine(String projectPath, int tokenBudget) {
+        this.keywordSearcher = new KeywordSearcher(projectPath);
+        this.embeddingSearcher = new EmbeddingSearcher(projectPath);
+        this.astAnalyzer = new ASTAnalyzer(projectPath);
+        this.callGraph = new CallGraphAnalyzer(projectPath);
+        this.tokenBudget = tokenBudget;
+    }
+
+    public List&lt;SearchResult&gt; search(String query, int maxResults) {
+        // Step 1: 关键词检索
+        List&lt;SearchResult&gt; keywordHits = keywordSearcher.search(query, 5);
+        Set&lt;String&gt; keyFiles = new HashSet&lt;&gt;();
+        for (SearchResult hit : keywordHits) {
+            keyFiles.add(hit.getFilePath());
+        }
+
+        // Step 2: 向量检索
+        List&lt;SearchResult&gt; embeddingHits = embeddingSearcher.search(query, 10);
+        embeddingHits = filterByRelevance(embeddingHits, keyFiles);
+
+        // Step 3: AST 分析
+        ASTContext astContext = astAnalyzer.analyzeContext(new ArrayList&lt;&gt;(keyFiles));
+        List&lt;SearchResult&gt; relatedClasses = astContext.getRelatedClasses(2);
+
+        // Step 4: 调用链追踪
+        List&lt;SearchResult&gt; entryPoints = keywordHits.subList(0, Math.min(3, keywordHits.size()));
+        List&lt;SearchResult&gt; callPaths = callGraph.trace(entryPoints, 5);
+
+        // 合并去重与排序
+        List&lt;MergedResult&gt; allResults = mergeAndDeduplicate(
+            keywordHits, embeddingHits, relatedClasses, callPaths);
+        return rankAndBudget(allResults);
+    }
+
+    private List&lt;MergedResult&gt; mergeAndDeduplicate(List&lt;SearchResult&gt;... resultSets) {
+        Map&lt;String, MergedResult&gt; fileScores = new HashMap&lt;&gt;();
+        for (List&lt;SearchResult&gt; results : resultSets) {
+            for (SearchResult item : results) {
+                String key = item.getFilePath() + ":" + item.getStartLine() + ":" + item.getEndLine();
+                MergedResult entry = fileScores.computeIfAbsent(key,
+                    k -&gt; new MergedResult(item, 0.0, 0));
+                entry.score += item.getRelevanceScore();
+                entry.hitCount++;
+            }
+        }
+        for (MergedResult entry : fileScores.values()) {
+            entry.score *= (1 + 0.2 * entry.hitCount);
+        }
+        List&lt;MergedResult&gt; sorted = new ArrayList&lt;&gt;(fileScores.values());
+        sorted.sort((a, b) -&gt; Double.compare(b.score, a.score));
+        return sorted;
+    }
+
+    private List&lt;SearchResult&gt; rankAndBudget(List&lt;MergedResult&gt; mergedResults) {
+        List&lt;SearchResult&gt; budgetResults = new ArrayList&lt;&gt;();
+        int usedTokens = 0;
+        for (MergedResult item : mergedResults) {
+            int tokenCount = estimateTokens(item.snippet.getCodeText());
+            if (usedTokens + tokenCount &lt;= tokenBudget) {
+                budgetResults.add(item.snippet);
+                usedTokens += tokenCount;
+            } else {
+                break;
+            }
+        }
+        return budgetResults;
+    }
+
+    private List&lt;SearchResult&gt; filterByRelevance(List&lt;SearchResult&gt; hits, Set&lt;String&gt; keyFiles) {
+        List&lt;SearchResult&gt; filtered = new ArrayList&lt;&gt;();
+        for (SearchResult hit : hits) {
+            if (keyFiles.contains(hit.getFilePath()) ||
+                astAnalyzer.hasDependency(hit.getFilePath(), keyFiles)) {
+                filtered.add(hit);
+            }
+        }
+        return filtered;
+    }
+
+    public static void main(String[] args) {
+        CodeRetrievalEngine engine = new CodeRetrievalEngine("/path/to/project", 8000);
+        List&lt;SearchResult&gt; results = engine.search("修复 getUserId 方法的空指针异常", 20);
+        for (SearchResult r : results) {
+            System.out.printf("[%s:%d] (score=%.2f)%n", r.getFilePath(), r.getStartLine(), r.getRelevanceScore());
+            System.out.println(r.getCodeText().substring(0, Math.min(200, r.getCodeText().length())));
+        }
+    }
+}
+
+class MergedResult {
+    SearchResult snippet;
+    double score;
+    int hitCount;
+    MergedResult(SearchResult s, double sc, int h) { snippet = s; score = sc; hitCount = h; }
+}</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">组合检索的关键在于<strong>流程编排</strong>：先用关键词快速锁定入口，再用向量扩展语义范围，然后用 AST 理解代码结构关系，最后用调用链追踪完整执行路径。每一步的结果都为下一步提供线索，形成层层递进的检索链条。去重时采用"多策略投票加权"——被越多策略命中的代码片段可信度越高，排名越靠前。</p>
 </div>
 
@@ -1050,7 +1847,8 @@ setTimeout(() => {
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">📝 权限审计日志</div>
   <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">所有操作（包括被拒绝的操作）都必须记录审计日志，支持事后追溯。日志结构如下：</p>
-<pre><code class="language-python">class PermissionAuditLog:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class PermissionAuditLog:
     """权限审计日志 — 记录所有操作，支持事后追溯"""
 
     def record(self, operation: dict) -> dict:
@@ -1069,13 +1867,131 @@ setTimeout(() => {
         }
         # 写入独立存储，防止 Agent 修改或删除审计记录
         self._write_to_immutable_storage(log_entry)
-        return log_entry</code></pre>
+        return log_entry</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class PermissionAuditLog {
+  /** 权限审计日志 — 记录所有操作，支持事后追溯 */
+
+  record(operation: Record&lt;string, any&gt;): Record&lt;string, any&gt; {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      agent_id: operation.agent_id || 'unknown',
+      operation_type: operation.type,      // read/write/execute/deploy
+      permission_level: operation.level,   // L0/L1/L2/L3
+      target: operation.target,             // 目标文件/命令/服务
+      parameters: operation.params || {},  // 操作参数
+      result: operation.result,             // allowed/denied/pending
+      reason: operation.reason || '',       // 允许/拒绝的原因
+      approver: operation.approver || null, // 审批人（L2/L3必填）
+      screenshot: operation.screenshot || null, // L3操作截图留证
+    };
+    // 写入独立存储，防止 Agent 修改或删除审计记录
+    this.writeToImmutableStorage(logEntry);
+    return logEntry;
+  }
+
+  private writeToImmutableStorage(entry: Record&lt;string, any&gt;): void {
+    // 实际实现中写入只追加的日志文件或外部审计系统
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"time"
+)
+
+type AuditLogEntry struct {
+	Timestamp       string                 `json:"timestamp"`
+	AgentID         string                 `json:"agent_id"`
+	OperationType   string                 `json:"operation_type"`
+	PermissionLevel string                 `json:"permission_level"`
+	Target          string                 `json:"target"`
+	Parameters      map[string]interface{} `json:"parameters"`
+	Result          string                 `json:"result"`
+	Reason          string                 `json:"reason"`
+	Approver        *string                `json:"approver"`
+	Screenshot      *string                `json:"screenshot"`
+}
+
+type PermissionAuditLog struct{}
+
+func (l *PermissionAuditLog) Record(operation map[string]interface{}) AuditLogEntry {
+	entry := AuditLogEntry{
+		Timestamp:       time.Now().Format(time.RFC3339),
+		AgentID:         getString(operation, "agent_id", "unknown"),
+		OperationType:   operation["type"].(string),
+		PermissionLevel: operation["level"].(string),
+		Target:          operation["target"].(string),
+		Parameters:      getMap(operation, "params"),
+		Result:          operation["result"].(string),
+		Reason:          getString(operation, "reason", ""),
+	}
+	if v, ok := operation["approver"]; ok {
+		s := v.(string)
+		entry.Approver = &amp;s
+	}
+	if v, ok := operation["screenshot"]; ok {
+		s := v.(string)
+		entry.Screenshot = &amp;s
+	}
+	// 写入独立存储，防止 Agent 修改或删除审计记录
+	l.writeToImmutableStorage(entry)
+	return entry
+}
+
+func (l *PermissionAuditLog) writeToImmutableStorage(entry AuditLogEntry) {
+	data, _ := json.Marshal(entry)
+	_ = data // 实际实现中写入只追加的日志文件
+}
+
+func getString(m map[string]interface{}, key, def string) string {
+	if v, ok := m[key]; ok {
+		return v.(string)
+	}
+	return def
+}
+
+func getMap(m map[string]interface{}, key string) map[string]interface{} {
+	if v, ok := m[key]; ok {
+		return v.(map[string]interface{})
+	}
+	return nil
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.time.Instant;
+import java.util.*;
+
+public class PermissionAuditLog {
+    /** 权限审计日志 — 记录所有操作，支持事后追溯 */
+
+    public Map&lt;String, Object&gt; record(Map&lt;String, Object&gt; operation) {
+        Map&lt;String, Object&gt; logEntry = new HashMap&lt;&gt;();
+        logEntry.put("timestamp", Instant.now().toString());
+        logEntry.put("agent_id", operation.getOrDefault("agent_id", "unknown"));
+        logEntry.put("operation_type", operation.get("type"));      // read/write/execute/deploy
+        logEntry.put("permission_level", operation.get("level"));    // L0/L1/L2/L3
+        logEntry.put("target", operation.get("target"));             // 目标文件/命令/服务
+        logEntry.put("parameters", operation.getOrDefault("params", new HashMap&lt;&gt;()));
+        logEntry.put("result", operation.get("result"));             // allowed/denied/pending
+        logEntry.put("reason", operation.getOrDefault("reason", ""));
+        logEntry.put("approver", operation.get("approver"));          // 审批人（L2/L3必填）
+        logEntry.put("screenshot", operation.get("screenshot"));      // L3操作截图留证
+        // 写入独立存储，防止 Agent 修改或删除审计记录
+        writeToImmutableStorage(logEntry);
+        return logEntry;
+    }
+
+    private void writeToImmutableStorage(Map&lt;String, Object&gt; entry) {
+        // 实际实现中写入只追加的日志文件或外部审计系统
+    }
+}</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">审计日志的关键设计原则：① <strong>不可篡改</strong>——写入独立存储（如只追加的日志文件或外部审计系统），Agent 无法修改或删除；② <strong>完整记录</strong>——包括被拒绝的操作也要记录，便于分析 Agent 的行为模式；③ <strong>双人审批留证</strong>——L3 操作需记录两位审批人的确认截图和时间戳。</p>
 </div>
 
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">📦 代码示例：权限配置与检查引擎</div>
-<pre><code class="language-python">class PermissionEngine:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class PermissionEngine:
     """Coding Agent 权限检查引擎：分级审批 + 黑名单/白名单 + 模式识别"""
 
     # 权限分级配置
@@ -1229,7 +2145,480 @@ ops = [
 
 for op in ops:
     result = engine.check_permission(op)
-    print(f"{op['type']:8s} | {op['target']:30s} → {result}")</code></pre>
+    print(f"{op['type']:8s} | {op['target']:30s} → {result}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class PermissionEngine {
+  /** docstring */
+
+// 权限分级配置
+  static readonly PERMISSION_LEVELS = {;
+  // "L0": {"name": "读取", "risk": "low",    "approval": "auto",       "desc": "读文件/搜索/看日志"},
+  // "L1": {"name": "修改", "risk": "medium", "approval": "confirm",    "desc": "改代码/写配置/创建文件"},
+  // "L2": {"name": "执行", "risk": "high",   "approval": "approve",    "desc": "运行命令/执行脚本/启动服务"},
+  // "L3": {"name": "发布", "risk": "critical","approval": "dual_approve","desc": "提交代码/部署/操作数据库"},
+  // }
+
+// 黑名单：禁止操作的路径/命令/文件（零容忍）
+  static readonly BLACKLIST = {;
+  // "paths":    ["/etc/", "/var/www/prod/", "/opt/deploy/"],
+  // "commands": ["rm -rf", "DROP TABLE", "sudo", "chmod 777",
+  // "git push --force", "shutdown", "reboot"],
+  // "files":    [".env", "secret.key", "credentials.json",
+  // "id_rsa", "id_ed25519", "*.pem"],
+  // }
+
+// 白名单：明确允许的范围（超出拒绝）
+  static readonly WHITELIST = {;
+  // "directories": ["src/", "tests/", "docs/", "config/dev/"],
+  // "commands":    ["pytest", "npm test", "git diff", "git log",
+  // "grep", "cat", "ls", "head", "tail"],
+  // "branches":    ["feature/*", "bugfix/*", "dev"],
+  // }
+
+// 危险操作模式（语义识别，不在黑名单也能捕获）
+  static readonly DANGER_PATTERNS = [;
+  // r"\brm\b.*-rf",                    # 删除模式
+  // r"\b(sudo|root|chmod\s+777)\b",    # 权限提升模式
+  // r"\b(DROP|TRUNCATE|DELETE)\s+",    # 数据库破坏模式
+  // r"\bgit\s+push\s+--force\b",       # 强制推送模式
+  // r"\b(overwrite|replace\s+all)\b",  # 重写模式
+  // r"\bpassword|secret|token\b.*\bprint|log|write\b",  # 密钥泄露模式
+  // ]
+
+// 项目阶段权限配置（上下文感知）
+  static readonly STAGE_PERMISSIONS = {;
+  // "development": {"L1": "auto", "L2": "confirm", "L3": "approve"},
+  // "testing":     {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+  // "release":     {"L1": "approve", "L2": "dual_approve", "L3": "dual_approve"},
+  // "maintenance": {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+  // }
+
+  constructor(current_stage="development") {
+  // self.current_stage = current_stage
+  // self.audit_log = PermissionAuditLog()
+
+  // def check_permission(self, operation: dict) -> dict:
+  /** docstring */
+  // op_type = operation["type"]
+  // target = operation["target"]
+
+// Step 1: 确定权限等级
+  // level = self._classify_level(op_type, target)
+
+// Step 2: 黑名单检查（零容忍，命中即拒绝）
+  if (self._check_blacklist(target, op_type)) {
+  // result = {"allowed": False, "level": level,
+  // "reason": "命中黑名单规则", "need_approval": False}
+  // self.audit_log.record({**operation, "result": "denied",
+  // "level": level, "reason": result["reason"]})
+  return result;
+
+// Step 3: 白名单检查（超出范围拒绝）
+  if (!self._check_whitelist(target, op_type)) {
+  // result = {"allowed": False, "level": level,
+  // "reason": "超出白名单范围", "need_approval": False}
+  // self.audit_log.record({**operation, "result": "denied",
+  // "level": level, "reason": result["reason"]})
+  return result;
+
+// Step 4: 危险模式识别（语义检测）
+  // danger_match = self._check_danger_patterns(target, op_type)
+  if (danger_match) {
+  // level = "L3"  # 识别到危险模式，自动升级到最高级审批
+
+// Step 5: 根据项目阶段确定审批策略
+  // approval = self._get_approval_strategy(level)
+  // result = {
+  // "allowed": approval == "auto",
+  // "level": level,
+  // "need_approval": approval != "auto",
+  // "approval_type": approval,
+  // "reason": danger_match or "正常操作"
+  // }
+  // self.audit_log.record({**operation, "result": "allowed" if result["allowed"] else "pending",
+  // "level": level, "reason": result["reason"]})
+  return result;
+
+  _classify_level(op_type, target) {
+  /** docstring */
+  if (op_type in ["read", "search", "grep", "log"]) {
+  return "L0";
+  } else if (op_type in ["write", "edit", "create", "config"]) {
+  return "L1";
+  } else if (op_type in ["execute", "run", "install", "start"]) {
+  return "L2";
+  } else if (op_type in ["deploy", "push", "release", "database"]) {
+  return "L3";
+  return "L2"  # 未知操作默认最高非发布级;
+
+  _check_blacklist(target, op_type) {
+  /** docstring */
+  for (const path of self.BLACKLIST["paths"]) {
+  if (target.startswith(path)) {
+  return true;
+  for (const cmd of self.BLACKLIST["commands"]) {
+  if (cmd in target) {
+  return true;
+  for (const file of self.BLACKLIST["files"]) {
+  if (file in target) {
+  return true;
+  return false;
+
+  _check_whitelist(target, op_type) {
+  /** docstring */
+  if (op_type == "read") {
+  return true  # 读取操作不受白名单限制;
+  for (const dir of self.WHITELIST["directories"]) {
+  if (target.startswith(dir)) {
+  return true;
+  return false;
+
+  _check_danger_patterns(target, op_type) {
+  /** docstring */
+// Node.js built-in or npm package for: re
+  for (const pattern of self.DANGER_PATTERNS) {
+  if (re.search(pattern, target, re.IGNORECASE)) {
+  return `匹配危险模式: ${$1}`;
+  return null;
+
+  _get_approval_strategy(level) {
+  /** docstring */
+  // stage_config = self.STAGE_PERMISSIONS.get(self.current_stage,
+  // self.STAGE_PERMISSIONS["development"])
+  return stage_config.get(level, "dual_approve");
+
+// 使用示例
+  // engine = PermissionEngine(current_stage="release")
+
+// 测试不同操作的权限检查
+  // ops = [
+  // {"type": "read",   "target": "src/main.py",    "agent_id": "agent-1"},
+  // {"type": "write",  "target": "src/main.py",    "agent_id": "agent-1"},
+  // {"type": "execute", "target": "pytest tests/",  "agent_id": "agent-1"},
+  // {"type": "deploy", "target": "git push origin main", "agent_id": "agent-1"},
+  // {"type": "execute", "target": "rm -rf /var/log", "agent_id": "agent-1"},
+  // ]
+
+  for (const op of ops) {
+  // result = engine.check_permission(op)
+  console.log(`{op['type']:8s} | {op['target']:30s} → ${$1}`);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// PermissionEngine - CLI Agent class
+type PermissionEngine struct {
+
+// 权限分级配置
+	// Python: PERMISSION_LEVELS = {
+	// Python: "L0": {"name": "读取", "risk": "low",    "approval": "auto",       "desc": "读文件/搜索/看日志"},
+	// Python: "L1": {"name": "修改", "risk": "medium", "approval": "confirm",    "desc": "改代码/写配置/创建文件"},
+	// Python: "L2": {"name": "执行", "risk": "high",   "approval": "approve",    "desc": "运行命令/执行脚本/启动服务"},
+	// Python: "L3": {"name": "发布", "risk": "critical","approval": "dual_approve","desc": "提交代码/部署/操作数据库"},
+	// Python: }
+
+// 黑名单：禁止操作的路径/命令/文件（零容忍）
+	// Python: BLACKLIST = {
+	// Python: "paths":    ["/etc/", "/var/www/prod/", "/opt/deploy/"],
+	// Python: "commands": ["rm -rf", "DROP TABLE", "sudo", "chmod 777",
+	// Python: "git push --force", "shutdown", "reboot"],
+	// Python: "files":    [".env", "secret.key", "credentials.json",
+	// Python: "id_rsa", "id_ed25519", "*.pem"],
+	// Python: }
+
+// 白名单：明确允许的范围（超出拒绝）
+	// Python: WHITELIST = {
+	// Python: "directories": ["src/", "tests/", "docs/", "config/dev/"],
+	// Python: "commands":    ["pytest", "npm test", "git diff", "git log",
+	// Python: "grep", "cat", "ls", "head", "tail"],
+	// Python: "branches":    ["feature/*", "bugfix/*", "dev"],
+	// Python: }
+
+// 危险操作模式（语义识别，不在黑名单也能捕获）
+	// Python: DANGER_PATTERNS = [
+	// Python: r"\brm\b.*-rf",                    # 删除模式
+	// Python: r"\b(sudo|root|chmod\s+777)\b",    # 权限提升模式
+	// Python: r"\b(DROP|TRUNCATE|DELETE)\s+",    # 数据库破坏模式
+	// Python: r"\bgit\s+push\s+--force\b",       # 强制推送模式
+	// Python: r"\b(overwrite|replace\s+all)\b",  # 重写模式
+	// Python: r"\bpassword|secret|token\b.*\bprint|log|write\b",  # 密钥泄露模式
+	// Python: ]
+
+// 项目阶段权限配置（上下文感知）
+	// Python: STAGE_PERMISSIONS = {
+	// Python: "development": {"L1": "auto", "L2": "confirm", "L3": "approve"},
+	// Python: "testing":     {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+	// Python: "release":     {"L1": "approve", "L2": "dual_approve", "L3": "dual_approve"},
+	// Python: "maintenance": {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+	// Python: }
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.current_stage = current_stage
+	// Python: self.audit_log = PermissionAuditLog()
+
+	// Python: def check_permission(self, operation: dict) -> dict:
+	// Python: op_type = operation["type"]
+	// Python: target = operation["target"]
+
+// Step 1: 确定权限等级
+	// Python: level = self._classify_level(op_type, target)
+
+// Step 2: 黑名单检查（零容忍，命中即拒绝）
+	if self._check_blacklist(target, op_type) {
+	// Python: result = {"allowed": False, "level": level,
+	// Python: "reason": "命中黑名单规则", "need_approval": False}
+	// Python: self.audit_log.record({**operation, "result": "denied",
+	// Python: "level": level, "reason": result["reason"]})
+	return result
+
+// Step 3: 白名单检查（超出范围拒绝）
+	if not self._check_whitelist(target, op_type) {
+	// Python: result = {"allowed": False, "level": level,
+	// Python: "reason": "超出白名单范围", "need_approval": False}
+	// Python: self.audit_log.record({**operation, "result": "denied",
+	// Python: "level": level, "reason": result["reason"]})
+	return result
+
+// Step 4: 危险模式识别（语义检测）
+	// Python: danger_match = self._check_danger_patterns(target, op_type)
+	if danger_match {
+	// Python: level = "L3"  # 识别到危险模式，自动升级到最高级审批
+
+// Step 5: 根据项目阶段确定审批策略
+	// Python: approval = self._get_approval_strategy(level)
+	// Python: result = {
+	// Python: "allowed": approval == "auto",
+	// Python: "level": level,
+	// Python: "need_approval": approval != "auto",
+	// Python: "approval_type": approval,
+	// Python: "reason": danger_match or "正常操作"
+	// Python: }
+	// Python: self.audit_log.record({**operation, "result": "allowed" if result["allowed"] else "pending",
+	// Python: "level": level, "reason": result["reason"]})
+	return result
+
+func _classify_level() {
+	if op_type in ["read", "search", "grep", "log"] {
+	return "L0"
+	} else if op_type in ["write", "edit", "create", "config"] {
+	return "L1"
+	} else if op_type in ["execute", "run", "install", "start"] {
+	return "L2"
+	} else if op_type in ["deploy", "push", "release", "database"] {
+	return "L3"
+	return "L2"  # 未知操作默认最高非发布级
+
+func _check_blacklist() {
+	for _, path := range self.BLACKLIST["paths"] {
+	if target.startswith(path) {
+	return true
+	for _, cmd := range self.BLACKLIST["commands"] {
+	if cmd in target {
+	return true
+	for _, file := range self.BLACKLIST["files"] {
+	if file in target {
+	return true
+	return false
+
+func _check_whitelist() {
+	if op_type == "read" {
+	return true  # 读取操作不受白名单限制
+	for _, dir := range self.WHITELIST["directories"] {
+	if target.startswith(dir) {
+	return true
+	return false
+
+func _check_danger_patterns() {
+// import re
+	for _, pattern := range self.DANGER_PATTERNS {
+	if re.search(pattern, target, re.IGNORECASE) {
+	return f"匹配危险模式: {pattern}"
+	return nil
+
+func _get_approval_strategy() {
+	// Python: stage_config = self.STAGE_PERMISSIONS.get(self.current_stage,
+	// Python: self.STAGE_PERMISSIONS["development"])
+	return stage_config.get(level, "dual_approve")
+
+// 使用示例
+	// Python: engine = PermissionEngine(current_stage="release")
+
+// 测试不同操作的权限检查
+	// Python: ops = [
+	// Python: {"type": "read",   "target": "src/main.py",    "agent_id": "agent-1"},
+	// Python: {"type": "write",  "target": "src/main.py",    "agent_id": "agent-1"},
+	// Python: {"type": "execute", "target": "pytest tests/",  "agent_id": "agent-1"},
+	// Python: {"type": "deploy", "target": "git push origin main", "agent_id": "agent-1"},
+	// Python: {"type": "execute", "target": "rm -rf /var/log", "agent_id": "agent-1"},
+	// Python: ]
+
+	for _, op := range ops {
+	// Python: result = engine.check_permission(op)
+	fmt.Println(f"{op['type']:8s} | {op['target']:30s} → {result}")
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+public class PermissionEngine {
+
+    // 权限分级配置
+        // Python: PERMISSION_LEVELS = {
+        // Python: "L0": {"name": "读取", "risk": "low",    "approval": "auto",       "desc": "读文件/搜索/看日志"},
+        // Python: "L1": {"name": "修改", "risk": "medium", "approval": "confirm",    "desc": "改代码/写配置/创建文件"},
+        // Python: "L2": {"name": "执行", "risk": "high",   "approval": "approve",    "desc": "运行命令/执行脚本/启动服务"},
+        // Python: "L3": {"name": "发布", "risk": "critical","approval": "dual_approve","desc": "提交代码/部署/操作数据库"},
+        // Python: }
+
+    // 黑名单：禁止操作的路径/命令/文件（零容忍）
+        // Python: BLACKLIST = {
+        // Python: "paths":    ["/etc/", "/var/www/prod/", "/opt/deploy/"],
+        // Python: "commands": ["rm -rf", "DROP TABLE", "sudo", "chmod 777",
+        // Python: "git push --force", "shutdown", "reboot"],
+        // Python: "files":    [".env", "secret.key", "credentials.json",
+        // Python: "id_rsa", "id_ed25519", "*.pem"],
+        // Python: }
+
+    // 白名单：明确允许的范围（超出拒绝）
+        // Python: WHITELIST = {
+        // Python: "directories": ["src/", "tests/", "docs/", "config/dev/"],
+        // Python: "commands":    ["pytest", "npm test", "git diff", "git log",
+        // Python: "grep", "cat", "ls", "head", "tail"],
+        // Python: "branches":    ["feature/*", "bugfix/*", "dev"],
+        // Python: }
+
+    // 危险操作模式（语义识别，不在黑名单也能捕获）
+        // Python: DANGER_PATTERNS = [
+        // Python: r"\brm\b.*-rf",                    # 删除模式
+        // Python: r"\b(sudo|root|chmod\s+777)\b",    # 权限提升模式
+        // Python: r"\b(DROP|TRUNCATE|DELETE)\s+",    # 数据库破坏模式
+        // Python: r"\bgit\s+push\s+--force\b",       # 强制推送模式
+        // Python: r"\b(overwrite|replace\s+all)\b",  # 重写模式
+        // Python: r"\bpassword|secret|token\b.*\bprint|log|write\b",  # 密钥泄露模式
+        // Python: ]
+
+    // 项目阶段权限配置（上下文感知）
+        // Python: STAGE_PERMISSIONS = {
+        // Python: "development": {"L1": "auto", "L2": "confirm", "L3": "approve"},
+        // Python: "testing":     {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+        // Python: "release":     {"L1": "approve", "L2": "dual_approve", "L3": "dual_approve"},
+        // Python: "maintenance": {"L1": "confirm", "L2": "approve", "L3": "dual_approve"},
+        // Python: }
+
+    public PermissionEngine(current_stage="development") {
+        // Python: self.current_stage = current_stage
+        // Python: self.audit_log = PermissionAuditLog()
+
+        // Python: def check_permission(self, operation: dict) -> dict:
+        // Python: op_type = operation["type"]
+        // Python: target = operation["target"]
+
+    // Step 1: 确定权限等级
+        // Python: level = self._classify_level(op_type, target)
+
+    // Step 2: 黑名单检查（零容忍，命中即拒绝）
+        if (self._check_blacklist(target, op_type)) {
+        // Python: result = {"allowed": False, "level": level,
+        // Python: "reason": "命中黑名单规则", "need_approval": False}
+        // Python: self.audit_log.record({**operation, "result": "denied",
+        // Python: "level": level, "reason": result["reason"]})
+        return result;
+
+    // Step 3: 白名单检查（超出范围拒绝）
+        if (!self._check_whitelist(target, op_type)) {
+        // Python: result = {"allowed": False, "level": level,
+        // Python: "reason": "超出白名单范围", "need_approval": False}
+        // Python: self.audit_log.record({**operation, "result": "denied",
+        // Python: "level": level, "reason": result["reason"]})
+        return result;
+
+    // Step 4: 危险模式识别（语义检测）
+        // Python: danger_match = self._check_danger_patterns(target, op_type)
+        if (danger_match) {
+        // Python: level = "L3"  # 识别到危险模式，自动升级到最高级审批
+
+    // Step 5: 根据项目阶段确定审批策略
+        // Python: approval = self._get_approval_strategy(level)
+        // Python: result = {
+        // Python: "allowed": approval == "auto",
+        // Python: "level": level,
+        // Python: "need_approval": approval != "auto",
+        // Python: "approval_type": approval,
+        // Python: "reason": danger_match or "正常操作"
+        // Python: }
+        // Python: self.audit_log.record({**operation, "result": "allowed" if result["allowed"] else "pending",
+        // Python: "level": level, "reason": result["reason"]})
+        return result;
+
+    public static void _classify_level(op_type, target) {
+        if (op_type in ["read", "search", "grep", "log"]) {
+        return "L0";
+        } else if (op_type in ["write", "edit", "create", "config"]) {
+        return "L1";
+        } else if (op_type in ["execute", "run", "install", "start"]) {
+        return "L2";
+        } else if (op_type in ["deploy", "push", "release", "database"]) {
+        return "L3";
+        return "L2"  # 未知操作默认最高非发布级;
+
+    public static void _check_blacklist(target, op_type) {
+        for (var path : self.BLACKLIST["paths"]) {
+        if (target.startswith(path)) {
+        return true;
+        for (var cmd : self.BLACKLIST["commands"]) {
+        if (cmd in target) {
+        return true;
+        for (var file : self.BLACKLIST["files"]) {
+        if (file in target) {
+        return true;
+        return false;
+
+    public static void _check_whitelist(target, op_type) {
+        if (op_type == "read") {
+        return true  # 读取操作不受白名单限制;
+        for (var dir : self.WHITELIST["directories"]) {
+        if (target.startswith(dir)) {
+        return true;
+        return false;
+
+    public static void _check_danger_patterns(target, op_type) {
+    // import re
+        for (var pattern : self.DANGER_PATTERNS) {
+        if (re.search(pattern, target, re.IGNORECASE)) {
+        return f"匹配危险模式: {pattern}";
+        return null;
+
+    public static void _get_approval_strategy(level) {
+        // Python: stage_config = self.STAGE_PERMISSIONS.get(self.current_stage,
+        // Python: self.STAGE_PERMISSIONS["development"])
+        return stage_config.get(level, "dual_approve");
+
+    // 使用示例
+        // Python: engine = PermissionEngine(current_stage="release")
+
+    // 测试不同操作的权限检查
+        // Python: ops = [
+        // Python: {"type": "read",   "target": "src/main.py",    "agent_id": "agent-1"},
+        // Python: {"type": "write",  "target": "src/main.py",    "agent_id": "agent-1"},
+        // Python: {"type": "execute", "target": "pytest tests/",  "agent_id": "agent-1"},
+        // Python: {"type": "deploy", "target": "git push origin main", "agent_id": "agent-1"},
+        // Python: {"type": "execute", "target": "rm -rf /var/log", "agent_id": "agent-1"},
+        // Python: ]
+
+        for (var op : ops) {
+        // Python: result = engine.check_permission(op)
+        System.out.println(String.format("$1"));
+    }
+}</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">权限引擎的核心设计思路：① <strong>分级优先</strong>——先判断操作属于哪个权限等级；② <strong>黑名单兜底</strong>——危险路径/命令/文件零容忍，命中即拒绝；③ <strong>白名单限定范围</strong>——只在允许的目录/命令范围内操作；④ <strong>模式识别升级</strong>——语义检测危险操作模式，命中自动升级到最高审批级别；⑤ <strong>上下文感知</strong>——根据项目阶段动态调整审批严格度。这五层检查构成一个<strong>纵深防御体系</strong>。</p>
 </div>
 
@@ -1427,7 +2816,8 @@ setTimeout(() => {
 
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">📦 代码示例：Computer Use 安全沙箱架构</div>
-<pre><code class="language-python">import docker, base64, anthropic
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import docker, base64, anthropic
 
 # Computer Use 安全沙箱架构：Docker 容器 + 虚拟显示 + 操作白名单
 
@@ -1538,7 +2928,357 @@ class ComputerUseSandbox:
 
 # 使用示例
 sandbox = ComputerUseSandbox("打开浏览器，搜索'AI Agent 2026'，把第一篇结果保存到桌面")
-sandbox.run()</code></pre>
+sandbox.run()</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import * as docker, from 'docker,';
+
+// Computer Use 安全沙箱架构：Docker 容器 + 虚拟显示 + 操作白名单
+
+class ComputerUseSandbox {
+  /** docstring */
+
+  static readonly DOCKER_IMAGE = "anthropic/computer-use-demo:latest";
+  static readonly DISPLAY_WIDTH = 1280;
+  static readonly DISPLAY_HEIGHT = 800;
+
+// 操作白名单：只允许操作以下应用
+  static readonly APP_WHITELIST = ["firefox", "thunderbird", "libreoffice", "gedit"];
+
+// 禁止操作的路径（即使在容器内也拦截）
+  static readonly PROTECTED_PATHS = ["/etc/shadow", "/root/.ssh", "/etc/passwd"];
+
+  constructor(task: string) {
+  // self.task = task
+  // self.client = anthropic.Anthropic(api_key="sk-ant-xxx")
+  // self.docker = docker.from_env()
+  // self.container = None
+
+  start_sandbox() {
+  /** docstring */
+  // self.container = self.docker.containers.run(
+  // self.DOCKER_IMAGE,
+  // environment = {
+  // "DISPLAY_WIDTH": str(self.DISPLAY_WIDTH),
+  // "DISPLAY_HEIGHT": str(self.DISPLAY_HEIGHT),
+  // "RUNTIME": "anthropic",
+  // "ANTHROPIC_API_KEY": "sk-ant-xxx",
+  // },
+  // ports = {'5000/tcp': 8080},  # VNC/Web 访问端口
+  // volumes = {'/tmp/agent-workspace': {'bind': '/home/user', 'mode': 'rw'}},
+  // detach = True,
+  // )
+// 容器内启动 Xvfb 虚拟显示
+  // self.container.exec_run("Xvfb :1 -screen 0 1280x800x24 &", detach=True)
+  // self.container.exec_run("export DISPLAY=:1", detach=True)
+
+  // def check_action_safety(self, action_input: dict) -> bool:
+  /** docstring */
+  // action = action_input.get("action", "")
+
+// 坐标范围检查（防止点击沙箱外的区域）
+  if ("coordinate" in action_input) {
+  // x, y = action_input["coordinate"]
+  if (x < 0 || x >= self.DISPLAY_WIDTH || y < 0 || y >= self.DISPLAY_HEIGHT) {
+  console.log(`⚠️ 坐标超出沙箱范围: (${$1}, ${$1})`);
+  return false;
+
+// 输入内容检查（防止执行危险命令）
+  if (action == "type") {
+  // text = action_input.get("text", "")
+  for (const dangerous of ["rm -r`, `sudo", "DROP TABLE", "chmod 777"]) {
+  if (dangerous in text) {
+  console.log(`⚠️ 检测到危险输入: ${$1}`);
+  return false;
+
+  return true;
+
+  run(max_turns=20) {
+  /** docstring */
+  // self.start_sandbox()
+  try {
+  // messages = [{"role": "user", "content": self.task}]
+  // computer_tool = {
+  // "type": "computer_20241022",
+  // "name": "computer",
+  // "display_width_px": self.DISPLAY_WIDTH,
+  // "display_height_px": self.DISPLAY_HEIGHT,
+  // "display_number": 0,
+  // }
+  for (const turn of range(max_turns)) {
+  // response = self.client.messages.create(
+  // model = "claude-sonnet-4-20250514",
+  // max_tokens = 4096,
+  // tools = [computer_tool],
+  // messages = messages,
+  // )
+  if (response.stop_reason == "end_turn") {
+  console.log("✅ 任务完成");
+  break;
+// 执行工具调用（带安全检查）
+  // tool_results = []
+  for (const block of response.content) {
+  if (block.type == "tool_use") {
+  if (!self.check_action_safety(block.input)) {
+  // tool_results.append({
+  // "type": "tool_result",
+  // "tool_use_id": block.id,
+  // "content": "操作被安全沙箱拒绝",
+  // "is_error": True
+  // })
+  continue;
+  // result = self._execute_in_sandbox(block.input)
+  // tool_results.append({
+  // "type": "tool_result",
+  // "tool_use_id": block.id,
+  // "content": result
+  // })
+  // messages.append({"role": "assistant", "content": response.content})
+  // messages.append({"role": "user", "content": tool_results})
+  // finally:
+// 任务完成后销毁容器，彻底清理
+  // self.container.stop()
+  // self.container.remove()
+
+// 使用示例
+  // sandbox = ComputerUseSandbox("打开浏览器，搜索'AI Agent 2026'，把第一篇结果保存到桌面")
+  // sandbox.run()
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import docker, base64, anthropic
+
+// Computer Use 安全沙箱架构：Docker 容器 + 虚拟显示 + 操作白名单
+
+// ComputerUseSandbox - CLI Agent class
+type ComputerUseSandbox struct {
+
+	// Python: DOCKER_IMAGE = "anthropic/computer-use-demo:latest"
+	// Python: DISPLAY_WIDTH = 1280
+	// Python: DISPLAY_HEIGHT = 800
+
+// 操作白名单：只允许操作以下应用
+	// Python: APP_WHITELIST = ["firefox", "thunderbird", "libreoffice", "gedit"]
+
+// 禁止操作的路径（即使在容器内也拦截）
+	// Python: PROTECTED_PATHS = ["/etc/shadow", "/root/.ssh", "/etc/passwd"]
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.task = task
+	// Python: self.client = anthropic.Anthropic(api_key="sk-ant-xxx")
+	// Python: self.docker = docker.from_env()
+	// Python: self.container = None
+
+func start_sandbox() {
+	// Python: self.container = self.docker.containers.run(
+	// Python: self.DOCKER_IMAGE,
+	// Python: environment={
+	// Python: "DISPLAY_WIDTH": str(self.DISPLAY_WIDTH),
+	// Python: "DISPLAY_HEIGHT": str(self.DISPLAY_HEIGHT),
+	// Python: "RUNTIME": "anthropic",
+	// Python: "ANTHROPIC_API_KEY": "sk-ant-xxx",
+	// Python: },
+	// Python: ports={'5000/tcp': 8080},  # VNC/Web 访问端口
+	// Python: volumes={'/tmp/agent-workspace': {'bind': '/home/user', 'mode': 'rw'}},
+	// Python: detach=True,
+	// Python: )
+// 容器内启动 Xvfb 虚拟显示
+	// Python: self.container.exec_run("Xvfb :1 -screen 0 1280x800x24 &", detach=True)
+	// Python: self.container.exec_run("export DISPLAY=:1", detach=True)
+
+	// Python: def check_action_safety(self, action_input: dict) -> bool:
+	// Python: action = action_input.get("action", "")
+
+// 坐标范围检查（防止点击沙箱外的区域）
+	if "coordinate" in action_input {
+	// Python: x, y = action_input["coordinate"]
+	if x < 0 or x >= self.DISPLAY_WIDTH or y < 0 or y >= self.DISPLAY_HEIGHT {
+	fmt.Println(f"⚠️ 坐标超出沙箱范围: ({x}, {y})")
+	return false
+
+// 输入内容检查（防止执行危险命令）
+	if action == "type" {
+	// Python: text = action_input.get("text", "")
+	for _, dangerous := range ["rm -rf", "sudo", "DROP TABLE", "chmod 777"] {
+	if dangerous in text {
+	fmt.Println(f"⚠️ 检测到危险输入: {dangerous}")
+	return false
+
+	return true
+
+func run() {
+	// Python: self.start_sandbox()
+	// try block
+	// Python: messages = [{"role": "user", "content": self.task}]
+	// Python: computer_tool = {
+	// Python: "type": "computer_20241022",
+	// Python: "name": "computer",
+	// Python: "display_width_px": self.DISPLAY_WIDTH,
+	// Python: "display_height_px": self.DISPLAY_HEIGHT,
+	// Python: "display_number": 0,
+	// Python: }
+	for _, turn := range range(max_turns) {
+	// Python: response = self.client.messages.create(
+	// Python: model="claude-sonnet-4-20250514",
+	// Python: max_tokens=4096,
+	// Python: tools=[computer_tool],
+	// Python: messages=messages,
+	// Python: )
+	if response.stop_reason == "end_turn" {
+	fmt.Println("✅ 任务完成")
+	break
+// 执行工具调用（带安全检查）
+	// Python: tool_results = []
+	for _, block := range response.content {
+	if block.type == "tool_use" {
+	if not self.check_action_safety(block.input) {
+	// Python: tool_results.append({
+	// Python: "type": "tool_result",
+	// Python: "tool_use_id": block.id,
+	// Python: "content": "操作被安全沙箱拒绝",
+	// Python: "is_error": True
+	// Python: })
+	continue
+	// Python: result = self._execute_in_sandbox(block.input)
+	// Python: tool_results.append({
+	// Python: "type": "tool_result",
+	// Python: "tool_use_id": block.id,
+	// Python: "content": result
+	// Python: })
+	// Python: messages.append({"role": "assistant", "content": response.content})
+	// Python: messages.append({"role": "user", "content": tool_results})
+	// Python: finally:
+// 任务完成后销毁容器，彻底清理
+	// Python: self.container.stop()
+	// Python: self.container.remove()
+
+// 使用示例
+	// Python: sandbox = ComputerUseSandbox("打开浏览器，搜索'AI Agent 2026'，把第一篇结果保存到桌面")
+	// Python: sandbox.run()
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import docker, base64, anthropic
+
+    // Computer Use 安全沙箱架构：Docker 容器 + 虚拟显示 + 操作白名单
+
+public class ComputerUseSandbox {
+
+        // Python: DOCKER_IMAGE = "anthropic/computer-use-demo:latest"
+        // Python: DISPLAY_WIDTH = 1280
+        // Python: DISPLAY_HEIGHT = 800
+
+    // 操作白名单：只允许操作以下应用
+        // Python: APP_WHITELIST = ["firefox", "thunderbird", "libreoffice", "gedit"]
+
+    // 禁止操作的路径（即使在容器内也拦截）
+        // Python: PROTECTED_PATHS = ["/etc/shadow", "/root/.ssh", "/etc/passwd"]
+
+    public ComputerUseSandbox(taskString) {
+        // Python: self.task = task
+        // Python: self.client = anthropic.Anthropic(api_key="sk-ant-xxx")
+        // Python: self.docker = docker.from_env()
+        // Python: self.container = None
+
+    public static void start_sandbox() {
+        // Python: self.container = self.docker.containers.run(
+        // Python: self.DOCKER_IMAGE,
+        // Python: environment={
+        // Python: "DISPLAY_WIDTH": str(self.DISPLAY_WIDTH),
+        // Python: "DISPLAY_HEIGHT": str(self.DISPLAY_HEIGHT),
+        // Python: "RUNTIME": "anthropic",
+        // Python: "ANTHROPIC_API_KEY": "sk-ant-xxx",
+        // Python: },
+        // Python: ports={'5000/tcp': 8080},  # VNC/Web 访问端口
+        // Python: volumes={'/tmp/agent-workspace': {'bind': '/home/user', 'mode': 'rw'}},
+        // Python: detach=True,
+        // Python: )
+    // 容器内启动 Xvfb 虚拟显示
+        // Python: self.container.exec_run("Xvfb :1 -screen 0 1280x800x24 &", detach=True)
+        // Python: self.container.exec_run("export DISPLAY=:1", detach=True)
+
+        // Python: def check_action_safety(self, action_input: dict) -> bool:
+        // Python: action = action_input.get("action", "")
+
+    // 坐标范围检查（防止点击沙箱外的区域）
+        if ("coordinate" in action_input) {
+        // Python: x, y = action_input["coordinate"]
+        if (x < 0 || x >= self.DISPLAY_WIDTH || y < 0 || y >= self.DISPLAY_HEIGHT) {
+        System.out.println(String.format("$1"));
+        return false;
+
+    // 输入内容检查（防止执行危险命令）
+        if (action == "type") {
+        // Python: text = action_input.get("text", "")
+        for (var dangerous : ["rm -rf", "sudo", "DROP TABLE", "chmod 777"]) {
+        if (dangerous in text) {
+        System.out.println(String.format("$1"));
+        return false;
+
+        return true;
+
+    public static void run(max_turns=20) {
+        // Python: self.start_sandbox()
+        // Python: try:
+        // Python: messages = [{"role": "user", "content": self.task}]
+        // Python: computer_tool = {
+        // Python: "type": "computer_20241022",
+        // Python: "name": "computer",
+        // Python: "display_width_px": self.DISPLAY_WIDTH,
+        // Python: "display_height_px": self.DISPLAY_HEIGHT,
+        // Python: "display_number": 0,
+        // Python: }
+        for (var turn : range(max_turns)) {
+        // Python: response = self.client.messages.create(
+        // Python: model="claude-sonnet-4-20250514",
+        // Python: max_tokens=4096,
+        // Python: tools=[computer_tool],
+        // Python: messages=messages,
+        // Python: )
+        if (response.stop_reason == "end_turn") {
+        System.out.println("✅ 任务完成");
+        break;
+    // 执行工具调用（带安全检查）
+        // Python: tool_results = []
+        for (var block : response.content) {
+        if (block.type == "tool_use") {
+        if (!self.check_action_safety(block.input)) {
+        // Python: tool_results.append({
+        // Python: "type": "tool_result",
+        // Python: "tool_use_id": block.id,
+        // Python: "content": "操作被安全沙箱拒绝",
+        // Python: "is_error": True
+        // Python: })
+        continue;
+        // Python: result = self._execute_in_sandbox(block.input)
+        // Python: tool_results.append({
+        // Python: "type": "tool_result",
+        // Python: "tool_use_id": block.id,
+        // Python: "content": result
+        // Python: })
+        // Python: messages.append({"role": "assistant", "content": response.content})
+        // Python: messages.append({"role": "user", "content": tool_results})
+        // Python: finally:
+    // 任务完成后销毁容器，彻底清理
+        // Python: self.container.stop()
+        // Python: self.container.remove()
+
+    // 使用示例
+        // Python: sandbox = ComputerUseSandbox("打开浏览器，搜索'AI Agent 2026'，把第一篇结果保存到桌面")
+        // Python: sandbox.run()
+    }
+}</pre></div>
+</div>
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">安全沙箱架构的关键设计：① <strong>Docker 隔离</strong>——Agent 在容器内操作，与宿主系统完全隔离；② <strong>虚拟显示</strong>——Xvfb 提供虚拟 X11 显示，Agent 操作虚拟屏幕而非真实屏幕；③ <strong>操作安全检查</strong>——每次执行前检查坐标范围和输入内容，拦截危险操作；④ <strong>用完即毁</strong>——任务完成后销毁容器，任何误操作都不会持久化。这套架构是 2026 年 Computer Use 生产部署的标准方案。</p>
 </div>
 

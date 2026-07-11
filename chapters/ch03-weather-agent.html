@@ -36,7 +36,7 @@
 
 <p><strong>Agent</strong>怎么做？你只需要给 AI 一个工具（get_weather），AI 自己判断意图、组装参数、调用工具、格式化结果。</p>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气?","type":"start"},{"id":"ai","label":"AI 思考\n意图：查天气\n参数：city=北京, date=明天","type":"process"},{"id":"tool","label":"调用 get_weather\n(city=北京, date=2025-07-02)","type":"process"},{"id":"result","label":"返回：晴 25°C","type":"process"},{"id":"format","label":"AI 格式化\n北京明天晴天，气温25°C","type":"end"}],"edges":[{"from":"user","to":"ai"},{"from":"ai","to":"tool"},{"from":"tool","to":"format"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气?","type":"start"},{"id":"ai","label":"AI 思考\n意图：查天气\n参数：city=北京, date=明天","type":"process"},{"id":"tool","label":"调用 get_weather\n(city=北京, date=2026-07-02)","type":"process"},{"id":"result","label":"返回：晴 25°C","type":"process"},{"id":"format","label":"AI 格式化\n北京明天晴天，气温25°C","type":"end"}],"edges":[{"from":"user","to":"ai"},{"from":"ai","to":"tool"},{"from":"tool","to":"format"}]}'></div>
 
 <!-- ===== 3.2 准备工作 ===== -->
 <h2 class="section-heading">3.2 准备工作</h2>
@@ -66,7 +66,8 @@ export OPENAI_BASE_URL="https://api.deepseek.com/v1"</pre></div>
 
 <p>Agent 的核心是"AI + 工具"。我们先定义一个天气查询工具：</p>
 
-<div class="code-block"><pre>import json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import json
 from datetime import datetime, timedelta
 
 def get_weather(city: str, date: str = "today") -> dict:
@@ -110,6 +111,139 @@ def get_weather(city: str, date: str = "today") -> dict:
 # 测试工具
 print(get_weather("北京", "tomorrow"))
 # {'city': '北京', 'date': 'tomorrow', 'weather': '多云', 'temperature': '23°C'}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { config } from 'dotenv';
+config();
+
+// 模拟天气数据
+const weatherData: Record&lt;string, Record&lt;string, [string, number]&gt;&gt; = {
+  "北京": { today: ["晴", 25], tomorrow: ["多云", 23] },
+  "上海": { today: ["小雨", 28], tomorrow: ["阴", 27] },
+  "广州": { today: ["雷阵雨", 31], tomorrow: ["晴", 33] },
+};
+
+interface WeatherResult {
+  city: string;
+  date: string;
+  weather: string;
+  temperature: string;
+  error?: string;
+}
+
+function getWeather(city: string, date: string = "today"): WeatherResult | { error: string } {
+  if (!weatherData[city]) {
+    return { error: `暂不支持查询 ${city} 的天气` };
+  }
+
+  const dateKey = date === "tomorrow" ? "tomorrow" : "today";
+  const [weather, temp] = weatherData[city][dateKey];
+
+  return {
+    city,
+    date,
+    weather,
+    temperature: `${temp}°C`,
+  };
+}
+
+// 测试工具
+console.log(getWeather("北京", "tomorrow"));
+// { city: '北京', date: 'tomorrow', weather: '多云', temperature: '23°C' }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// WeatherResult 天气查询结果
+type WeatherResult struct {
+	City        string `json:"city"`
+	Date        string `json:"date"`
+	Weather     string `json:"weather"`
+	Temperature string `json:"temperature"`
+	Error       string `json:"error,omitempty"`
+}
+
+// 模拟天气数据
+var weatherData = map[string]map[string][2]interface{}{
+	"北京": {"today": {"晴", 25}, "tomorrow": {"多云", 23}},
+	"上海": {"today": {"小雨", 28}, "tomorrow": {"阴", 27}},
+	"广州": {"today": {"雷阵雨", 31}, "tomorrow": {"晴", 33}},
+}
+
+func getWeather(city string, date string) WeatherResult {
+	if date == "" {
+		date = "today"
+	}
+
+	data, ok := weatherData[city]
+	if !ok {
+		return WeatherResult{Error: fmt.Sprintf("暂不支持查询 %s 的天气", city)}
+	}
+
+	dateKey := "today"
+	if date == "tomorrow" {
+		dateKey = "tomorrow"
+	}
+
+	entry := data[dateKey]
+	weather := entry[0].(string)
+	temp := entry[1].(int)
+
+	return WeatherResult{
+		City:        city,
+		Date:        date,
+		Weather:     weather,
+		Temperature: fmt.Sprintf("%d°C", temp),
+	}
+}
+
+func main() {
+	result, _ := json.MarshalIndent(getWeather("北京", "tomorrow"), "", "  ")
+	fmt.Println(string(result))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+
+public class WeatherAgent {
+
+    // 模拟天气数据
+    private static final Map&lt;String, Map&lt;String, String[]&gt;&gt; weatherData = new HashMap&lt;&gt;();
+
+    static {
+        weatherData.put("北京", Map.of("today", new String[]{"晴", "25"}, "tomorrow", new String[]{"多云", "23"}));
+        weatherData.put("上海", Map.of("today", new String[]{"小雨", "28"}, "tomorrow", new String[]{"阴", "27"}));
+        weatherData.put("广州", Map.of("today", new String[]{"雷阵雨", "31"}, "tomorrow", new String[]{"晴", "33"}));
+    }
+
+    public static Map&lt;String, String&gt; getWeather(String city, String date) {
+        if (date == null || date.isEmpty()) {
+            date = "today";
+        }
+
+        Map&lt;String, String[]&gt; cityData = weatherData.get(city);
+        if (cityData == null) {
+            return Map.of("error", "暂不支持查询 " + city + " 的天气");
+        }
+
+        String dateKey = date.equals("tomorrow") ? "tomorrow" : "today";
+        String[] entry = cityData.get(dateKey);
+
+        return Map.of(
+            "city", city,
+            "date", date,
+            "weather", entry[0],
+            "temperature", entry[1] + "°C"
+        );
+    }
+
+    public static void main(String[] args) throws Exception {
+        Map&lt;String, String&gt; result = getWeather("北京", "tomorrow");
+        System.out.println(new ObjectMapper().writeValueAsString(result));
+        // {"city":"北京","date":"tomorrow","weather":"多云","temperature":"23°C"}
+    }
+}</pre></div>
+</div>
 
 <!-- ===== 3.4 定义工具 Schema：让 AI 知道工具怎么用 ===== -->
 <h2 class="section-heading">3.4 定义工具 Schema：让 AI 知道工具怎么用</h2>
@@ -157,7 +291,8 @@ print(get_weather("北京", "tomorrow"))
 
 <p>现在把 AI 和工具连起来，形成完整的 Agent 循环：</p>
 
-<div class="code-block"><pre>import json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import json
 from openai import OpenAI
 
 client = OpenAI()  # 自动读取环境变量
@@ -212,6 +347,202 @@ def run_agent(user_message: str) -> str:
 
 # === 测试 ===
 print(run_agent("北京明天天气怎么样？"))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+const client = new OpenAI(); // 自动读取环境变量
+
+const toolsSchema = [/* ...同上定义工具 Schema... */];
+
+async function getWeather(city: string, date: string = "today") {
+  // ...同上定义工具实现...
+}
+
+async function runAgent(userMessage: string): Promise&lt;string&gt; {
+  const messages: any[] = [
+    { role: "system", content: "你是一个天气助手，帮用户查询天气。用自然语言回答。" },
+    { role: "user", content: userMessage },
+  ];
+
+  // === Agent 循环 ===
+  while (true) {
+    // 1. 感知 + 决策：AI 决定是否调用工具
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      tools: toolsSchema,
+    });
+
+    const msg = response.choices[0].message;
+
+    // 2. 判断：AI 没调用工具 → 任务完成
+    if (!msg.tool_calls || msg.tool_calls.length === 0) {
+      return msg.content || "";
+    }
+
+    // 3. 行动：AI 要调工具 → 执行工具
+    messages.push(msg);
+
+    for (const toolCall of msg.tool_calls) {
+      const funcName = toolCall.function.name;
+      const funcArgs = JSON.parse(toolCall.function.arguments);
+
+      console.log(`🔧 调用工具: ${funcName}(${JSON.stringify(funcArgs)})`);
+
+      // 执行工具
+      let result: any;
+      if (funcName === "get_weather") {
+        result = await getWeather(funcArgs.city, funcArgs.date);
+      } else {
+        result = { error: `未知工具: ${funcName}` };
+      }
+
+      // 4. 观察：把工具结果返回给 AI
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result),
+      });
+    }
+    // 循环回去 → AI 看到工具结果，决定下一步
+  }
+}
+
+// === 测试 ===
+runAgent("北京明天天气怎么样？").then(console.log);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+func runAgent(userMessage string) (string, error) {
+	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: "你是一个天气助手，帮用户查询天气。用自然语言回答。"},
+		{Role: openai.ChatMessageRoleUser, Content: userMessage},
+	}
+
+	// === Agent 循环 ===
+	for {
+		// 1. 感知 + 决策
+		resp, err := client.CreateChatCompletion(
+			context.Background(),
+			openai.ChatCompletionRequest{
+				Model:    "gpt-4o-mini",
+				Messages: messages,
+				Tools:    toolsSchema, // 工具 Schema 定义
+			},
+		)
+		if err != nil {
+			return "", err
+		}
+
+		msg := resp.Choices[0].Message
+
+		// 2. 判断：没调用工具 → 返回结果
+		if len(msg.ToolCalls) == 0 {
+			return msg.Content, nil
+		}
+
+		// 3. 行动：执行工具
+		messages = append(messages, msg)
+
+		for _, toolCall := range msg.ToolCalls {
+			funcName := toolCall.Function.Name
+			var funcArgs map[string]interface{}
+			json.Unmarshal([]byte(toolCall.Function.Arguments), &funcArgs)
+
+			fmt.Printf("🔧 调用工具: %s(%v)\n", funcName, funcArgs)
+
+			var result interface{}
+			if funcName == "get_weather" {
+				city, _ := funcArgs["city"].(string)
+				date, _ := funcArgs["date"].(string)
+				result = getWeather(city, date)
+			} else {
+				result = map[string]string{"error": "未知工具: " + funcName}
+			}
+
+			// 4. 观察：工具结果返回给 AI
+			resultJSON, _ := json.Marshal(result)
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:       openai.ChatMessageRoleTool,
+				Content:    string(resultJSON),
+				ToolCallID: toolCall.ID,
+			})
+		}
+	}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import java.util.*;
+
+public class WeatherAgentApp {
+
+    static OpenAIClient client = OpenAIClient.fromEnv();
+
+    public static String runAgent(String userMessage) {
+        List&lt;ChatCompletionMessageParam&gt; messages = new ArrayList&lt;&gt;();
+        messages.add(ChatCompletionMessageParam.ofSystem(
+            ChatCompletionSystemMessageParam.builder()
+                .systemMessage("你是一个天气助手，帮用户查询天气。用自然语言回答。")
+                .build()));
+        messages.add(ChatCompletionMessageParam.ofUser(
+            ChatCompletionUserMessageParam.builder()
+                .userMessage(userMessage)
+                .build()));
+
+        // === Agent 循环 ===
+        while (true) {
+            // 1. 感知 + 决策
+            ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+                .model("gpt-4o-mini")
+                .messages(messages)
+                .tools(toolSchemas) // 工具 Schema 定义
+                .build();
+            ChatCompletion response = client.chat().completions().create(params);
+
+            ChatCompletionMessage msg = response.choices().get(0).message();
+            String content = msg.content().orElse("");
+
+            // 2. 判断：没调用工具 → 返回结果
+            if (msg.toolCalls().isEmpty()) {
+                return content;
+            }
+
+            // 3. 行动：执行工具
+            messages.add(ChatCompletionMessageParam.ofAssistant(msg));
+
+            for (var toolCall : msg.toolCalls().get()) {
+                String funcName = toolCall.function().name();
+                String funcArgsJson = toolCall.function().arguments();
+                System.out.println("🔧 调用工具: " + funcName + "(" + funcArgsJson + ")");
+
+                // 解析参数并执行
+                Map&lt;String, String&gt; funcArgs = parseArgs(funcArgsJson);
+                Map&lt;String, String&gt; result;
+                if ("get_weather".equals(funcName)) {
+                    result = getWeather(funcArgs.get("city"), funcArgs.get("date"));
+                } else {
+                    result = Map.of("error", "未知工具: " + funcName);
+                }
+
+                // 4. 观察：工具结果返回给 AI
+                messages.add(ChatCompletionMessageParam.ofTool(
+                    ChatCompletionToolMessageParam.builder()
+                        .toolMessage(new ObjectMapper().writeValueAsString(result))
+                        .toolCallId(toolCall.id())
+                        .build()));
+            }
+        }
+    }
+}</pre></div>
+</div>
 
 <p>运行结果：</p>
 <div class="code-block"><pre>🔧 调用工具: get_weather({'city': '北京', 'date': 'tomorrow'})
@@ -239,7 +570,8 @@ print(run_agent("北京明天天气怎么样？"))</pre></div>
 
 <p>上面的 Agent 只能处理单个问题。加上多轮对话：</p>
 
-<div class="code-block"><pre>def run_agent_loop():
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def run_agent_loop():
     """多轮对话 Agent"""
     messages = [
         {"role": "system", "content": "你是一个天气助手，帮用户查询天气。用自然语言回答。"},
@@ -288,6 +620,268 @@ print(run_agent("北京明天天气怎么样？"))</pre></div>
 
 # 启动
 run_agent_loop()</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+import * as readline from 'readline';
+
+const client = new OpenAI();
+
+const toolsSchema = [/* ...工具 Schema 定义同上... */];
+
+async function getWeather(city: string, date: string = "today") {
+  // ...工具实现同上...
+}
+
+async function runAgentLoop(): Promise&lt;void&gt; {
+  const messages: any[] = [
+    { role: "system", content: "你是一个天气助手，帮用户查询天气。用自然语言回答。" },
+  ];
+
+  console.log("🌤️ 天气助手已启动，输入 'quit' 退出\n");
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const ask = (prompt: string): Promise&lt;string&gt; =&gt;
+    new Promise((resolve) =&gt; rl.question(prompt, resolve));
+
+  while (true) {
+    const userInput = await ask("👤 ");
+    if (["quit", "exit", "退出"].includes(userInput.toLowerCase())) {
+      console.log("👋 再见！");
+      rl.close();
+      break;
+    }
+
+    messages.push({ role: "user", content: userInput });
+
+    // Agent 循环（和之前一样）
+    while (true) {
+      const response = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        tools: toolsSchema,
+      });
+      const msg = response.choices[0].message;
+
+      if (!msg.tool_calls || msg.tool_calls.length === 0) {
+        console.log(`🤖 ${msg.content}\n`);
+        messages.push(msg);
+        break;
+      }
+
+      messages.push(msg);
+      for (const toolCall of msg.tool_calls) {
+        const funcName = toolCall.function.name;
+        const funcArgs = JSON.parse(toolCall.function.arguments);
+        console.log(`🔧 调用: ${funcName}(${JSON.stringify(funcArgs)})`);
+
+        let result: any;
+        if (funcName === "get_weather") {
+          result = await getWeather(funcArgs.city, funcArgs.date);
+        } else {
+          result = { error: "未知工具" };
+        }
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
+    }
+  }
+}
+
+// 启动
+runAgentLoop();</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+var client = openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+
+func runAgentLoop() {
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: "你是一个天气助手，帮用户查询天气。用自然语言回答。"},
+	}
+
+	fmt.Println("🌤️ 天气助手已启动，输入 'quit' 退出")
+	fmt.Println()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		fmt.Print("👤 ")
+		if !scanner.Scan() {
+			break
+		}
+		userInput := strings.TrimSpace(scanner.Text())
+
+		lower := strings.ToLower(userInput)
+		if lower == "quit" || lower == "exit" || lower == "退出" {
+			fmt.Println("👋 再见！")
+			return
+		}
+
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleUser,
+			Content: userInput,
+		})
+
+		// Agent 循环（和之前一样）
+		for {
+			resp, err := client.CreateChatCompletion(
+				context.Background(),
+				openai.ChatCompletionRequest{
+					Model:    "gpt-4o-mini",
+					Messages: messages,
+					Tools:    toolsSchema,
+				},
+			)
+			if err != nil {
+				fmt.Printf("❌ API 错误: %v\n", err)
+				break
+			}
+
+			msg := resp.Choices[0].Message
+
+			if len(msg.ToolCalls) == 0 {
+				fmt.Printf("🤖 %s\n\n", msg.Content)
+				messages = append(messages, msg)
+				break
+			}
+
+			messages = append(messages, msg)
+			for _, toolCall := range msg.ToolCalls {
+				funcName := toolCall.Function.Name
+				var funcArgs map[string]interface{}
+				json.Unmarshal([]byte(toolCall.Function.Arguments), &funcArgs)
+				fmt.Printf("🔧 调用: %s(%v)\n", funcName, funcArgs)
+
+				var result interface{}
+				if funcName == "get_weather" {
+					city, _ := funcArgs["city"].(string)
+					date, _ := funcArgs["date"].(string)
+					result = getWeather(city, date)
+				} else {
+					result = map[string]string{"error": "未知工具"}
+				}
+
+				resultJSON, _ := json.Marshal(result)
+				messages = append(messages, openai.ChatCompletionMessage{
+					Role:       openai.ChatMessageRoleTool,
+					Content:    string(resultJSON),
+					ToolCallID: toolCall.ID,
+				})
+			}
+		}
+	}
+}
+
+func main() {
+	runAgentLoop()
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.openai.client.OpenAIClient;
+import com.openai.models.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+import java.util.Scanner;
+
+public class WeatherAgentLoop {
+
+    static OpenAIClient client = OpenAIClient.fromEnv();
+    static ObjectMapper objectMapper = new ObjectMapper();
+
+    public static void runAgentLoop() {
+        List&lt;ChatCompletionMessageParam&gt; messages = new ArrayList&lt;&gt;();
+        messages.add(ChatCompletionMessageParam.ofSystem(
+            ChatCompletionSystemMessageParam.builder()
+                .systemMessage("你是一个天气助手，帮用户查询天气。用自然语言回答。")
+                .build()));
+
+        System.out.println("🌤️ 天气助手已启动，输入 'quit' 退出");
+        System.out.println();
+
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.print("👤 ");
+            String userInput = scanner.nextLine().trim();
+
+            String lower = userInput.toLowerCase();
+            if (lower.equals("quit") || lower.equals("exit") || lower.equals("退出")) {
+                System.out.println("👋 再见！");
+                return;
+            }
+
+            messages.add(ChatCompletionMessageParam.ofUser(
+                ChatCompletionUserMessageParam.builder()
+                    .userMessage(userInput)
+                    .build()));
+
+            // Agent 循环（和之前一样）
+            while (true) {
+                ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+                    .model("gpt-4o-mini")
+                    .messages(messages)
+                    .tools(toolSchemas)
+                    .build();
+                ChatCompletion response = client.chat().completions().create(params);
+
+                ChatCompletionMessage msg = response.choices().get(0).message();
+
+                if (msg.toolCalls().isEmpty()) {
+                    System.out.println("🤖 " + msg.content().orElse("") + "\n");
+                    messages.add(ChatCompletionMessageParam.ofAssistant(msg));
+                    break;
+                }
+
+                messages.add(ChatCompletionMessageParam.ofAssistant(msg));
+
+                for (var toolCall : msg.toolCalls().get()) {
+                    String funcName = toolCall.function().name();
+                    String funcArgsJson = toolCall.function().arguments();
+                    System.out.println("🔧 调用: " + funcName + "(" + funcArgsJson + ")");
+
+                    Map&lt;String, String&gt; funcArgs = parseArgs(funcArgsJson);
+                    Map&lt;String, String&gt; result;
+                    if ("get_weather".equals(funcName)) {
+                        result = getWeather(funcArgs.get("city"), funcArgs.get("date"));
+                    } else {
+                        result = Map.of("error", "未知工具");
+                    }
+
+                    try {
+                        messages.add(ChatCompletionMessageParam.ofTool(
+                            ChatCompletionToolMessageParam.builder()
+                                .toolMessage(objectMapper.writeValueAsString(result))
+                                .toolCallId(toolCall.id())
+                                .build()));
+                    } catch (Exception e) {
+                        messages.add(ChatCompletionMessageParam.ofTool(
+                            ChatCompletionToolMessageParam.builder()
+                                .toolMessage("{\"error\":\"序列化失败\"}")
+                                .toolCallId(toolCall.id())
+                                .build()));
+                    }
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        runAgentLoop();
+    }
+}</pre></div>
+</div>
 
 <p>测试效果：</p>
 <div class="code-block"><pre>🌤️ 天气助手已启动，输入 'quit' 退出
@@ -340,7 +934,8 @@ run_agent_loop()</pre></div>
 
 <h3 class="sub-heading">3.8.2 完整异常处理代码</h3>
 
-<div class="code-block"><pre>import json
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import json
 import time
 import logging
 from openai import OpenAI
@@ -491,6 +1086,485 @@ print(run_agent_robust("纽约今天天气怎么样？"))
 
 print("\n=== 可能触发超时重试 ===")
 print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import OpenAI from 'openai';
+
+const client = new OpenAI();
+
+const logger = {
+  info: (msg: string) =&gt; console.log(`[INFO] ${msg}`),
+  warning: (msg: string) =&gt; console.warn(`[WARN] ${msg}`),
+  error: (msg: string) =&gt; console.error(`[ERROR] ${msg}`),
+};
+
+interface WeatherResult {
+  city?: string;
+  date?: string;
+  weather?: string;
+  temperature?: string;
+  error?: string;
+  supported_cities?: string[];
+  retry_attempts?: number;
+  raw_args?: string;
+  expected_params?: string;
+}
+
+const weatherData: Record&lt;string, Record&lt;string, [string, number]&gt;&gt; = {
+  "北京": { today: ["晴", 25], tomorrow: ["多云", 23] },
+  "上海": { today: ["小雨", 28], tomorrow: ["阴", 27] },
+  "广州": { today: ["雷阵雨", 31], tomorrow: ["晴", 33] },
+};
+
+function getWeather(city: string, date: string = "today"): WeatherResult {
+  // 模拟：不支持的城市 → 参数错误
+  if (!weatherData[city]) {
+    return {
+      error: `不支持查询 ${city} 的天气，目前支持：北京、上海、广州`,
+      supported_cities: Object.keys(weatherData),
+    };
+  }
+
+  // 模拟：随机超时（20%概率）
+  if (Math.random() &lt; 0.2) {
+    throw new Error("天气服务响应超时，请稍后重试");
+  }
+
+  const entry = weatherData[city][date] || weatherData[city]["today"];
+  return {
+    city,
+    date,
+    weather: entry[0],
+    temperature: `${entry[1]}°C`,
+  };
+}
+
+async function executeToolWithRetry(
+  funcName: string,
+  funcArgs: any,
+  maxRetries: number = 3
+): Promise&lt;WeatherResult&gt; {
+  for (let attempt = 0; attempt &lt;= maxRetries; attempt++) {
+    try {
+      if (funcName === "get_weather") {
+        return getWeather(funcArgs.city, funcArgs.date || "today");
+      } else {
+        return { error: `未知工具: ${funcName}` };
+      }
+    } catch (e: any) {
+      const errMsg: string = e.message || String(e);
+
+      // 判断是否为超时类错误（可重试）
+      if (errMsg.includes("超时") || errMsg.includes("timeout")) {
+        if (attempt &lt; maxRetries) {
+          const waitTime = Math.pow(2, attempt); // 指数退避：1s → 2s → 4s
+          logger.warning(`⚠️ 第 ${attempt + 1} 次重试，等待 ${waitTime}s: ${errMsg}`);
+          await new Promise((resolve) =&gt; setTimeout(resolve, waitTime * 1000));
+        } else {
+          logger.error(`❌ 超过最大重试次数 (${maxRetries})`);
+          return {
+            error: `天气服务暂时不可用，已重试 ${maxRetries} 次。建议稍后再试。`,
+            retry_attempts: maxRetries,
+          };
+        }
+      } else if (e instanceof SyntaxError) {
+        // JSON 解析失败 → 不可重试
+        logger.error(`❌ 参数解析失败（不可重试）: ${errMsg}`);
+        return {
+          error: `参数格式错误，无法解析: ${errMsg}`,
+          raw_args: JSON.stringify(funcArgs),
+        };
+      } else if (e instanceof TypeError) {
+        // 参数类型错误 → 不可重试
+        logger.error(`❌ 参数类型错误（不可重试）: ${errMsg}`);
+        return {
+          error: `工具参数错误: ${errMsg}`,
+          expected_params: "city (string), date (string, optional)",
+        };
+      } else {
+        // 未知异常 → 降级
+        logger.error(`❌ 未知异常: ${e.constructor.name}: ${errMsg}`);
+        return {
+          error: "工具执行遇到未知错误，请稍后再试或换个方式提问。",
+        };
+      }
+    }
+  }
+  return { error: "未知错误" };
+}
+
+async function runAgentRobust(userMessage: string): Promise&lt;string&gt; {
+  const messages: any[] = [
+    { role: "system", content: "你是一个天气助手。如果工具返回错误信息，请根据错误提示调整策略或如实告诉用户。" },
+    { role: "user", content: userMessage },
+  ];
+
+  while (true) {
+    try {
+      const response = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        tools: toolsSchema,
+      });
+
+      const msg = response.choices[0].message;
+
+      if (!msg.tool_calls || msg.tool_calls.length === 0) {
+        return msg.content || "";
+      }
+
+      messages.push(msg);
+
+      for (const toolCall of msg.tool_calls) {
+        const funcName = toolCall.function.name;
+        let funcArgs: any;
+        try {
+          funcArgs = JSON.parse(toolCall.function.arguments);
+        } catch {
+          funcArgs = {};
+          logger.warning("⚠️ AI 返回无效参数");
+        }
+
+        console.log(`🔧 调用工具: ${funcName}(${JSON.stringify(funcArgs)})`);
+
+        const result = await executeToolWithRetry(funcName, funcArgs);
+        console.log(`📦 结果: ${JSON.stringify(result)}`);
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
+    } catch (e: any) {
+      logger.error(`❌ LLM API 异常: ${e.message}`);
+      return "抱歉，AI 服务暂时不可用，请稍后再试。";
+    }
+  }
+}
+
+// 测试各种异常场景
+console.log("=== 正常查询 ===");
+runAgentRobust("北京今天天气怎么样？").then(console.log);
+console.log("\n=== 不支持的城市 ===");
+runAgentRobust("纽约今天天气怎么样？").then(console.log);
+console.log("\n=== 可能触发超时重试 ===");
+runAgentRobust("上海明天天气怎么样？").then(console.log);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math"
+	"math/rand"
+	"os"
+	"time"
+
+	openai "github.com/sashabaranov/go-openai"
+)
+
+var client = openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+
+var logger = log.New(os.Stderr, "", log.LstdFlags)
+
+func getWeatherRobust(city string, date string) map[string]interface{} {
+	weatherData := map[string]map[string][2]interface{}{
+		"北京": {"today": {"晴", 25}, "tomorrow": {"多云", 23}},
+		"上海": {"today": {"小雨", 28}, "tomorrow": {"阴", 27}},
+		"广州": {"today": {"雷阵雨", 31}, "tomorrow": {"晴", 33}},
+	}
+
+	if date == "" {
+		date = "today"
+	}
+
+	data, ok := weatherData[city]
+	if !ok {
+		return map[string]interface{}{
+			"error":            fmt.Sprintf("不支持查询 %s 的天气，目前支持：北京、上海、广州", city),
+			"supported_cities": []string{"北京", "上海", "广州"},
+		}
+	}
+
+	// 模拟：随机超时（20%概率）
+	if rand.Float64() &lt; 0.2 {
+		panic("天气服务响应超时，请稍后重试")
+	}
+
+	entry, ok := data[date]
+	if !ok {
+		entry = data["today"]
+	}
+	weather := entry[0].(string)
+	temp := entry[1].(int)
+
+	return map[string]interface{}{
+		"city":        city,
+		"date":        date,
+		"weather":     weather,
+		"temperature": fmt.Sprintf("%d°C", temp),
+	}
+}
+
+func executeToolWithRetry(funcName string, funcArgs map[string]interface{}, maxRetries int) (result map[string]interface{}) {
+	for attempt := 0; attempt &lt;= maxRetries; attempt++ {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					errMsg := fmt.Sprintf("%v", r)
+					if strings.Contains(errMsg, "超时") || strings.Contains(errMsg, "timeout") {
+						if attempt &lt; maxRetries {
+							waitTime := int(math.Pow(2, float64(attempt)))
+							logger.Printf("⚠️ 第 %d 次重试，等待 %ds: %s", attempt+1, waitTime, errMsg)
+							time.Sleep(time.Duration(waitTime) * time.Second)
+						} else {
+							logger.Printf("❌ 超过最大重试次数 (%d)", maxRetries)
+							result = map[string]interface{}{
+								"error":          fmt.Sprintf("天气服务暂时不可用，已重试 %d 次。建议稍后再试。", maxRetries),
+								"retry_attempts": maxRetries,
+							}
+						}
+					} else {
+						logger.Printf("❌ 未知异常: %s", errMsg)
+						result = map[string]interface{}{
+							"error": "工具执行遇到未知错误，请稍后再试或换个方式提问。",
+						}
+					}
+				}
+			}()
+
+			if funcName == "get_weather" {
+				city, _ := funcArgs["city"].(string)
+				date, _ := funcArgs["date"].(string)
+				result = getWeatherRobust(city, date)
+			} else {
+				result = map[string]interface{}{"error": fmt.Sprintf("未知工具: %s", funcName)}
+			}
+		}()
+
+		if result != nil {
+			return
+		}
+	}
+	return map[string]interface{}{"error": "未知错误"}
+}
+
+func runAgentRobust(userMessage string) string {
+	messages := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleSystem, Content: "你是一个天气助手。如果工具返回错误信息，请根据错误提示调整策略或如实告诉用户。"},
+		{Role: openai.ChatMessageRoleUser, Content: userMessage},
+	}
+
+	for {
+		resp, err := client.CreateChatCompletion(
+			context.Background(),
+			openai.ChatCompletionRequest{
+				Model:    "gpt-4o-mini",
+				Messages: messages,
+				Tools:    toolsSchema,
+			},
+		)
+		if err != nil {
+			logger.Printf("❌ LLM API 异常: %v", err)
+			return "抱歉，AI 服务暂时不可用，请稍后再试。"
+		}
+
+		msg := resp.Choices[0].Message
+
+		if len(msg.ToolCalls) == 0 {
+			return msg.Content
+		}
+
+		messages = append(messages, msg)
+
+		for _, toolCall := range msg.ToolCalls {
+			funcName := toolCall.Function.Name
+			var funcArgs map[string]interface{}
+			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &funcArgs); err != nil {
+				funcArgs = map[string]interface{}{}
+				logger.Printf("⚠️ AI 返回无效参数")
+			}
+
+			fmt.Printf("🔧 调用工具: %s(%v)\n", funcName, funcArgs)
+
+			result := executeToolWithRetry(funcName, funcArgs, 3)
+
+			fmt.Printf("📦 结果: %v\n", result)
+
+			resultJSON, _ := json.Marshal(result)
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:       openai.ChatMessageRoleTool,
+				Content:    string(resultJSON),
+				ToolCallID: toolCall.ID,
+			})
+		}
+	}
+}
+
+func main() {
+	fmt.Println("=== 正常查询 ===")
+	fmt.Println(runAgentRobust("北京今天天气怎么样？"))
+
+	fmt.Println("\n=== 不支持的城市 ===")
+	fmt.Println(runAgentRobust("纽约今天天气怎么样？"))
+
+	fmt.Println("\n=== 可能触发超时重试 ===")
+	fmt.Println(runAgentRobust("上海明天天气怎么样？"))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import json
+    // import time
+    // import logging
+    // from openai import OpenAI
+
+        // Python: logging.basicConfig(level=logging.INFO)
+        // Python: logger = logging.getLogger("weather_agent")
+
+        // Python: client = OpenAI()
+
+        // Python: def get_weather(city: str, date: str = "today") -> dict:
+        // Python: weather_data = {
+        // Python: "北京": {"today": ("晴", 25), "tomorrow": ("多云", 23)},
+        // Python: "上海": {"today": ("小雨", 28), "tomorrow": ("阴", 27)},
+        // Python: "广州": {"today": ("雷阵雨", 31), "tomorrow": ("晴", 33)},
+        // Python: }
+
+    // 模拟：不支持的城市 → 参数错误
+        if (city !in weather_data) {
+        return {;
+        // Python: "error": f"不支持查询 {city} 的天气，目前支持：北京、上海、广州",
+        // Python: "supported_cities": list(weather_data.keys()),
+        // Python: }
+
+    // 模拟：随机超时（20%概率）
+    // import random
+        if (random.random() < 0.2) {
+        // Python: raise TimeoutError("天气服务响应超时，请稍后重试")
+
+        // Python: weather, temp = weather_data[city].get(date, weather_data[city]["today"])
+        return {;
+        // Python: "city": city,
+        // Python: "date": date,
+        // Python: "weather": weather,
+        // Python: "temperature": f"{temp}°C",
+        // Python: }
+
+        // Python: def execute_tool_with_retry(func_name: str, func_args: dict, max_retries: int = 3) -> dict:
+        // Python: 执行工具，带指数退避重试
+
+        // Python: Args:
+        // Python: func_name: 工具名
+        // Python: func_args: 工具参数
+        // Python: max_retries: 最大重试次数
+
+        // Python: Returns:
+        // Python: 工具结果字典（成功或错误信息）
+        for (var attempt : range(max_retries + 1)) {
+        // Python: try:
+        if (func_name == "get_weather") {
+        // Python: result = get_weather(**func_args)
+        } else {
+        // Python: result = {"error": f"未知工具: {func_name}"}
+        return result;
+
+        // Python: except TimeoutError as e:
+        if (attempt < max_retries) {
+    // 指数退避：1s → 2s → 4s
+        // Python: wait_time = 2 ** attempt
+        // Python: logger.warning(f"⚠️ 第 {attempt+1} 次重试，等待 {wait_time}s: {e}")
+        // Python: time.sleep(wait_time)
+        } else {
+        // Python: logger.error(f"❌ 超过最大重试次数 ({max_retries})")
+        return {;
+        // Python: "error": f"天气服务暂时不可用，已重试 {max_retries} 次。建议稍后再试。",
+        // Python: "retry_attempts": max_retries,
+        // Python: }
+
+        // Python: except json.JSONDecodeError as e:
+    // 不可重试的错误 → 直接降级
+        // Python: logger.error(f"❌ 参数解析失败（不可重试）: {e}")
+        return {;
+        // Python: "error": f"参数格式错误，无法解析: {str(e)}",
+        // Python: "raw_args": str(func_args),
+        // Python: }
+
+        // Python: except TypeError as e:
+    // 参数类型错误 → 不可重试，告诉 AI
+        // Python: logger.error(f"❌ 参数类型错误（不可重试）: {e}")
+        return {;
+        // Python: "error": f"工具参数错误: {str(e)}",
+        // Python: "expected_params": "city (str), date (str, optional)",
+        // Python: }
+
+        // Python: except Exception as e:
+    // 未知异常 → 降级，不暴露内部细节
+        // Python: logger.error(f"❌ 未知异常: {type(e).__name__}: {e}")
+        return {;
+        // Python: "error": "工具执行遇到未知错误，请稍后再试或换个方式提问。",
+        // Python: }
+
+        // Python: def run_agent_robust(user_message: str) -> str:
+        // Python: messages = [
+        // Python: {"role": "system", "content": "你是一个天气助手。如果工具返回错误信息，请根据错误提示调整策略或如实告诉用户。"},
+        // Python: {"role": "user", "content": user_message},
+        // Python: ]
+
+        // Python: while True:
+        // Python: try:
+        // Python: response = client.chat.completions.create(
+        // Python: model="gpt-4o-mini",
+        // Python: messages=messages,
+        // Python: tools=tools_schema,
+        // Python: )
+        // Python: except Exception as e:
+    // LLM API 本身出错
+        // Python: logger.error(f"❌ LLM API 异常: {e}")
+        return "抱歉，AI 服务暂时不可用，请稍后再试。";
+
+        // Python: msg = response.choices[0].message
+
+        if (!msg.tool_calls) {
+        return msg.content;
+
+        // Python: messages.append(msg)
+
+        for (var tool_call : msg.tool_calls) {
+        // Python: func_name = tool_call.function.name
+        // Python: try:
+        // Python: func_args = json.loads(tool_call.function.arguments)
+        // Python: except json.JSONDecodeError:
+    // AI 返回了无效 JSON → 直接告诉 AI
+        // Python: func_args = {}
+        // Python: logger.warning(f"⚠️ AI 返回无效参数")
+
+        System.out.println(String.format("$1"));
+
+    // 使用带重试的工具执行
+        // Python: result = execute_tool_with_retry(func_name, func_args)
+
+        System.out.println(String.format("$1"));
+
+        // Python: messages.append({
+        // Python: "role": "tool",
+        // Python: "tool_call_id": tool_call.id,
+        // Python: "content": json.dumps(result, ensure_ascii=False),
+        // Python: })
+
+    // 测试各种异常场景
+        System.out.println("=== 正常查询 ===");
+        System.out.println(run_agent_robust("北京今天天气怎么样？"));
+
+        System.out.println("\n=== 不支持的城市 ===");
+        System.out.println(run_agent_robust("纽约今天天气怎么样？"));
+
+        System.out.println("\n=== 可能触发超时重试 ===");
+        System.out.println(run_agent_robust("上海明天天气怎么样？"));
+}</pre></div>
+</div>
 
 <p>运行效果：</p>
 <div class="code-block"><pre>=== 正常查询 ===
@@ -552,7 +1626,8 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 
 <h3 class="sub-heading">3.9.1 定义行程规划工具</h3>
 
-<div class="code-block"><pre>def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
     """
     根据城市和天气情况规划出行建议
 
@@ -613,6 +1688,201 @@ print(run_agent_robust("上海明天天气怎么样？"))</pre></div>
 # 测试
 print(plan_trip("北京", "雷阵雨", 2))
 # {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
+  /** docstring */
+  // 根据城市和天气情况规划出行建议
+
+  // Args:
+  // city: 目的地城市
+  // weather_condition: 天气情况（晴/多云/小雨/雷阵雨等）
+  // days: 出行天数
+
+  // Returns:
+  // 行程建议字典
+  /** docstring */
+  const trip_data = {;
+  // "北京": {
+  // "晴": "适合去故宫、颐和园，推荐户外游览",
+  // "多云": "适合逛博物馆、胡同，室内外均可",
+  // "小雨": "建议参观国家博物馆、798艺术区，以室内为主",
+  // "雷阵雨": "强烈建议室内活动：故宫室内展区、国家大剧院",
+  // },
+  // "上海": {
+  // "晴": "外滩散步、豫园游览、迪士尼乐园",
+  // "多云": "南京路逛街、田子坊艺术区",
+  // "小雨": "上海博物馆、环球金融中心观光厅",
+  // "雷阵雨": "室内商场、上海大剧院",
+  // },
+  // "广州": {
+  // "晴": "白云山登山、珠江夜游",
+  // "多云": "陈家祠、沙面岛散步",
+  // "小雨": "广州图书馆、广东省博物馆",
+  // "雷阵雨": "天河城购物中心、室内美食探店",
+  // },
+  // }
+
+  if (city !in trip_data) {
+  return {;
+  // "error": f"暂不支持 {city} 的行程规划",
+  // "supported_cities": list(trip_data.keys()),
+  // }
+
+  if (!weather_condition) {
+  return {;
+  // "city": city,
+  // "note": "请先查询天气，我再给出更精准的行程建议",
+  // "general_tip": trip_data[city].get("晴", "建议户外游览"),
+  // }
+
+  const recommendation = trip_data[city].get(;
+  // weather_condition,
+  // "建议根据天气灵活安排室内外活动"
+  // )
+
+  return {;
+  // "city": city,
+  // "weather_condition": weather_condition,
+  // "recommendation": recommendation,
+  // "days": days,
+  // }
+
+// 测试
+  console.log(plan_trip("北京", "雷阵雨", 2));
+// {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
+	// Python: 根据城市和天气情况规划出行建议
+
+	// Python: Args:
+	// Python: city: 目的地城市
+	// Python: weather_condition: 天气情况（晴/多云/小雨/雷阵雨等）
+	// Python: days: 出行天数
+
+	// Python: Returns:
+	// Python: 行程建议字典
+	// Python: trip_data = {
+	// Python: "北京": {
+	// Python: "晴": "适合去故宫、颐和园，推荐户外游览",
+	// Python: "多云": "适合逛博物馆、胡同，室内外均可",
+	// Python: "小雨": "建议参观国家博物馆、798艺术区，以室内为主",
+	// Python: "雷阵雨": "强烈建议室内活动：故宫室内展区、国家大剧院",
+	// Python: },
+	// Python: "上海": {
+	// Python: "晴": "外滩散步、豫园游览、迪士尼乐园",
+	// Python: "多云": "南京路逛街、田子坊艺术区",
+	// Python: "小雨": "上海博物馆、环球金融中心观光厅",
+	// Python: "雷阵雨": "室内商场、上海大剧院",
+	// Python: },
+	// Python: "广州": {
+	// Python: "晴": "白云山登山、珠江夜游",
+	// Python: "多云": "陈家祠、沙面岛散步",
+	// Python: "小雨": "广州图书馆、广东省博物馆",
+	// Python: "雷阵雨": "天河城购物中心、室内美食探店",
+	// Python: },
+	// Python: }
+
+	if city not in trip_data {
+	return {
+	// Python: "error": f"暂不支持 {city} 的行程规划",
+	// Python: "supported_cities": list(trip_data.keys()),
+	// Python: }
+
+	if not weather_condition {
+	return {
+	// Python: "city": city,
+	// Python: "note": "请先查询天气，我再给出更精准的行程建议",
+	// Python: "general_tip": trip_data[city].get("晴", "建议户外游览"),
+	// Python: }
+
+	// Python: recommendation = trip_data[city].get(
+	// Python: weather_condition,
+	// Python: "建议根据天气灵活安排室内外活动"
+	// Python: )
+
+	return {
+	// Python: "city": city,
+	// Python: "weather_condition": weather_condition,
+	// Python: "recommendation": recommendation,
+	// Python: "days": days,
+	// Python: }
+
+// 测试
+	fmt.Println(plan_trip("北京", "雷阵雨", 2))
+// {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: def plan_trip(city: str, weather_condition: str = "", days: int = 1) -> dict:
+        // Python: 根据城市和天气情况规划出行建议
+
+        // Python: Args:
+        // Python: city: 目的地城市
+        // Python: weather_condition: 天气情况（晴/多云/小雨/雷阵雨等）
+        // Python: days: 出行天数
+
+        // Python: Returns:
+        // Python: 行程建议字典
+        // Python: trip_data = {
+        // Python: "北京": {
+        // Python: "晴": "适合去故宫、颐和园，推荐户外游览",
+        // Python: "多云": "适合逛博物馆、胡同，室内外均可",
+        // Python: "小雨": "建议参观国家博物馆、798艺术区，以室内为主",
+        // Python: "雷阵雨": "强烈建议室内活动：故宫室内展区、国家大剧院",
+        // Python: },
+        // Python: "上海": {
+        // Python: "晴": "外滩散步、豫园游览、迪士尼乐园",
+        // Python: "多云": "南京路逛街、田子坊艺术区",
+        // Python: "小雨": "上海博物馆、环球金融中心观光厅",
+        // Python: "雷阵雨": "室内商场、上海大剧院",
+        // Python: },
+        // Python: "广州": {
+        // Python: "晴": "白云山登山、珠江夜游",
+        // Python: "多云": "陈家祠、沙面岛散步",
+        // Python: "小雨": "广州图书馆、广东省博物馆",
+        // Python: "雷阵雨": "天河城购物中心、室内美食探店",
+        // Python: },
+        // Python: }
+
+        if (city !in trip_data) {
+        return {;
+        // Python: "error": f"暂不支持 {city} 的行程规划",
+        // Python: "supported_cities": list(trip_data.keys()),
+        // Python: }
+
+        if (!weather_condition) {
+        return {;
+        // Python: "city": city,
+        // Python: "note": "请先查询天气，我再给出更精准的行程建议",
+        // Python: "general_tip": trip_data[city].get("晴", "建议户外游览"),
+        // Python: }
+
+        // Python: recommendation = trip_data[city].get(
+        // Python: weather_condition,
+        // Python: "建议根据天气灵活安排室内外活动"
+        // Python: )
+
+        return {;
+        // Python: "city": city,
+        // Python: "weather_condition": weather_condition,
+        // Python: "recommendation": recommendation,
+        // Python: "days": days,
+        // Python: }
+
+    // 测试
+        System.out.println(plan_trip("北京", "雷阵雨", 2));
+    // {'city': '北京', 'weather_condition': '雷阵雨', 'recommendation': '强烈建议室内活动：故宫室内展区、国家大剧院', 'days': 2}
+}</pre></div>
+</div>
 
 <h3 class="sub-heading">3.9.2 扩展工具 Schema</h3>
 
@@ -675,7 +1945,8 @@ print(plan_trip("北京", "雷阵雨", 2))
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天适不适合出游？","type":"start"},{"id":"think1","label":"AI 思考：\n先查天气，再规划行程","type":"process"},{"id":"weather","label":"调用 get_weather\n(北京, tomorrow)\n→ 多云 23°C","type":"process"},{"id":"think2","label":"AI 思考：\n天气是多云，可以规划行程了","type":"process"},{"id":"plan","label":"调用 plan_trip\n(北京, 多云, 1)\n→ 逛博物馆、胡同","type":"process"},{"id":"answer","label":"AI 综合回答：\n北京明天多云23°C\n适合逛博物馆和胡同","type":"end"}],"edges":[{"from":"user","to":"think1"},{"from":"think1","to":"weather"},{"from":"weather","to":"think2"},{"from":"think2","to":"plan"},{"from":"plan","to":"answer"}]}'></div>
 
-<div class="code-block"><pre>def run_multi_tool_agent(user_message: str) -> str:
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>def run_multi_tool_agent(user_message: str) -> str:
     """多工具协作 Agent"""
     messages = [
         {
@@ -738,6 +2009,209 @@ print(run_multi_tool_agent("北京明天适不适合出游？"))
 
 print("\n=== 直接问行程（Agent 自行决定先查天气） ===")
 print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // def run_multi_tool_agent(user_message: str) -> str:
+  /** docstring */
+  const messages = [;
+  // {
+  // "role": "system",
+  // "content": "你是一个出行助手，可以查询天气和规划行程。\n"
+  // "如果用户问出行建议，先查天气再规划行程。\n"
+  // "如果工具返回错误，根据错误信息调整策略。",
+  // },
+  // {"role": "user", "content": user_message},
+  // ]
+
+  const tool_map = {;
+  // "get_weather": get_weather,
+  // "plan_trip": plan_trip,
+  // }
+
+  while (true) {
+  try {
+  const response = client.chat.completions.create(;
+  const model = "gpt-4o-mini",;
+  const messages = messages,;
+  const tools = tools_schema,;
+  // )
+  } catch (Exception) {
+  return `AI 服务暂时不可用: ${$1}`;
+
+  const msg = response.choices[0].message;
+
+  if (!msg.tool_calls) {
+  return msg.content;
+
+  // messages.append(msg)
+
+  for (const tool_call of msg.tool_calls) {
+  const func_name = tool_call.function.name;
+  try {
+  const func_args = json.loads(tool_call.function.arguments);
+  // except json.JSONDecodeError:
+  const func_args = {};
+
+  console.log(`🔧 调用: ${$1}(${$1})`);
+
+// 使用带重试的执行（复用 2.8 节的代码）
+  const result = execute_tool_with_retry(func_name, func_args);
+
+  console.log(`📦 结果: ${$1}`);
+
+  // messages.append({
+  // "role": "tool",
+  // "tool_call_id": tool_call.id,
+  // "content": json.dumps(result, ensure_ascii=False),
+  // })
+
+// 测试多工具协作
+  console.log("=== 简单天气查询 ===");
+  console.log(run_multi_tool_agent("北京明天天气怎么样？"));
+
+  console.log("\n=== 出行建议（触发双工具协作） ===");
+  console.log(run_multi_tool_agent("北京明天适不适合出游？"));
+
+  console.log("\n=== 直接问行程（Agent 自行决定先查天气） ===");
+  console.log(run_multi_tool_agent("帮我规划一下上海的行程"));</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+	// Python: def run_multi_tool_agent(user_message: str) -> str:
+	// Python: messages = [
+	// Python: {
+	// Python: "role": "system",
+	// Python: "content": "你是一个出行助手，可以查询天气和规划行程。\n"
+	// Python: "如果用户问出行建议，先查天气再规划行程。\n"
+	// Python: "如果工具返回错误，根据错误信息调整策略。",
+	// Python: },
+	// Python: {"role": "user", "content": user_message},
+	// Python: ]
+
+	// Python: tool_map = {
+	// Python: "get_weather": get_weather,
+	// Python: "plan_trip": plan_trip,
+	// Python: }
+
+	// Python: while True:
+	// try block
+	// Python: response = client.chat.completions.create(
+	// Python: model="gpt-4o-mini",
+	// Python: messages=messages,
+	// Python: tools=tools_schema,
+	// Python: )
+	// except block
+	return f"AI 服务暂时不可用: {e}"
+
+	// Python: msg = response.choices[0].message
+
+	if not msg.tool_calls {
+	return msg.content
+
+	// Python: messages.append(msg)
+
+	for _, tool_call := range msg.tool_calls {
+	// Python: func_name = tool_call.function.name
+	// try block
+	// Python: func_args = json.loads(tool_call.function.arguments)
+	// except block
+	// Python: func_args = {}
+
+	fmt.Println(f"🔧 调用: {func_name}({func_args})")
+
+// 使用带重试的执行（复用 2.8 节的代码）
+	// Python: result = execute_tool_with_retry(func_name, func_args)
+
+	fmt.Println(f"📦 结果: {result}")
+
+	// Python: messages.append({
+	// Python: "role": "tool",
+	// Python: "tool_call_id": tool_call.id,
+	// Python: "content": json.dumps(result, ensure_ascii=False),
+	// Python: })
+
+// 测试多工具协作
+	fmt.Println("=== 简单天气查询 ===")
+	fmt.Println(run_multi_tool_agent("北京明天天气怎么样？"))
+
+	fmt.Println("\n=== 出行建议（触发双工具协作） ===")
+	fmt.Println(run_multi_tool_agent("北京明天适不适合出游？"))
+
+	fmt.Println("\n=== 直接问行程（Agent 自行决定先查天气） ===")
+	fmt.Println(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+        // Python: def run_multi_tool_agent(user_message: str) -> str:
+        // Python: messages = [
+        // Python: {
+        // Python: "role": "system",
+        // Python: "content": "你是一个出行助手，可以查询天气和规划行程。\n"
+        // Python: "如果用户问出行建议，先查天气再规划行程。\n"
+        // Python: "如果工具返回错误，根据错误信息调整策略。",
+        // Python: },
+        // Python: {"role": "user", "content": user_message},
+        // Python: ]
+
+        // Python: tool_map = {
+        // Python: "get_weather": get_weather,
+        // Python: "plan_trip": plan_trip,
+        // Python: }
+
+        // Python: while True:
+        // Python: try:
+        // Python: response = client.chat.completions.create(
+        // Python: model="gpt-4o-mini",
+        // Python: messages=messages,
+        // Python: tools=tools_schema,
+        // Python: )
+        // Python: except Exception as e:
+        return f"AI 服务暂时不可用: {e}";
+
+        // Python: msg = response.choices[0].message
+
+        if (!msg.tool_calls) {
+        return msg.content;
+
+        // Python: messages.append(msg)
+
+        for (var tool_call : msg.tool_calls) {
+        // Python: func_name = tool_call.function.name
+        // Python: try:
+        // Python: func_args = json.loads(tool_call.function.arguments)
+        // Python: except json.JSONDecodeError:
+        // Python: func_args = {}
+
+        System.out.println(String.format("$1"));
+
+    // 使用带重试的执行（复用 2.8 节的代码）
+        // Python: result = execute_tool_with_retry(func_name, func_args)
+
+        System.out.println(String.format("$1"));
+
+        // Python: messages.append({
+        // Python: "role": "tool",
+        // Python: "tool_call_id": tool_call.id,
+        // Python: "content": json.dumps(result, ensure_ascii=False),
+        // Python: })
+
+    // 测试多工具协作
+        System.out.println("=== 简单天气查询 ===");
+        System.out.println(run_multi_tool_agent("北京明天天气怎么样？"));
+
+        System.out.println("\n=== 出行建议（触发双工具协作） ===");
+        System.out.println(run_multi_tool_agent("北京明天适不适合出游？"));
+
+        System.out.println("\n=== 直接问行程（Agent 自行决定先查天气） ===");
+        System.out.println(run_multi_tool_agent("帮我规划一下上海的行程"));
+}</pre></div>
+</div>
 
 <p>运行效果：</p>
 <div class="code-block"><pre>=== 简单天气查询 ===
@@ -803,7 +2277,8 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
 
 <h3 class="sub-heading">3.10.2 带追踪的 Agent</h3>
 
-<div class="code-block"><pre>import time
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import time
 import json
 from openai import OpenAI
 
@@ -922,6 +2397,377 @@ def run_agent_with_tracer(user_message: str) -> str:
 
 # 测试
 print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Node.js built-in or npm package for: time
+// Node.js built-in or npm package for: json
+import OpenAI from 'openai';
+
+  const client = OpenAI();
+
+class AgentTracer {
+  /** docstring */
+
+  constructor() {
+  // self.loops = []      # 每次循环的记录
+  // self.total_tokens = 0
+  // self.total_time = 0.0
+  // self.tool_calls_count = 0
+
+  record_loop(loop_num: number, response, loop_time: number, tool_names: list = null) {
+  /** docstring */
+  // usage = response.usage
+  // loop_info = {
+  // "loop": loop_num,
+  // "prompt_tokens": usage.prompt_tokens if usage else 0,
+  // "completion_tokens": usage.completion_tokens if usage else 0,
+  // "total_tokens": usage.total_tokens if usage else 0,
+  // "time_seconds": round(loop_time, 2),
+  // "tool_calls": tool_names or [],
+  // "has_tool_call": len(tool_names or []) > 0,
+  // }
+  // self.loops.append(loop_info)
+  // self.total_tokens += loop_info["total_tokens"]
+  // self.total_time += loop_time
+  if (tool_names) {
+  // self.tool_calls_count += len(tool_names)
+
+  print_report() {
+  /** docstring */
+  console.log("\n" + "="*50);
+  console.log("📊 Agent 调用链分析报告");
+  console.log("="*50);
+  console.log(`总循环次数: {len(self.loops)}`);
+  console.log(`总工具调用: {self.tool_calls_count} 次`);
+  console.log(`总 token 消耗: {self.total_tokens}`);
+  console.log(`总耗时: {round(self.total_time, 2)}s`);
+  console.log(`\n--- 每次循环详情 ---`);
+  for (const loop of self.loops) {
+  // role = "🔧 工具调用" if loop["has_tool_call"] else "💬 最终回答"
+  console.log(`  循环 {loop['loop']}: ${$1}`);
+  console.log(`    tokens: {loop['total_tokens']} (prompt: {loop['prompt_tokens']}, completion: {loop['completion_tokens']})`);
+  console.log(`    延迟: {loop['time_seconds']}s`);
+  if (loop['tool_calls']) {
+  console.log(`    工具: {', '.join(loop['tool_calls'])}`);
+  console.log("="*50);
+
+// 成本估算（以 GPT-4o-mini 为例）
+  // cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
+  // cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
+
+  // input_tokens = sum(l["prompt_tokens"] for l in self.loops)
+  // output_tokens = sum(l["completion_tokens"] for l in self.loops)
+  // estimated_cost = input_tokens * cost_per_1k_input + output_tokens * cost_per_1k_output
+  console.log(`💰 预估成本: ${estimated_cost:.6f}`);
+
+
+  // def run_agent_with_tracer(user_message: str) -> str:
+  /** docstring */
+  // tracer = AgentTracer()
+  // messages = [
+  // {
+  // "role": "system",
+  // "content": "你是一个出行助手，可以查询天气和规划行程。"
+  // },
+  // {"role": "user", "content": user_message},
+  // ]
+
+  // tool_map = {
+  // "get_weather": get_weather,
+  // "plan_trip": plan_trip,
+  // }
+
+  // loop_num = 0
+
+  while (true) {
+  // loop_num += 1
+  // start_time = time.time()
+
+  // response = client.chat.completions.create(
+  // model = "gpt-4o-mini",
+  // messages = messages,
+  // tools = tools_schema,
+  // )
+
+  // loop_time = time.time() - start_time
+  // msg = response.choices[0].message
+
+// 记录工具调用名
+  // tool_names = [tc.function.name for tc in (msg.tool_calls or [])]
+  // tracer.record_loop(loop_num, response, loop_time, tool_names)
+
+  if (!msg.tool_calls) {
+  // tracer.print_report()
+  return msg.content;
+
+  // messages.append(msg)
+
+  for (const tool_call of msg.tool_calls) {
+  // func_name = tool_call.function.name
+  // func_args = json.loads(tool_call.function.arguments)
+  console.log(`🔧 调用: ${$1}(${$1})`);
+
+  // result = execute_tool_with_retry(func_name, func_args)
+  console.log(`📦 结果: ${$1}`);
+
+  // messages.append({
+  // "role": "tool",
+  // "tool_call_id": tool_call.id,
+  // "content": json.dumps(result, ensure_ascii=False),
+  // })
+
+// 测试
+  console.log(run_agent_with_tracer("北京明天适不适合出游？"));
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import time
+// import json
+// from openai import OpenAI
+
+	// Python: client = OpenAI()
+
+// AgentTracer - CLI Agent class
+type AgentTracer struct {
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.loops = []      # 每次循环的记录
+	// Python: self.total_tokens = 0
+	// Python: self.total_time = 0.0
+	// Python: self.tool_calls_count = 0
+
+func record_loop() {
+	// Python: usage = response.usage
+	// Python: loop_info = {
+	// Python: "loop": loop_num,
+	// Python: "prompt_tokens": usage.prompt_tokens if usage else 0,
+	// Python: "completion_tokens": usage.completion_tokens if usage else 0,
+	// Python: "total_tokens": usage.total_tokens if usage else 0,
+	// Python: "time_seconds": round(loop_time, 2),
+	// Python: "tool_calls": tool_names or [],
+	// Python: "has_tool_call": len(tool_names or []) > 0,
+	// Python: }
+	// Python: self.loops.append(loop_info)
+	// Python: self.total_tokens += loop_info["total_tokens"]
+	// Python: self.total_time += loop_time
+	if tool_names {
+	// Python: self.tool_calls_count += len(tool_names)
+
+func print_report() {
+	fmt.Println("\n" + "="*50)
+	fmt.Println("📊 Agent 调用链分析报告")
+	fmt.Println("="*50)
+	fmt.Println(f"总循环次数: {len(self.loops)}")
+	fmt.Println(f"总工具调用: {self.tool_calls_count} 次")
+	fmt.Println(f"总 token 消耗: {self.total_tokens}")
+	fmt.Println(f"总耗时: {round(self.total_time, 2)}s")
+	fmt.Println(f"\n--- 每次循环详情 ---")
+	for _, loop := range self.loops {
+	// Python: role = "🔧 工具调用" if loop["has_tool_call"] else "💬 最终回答"
+	fmt.Println(f"  循环 {loop['loop']}: {role}")
+	fmt.Println(f"    tokens: {loop['total_tokens']} (prompt: {loop['prompt_tokens']}, completion: {loop['completion_tokens']})")
+	fmt.Println(f"    延迟: {loop['time_seconds']}s")
+	if loop['tool_calls'] {
+	fmt.Println(f"    工具: {', '.join(loop['tool_calls'])}")
+	fmt.Println("="*50)
+
+// 成本估算（以 GPT-4o-mini 为例）
+	// Python: cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
+	// Python: cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
+
+	// Python: input_tokens = sum(l["prompt_tokens"] for l in self.loops)
+	// Python: output_tokens = sum(l["completion_tokens"] for l in self.loops)
+	// Python: estimated_cost = input_tokens * cost_per_1k_input + output_tokens * cost_per_1k_output
+	fmt.Println(f"💰 预估成本: ${estimated_cost:.6f}")
+
+
+	// Python: def run_agent_with_tracer(user_message: str) -> str:
+	// Python: tracer = AgentTracer()
+	// Python: messages = [
+	// Python: {
+	// Python: "role": "system",
+	// Python: "content": "你是一个出行助手，可以查询天气和规划行程。"
+	// Python: },
+	// Python: {"role": "user", "content": user_message},
+	// Python: ]
+
+	// Python: tool_map = {
+	// Python: "get_weather": get_weather,
+	// Python: "plan_trip": plan_trip,
+	// Python: }
+
+	// Python: loop_num = 0
+
+	// Python: while True:
+	// Python: loop_num += 1
+	// Python: start_time = time.time()
+
+	// Python: response = client.chat.completions.create(
+	// Python: model="gpt-4o-mini",
+	// Python: messages=messages,
+	// Python: tools=tools_schema,
+	// Python: )
+
+	// Python: loop_time = time.time() - start_time
+	// Python: msg = response.choices[0].message
+
+// 记录工具调用名
+	// Python: tool_names = [tc.function.name for tc in (msg.tool_calls or [])]
+	// Python: tracer.record_loop(loop_num, response, loop_time, tool_names)
+
+	if not msg.tool_calls {
+	// Python: tracer.print_report()
+	return msg.content
+
+	// Python: messages.append(msg)
+
+	for _, tool_call := range msg.tool_calls {
+	// Python: func_name = tool_call.function.name
+	// Python: func_args = json.loads(tool_call.function.arguments)
+	fmt.Println(f"🔧 调用: {func_name}({func_args})")
+
+	// Python: result = execute_tool_with_retry(func_name, func_args)
+	fmt.Println(f"📦 结果: {result}")
+
+	// Python: messages.append({
+	// Python: "role": "tool",
+	// Python: "tool_call_id": tool_call.id,
+	// Python: "content": json.dumps(result, ensure_ascii=False),
+	// Python: })
+
+// 测试
+	fmt.Println(run_agent_with_tracer("北京明天适不适合出游？"))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import time
+    // import json
+    // from openai import OpenAI
+
+        // Python: client = OpenAI()
+
+public class AgentTracer {
+
+    public AgentTracer() {
+        // Python: self.loops = []      # 每次循环的记录
+        // Python: self.total_tokens = 0
+        // Python: self.total_time = 0.0
+        // Python: self.tool_calls_count = 0
+
+    public static void record_loop(loop_numint, response, loop_timedouble, tool_names: list ) {
+        // Python: usage = response.usage
+        // Python: loop_info = {
+        // Python: "loop": loop_num,
+        // Python: "prompt_tokens": usage.prompt_tokens if usage else 0,
+        // Python: "completion_tokens": usage.completion_tokens if usage else 0,
+        // Python: "total_tokens": usage.total_tokens if usage else 0,
+        // Python: "time_seconds": round(loop_time, 2),
+        // Python: "tool_calls": tool_names or [],
+        // Python: "has_tool_call": len(tool_names or []) > 0,
+        // Python: }
+        // Python: self.loops.append(loop_info)
+        // Python: self.total_tokens += loop_info["total_tokens"]
+        // Python: self.total_time += loop_time
+        if (tool_names) {
+        // Python: self.tool_calls_count += len(tool_names)
+
+    public static void print_report() {
+        System.out.println("\n" + "="*50);
+        System.out.println("📊 Agent 调用链分析报告");
+        System.out.println("="*50);
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        for (var loop : self.loops) {
+        // Python: role = "🔧 工具调用" if loop["has_tool_call"] else "💬 最终回答"
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        System.out.println(String.format("$1"));
+        if (loop['tool_calls']) {
+        System.out.println(String.format("$1"));
+        System.out.println("="*50);
+
+    // 成本估算（以 GPT-4o-mini 为例）
+        // Python: cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
+        // Python: cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
+
+        // Python: input_tokens = sum(l["prompt_tokens"] for l in self.loops)
+        // Python: output_tokens = sum(l["completion_tokens"] for l in self.loops)
+        // Python: estimated_cost = input_tokens * cost_per_1k_input + output_tokens * cost_per_1k_output
+        System.out.println(String.format("$1"));
+
+
+        // Python: def run_agent_with_tracer(user_message: str) -> str:
+        // Python: tracer = AgentTracer()
+        // Python: messages = [
+        // Python: {
+        // Python: "role": "system",
+        // Python: "content": "你是一个出行助手，可以查询天气和规划行程。"
+        // Python: },
+        // Python: {"role": "user", "content": user_message},
+        // Python: ]
+
+        // Python: tool_map = {
+        // Python: "get_weather": get_weather,
+        // Python: "plan_trip": plan_trip,
+        // Python: }
+
+        // Python: loop_num = 0
+
+        // Python: while True:
+        // Python: loop_num += 1
+        // Python: start_time = time.time()
+
+        // Python: response = client.chat.completions.create(
+        // Python: model="gpt-4o-mini",
+        // Python: messages=messages,
+        // Python: tools=tools_schema,
+        // Python: )
+
+        // Python: loop_time = time.time() - start_time
+        // Python: msg = response.choices[0].message
+
+    // 记录工具调用名
+        // Python: tool_names = [tc.function.name for tc in (msg.tool_calls or [])]
+        // Python: tracer.record_loop(loop_num, response, loop_time, tool_names)
+
+        if (!msg.tool_calls) {
+        // Python: tracer.print_report()
+        return msg.content;
+
+        // Python: messages.append(msg)
+
+        for (var tool_call : msg.tool_calls) {
+        // Python: func_name = tool_call.function.name
+        // Python: func_args = json.loads(tool_call.function.arguments)
+        System.out.println(String.format("$1"));
+
+        // Python: result = execute_tool_with_retry(func_name, func_args)
+        System.out.println(String.format("$1"));
+
+        // Python: messages.append({
+        // Python: "role": "tool",
+        // Python: "tool_call_id": tool_call.id,
+        // Python: "content": json.dumps(result, ensure_ascii=False),
+        // Python: })
+
+    // 测试
+        System.out.println(run_agent_with_tracer("北京明天适不适合出游？"));
+    }
+}</pre></div>
+</div>
 
 <p>运行效果：</p>
 <div class="code-block"><pre>🔧 调用: get_weather({'city': '北京', 'date': 'tomorrow'})
@@ -1041,7 +2887,8 @@ print(run_agent_with_tracer("北京明天适不适合出游？"))</pre></div>
 
 <p>最聪明的做法不是"全用 Agent"或"全不用 Agent"，而是<strong>混合架构</strong>：</p>
 
-<div class="code-block"><pre># === 混合架构示例：天气出行系统 ===
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># === 混合架构示例：天气出行系统 ===
 
 # 确定性部分：用传统程序
 def calculate_route(start: str, end: str) -> dict:
@@ -1143,6 +2990,322 @@ def run_hybrid_agent(user_message: str) -> str:
 
 # 测试混合架构
 print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下"))</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// === 混合架构示例：天气出行系统 ===
+
+// 确定性部分：用传统程序
+  // def calculate_route(start: str, end: str) -> dict:
+  /** docstring */
+  const routes = {;
+  // "北京-上海": {"distance": "1200km", "time": "高铁4小时"},
+  // "北京-广州": {"distance": "2200km", "time": "高铁8小时"},
+  // "上海-广州": {"distance": "1400km", "time": "高铁6小时"},
+  // }
+  const key = `${$1}-${$1}`;
+  if (key in routes) {
+  return routes[key];
+// 反向查找
+  const key_rev = `${$1}-${$1}`;
+  if (key_rev in routes) {
+  const r = routes[key_rev];
+  return {"distance": r["distance"], "time": r["time"] + "（反向）"};
+  return {"error": `暂不支持 ${$1} 到 ${$1} 的路线`};
+
+
+  // def format_weather_report(weather: dict) -> str:
+  /** docstring */
+  if ("error" in weather) {
+  return `⚠️ {weather['error']}`;
+  return `{weather['city']} {weather['date']}: {weather['weather']}，气温{weather['temperature']}`;
+
+
+// 不确定性部分：用 Agent
+// （复用 2.8 的多工具 Agent）
+
+  // def run_hybrid_agent(user_message: str) -> str:
+  /** docstring */
+// 先让 Agent 处理意图理解和工具调用
+  const messages = [;
+  // {
+  // "role": "system",
+  // "content": "你是一个出行助手。查询天气、规划行程、计算路线。\n"
+  // "天气和行程用工具查，路线计算用 calculate_route 工具。",
+  // },
+  // {"role": "user", "content": user_message},
+  // ]
+
+// 扩展 Schema，加入路线计算工具
+  const hybrid_tools = tools_schema + [;
+  // {
+  // "type": "function",
+  // "function": {
+  // "name": "calculate_route",
+  // "description": "计算两个城市之间的路线信息（距离和交通时间）",
+  // "parameters": {
+  // "type": "object",
+  // "properties": {
+  // "start": {
+  // "type": "string",
+  // "description": "出发城市"
+  // },
+  // "end": {
+  // "type": "string",
+  // "description": "目的地城市"
+  // }
+  // },
+  // "required": ["start", "end"]
+  // }
+  // }
+  // }
+  // ]
+
+  const tool_map = {;
+  // "get_weather": get_weather,
+  // "plan_trip": plan_trip,
+  // "calculate_route": calculate_route,  # 传统程序！
+  // }
+
+  while (true) {
+  const response = client.chat.completions.create(;
+  const model = "gpt-4o-mini",;
+  const messages = messages,;
+  const tools = hybrid_tools,;
+  // )
+  const msg = response.choices[0].message;
+
+  if (!msg.tool_calls) {
+  return msg.content;
+
+  // messages.append(msg)
+  for (const tool_call of msg.tool_calls) {
+  const func_name = tool_call.function.name;
+  const func_args = json.loads(tool_call.function.arguments);
+  console.log(`🔧 调用: ${$1}(${$1})`);
+
+  const result = execute_tool_with_retry(func_name, func_args);
+  console.log(`📦 结果: ${$1}`);
+
+  // messages.append({
+  // "role": "tool",
+  // "tool_call_id": tool_call.id,
+  // "content": json.dumps(result, ensure_ascii=False),
+  // })
+
+// 测试混合架构
+  console.log(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下"));</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// === 混合架构示例：天气出行系统 ===
+
+// 确定性部分：用传统程序
+	// Python: def calculate_route(start: str, end: str) -> dict:
+	// Python: routes = {
+	// Python: "北京-上海": {"distance": "1200km", "time": "高铁4小时"},
+	// Python: "北京-广州": {"distance": "2200km", "time": "高铁8小时"},
+	// Python: "上海-广州": {"distance": "1400km", "time": "高铁6小时"},
+	// Python: }
+	// Python: key = f"{start}-{end}"
+	if key in routes {
+	return routes[key]
+// 反向查找
+	// Python: key_rev = f"{end}-{start}"
+	if key_rev in routes {
+	// Python: r = routes[key_rev]
+	return {"distance": r["distance"], "time": r["time"] + "（反向）"}
+	return {"error": f"暂不支持 {start} 到 {end} 的路线"}
+
+
+	// Python: def format_weather_report(weather: dict) -> str:
+	if "error" in weather {
+	return f"⚠️ {weather['error']}"
+	return f"{weather['city']} {weather['date']}: {weather['weather']}，气温{weather['temperature']}"
+
+
+// 不确定性部分：用 Agent
+// （复用 2.8 的多工具 Agent）
+
+	// Python: def run_hybrid_agent(user_message: str) -> str:
+// 先让 Agent 处理意图理解和工具调用
+	// Python: messages = [
+	// Python: {
+	// Python: "role": "system",
+	// Python: "content": "你是一个出行助手。查询天气、规划行程、计算路线。\n"
+	// Python: "天气和行程用工具查，路线计算用 calculate_route 工具。",
+	// Python: },
+	// Python: {"role": "user", "content": user_message},
+	// Python: ]
+
+// 扩展 Schema，加入路线计算工具
+	// Python: hybrid_tools = tools_schema + [
+	// Python: {
+	// Python: "type": "function",
+	// Python: "function": {
+	// Python: "name": "calculate_route",
+	// Python: "description": "计算两个城市之间的路线信息（距离和交通时间）",
+	// Python: "parameters": {
+	// Python: "type": "object",
+	// Python: "properties": {
+	// Python: "start": {
+	// Python: "type": "string",
+	// Python: "description": "出发城市"
+	// Python: },
+	// Python: "end": {
+	// Python: "type": "string",
+	// Python: "description": "目的地城市"
+	// Python: }
+	// Python: },
+	// Python: "required": ["start", "end"]
+	// Python: }
+	// Python: }
+	// Python: }
+	// Python: ]
+
+	// Python: tool_map = {
+	// Python: "get_weather": get_weather,
+	// Python: "plan_trip": plan_trip,
+	// Python: "calculate_route": calculate_route,  # 传统程序！
+	// Python: }
+
+	// Python: while True:
+	// Python: response = client.chat.completions.create(
+	// Python: model="gpt-4o-mini",
+	// Python: messages=messages,
+	// Python: tools=hybrid_tools,
+	// Python: )
+	// Python: msg = response.choices[0].message
+
+	if not msg.tool_calls {
+	return msg.content
+
+	// Python: messages.append(msg)
+	for _, tool_call := range msg.tool_calls {
+	// Python: func_name = tool_call.function.name
+	// Python: func_args = json.loads(tool_call.function.arguments)
+	fmt.Println(f"🔧 调用: {func_name}({func_args})")
+
+	// Python: result = execute_tool_with_retry(func_name, func_args)
+	fmt.Println(f"📦 结果: {result}")
+
+	// Python: messages.append({
+	// Python: "role": "tool",
+	// Python: "tool_call_id": tool_call.id,
+	// Python: "content": json.dumps(result, ensure_ascii=False),
+	// Python: })
+
+// 测试混合架构
+	fmt.Println(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下"))</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // === 混合架构示例：天气出行系统 ===
+
+    // 确定性部分：用传统程序
+        // Python: def calculate_route(start: str, end: str) -> dict:
+        // Python: routes = {
+        // Python: "北京-上海": {"distance": "1200km", "time": "高铁4小时"},
+        // Python: "北京-广州": {"distance": "2200km", "time": "高铁8小时"},
+        // Python: "上海-广州": {"distance": "1400km", "time": "高铁6小时"},
+        // Python: }
+        // Python: key = f"{start}-{end}"
+        if (key in routes) {
+        return routes[key];
+    // 反向查找
+        // Python: key_rev = f"{end}-{start}"
+        if (key_rev in routes) {
+        // Python: r = routes[key_rev]
+        return {"distance": r["distance"], "time": r["time"] + "（反向）"};
+        return {"error": f"暂不支持 {start} 到 {end} 的路线"};
+
+
+        // Python: def format_weather_report(weather: dict) -> str:
+        if ("error" in weather) {
+        return f"⚠️ {weather['error']}";
+        return f"{weather['city']} {weather['date']}: {weather['weather']}，气温{weather['temperature']}";
+
+
+    // 不确定性部分：用 Agent
+    // （复用 2.8 的多工具 Agent）
+
+        // Python: def run_hybrid_agent(user_message: str) -> str:
+    // 先让 Agent 处理意图理解和工具调用
+        // Python: messages = [
+        // Python: {
+        // Python: "role": "system",
+        // Python: "content": "你是一个出行助手。查询天气、规划行程、计算路线。\n"
+        // Python: "天气和行程用工具查，路线计算用 calculate_route 工具。",
+        // Python: },
+        // Python: {"role": "user", "content": user_message},
+        // Python: ]
+
+    // 扩展 Schema，加入路线计算工具
+        // Python: hybrid_tools = tools_schema + [
+        // Python: {
+        // Python: "type": "function",
+        // Python: "function": {
+        // Python: "name": "calculate_route",
+        // Python: "description": "计算两个城市之间的路线信息（距离和交通时间）",
+        // Python: "parameters": {
+        // Python: "type": "object",
+        // Python: "properties": {
+        // Python: "start": {
+        // Python: "type": "string",
+        // Python: "description": "出发城市"
+        // Python: },
+        // Python: "end": {
+        // Python: "type": "string",
+        // Python: "description": "目的地城市"
+        // Python: }
+        // Python: },
+        // Python: "required": ["start", "end"]
+        // Python: }
+        // Python: }
+        // Python: }
+        // Python: ]
+
+        // Python: tool_map = {
+        // Python: "get_weather": get_weather,
+        // Python: "plan_trip": plan_trip,
+        // Python: "calculate_route": calculate_route,  # 传统程序！
+        // Python: }
+
+        // Python: while True:
+        // Python: response = client.chat.completions.create(
+        // Python: model="gpt-4o-mini",
+        // Python: messages=messages,
+        // Python: tools=hybrid_tools,
+        // Python: )
+        // Python: msg = response.choices[0].message
+
+        if (!msg.tool_calls) {
+        return msg.content;
+
+        // Python: messages.append(msg)
+        for (var tool_call : msg.tool_calls) {
+        // Python: func_name = tool_call.function.name
+        // Python: func_args = json.loads(tool_call.function.arguments)
+        System.out.println(String.format("$1"));
+
+        // Python: result = execute_tool_with_retry(func_name, func_args)
+        System.out.println(String.format("$1"));
+
+        // Python: messages.append({
+        // Python: "role": "tool",
+        // Python: "tool_call_id": tool_call.id,
+        // Python: "content": json.dumps(result, ensure_ascii=False),
+        // Python: })
+
+    // 测试混合架构
+        System.out.println(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下"));
+}</pre></div>
+</div>
 
 <p>运行效果：</p>
 <div class="code-block"><pre>🔧 调用: get_weather({'city': '上海', 'date': 'tomorrow'})

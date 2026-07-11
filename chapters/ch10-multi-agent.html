@@ -440,9 +440,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">A2A 代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">发起 A2A 协作的 Python 代码示例</span>
-<pre># A2A 协议 — 发起跨 Agent 协作
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># A2A 协议 — 发起跨 Agent 协作
 import httpx
 
 # Step 1: 发现 Agent（读取 Agent Card）
@@ -480,7 +479,147 @@ result = httpx.get(
 
 if result.json()["status"]["state"] == "completed":
     weather_data = result.json()["artifacts"]
-    print(f"天气结果: {weather_data}")</pre>
+    print(f"天气结果: {weather_data}")
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// A2A 协议 — 发起跨 Agent 协作
+import axios from 'axios';
+
+// Step 1: 发现 Agent（读取 Agent Card）
+const agentCardUrl = 'https://weather-agent.example.com/a2a/card.json';
+const agentCard = (await axios.get(agentCardUrl)).data;
+
+console.log(`发现 Agent: ${agentCard.name}`);
+console.log(`能力: ${agentCard.capabilities}`);
+
+// Step 2: 创建 Task（发起协作请求）
+const taskPayload = {
+  id: 'task-20250701-001',
+  message: {
+    role: 'user',
+    parts: [
+      { type: 'text', text: '查询杭州下周天气预报' }
+    ]
+  }
+};
+
+const response = await axios.post(
+  'https://weather-agent.example.com/a2a/tasks',
+  taskPayload,
+  { headers: { Authorization: 'Bearer <oauth2-token>' } }
+);
+
+const task = response.data;
+console.log(`Task 状态: ${task.status.state}`);  // working
+
+// Step 3: 获取 Task 结果（轮询或推送）
+const result = await axios.get(
+  `https://weather-agent.example.com/a2a/tasks/${task.id}`,
+  { headers: { Authorization: 'Bearer <oauth2-token>' } }
+);
+
+if (result.data.status.state === 'completed') {
+  const weatherData = result.data.artifacts;
+  console.log(`天气结果: ${weatherData}`);
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// A2A 协议 — 发起跨 Agent 协作
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+)
+
+func main() {
+	// Step 1: 发现 Agent（读取 Agent Card）
+	cardResp, _ := http.Get("https://weather-agent.example.com/a2a/card.json")
+	cardBody, _ := io.ReadAll(cardResp.Body)
+	var agentCard map[string]interface{}
+	json.Unmarshal(cardBody, &agentCard)
+	fmt.Printf("发现 Agent: %v\n", agentCard["name"])
+	fmt.Printf("能力: %v\n", agentCard["capabilities"])
+
+	// Step 2: 创建 Task（发起协作请求）
+	taskPayload := `{
+		"id": "task-20250701-001",
+		"message": {
+			"role": "user",
+			"parts": [{"type": "text", "text": "查询杭州下周天气预报"}]
+		}
+	}`
+	req, _ := http.NewRequest("POST", "https://weather-agent.example.com/a2a/tasks", strings.NewReader(taskPayload))
+	req.Header.Set("Authorization", "Bearer <oauth2-token>")
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := http.DefaultClient.Do(req)
+	var task map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&task)
+	fmt.Printf("Task 状态: %v\n", task["status"].(map[string]interface{})["state"])
+
+	// Step 3: 获取 Task 结果（轮询或推送）
+	taskID := task["id"].(string)
+	resultReq, _ := http.NewRequest("GET", fmt.Sprintf("https://weather-agent.example.com/a2a/tasks/%s", taskID), nil)
+	resultReq.Header.Set("Authorization", "Bearer <oauth2-token>")
+	resultResp, _ := http.DefaultClient.Do(resultReq)
+	var result map[string]interface{}
+	json.NewDecoder(resultResp.Body).Decode(&result)
+	if result["status"].(map[string]interface{})["state"] == "completed" {
+		fmt.Printf("天气结果: %v\n", result["artifacts"])
+	}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// A2A 协议 — 发起跨 Agent 协作
+import java.net.URI;
+import java.net.http.*;
+import com.fasterxml.jackson.databind.*;
+
+public class A2AClient {
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final HttpClient client = HttpClient.newHttpClient();
+
+    public static void main(String[] args) throws Exception {
+        // Step 1: 发现 Agent（读取 Agent Card）
+        HttpResponse&lt;String&gt; cardResp = client.send(
+            HttpRequest.newBuilder().uri(URI.create("https://weather-agent.example.com/a2a/card.json")).build(),
+            HttpResponse.BodyHandlers.ofString()
+        );
+        JsonNode agentCard = mapper.readTree(cardResp.body());
+        System.out.println("发现 Agent: " + agentCard.get("name").asText());
+        System.out.println("能力: " + agentCard.get("capabilities"));
+
+        // Step 2: 创建 Task（发起协作请求）
+        String taskPayload = mapper.writeValueAsString(mapper.createObjectNode()
+            .put("id", "task-20250701-001")
+            .set("message", mapper.createObjectNode()
+                .put("role", "user")
+                .set("parts", mapper.createArrayNode()
+                    .add(mapper.createObjectNode().put("type", "text").put("text", "查询杭州下周天气预报")))));
+        HttpResponse&lt;String&gt; resp = client.send(
+            HttpRequest.newBuilder().uri(URI.create("https://weather-agent.example.com/a2a/tasks"))
+                .header("Authorization", "Bearer <oauth2-token>")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(taskPayload)).build(),
+            HttpResponse.BodyHandlers.ofString()
+        );
+        JsonNode task = mapper.readTree(resp.body());
+        System.out.println("Task 状态: " + task.get("status").get("state").asText());
+
+        // Step 3: 获取 Task 结果（轮询或推送）
+        String taskId = task.get("id").asText();
+        HttpResponse&lt;String&gt; resultResp = client.send(
+            HttpRequest.newBuilder().uri(URI.create("https://weather-agent.example.com/a2a/tasks/" + taskId))
+                .header("Authorization", "Bearer <oauth2-token>").build(),
+            HttpResponse.BodyHandlers.ofString()
+        );
+        JsonNode result = mapper.readTree(resultResp.body());
+        if ("completed".equals(result.get("status").get("state").asText())) {
+            System.out.println("天气结果: " + result.get("artifacts"));
+        }
+    }
+}
+</pre></div>
 </div>
 
 <!-- ===== 10.7 沙箱隔离与安全 ===== -->
@@ -755,9 +894,8 @@ bwrap \
   </div>
 </div>
 
-<div class="code-block">
-  <span class="code-label">错误处理与重试策略代码示例</span>
-<pre># 多 Agent 错误处理与重试策略
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 多 Agent 错误处理与重试策略
 import asyncio
 from datetime import datetime
 
@@ -798,7 +936,178 @@ async def call_agent_with_retry(agent, task, policy=AgentRetryPolicy()):
         await asyncio.sleep(delay)
 
     # 重试耗尽，降级处理
-    return {"status": "degraded", "reason": "重试耗尽，降级处理"}</pre>
+    return {"status": "degraded", "reason": "重试耗尽，降级处理"}
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 多 Agent 错误处理与重试策略
+class AgentRetryPolicy {
+  maxRetries = 3;           // 最大重试次数
+  baseDelay = 1.0;          // 基础延迟（秒）
+  maxDelay = 60.0;          // 最大延迟（秒）
+  timeoutPerAttempt = 30;   // 单次超时（秒）
+
+  getDelay(attempt: number): number {
+    // 指数退避：1s → 4s → 16s
+    const delay = this.baseDelay * Math.pow(2, attempt);
+    return Math.min(delay, this.maxDelay);
+  }
+}
+
+async function callAgentWithRetry(agent: any, task: any, policy = new AgentRetryPolicy()): Promise<any> {
+  for (let attempt = 0; attempt <= policy.maxRetries; attempt++) {
+    try {
+      const result = await Promise.race([
+        agent.execute(task),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), policy.timeoutPerAttempt * 1000)
+        )
+      ]);
+      return result; // 成功，返回结果
+    } catch (err: any) {
+      if (err.message === 'Timeout') {
+        console.log(`[${new Date().toISOString()}] Agent ${agent.name} 超时，第 ${attempt + 1} 次重试`);
+      } else if (err.code === 'ECONNREFUSED') {
+        console.log(`[${new Date().toISOString()}] Agent ${agent.name} 连接错误: ${err.message}`);
+        if (attempt >= policy.maxRetries) {
+          return { status: 'failed', reason: '连接不可恢复' };
+        }
+      } else {
+        console.log(`[${new Date().toISOString()}] Agent ${agent.name} 未知错误: ${err.message}`);
+        return { status: 'failed', reason: err.message };
+      }
+      // 等待退避时间后重试
+      const delay = policy.getDelay(attempt);
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+  }
+  // 重试耗尽，降级处理
+  return { status: 'degraded', reason: '重试耗尽，降级处理' };
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 多 Agent 错误处理与重试策略
+package main
+
+import (
+	"fmt"
+	"math"
+	"time"
+)
+
+type AgentRetryPolicy struct {
+	MaxRetries        int     // 最大重试次数
+	BaseDelay         float64 // 基础延迟（秒）
+	MaxDelay          float64 // 最大延迟（秒）
+	TimeoutPerAttempt int     // 单次超时（秒）
+}
+
+func (p AgentRetryPolicy) GetDelay(attempt int) float64 {
+	// 指数退避：1s → 4s → 16s
+	delay := p.BaseDelay * math.Pow(2, float64(attempt))
+	return math.Min(delay, p.MaxDelay)
+}
+
+type Agent interface {
+	Execute(task interface{}) (interface{}, error)
+	Name() string
+}
+
+func CallAgentWithRetry(agent Agent, task interface{}, policy AgentRetryPolicy) interface{} {
+	if policy.MaxRetries == 0 {
+		policy = AgentRetryPolicy{MaxRetries: 3, BaseDelay: 1.0, MaxDelay: 60.0, TimeoutPerAttempt: 30}
+	}
+	for attempt := 0; attempt <= policy.MaxRetries; attempt++ {
+		// 模拟超时控制
+		resultCh := make(chan interface{}, 1)
+		errCh := make(chan error, 1)
+		go func() {
+			res, err := agent.Execute(task)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resultCh <- res
+		}()
+		select {
+		case result := <-resultCh:
+			return result // 成功，返回结果
+		case err := <-errCh:
+			fmt.Printf("[%s] Agent %s 错误: %v\n", time.Now().Format(time.RFC3339), agent.Name(), err)
+			if attempt >= policy.MaxRetries {
+				return map[string]string{"status": "failed", "reason": "不可恢复"}
+			}
+		case <-time.After(time.Duration(policy.TimeoutPerAttempt) * time.Second):
+			fmt.Printf("[%s] Agent %s 超时，第 %d 次重试\n", time.Now().Format(time.RFC3339), agent.Name(), attempt+1)
+		}
+		// 等待退避时间后重试
+		delay := policy.GetDelay(attempt)
+		time.Sleep(time.Duration(delay * float64(time.Second)))
+	}
+	// 重试耗尽，降级处理
+	return map[string]string{"status": "degraded", "reason": "重试耗尽，降级处理"}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 多 Agent 错误处理与重试策略
+import java.time.LocalDateTime;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class AgentRetryPolicy {
+    int maxRetries = 3;           // 最大重试次数
+    double baseDelay = 1.0;       // 基础延迟（秒）
+    double maxDelay = 60.0;       // 最大延迟（秒）
+    int timeoutPerAttempt = 30;   // 单次超时（秒）
+
+    double getDelay(int attempt) {
+        // 指数退避：1s → 4s → 16s
+        double delay = baseDelay * Math.pow(2, attempt);
+        return Math.min(delay, maxDelay);
+    }
+
+    public static &lt;T&gt; T callAgentWithRetry(AgentExecutor&lt;T&gt; agent, Object task, AgentRetryPolicy policy) {
+        AtomicInteger attempt = new AtomicInteger(0);
+        while (attempt.get() <= policy.maxRetries) {
+            try {
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Future&lt;T&gt; future = executor.submit(() -> agent.execute(task));
+                T result = future.get(policy.timeoutPerAttempt, TimeUnit.SECONDS);
+                executor.shutdown();
+                return result; // 成功，返回结果
+            } catch (TimeoutException e) {
+                System.out.printf("[%s] Agent %s 超时，第 %d 次重试%n",
+                    LocalDateTime.now(), agent.getName(), attempt.get() + 1);
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof java.net.ConnectException) {
+                    System.out.printf("[%s] Agent %s 连接错误: %s%n",
+                        LocalDateTime.now(), agent.getName(), e.getCause().getMessage());
+                    if (attempt.get() >= policy.maxRetries) {
+                        return null; // 连接不可恢复
+                    }
+                } else {
+                    System.out.printf("[%s] Agent %s 未知错误: %s%n",
+                        LocalDateTime.now(), agent.getName(), e.getCause());
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+            // 等待退避时间后重试
+            try {
+                Thread.sleep((long) (policy.getDelay(attempt.get()) * 1000));
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+            attempt.incrementAndGet();
+        }
+        // 重试耗尽，降级处理
+        return null;
+    }
+
+    interface AgentExecutor&lt;T&gt; {
+        T execute(Object task) throws Exception;
+        String getName();
+    }
+}
+</pre></div>
 </div>
 
 <h3 class="sub-heading">10.8.3 监控与可观测性</h3>
@@ -829,9 +1138,8 @@ async def call_agent_with_retry(agent, task, policy=AgentRetryPolicy()):
   </div>
 </div>
 
-<div class="code-block">
-  <span class="code-label">Agent 行为追踪日志示例</span>
-<pre># 结构化日志 — Agent 行为追踪
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 结构化日志 — Agent 行为追踪
 import structlog
 
 logger = structlog.get_logger()
@@ -861,7 +1169,114 @@ logger.info("task_started",
 
 # 追踪链路可视化：
 # orchestrator → search_agent → analysis_agent → writer_agent
-# 每一步都有 task_id 关联，可完整回溯</pre>
+# 每一步都有 task_id 关联，可完整回溯</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 结构化日志 — Agent 行为追踪
+import pino from 'pino';
+
+const logger = pino();
+
+// 编排者分配任务时记录
+logger.info({
+  task_id: 'task-20250701-001',
+  from_agent: 'orchestrator',
+  to_agent: 'search_agent',
+  task_desc: '搜索AI发展趋势',
+  timestamp: '2025-07-01T10:30:00Z'
+}, 'task_assigned');
+
+// 搜索 Agent 完成时记录
+logger.info({
+  task_id: 'task-20250701-001',
+  agent: 'search_agent',
+  tokens_used: 1520,
+  execution_time_ms: 3500,
+  result_count: 5
+}, 'task_completed');
+
+// 分析 Agent 处理时记录
+logger.info({
+  task_id: 'task-20250701-001',
+  agent: 'analysis_agent',
+  input_from: 'search_agent',
+  timestamp: '2025-07-01T10:33:30Z'
+}, 'task_started');
+
+// 追踪链路可视化：
+// orchestrator → search_agent → analysis_agent → writer_agent
+// 每一步都有 task_id 关联，可完整回溯</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 结构化日志 — Agent 行为追踪
+package main
+
+import (
+	"log/slog"
+	"os"
+)
+
+func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	// 编排者分配任务时记录
+	logger.Info("task_assigned",
+		"task_id", "task-20250701-001",
+		"from_agent", "orchestrator",
+		"to_agent", "search_agent",
+		"task_desc", "搜索AI发展趋势",
+		"timestamp", "2025-07-01T10:30:00Z")
+
+	// 搜索 Agent 完成时记录
+	logger.Info("task_completed",
+		"task_id", "task-20250701-001",
+		"agent", "search_agent",
+		"tokens_used", 1520,
+		"execution_time_ms", 3500,
+		"result_count", 5)
+
+	// 分析 Agent 处理时记录
+	logger.Info("task_started",
+		"task_id", "task-20250701-001",
+		"agent", "analysis_agent",
+		"input_from", "search_agent",
+		"timestamp", "2025-07-01T10:33:30Z")
+
+	// 追踪链路可视化：
+	// orchestrator → search_agent → analysis_agent → writer_agent
+	// 每一步都有 task_id 关联，可完整回溯
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 结构化日志 — Agent 行为追踪
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.*;
+
+public class AgentLogger {
+    private static final Logger logger = LoggerFactory.getLogger(AgentLogger.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    public static void main(String[] args) throws Exception {
+        // 编排者分配任务时记录
+        logger.info("task_assigned", kv("task_id", "task-20250701-001"),
+            kv("from_agent", "orchestrator"), kv("to_agent", "search_agent"),
+            kv("task_desc", "搜索AI发展趋势"), kv("timestamp", "2025-07-01T10:30:00Z"));
+
+        // 搜索 Agent 完成时记录
+        logger.info("task_completed", kv("task_id", "task-20250701-001"),
+            kv("agent", "search_agent"), kv("tokens_used", 1520),
+            kv("execution_time_ms", 3500), kv("result_count", 5));
+
+        // 分析 Agent 处理时记录
+        logger.info("task_started", kv("task_id", "task-20250701-001"),
+            kv("agent", "analysis_agent"), kv("input_from", "search_agent"),
+            kv("timestamp", "2025-07-01T10:33:30Z"));
+
+        // 追踪链路可视化：
+        // orchestrator → search_agent → analysis_agent → writer_agent
+        // 每一步都有 task_id 关联，可完整回溯
+    }
+
+    private static Object kv(String key, Object value) {
+        return key + "=" + value;
+    }
+}
+</pre></div>
 </div>
 
 <h3 class="sub-heading">10.8.4 成本控制：Token 消耗管理</h3>
@@ -947,9 +1362,8 @@ setTimeout(() => {
 }, 800);
 </script>
 
-<div class="code-block">
-  <span class="code-label">完整多 Agent 工作流编排代码（Python）</span>
-<pre># 生产级多 Agent 工作流编排
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 生产级多 Agent 工作流编排
 import asyncio
 from dataclasses import dataclass
 from typing import Optional
@@ -1041,7 +1455,296 @@ class ProductionOrchestrator:
         self.trace_log.append({
             "agent": agent, "event": event,
             "detail": detail, "timestamp": "2025-07-01T..."
-        })</pre>
+        })</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 生产级多 Agent 工作流编排
+// Node.js built-in or npm package for: asyncio
+import {dataclass} from 'dataclasses';
+// TypeScript has built-in types, no import needed for Optional
+
+  // @dataclass
+class AgentResult {
+  // agent_name: str
+  // status: str        # completed / failed / degraded
+  // content: dict
+  // tokens_used: int
+  // execution_time_ms: int
+
+class ProductionOrchestrator {
+  /** docstring */
+
+  constructor(budget_limit_tokens=10000) {
+  // self.budget_limit = budget_limit_tokens
+  // self.total_tokens = 0
+  // self.trace_log = []
+
+  // async def run_workflow(self, user_request: str, max_revisions: int = 2) -> dict:
+  /** docstring */
+// Step 1: 编排者拆分任务
+  // self._log("orchestrator", "task_split", user_request)
+  // subtasks = self._split_task(user_request)
+
+// Step 2: 并行执行调研和分析
+  // results = await asyncio.gather(
+  // self._call_agent("research_agent", subtasks["research"]),
+  // self._call_agent("analysis_agent", subtasks["analysis"]),
+  // return_exceptions = True  # 容错：不因一个失败而中断
+  // )
+
+// Step 3: 处理结果（容错降级）
+  // research_result = self._handle_result(results[0], "research")
+  // analysis_result = self._handle_result(results[1], "analysis")
+
+// Step 4: 检查预算
+  if (self.total_tokens > self.budget_limit) {
+  // self._log("orchestrator", "budget_exceeded",
+  // f"已用 {self.total_tokens} tokens")
+  return {"status": "budget_exceeded",;
+  // "partial_results": [research_result, analysis_result]}
+
+// Step 5: 合并后调用写作 Agent
+  // merged_input = self._merge_results(research_result, analysis_result)
+  // writer_result = await self._call_agent("writer_agent", merged_input)
+
+// Step 6: 审核 Agent 检查质量
+  // review_result = await self._call_agent("review_agent", {
+  // "draft": writer_result.content,
+  // "criteria": "完整性、准确性、可读性"
+  // })
+
+  if (review_result.content.get("approved")) {
+  return {"status": "completed",;
+  // "report": writer_result.content,
+  // "trace": self.trace_log}
+  } else {
+// 审核未通过 → 修改后重新提交写作（限制修改次数，防止无限递归）
+  // self._log("review_agent", "revision_needed",
+  // review_result.content.get("issues"))
+  if (max_revisions > 0) {
+  return await self.run_workflow(user_request, max_revisions - 1);
+  } else {
+  return {"status": "completed_with_issues",;
+  // "report": writer_result.content,
+  // "trace": self.trace_log,
+  // "note": "达到最大修改次数，返回当前版本"}
+
+  // def _split_task(self, request: str) -> dict:
+  /** docstring */
+  return {;
+  // "research": f"搜索以下主题的最新资料: {request}",
+  // "analysis": f"对已有数据进行统计分析: {request}"
+  // }
+
+  // def _handle_result(self, result, agent_name: str) -> AgentResult:
+  /** docstring */
+  if (isinstance(result, Exception)) {
+  // self._log(agent_name, "failed", str(result))
+  return AgentResult(agent_name, "degraded",;
+  // {"note": "降级处理，使用缓存数据"}, 0, 0)
+  // self.total_tokens += result.tokens_used
+  return result;
+
+  _log(agent: string, event: string, detail: string) {
+  /** docstring */
+  // self.trace_log.append({
+  // "agent": agent, "event": event,
+  // "detail": detail, "timestamp": "2025-07-01T..."
+  // })
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// 生产级多 Agent 工作流编排
+// import asyncio
+// from dataclasses import dataclass
+// from typing import Optional
+
+// AgentResult - CLI Agent class
+type AgentResult struct {
+	// Python: agent_name: str
+	// Python: status: str        # completed / failed / degraded
+	// Python: content: dict
+	// Python: tokens_used: int
+	// Python: execution_time_ms: int
+
+// ProductionOrchestrator - CLI Agent class
+type ProductionOrchestrator struct {
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.budget_limit = budget_limit_tokens
+	// Python: self.total_tokens = 0
+	// Python: self.trace_log = []
+
+	// Python: async def run_workflow(self, user_request: str, max_revisions: int = 2) -> dict:
+// Step 1: 编排者拆分任务
+	// Python: self._log("orchestrator", "task_split", user_request)
+	// Python: subtasks = self._split_task(user_request)
+
+// Step 2: 并行执行调研和分析
+	// Python: results = await asyncio.gather(
+	// Python: self._call_agent("research_agent", subtasks["research"]),
+	// Python: self._call_agent("analysis_agent", subtasks["analysis"]),
+	// Python: return_exceptions=True  # 容错：不因一个失败而中断
+	// Python: )
+
+// Step 3: 处理结果（容错降级）
+	// Python: research_result = self._handle_result(results[0], "research")
+	// Python: analysis_result = self._handle_result(results[1], "analysis")
+
+// Step 4: 检查预算
+	if self.total_tokens > self.budget_limit {
+	// Python: self._log("orchestrator", "budget_exceeded",
+	// Python: f"已用 {self.total_tokens} tokens")
+	return {"status": "budget_exceeded",
+	// Python: "partial_results": [research_result, analysis_result]}
+
+// Step 5: 合并后调用写作 Agent
+	// Python: merged_input = self._merge_results(research_result, analysis_result)
+	// Python: writer_result = await self._call_agent("writer_agent", merged_input)
+
+// Step 6: 审核 Agent 检查质量
+	// Python: review_result = await self._call_agent("review_agent", {
+	// Python: "draft": writer_result.content,
+	// Python: "criteria": "完整性、准确性、可读性"
+	// Python: })
+
+	if review_result.content.get("approved") {
+	return {"status": "completed",
+	// Python: "report": writer_result.content,
+	// Python: "trace": self.trace_log}
+	} else {
+// 审核未通过 → 修改后重新提交写作（限制修改次数，防止无限递归）
+	// Python: self._log("review_agent", "revision_needed",
+	// Python: review_result.content.get("issues"))
+	if max_revisions > 0 {
+	return await self.run_workflow(user_request, max_revisions - 1)
+	} else {
+	return {"status": "completed_with_issues",
+	// Python: "report": writer_result.content,
+	// Python: "trace": self.trace_log,
+	// Python: "note": "达到最大修改次数，返回当前版本"}
+
+	// Python: def _split_task(self, request: str) -> dict:
+	return {
+	// Python: "research": f"搜索以下主题的最新资料: {request}",
+	// Python: "analysis": f"对已有数据进行统计分析: {request}"
+	// Python: }
+
+	// Python: def _handle_result(self, result, agent_name: str) -> AgentResult:
+	if isinstance(result, Exception) {
+	// Python: self._log(agent_name, "failed", str(result))
+	return AgentResult(agent_name, "degraded",
+	// Python: {"note": "降级处理，使用缓存数据"}, 0, 0)
+	// Python: self.total_tokens += result.tokens_used
+	return result
+
+func _log() {
+	// Python: self.trace_log.append({
+	// Python: "agent": agent, "event": event,
+	// Python: "detail": detail, "timestamp": "2025-07-01T..."
+	// Python: })
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // 生产级多 Agent 工作流编排
+    // import asyncio
+    // from dataclasses import dataclass
+    // from typing import Optional
+
+public class AgentResult {
+        // Python: agent_name: str
+        // Python: status: str        # completed / failed / degraded
+        // Python: content: dict
+        // Python: tokens_used: int
+        // Python: execution_time_ms: int
+
+public class ProductionOrchestrator {
+
+    public ProductionOrchestrator(budget_limit_tokens=10000) {
+        // Python: self.budget_limit = budget_limit_tokens
+        // Python: self.total_tokens = 0
+        // Python: self.trace_log = []
+
+        // Python: async def run_workflow(self, user_request: str, max_revisions: int = 2) -> dict:
+    // Step 1: 编排者拆分任务
+        // Python: self._log("orchestrator", "task_split", user_request)
+        // Python: subtasks = self._split_task(user_request)
+
+    // Step 2: 并行执行调研和分析
+        // Python: results = await asyncio.gather(
+        // Python: self._call_agent("research_agent", subtasks["research"]),
+        // Python: self._call_agent("analysis_agent", subtasks["analysis"]),
+        // Python: return_exceptions=True  # 容错：不因一个失败而中断
+        // Python: )
+
+    // Step 3: 处理结果（容错降级）
+        // Python: research_result = self._handle_result(results[0], "research")
+        // Python: analysis_result = self._handle_result(results[1], "analysis")
+
+    // Step 4: 检查预算
+        if (self.total_tokens > self.budget_limit) {
+        // Python: self._log("orchestrator", "budget_exceeded",
+        // Python: f"已用 {self.total_tokens} tokens")
+        return {"status": "budget_exceeded",;
+        // Python: "partial_results": [research_result, analysis_result]}
+
+    // Step 5: 合并后调用写作 Agent
+        // Python: merged_input = self._merge_results(research_result, analysis_result)
+        // Python: writer_result = await self._call_agent("writer_agent", merged_input)
+
+    // Step 6: 审核 Agent 检查质量
+        // Python: review_result = await self._call_agent("review_agent", {
+        // Python: "draft": writer_result.content,
+        // Python: "criteria": "完整性、准确性、可读性"
+        // Python: })
+
+        if (review_result.content.get("approved")) {
+        return {"status": "completed",;
+        // Python: "report": writer_result.content,
+        // Python: "trace": self.trace_log}
+        } else {
+    // 审核未通过 → 修改后重新提交写作（限制修改次数，防止无限递归）
+        // Python: self._log("review_agent", "revision_needed",
+        // Python: review_result.content.get("issues"))
+        if (max_revisions > 0) {
+        return await self.run_workflow(user_request, max_revisions - 1);
+        } else {
+        return {"status": "completed_with_issues",;
+        // Python: "report": writer_result.content,
+        // Python: "trace": self.trace_log,
+        // Python: "note": "达到最大修改次数，返回当前版本"}
+
+        // Python: def _split_task(self, request: str) -> dict:
+        return {;
+        // Python: "research": f"搜索以下主题的最新资料: {request}",
+        // Python: "analysis": f"对已有数据进行统计分析: {request}"
+        // Python: }
+
+        // Python: def _handle_result(self, result, agent_name: str) -> AgentResult:
+        if (isinstance(result, Exception)) {
+        // Python: self._log(agent_name, "failed", str(result))
+        return AgentResult(agent_name, "degraded",;
+        // Python: {"note": "降级处理，使用缓存数据"}, 0, 0)
+        // Python: self.total_tokens += result.tokens_used
+        return result;
+
+    public static void _log(agentString, eventString, detailString) {
+        // Python: self.trace_log.append({
+        // Python: "agent": agent, "event": event,
+        // Python: "detail": detail, "timestamp": "2025-07-01T..."
+        // Python: })
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 10.9 Handoffs机制详解 ===== -->
@@ -1112,9 +1815,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">Handoffs 代码示例</h3>
 
-<div class="code-block">
-  <span class="code-label">OpenAI Agents SDK — Handoffs 配置示例</span>
-<pre># OpenAI Agents SDK — Handoffs 机制
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># OpenAI Agents SDK — Handoffs 机制
 from agents import Agent, Runner
 
 # 定义三个 Agent，各自声明可移交的目标
@@ -1164,7 +1866,167 @@ result = await Runner.run(
 
 # Runner 自动处理 Handoffs：
 # triage → finance → summary → 返回结果
-print(result.final_output)</pre>
+print(result.final_output)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// OpenAI Agents SDK — Handoffs 机制
+import {Agent, Runner} from 'agents';
+
+// 定义三个 Agent，各自声明可移交的目标
+  const triage_agent = Agent(;
+  const name = "分流Agent",;
+  const instructions = """你是用户请求的分流员。;
+  // 根据用户请求判断最适合处理的 Agent：
+  // - 贡献分析请求 → transfer_to_finance_agent
+  // - 市场趋势请求 → transfer_to_market_agent
+  // - 综合请求 → transfer_to_summary_agent
+  /** docstring */
+  const handoffs = [finance_agent, market_agent]  # 可移交的Agent列表;
+  // )
+
+  const finance_agent = Agent(;
+  const name = "财务分析Agent",;
+  const instructions = """你是专业的财务分析师。;
+  // 分析财报数据、计算关键指标、评估财务健康状况。
+  // 完成分析后，将结果移交给总结Agent生成报告。
+  /** docstring */
+  const handoffs = [summary_agent]  # 完成后移交总结Agent;
+  // )
+
+  const market_agent = Agent(;
+  const name = "市场分析Agent",;
+  const instructions = """你是专业的市场分析师。;
+  // 分析市场趋势、竞争格局、行业动态。
+  // 完成分析后，将结果移交给总结Agent生成报告。
+  /** docstring */
+  const handoffs = [summary_agent]  # 完成后移交总结Agent;
+  // )
+
+  const summary_agent = Agent(;
+  const name = "总结Agent",;
+  const instructions = """你是报告总结专家。;
+  // 整合其他Agent的分析结果，生成一份完整的分析报告。
+  /** docstring */
+  const handoffs = []  # 终点Agent，不再移交;
+  // )
+
+// 运行多Agent协作
+  const result = await Runner.run(;
+  const starting_agent = triage_agent,  # 从分流Agent开始;
+  const messages = [{"role": "user",;
+  // "content": "帮我分析苹果公司2025年Q1财报"}]
+  // )
+
+// Runner 自动处理 Handoffs：
+// triage → finance → summary → 返回结果
+  console.log(result.final_output);</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// OpenAI Agents SDK — Handoffs 机制
+// from agents import Agent, Runner
+
+// 定义三个 Agent，各自声明可移交的目标
+	// Python: triage_agent = Agent(
+	// Python: name="分流Agent",
+	// Python: instructions="""你是用户请求的分流员。
+	// Python: 根据用户请求判断最适合处理的 Agent：
+	// Python: - 贡献分析请求 → transfer_to_finance_agent
+	// Python: - 市场趋势请求 → transfer_to_market_agent
+	// Python: - 综合请求 → transfer_to_summary_agent
+	// Python: handoffs=[finance_agent, market_agent]  # 可移交的Agent列表
+	// Python: )
+
+	// Python: finance_agent = Agent(
+	// Python: name="财务分析Agent",
+	// Python: instructions="""你是专业的财务分析师。
+	// Python: 分析财报数据、计算关键指标、评估财务健康状况。
+	// Python: 完成分析后，将结果移交给总结Agent生成报告。
+	// Python: handoffs=[summary_agent]  # 完成后移交总结Agent
+	// Python: )
+
+	// Python: market_agent = Agent(
+	// Python: name="市场分析Agent",
+	// Python: instructions="""你是专业的市场分析师。
+	// Python: 分析市场趋势、竞争格局、行业动态。
+	// Python: 完成分析后，将结果移交给总结Agent生成报告。
+	// Python: handoffs=[summary_agent]  # 完成后移交总结Agent
+	// Python: )
+
+	// Python: summary_agent = Agent(
+	// Python: name="总结Agent",
+	// Python: instructions="""你是报告总结专家。
+	// Python: 整合其他Agent的分析结果，生成一份完整的分析报告。
+	// Python: handoffs=[]  # 终点Agent，不再移交
+	// Python: )
+
+// 运行多Agent协作
+	// Python: result = await Runner.run(
+	// Python: starting_agent=triage_agent,  # 从分流Agent开始
+	// Python: messages=[{"role": "user",
+	// Python: "content": "帮我分析苹果公司2025年Q1财报"}]
+	// Python: )
+
+// Runner 自动处理 Handoffs：
+// triage → finance → summary → 返回结果
+	fmt.Println(result.final_output)</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // OpenAI Agents SDK — Handoffs 机制
+    // from agents import Agent, Runner
+
+    // 定义三个 Agent，各自声明可移交的目标
+        // Python: triage_agent = Agent(
+        // Python: name="分流Agent",
+        // Python: instructions="""你是用户请求的分流员。
+        // Python: 根据用户请求判断最适合处理的 Agent：
+        // Python: - 贡献分析请求 → transfer_to_finance_agent
+        // Python: - 市场趋势请求 → transfer_to_market_agent
+        // Python: - 综合请求 → transfer_to_summary_agent
+        // Python: handoffs=[finance_agent, market_agent]  # 可移交的Agent列表
+        // Python: )
+
+        // Python: finance_agent = Agent(
+        // Python: name="财务分析Agent",
+        // Python: instructions="""你是专业的财务分析师。
+        // Python: 分析财报数据、计算关键指标、评估财务健康状况。
+        // Python: 完成分析后，将结果移交给总结Agent生成报告。
+        // Python: handoffs=[summary_agent]  # 完成后移交总结Agent
+        // Python: )
+
+        // Python: market_agent = Agent(
+        // Python: name="市场分析Agent",
+        // Python: instructions="""你是专业的市场分析师。
+        // Python: 分析市场趋势、竞争格局、行业动态。
+        // Python: 完成分析后，将结果移交给总结Agent生成报告。
+        // Python: handoffs=[summary_agent]  # 完成后移交总结Agent
+        // Python: )
+
+        // Python: summary_agent = Agent(
+        // Python: name="总结Agent",
+        // Python: instructions="""你是报告总结专家。
+        // Python: 整合其他Agent的分析结果，生成一份完整的分析报告。
+        // Python: handoffs=[]  # 终点Agent，不再移交
+        // Python: )
+
+    // 运行多Agent协作
+        // Python: result = await Runner.run(
+        // Python: starting_agent=triage_agent,  # 从分流Agent开始
+        // Python: messages=[{"role": "user",
+        // Python: "content": "帮我分析苹果公司2025年Q1财报"}]
+        // Python: )
+
+    // Runner 自动处理 Handoffs：
+    // triage → finance → summary → 返回结果
+        System.out.println(result.final_output);
+}</pre></div>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">

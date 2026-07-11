@@ -396,9 +396,8 @@ setTimeout(() => {
 
 <p>权限降级是沙箱的补充手段。CLI Agent 应始终以非 root 用户运行，对敏感目录（<code>/etc</code>、<code>/var</code>、<code>/root</code>）只读挂载，限制网络访问范围。命令注入防御则要处理用户输入中的特殊字符（<code>;</code>、<code>|</code>、<code>&</code>、<code>$()</code>、反引号），防止恶意构造的输入突破命令边界。</p>
 
-<div class="code-block">
-  <span class="code-label">Python 安全命令执行器：白名单 + 沙箱 + 注入防御</span>
-<pre>import re
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import re
 import shlex
 import subprocess
 from typing import Optional, Tuple
@@ -507,7 +506,409 @@ print(result["output"] if result["success"] else result["error"])
 
 # 危险命令会被拦截
 result = executor.execute("rm -rf /")
-# → {"success": False, "error": "危险命令模式被拦截: rm\\s+-rf\\s+/(?:\\s|$)"}</pre>
+# → {"success": False, "error": "危险命令模式被拦截: rm\\s+-rf\\s+/(?:\\s|$)"}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { exec } from 'child_process';
+import * as re from 're2';
+
+interface ExecResult {
+  success: boolean;
+  output: string;
+  error: string;
+  returncode: number;
+}
+
+class SafeCommandExecutor {
+  /** CLI Agent 安全命令执行器 */
+
+  // 危险命令正则模式
+  static readonly DANGEROUS_PATTERNS: string[] = [
+    r'rm\s+-rf\s+/(?:\s|$)',        // rm -rf /
+    r'mkfs\.\w+\s+/dev/',            // 格式化磁盘
+    r'dd\s+.*of=/dev/[sh]d',         // dd 写入磁盘设备
+    r':\(\)\{.*\};:',                // fork bomb
+    r'curl\s+.*\|\s*(bash|sh)',      // 远程脚本执行
+    r'wget\s+.*\|\s*(bash|sh)',      // 远程脚本执行
+    r'sudo\s+rm\s+-rf',              // sudo 删除
+    r'chmod\s+-R\s+777\s+/',         // 全局权限修改
+    r'>\s*/etc/(passwd|shadow)',     // 覆盖系统文件
+    r'\$\(.*\).*\$\(.*\)',           // 嵌套命令替换
+  ];
+
+  // 命令白名单（命令前缀 → 最大超时秒数）
+  static readonly WHITELIST: Record&lt;string, number> = {
+    'ls': 10, 'cat': 10, 'grep': 30, 'find': 60,
+    'git': 120, 'docker': 120, 'kubectl': 60,
+    'ps': 10, 'top': 10, 'df': 10, 'du': 30,
+    'head': 10, 'tail': 10, 'wc': 10, 'sort': 30,
+    'awk': 30, 'sed': 30, 'curl': 30, 'ping': 10,
+    'netstat': 10, 'lsof': 10, 'ss': 10,
+  };
+
+  static validate(command: string): [boolean, string] {
+    /** 验证命令安全性：白名单检查 + 危险模式拦截 */
+    // 1. 命令注入防御：检查危险模式
+    for (const pattern of this.DANGEROUS_PATTERNS) {
+      const regex = new RegExp(pattern);
+      if (regex.test(command)) {
+        return [false, `危险命令模式被拦截: ${pattern}`];
+      }
+    }
+
+    // 2. 解析命令（简单按空格分割）
+    const parts = command.trim().split(/\s+/);
+    if (parts.length === 0 || !parts[0]) {
+      return [false, '空命令'];
+    }
+
+    // 3. 白名单检查
+    const cmdName = parts[0];
+    if (!(cmdName in this.WHITELIST)) {
+      return [false, `命令 '${cmdName}' 不在白名单中`];
+    }
+
+    // 4. 检查是否有命令链注入（; && || 等）
+    if ([';', '&&', '||'].some(op => command.includes(op))) {
+      const segments = command.split(/[;|&]+/);
+      for (const seg of segments) {
+        const trimmed = seg.trim();
+        if (trimmed) {
+          const [ok, msg] = this.validate(trimmed);
+          if (!ok) {
+            return [false, `链式命令段验证失败: ${msg}`];
+          }
+        }
+      }
+    }
+
+    return [true, '通过'];
+  }
+
+  static execute(command: string, timeout?: number): Promise&lt;ExecResult> {
+    /** 在安全环境中执行命令 */
+    // 1. 验证命令
+    const [ok, msg] = this.validate(command);
+    if (!ok) {
+      return Promise.resolve({ success: false, error: msg, output: '', returncode: -1 });
+    }
+
+    // 2. 确定超时
+    const cmdName = command.trim().split(/\s+/)[0];
+    const maxTimeout = this.WHITELIST[cmdName] ?? 30;
+    const effectiveTimeout = Math.min(timeout ?? maxTimeout, maxTimeout);
+
+    // 3. 执行命令（捕获输出、限制超时）
+    return new Promise((resolve) => {
+      exec(command, {
+        timeout: effectiveTimeout * 1000,
+        env: { ...process.env, PATH: '/usr/bin:/bin' },
+        maxBuffer: 1024 * 1024,
+      }, (error, stdout, stderr) => {
+        if (error) {
+          if (error.killed) {
+            resolve({ success: false, error: `命令超时（${effectiveTimeout}s）`, output: '', returncode: -1 });
+          } else {
+            resolve({ success: false, error: stderr || error.message, output: stdout, returncode: error.code ?? -1 });
+          }
+        } else {
+          resolve({ success: true, output: stdout, error: stderr, returncode: 0 });
+        }
+      });
+    });
+  }
+}
+
+// 使用示例
+(async () => {
+  const result = await SafeCommandExecutor.execute('git log --oneline -5');
+  console.log(result.success ? result.output : result.error);
+
+  // 危险命令会被拦截
+  const blocked = await SafeCommandExecutor.execute('rm -rf /');
+  // → { success: false, error: "危险命令模式被拦截: rm\s+-rf\s+/(?:\s|$)" }
+})();</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os/exec"
+	"regexp"
+	"strings"
+	"time"
+)
+
+// ExecResult 命令执行结果
+type ExecResult struct {
+	Success    bool   `json:"success"`
+	Output     string `json:"output"`
+	Error      string `json:"error"`
+	ReturnCode int    `json:"returncode"`
+}
+
+// SafeCommandExecutor CLI Agent 安全命令执行器
+type SafeCommandExecutor struct{}
+
+// 危险命令正则模式
+var dangerousPatterns = []string{
+	`rm\s+-rf\s+/(?:\s|$)`,        // rm -rf /
+	`mkfs\.\w+\s+/dev/`,            // 格式化磁盘
+	`dd\s+.*of=/dev/[sh]d`,         // dd 写入磁盘设备
+	`:\(\)\{.*\};:`,                // fork bomb
+	`curl\s+.*\|\s*(bash|sh)`,      // 远程脚本执行
+	`wget\s+.*\|\s*(bash|sh)`,      // 远程脚本执行
+	`sudo\s+rm\s+-rf`,              // sudo 删除
+	`chmod\s+-R\s+777\s+/`,         // 全局权限修改
+	`>\s*/etc/(passwd|shadow)`,     // 覆盖系统文件
+	`\$\(.*\).*\$\(.*\)`,           // 嵌套命令替换
+}
+
+// 命令白名单（命令前缀 → 最大超时秒数）
+var whitelist = map[string]int{
+	"ls": 10, "cat": 10, "grep": 30, "find": 60,
+	"git": 120, "docker": 120, "kubectl": 60,
+	"ps": 10, "top": 10, "df": 10, "du": 30,
+	"head": 10, "tail": 10, "wc": 10, "sort": 30,
+	"awk": 30, "sed": 30, "curl": 30, "ping": 10,
+	"netstat": 10, "lsof": 10, "ss": 10,
+}
+
+// Validate 验证命令安全性：白名单检查 + 危险模式拦截
+func Validate(command string) (bool, string) {
+	// 1. 命令注入防御：检查危险模式
+	for _, pattern := range dangerousPatterns {
+		matched, _ := regexp.MatchString(pattern, command)
+		if matched {
+			return false, fmt.Sprintf("危险命令模式被拦截: %s", pattern)
+		}
+	}
+
+	// 2. 解析命令
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return false, "空命令"
+	}
+
+	// 3. 白名单检查
+	cmdName := parts[0]
+	if _, ok := whitelist[cmdName]; !ok {
+		return false, fmt.Sprintf("命令 '%s' 不在白名单中", cmdName)
+	}
+
+	// 4. 检查是否有命令链注入（; && || 等）
+	for _, op := range []string{";", "&&", "||"} {
+		if strings.Contains(command, op) {
+			var segments []string
+			if op == ";" {
+				segments = strings.Split(command, ";")
+			} else {
+				segments = strings.Split(command, op)
+			}
+			for _, seg := range segments {
+				seg = strings.TrimSpace(seg)
+				if seg != "" {
+					ok, msg := Validate(seg)
+					if !ok {
+						return false, fmt.Sprintf("链式命令段验证失败: %s", msg)
+					}
+				}
+			}
+		}
+	}
+
+	return true, "通过"
+}
+
+// Execute 在安全环境中执行命令
+func Execute(command string, timeout ...int) ExecResult {
+	// 1. 验证命令
+	ok, msg := Validate(command)
+	if !ok {
+		return ExecResult{Success: false, Error: msg, Output: "", ReturnCode: -1}
+	}
+
+	// 2. 确定超时
+	parts := strings.Fields(command)
+	cmdName := parts[0]
+	maxTimeout := whitelist[cmdName]
+	if maxTimeout == 0 {
+		maxTimeout = 30
+	}
+	effectiveTimeout := maxTimeout
+	if len(timeout) > 0 && timeout[0] > 0 {
+		if timeout[0] < maxTimeout {
+			effectiveTimeout = timeout[0]
+		}
+	}
+
+	// 3. 执行命令（捕获输出、限制超时）
+	ctx := exec.Command("sh", "-c", command)
+	output, err := ctx.CombinedOutput()
+
+	// 设置超时（通过 goroutine 实现）
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-done:
+		case <-time.After(time.Duration(effectiveTimeout) * time.Second):
+			if ctx.Process != nil {
+				ctx.Process.Kill()
+			}
+		}
+	}()
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			done <- struct{}{}
+			return ExecResult{Success: false, Output: string(output), Error: string(exitErr.Stderr), ReturnCode: exitErr.ExitCode()}
+		}
+		done <- struct{}{}
+		return ExecResult{Success: false, Error: err.Error(), Output: "", ReturnCode: -1}
+	}
+	done <- struct{}{}
+	return ExecResult{Success: true, Output: string(output), Error: "", ReturnCode: 0}
+}
+
+// 使用示例
+func main() {
+	result := Execute("git log --oneline -5")
+	if result.Success {
+		fmt.Println(result.Output)
+	} else {
+		fmt.Println(result.Error)
+	}
+
+	// 危险命令会被拦截
+	blocked := Execute("rm -rf /")
+	// → {Success: false, Error: "危险命令模式被拦截: rm\s+-rf\s+/(?:\s|$)"}
+	fmt.Println(blocked.Error)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+public class SafeCommandExecutor {
+    /** CLI Agent 安全命令执行器 */
+
+    // 危险命令正则模式
+    static final List&lt;Pattern&gt; DANGEROUS_PATTERNS = List.of(
+        Pattern.compile("rm\\s+-rf\\s+/(?:\\s|$)"),       // rm -rf /
+        Pattern.compile("mkfs\\.\\w+\\s+/dev/"),           // 格式化磁盘
+        Pattern.compile("dd\\s+.*of=/dev/[sh]d"),             // dd 写入磁盘设备
+        Pattern.compile(":\\(\\)\\{.*\\};:"),              // fork bomb
+        Pattern.compile("curl\\s+.*\\|\\s*(bash|sh)"),     // 远程脚本执行
+        Pattern.compile("wget\\s+.*\\|\\s*(bash|sh)"),     // 远程脚本执行
+        Pattern.compile("sudo\\s+rm\\s+-rf"),                // sudo 删除
+        Pattern.compile("chmod\\s+-R\\s+777\\s+/"),        // 全局权限修改
+        Pattern.compile(">\\s*/etc/(passwd|shadow)"),         // 覆盖系统文件
+        Pattern.compile("\\$\\(.*\\).*\\$\\(.*\\)")    // 嵌套命令替换
+    );
+
+    // 命令白名单（命令前缀 → 最大超时秒数）
+    static final Map&lt;String, Integer&gt; WHITELIST = Map.ofEntries(
+        Map.entry("ls", 10), Map.entry("cat", 10), Map.entry("grep", 30), Map.entry("find", 60),
+        Map.entry("git", 120), Map.entry("docker", 120), Map.entry("kubectl", 60),
+        Map.entry("ps", 10), Map.entry("top", 10), Map.entry("df", 10), Map.entry("du", 30),
+        Map.entry("head", 10), Map.entry("tail", 10), Map.entry("wc", 10), Map.entry("sort", 30),
+        Map.entry("awk", 30), Map.entry("sed", 30), Map.entry("curl", 30), Map.entry("ping", 10),
+        Map.entry("netstat", 10), Map.entry("lsof", 10), Map.entry("ss", 10)
+    );
+
+    // 验证命令安全性：白名单检查 + 危险模式拦截
+    public static Object[] validate(String command) {
+        // 1. 命令注入防御：检查危险模式
+        for (Pattern pattern : DANGEROUS_PATTERNS) {
+            if (pattern.matcher(command).find()) {
+                return new Object[]{false, "危险命令模式被拦截: " + pattern.pattern()};
+            }
+        }
+
+        // 2. 解析命令
+        String[] parts = command.trim().split("\\s+");
+        if (parts.length == 0 || parts[0].isEmpty()) {
+            return new Object[]{false, "空命令"};
+        }
+
+        // 3. 白名单检查
+        String cmdName = parts[0];
+        if (!WHITELIST.containsKey(cmdName)) {
+            return new Object[]{false, "命令 '" + cmdName + "' 不在白名单中"};
+        }
+
+        // 4. 检查是否有命令链注入（; && || 等）
+        if (command.contains(";") || command.contains("&&") || command.contains("||")) {
+            String[] segments = command.split("[;|&]+");
+            for (String seg : segments) {
+                seg = seg.trim();
+                if (!seg.isEmpty()) {
+                    Object[] result = validate(seg);
+                    if (!(Boolean) result[0]) {
+                        return new Object[]{false, "链式命令段验证失败: " + result[1]};
+                    }
+                }
+            }
+        }
+
+        return new Object[]{true, "通过"};
+    }
+
+    // 在安全环境中执行命令
+    public static Map&lt;String, Object&gt; execute(String command, Integer timeout) {
+        // 1. 验证命令
+        Object[] validation = validate(command);
+        if (!(Boolean) validation[0]) {
+            return Map.of("success", false, "error", validation[1], "output", "");
+        }
+
+        // 2. 确定超时
+        String cmdName = command.trim().split("\\s+")[0];
+        int maxTimeout = WHITELIST.getOrDefault(cmdName, 30);
+        int actualTimeout = timeout != null ? Math.min(timeout, maxTimeout) : maxTimeout;
+
+        // 3. 执行命令（捕获输出、限制超时）
+        try {
+            ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+            pb.environment().clear();
+            pb.environment().put("PATH", "/usr/bin:/bin");
+            pb.redirectErrorStream(false);
+
+            Process process = pb.start();
+
+            // 超时控制
+            if (!process.waitFor(actualTimeout, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return Map.of("success", false, "error", "命令超时（" + actualTimeout + "s）", "output", "");
+            }
+
+            String stdout = new String(process.getInputStream().readAllBytes());
+            String stderr = new String(process.getErrorStream().readAllBytes());
+            int returnCode = process.exitValue();
+
+            Map&lt;String, Object&gt; result = new LinkedHashMap&lt;&gt;();
+            result.put("success", returnCode == 0);
+            result.put("output", stdout);
+            result.put("error", stderr);
+            result.put("returncode", returnCode);
+            return result;
+        } catch (Exception e) {
+            return Map.of("success", false, "error", e.getMessage(), "output", "");
+        }
+    }
+
+    public static void main(String[] args) {
+        // 使用示例
+        Map&lt;String, Object&gt; result = execute("git log --oneline -5", null);
+        if ((Boolean) result.get("success")) {
+            System.out.println(result.get("output"));
+        } else {
+            System.out.println(result.get("error"));
+        }
+
+        // 危险命令会被拦截
+        Map&lt;String, Object&gt; blocked = execute("rm -rf /", null);
+        System.out.println(blocked.get("error"));
+        // → 危险命令模式被拦截: rm\s+-rf\s+/(?:\s|$)
+    }
+}</pre></div>
 </div>
 
 <p>上面的安全命令执行器实现了四层防御：① 正则匹配拦截已知危险模式；② 命令白名单限制可执行范围；③ 链式命令分段验证；④ 运行时权限降级和环境隔离。在实际生产环境中，还需要加入命令审计日志（记录谁在什么时候执行了什么命令）和实时告警（检测到异常命令模式时通知管理员）。</p>
@@ -525,9 +926,8 @@ result = executor.execute("rm -rf /")
 
 <p>Few-Shot 示例是提升 NL2Shell 准确率的关键。好的示例库应该覆盖常见场景、包含边界情况、标注操作系统差异。示例不是越多越好——精选 20-30 个高质量示例比堆砌 200 个重复示例更有效。示例应按场景分类（文件操作、进程管理、网络诊断、版本控制、容器管理），每类 5-6 个。</p>
 
-<div class="code-block">
-  <span class="code-label">NL2Shell 完整实现：Prompt Engineering + Few-Shot + 上下文感知</span>
-<pre>import platform
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import platform
 import subprocess
 from typing import Optional
 
@@ -606,7 +1006,257 @@ class NL2Shell:
 nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
 cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
 print(f"生成的命令：{cmd}")
-</pre>
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Node.js built-in or npm package for: platform
+// Node.js built-in or npm package for: subprocess
+// TypeScript has built-in types, no import needed for Optional
+
+class NL2Shell {
+  /** docstring */
+
+  static readonly SYSTEM_PROMPT = """你是一个 Shell 命令专家。用户用自然语言描述需求，你生成对应的 Shell 命令。;
+
+  // 当前环境：
+  // - 操作系统：{os}
+  // - Shell：{shell}
+  // - 已安装工具：{tools}
+
+  // 规则：
+  // 1. 只输出命令，不要解释
+  // 2. 如果需要 sudo，在命令前加 sudo
+  // 3. 优先使用系统自带工具
+  // 4. 危险操作（删除、格式化）加 [需确认] 前缀
+  // 5. 不确定时输出最安全的命令
+
+  // 示例：
+  // 用户：查看当前目录下最大的5个文件
+  // 命令：du -ah . | sort -rh | head -5
+
+  // 用户：找出8080端口被哪个进程占用
+  // 命令：lsof -i :8080
+
+  // 用户：统计当前Git仓库的提交人数
+  // 命令：git shortlog -sn | wc -l
+
+  // 用户：查看Docker容器的资源使用情况
+  // 命令：docker stats --no-stream
+
+  // 用户：将最近3天的日志中ERROR提取出来
+  // 命令：find . -name "*.log" -mtime -3 -exec grep -l "ERROR" {{}} \\;
+  /** docstring */
+
+  static readonly FEW_SHOT_EXAMPLES = [;
+  // ("查看所有运行的容器", "docker ps"),
+  // ("列出最近5次Git提交", "git log --oneline -5"),
+  // ("查看磁盘使用情况", "df -h"),
+  // ("找出当前目录下所有.py文件", "find . -name '*.py' -type f"),
+  // ("查看系统内存使用", "free -h"    ]
+
+  constructor(api_key: string, base_url: string, model: string) {
+  // self.api_key = api_key
+  // self.base_url = base_url
+  // self.model = model
+
+  // def detect_os(self) -> dict:
+  /** docstring */
+// Node.js built-in or npm package for: shutil
+  // os_name = platform.system()
+  // shell = "zsh" if os_name == "Darwin" else "bash"
+  // tools = []
+  for (const tool of ["docker", "git", "kubectl", "python3", "node", "curl", "jq"]) {
+  if (shutil.which(tool)) {
+  // tools.append(tool)
+  return {"os": os_name, "shell": shell, "tools": tools};
+
+  // def generate_command(self, user_input: str) -> Optional[str]:
+  /** docstring */
+  // env = self.detect_os()
+  // prompt = self.SYSTEM_PROMPT.format(
+  // os = env["os"], shell=env["shell"], tools=", ".join(env["tools"])
+  // )
+// 调用 LLM API 生成命令
+  // examples_text = "\n".join(
+  // f"用户：{q}\n命令：{c}" for q, c in self.FEW_SHOT_EXAMPLES
+  // )
+  // full_prompt = f"{prompt}\n\n示例：\n{examples_text}\n\n用户：{user_input}\n命令："
+// 实际调用 LLM...
+  return full_prompt  # 简化示例;
+
+// 使用示例
+  // nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+  // cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
+  console.log(`生成的命令：${$1}`);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import platform
+// import subprocess
+// from typing import Optional
+
+// NL2Shell - CLI Agent class
+type NL2Shell struct {
+
+	// Python: SYSTEM_PROMPT = """你是一个 Shell 命令专家。用户用自然语言描述需求，你生成对应的 Shell 命令。
+
+	// Python: 当前环境：
+	// Python: - 操作系统：{os}
+	// Python: - Shell：{shell}
+	// Python: - 已安装工具：{tools}
+
+	// Python: 规则：
+	// Python: 1. 只输出命令，不要解释
+	// Python: 2. 如果需要 sudo，在命令前加 sudo
+	// Python: 3. 优先使用系统自带工具
+	// Python: 4. 危险操作（删除、格式化）加 [需确认] 前缀
+	// Python: 5. 不确定时输出最安全的命令
+
+	// Python: 示例：
+	// Python: 用户：查看当前目录下最大的5个文件
+	// Python: 命令：du -ah . | sort -rh | head -5
+
+	// Python: 用户：找出8080端口被哪个进程占用
+	// Python: 命令：lsof -i :8080
+
+	// Python: 用户：统计当前Git仓库的提交人数
+	// Python: 命令：git shortlog -sn | wc -l
+
+	// Python: 用户：查看Docker容器的资源使用情况
+	// Python: 命令：docker stats --no-stream
+
+	// Python: 用户：将最近3天的日志中ERROR提取出来
+	// Python: 命令：find . -name "*.log" -mtime -3 -exec grep -l "ERROR" {{}} \\;
+
+	// Python: FEW_SHOT_EXAMPLES = [
+	// Python: ("查看所有运行的容器", "docker ps"),
+	// Python: ("列出最近5次Git提交", "git log --oneline -5"),
+	// Python: ("查看磁盘使用情况", "df -h"),
+	// Python: ("找出当前目录下所有.py文件", "find . -name '*.py' -type f"),
+	// Python: ("查看系统内存使用", "free -h"    ]
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.api_key = api_key
+	// Python: self.base_url = base_url
+	// Python: self.model = model
+
+	// Python: def detect_os(self) -> dict:
+// import shutil
+	// Python: os_name = platform.system()
+	// Python: shell = "zsh" if os_name == "Darwin" else "bash"
+	// Python: tools = []
+	for _, tool := range ["docker", "git", "kubectl", "python3", "node", "curl", "jq"] {
+	if shutil.which(tool) {
+	// Python: tools.append(tool)
+	return {"os": os_name, "shell": shell, "tools": tools}
+
+	// Python: def generate_command(self, user_input: str) -> Optional[str]:
+	// Python: env = self.detect_os()
+	// Python: prompt = self.SYSTEM_PROMPT.format(
+	// Python: os=env["os"], shell=env["shell"], tools=", ".join(env["tools"])
+	// Python: )
+// 调用 LLM API 生成命令
+	// Python: examples_text = "\n".join(
+	// Python: f"用户：{q}\n命令：{c}" for q, c in self.FEW_SHOT_EXAMPLES
+	// Python: )
+	// Python: full_prompt = f"{prompt}\n\n示例：\n{examples_text}\n\n用户：{user_input}\n命令："
+// 实际调用 LLM...
+	return full_prompt  # 简化示例
+
+// 使用示例
+	// Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+	// Python: cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
+	fmt.Println(f"生成的命令：{cmd}")
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import platform
+    // import subprocess
+    // from typing import Optional
+
+public class NL2Shell {
+
+        // Python: SYSTEM_PROMPT = """你是一个 Shell 命令专家。用户用自然语言描述需求，你生成对应的 Shell 命令。
+
+        // Python: 当前环境：
+        // Python: - 操作系统：{os}
+        // Python: - Shell：{shell}
+        // Python: - 已安装工具：{tools}
+
+        // Python: 规则：
+        // Python: 1. 只输出命令，不要解释
+        // Python: 2. 如果需要 sudo，在命令前加 sudo
+        // Python: 3. 优先使用系统自带工具
+        // Python: 4. 危险操作（删除、格式化）加 [需确认] 前缀
+        // Python: 5. 不确定时输出最安全的命令
+
+        // Python: 示例：
+        // Python: 用户：查看当前目录下最大的5个文件
+        // Python: 命令：du -ah . | sort -rh | head -5
+
+        // Python: 用户：找出8080端口被哪个进程占用
+        // Python: 命令：lsof -i :8080
+
+        // Python: 用户：统计当前Git仓库的提交人数
+        // Python: 命令：git shortlog -sn | wc -l
+
+        // Python: 用户：查看Docker容器的资源使用情况
+        // Python: 命令：docker stats --no-stream
+
+        // Python: 用户：将最近3天的日志中ERROR提取出来
+        // Python: 命令：find . -name "*.log" -mtime -3 -exec grep -l "ERROR" {{}} \\;
+
+        // Python: FEW_SHOT_EXAMPLES = [
+        // Python: ("查看所有运行的容器", "docker ps"),
+        // Python: ("列出最近5次Git提交", "git log --oneline -5"),
+        // Python: ("查看磁盘使用情况", "df -h"),
+        // Python: ("找出当前目录下所有.py文件", "find . -name '*.py' -type f"),
+        // Python: ("查看系统内存使用", "free -h"    ]
+
+    public NL2Shell(api_keyString, base_urlString, modelString) {
+        // Python: self.api_key = api_key
+        // Python: self.base_url = base_url
+        // Python: self.model = model
+
+        // Python: def detect_os(self) -> dict:
+    // import shutil
+        // Python: os_name = platform.system()
+        // Python: shell = "zsh" if os_name == "Darwin" else "bash"
+        // Python: tools = []
+        for (var tool : ["docker", "git", "kubectl", "python3", "node", "curl", "jq"]) {
+        if (shutil.which(tool)) {
+        // Python: tools.append(tool)
+        return {"os": os_name, "shell": shell, "tools": tools};
+
+        // Python: def generate_command(self, user_input: str) -> Optional[str]:
+        // Python: env = self.detect_os()
+        // Python: prompt = self.SYSTEM_PROMPT.format(
+        // Python: os=env["os"], shell=env["shell"], tools=", ".join(env["tools"])
+        // Python: )
+    // 调用 LLM API 生成命令
+        // Python: examples_text = "\n".join(
+        // Python: f"用户：{q}\n命令：{c}" for q, c in self.FEW_SHOT_EXAMPLES
+        // Python: )
+        // Python: full_prompt = f"{prompt}\n\n示例：\n{examples_text}\n\n用户：{user_input}\n命令："
+    // 实际调用 LLM...
+        return full_prompt  # 简化示例;
+
+    // 使用示例
+        // Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+        // Python: cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
+        System.out.println(String.format("$1"));
+    }
+}</pre></div>
 </div>
 
 <h3 class="sub-heading">NL2Shell 准确率评测</h3>
@@ -678,9 +1328,8 @@ print(f"生成的命令：{cmd}")
 
 <h3 class="sub-heading">DevOps CI/CD 对接实战</h3>
 
-<div class="code-block">
-  <span class="code-label">DevOps CI/CD Pipeline 自动对接示例</span>
-<pre>import subprocess
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import subprocess
 import json
 from typing import List
 
@@ -727,7 +1376,161 @@ class DevOpsAgent:
 agent = DevOpsAgent("user-service")
 result = agent.deploy("staging")
 print(json.dumps(result, indent=2, ensure_ascii=False))
-</pre>
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Node.js built-in or npm package for: subprocess
+// Node.js built-in or npm package for: json
+// TypeScript has built-in types, no import needed for List
+
+class DevOpsAgent {
+  /** docstring */
+
+  constructor(project_name: string) {
+  // self.project = project_name
+  // self.pipeline_steps = []
+
+  // def deploy(self, env: str = "staging") -> dict:
+  /** docstring */
+  // steps = [
+  // ("构建镜像", f"docker build -t {self.project}:{env} ."),
+  // ("运行测试", "pytest tests/ --cov --cov-report=xml"),
+  // ("推送镜像", f"docker push registry.cn-hangzhou.aliyuncs.com/xfg/{self.project}:{env}"),
+  // ("滚动更新", f"kubectl set image deployment/{self.project} app={self.project}:{env}"),
+  // ("健康检查", f"kubectl rollout status deployment/{self.project} --timeout=300s"),
+  // ]
+  // results = {}
+  for (const [step_name, cmd] of steps) {
+  console.log(`▶ ${$1}...`);
+  // ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+  if (ret.returncode != 0) {
+  // results[step_name] = f"FAIL: {ret.stderr[:200]}"
+  // self.rollback(env)
+  break;
+  // results[step_name] = "OK"
+  return results;
+
+  rollback(env: string) {
+  /** docstring */
+  console.log("⚠️ 部署失败，执行回滚...");
+  // subprocess.run(f"kubectl rollout undo deployment/{self.project}", shell=True)
+
+  // def analyze_logs(self, since: str = "5m") -> str:
+  /** docstring */
+  // cmd = f"kubectl logs deployment/{self.project} --since={since} --tail=1000"
+  // logs = subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+  // errors = [l for l in logs.split("\n") if "ERROR" in l or "Exception" in l]
+  return `发现 {len(errors)} 条错误\n` + "\n".join(errors[:10]);
+
+// 使用：用户说"部署到staging" → Agent 自动执行5步流水线
+  // agent = DevOpsAgent("user-service")
+  // result = agent.deploy("staging")
+  console.log(json.dumps(result, indent=2, ensure_ascii=False));
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import subprocess
+// import json
+// from typing import List
+
+// DevOpsAgent - CLI Agent class
+type DevOpsAgent struct {
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.project = project_name
+	// Python: self.pipeline_steps = []
+
+	// Python: def deploy(self, env: str = "staging") -> dict:
+	// Python: steps = [
+	// Python: ("构建镜像", f"docker build -t {self.project}:{env} ."),
+	// Python: ("运行测试", "pytest tests/ --cov --cov-report=xml"),
+	// Python: ("推送镜像", f"docker push registry.cn-hangzhou.aliyuncs.com/xfg/{self.project}:{env}"),
+	// Python: ("滚动更新", f"kubectl set image deployment/{self.project} app={self.project}:{env}"),
+	// Python: ("健康检查", f"kubectl rollout status deployment/{self.project} --timeout=300s"),
+	// Python: ]
+	// Python: results = {}
+	// Python: for step_name, cmd in steps:
+	fmt.Println(f"▶ {step_name}...")
+	// Python: ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+	if ret.returncode != 0 {
+	// Python: results[step_name] = f"FAIL: {ret.stderr[:200]}"
+	// Python: self.rollback(env)
+	break
+	// Python: results[step_name] = "OK"
+	return results
+
+func rollback() {
+	fmt.Println("⚠️ 部署失败，执行回滚...")
+	// Python: subprocess.run(f"kubectl rollout undo deployment/{self.project}", shell=True)
+
+	// Python: def analyze_logs(self, since: str = "5m") -> str:
+	// Python: cmd = f"kubectl logs deployment/{self.project} --since={since} --tail=1000"
+	// Python: logs = subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+	// Python: errors = [l for l in logs.split("\n") if "ERROR" in l or "Exception" in l]
+	return f"发现 {len(errors)} 条错误\n" + "\n".join(errors[:10])
+
+// 使用：用户说"部署到staging" → Agent 自动执行5步流水线
+	// Python: agent = DevOpsAgent("user-service")
+	// Python: result = agent.deploy("staging")
+	fmt.Println(json.dumps(result, indent=2, ensure_ascii=False))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import subprocess
+    // import json
+    // from typing import List
+
+public class DevOpsAgent {
+
+    public DevOpsAgent(project_nameString) {
+        // Python: self.project = project_name
+        // Python: self.pipeline_steps = []
+
+        // Python: def deploy(self, env: str = "staging") -> dict:
+        // Python: steps = [
+        // Python: ("构建镜像", f"docker build -t {self.project}:{env} ."),
+        // Python: ("运行测试", "pytest tests/ --cov --cov-report=xml"),
+        // Python: ("推送镜像", f"docker push registry.cn-hangzhou.aliyuncs.com/xfg/{self.project}:{env}"),
+        // Python: ("滚动更新", f"kubectl set image deployment/{self.project} app={self.project}:{env}"),
+        // Python: ("健康检查", f"kubectl rollout status deployment/{self.project} --timeout=300s"),
+        // Python: ]
+        // Python: results = {}
+        // Python: for step_name, cmd in steps:
+        System.out.println(String.format("$1"));
+        // Python: ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+        if (ret.returncode != 0) {
+        // Python: results[step_name] = f"FAIL: {ret.stderr[:200]}"
+        // Python: self.rollback(env)
+        break;
+        // Python: results[step_name] = "OK"
+        return results;
+
+    public static void rollback(envString) {
+        System.out.println("⚠️ 部署失败，执行回滚...");
+        // Python: subprocess.run(f"kubectl rollout undo deployment/{self.project}", shell=True)
+
+        // Python: def analyze_logs(self, since: str = "5m") -> str:
+        // Python: cmd = f"kubectl logs deployment/{self.project} --since={since} --tail=1000"
+        // Python: logs = subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+        // Python: errors = [l for l in logs.split("\n") if "ERROR" in l or "Exception" in l]
+        return f"发现 {len(errors)} 条错误\n" + "\n".join(errors[:10]);
+
+    // 使用：用户说"部署到staging" → Agent 自动执行5步流水线
+        // Python: agent = DevOpsAgent("user-service")
+        // Python: result = agent.deploy("staging")
+        System.out.println(json.dumps(result, indent=2, ensure_ascii=False));
+    }
+}</pre></div>
 </div>
 
 <!-- ===== 14.6 主流 CLI Agent 框架实战 ===== -->
@@ -752,9 +1555,8 @@ print(json.dumps(result, indent=2, ensure_ascii=False))
 
 <h3 class="sub-heading">自建 CLI Agent 框架</h3>
 
-<div class="code-block">
-  <span class="code-label">自建最小 CLI Agent 框架（Python，含安全沙箱 + NL2Shell + 命令执行）</span>
-<pre>import subprocess
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import subprocess
 import re
 import os
 from typing import Optional, List
@@ -831,7 +1633,250 @@ class CLIAgent:
 agent = CLIAgent()
 print(agent.chat("ls -la"))
 print(agent.chat("git log --oneline -5"))
-</pre>
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Node.js built-in or npm package for: subprocess
+// Node.js built-in or npm package for: re
+// Node.js built-in or npm package for: os
+// TypeScript has built-in types, no import needed for Optional, List
+import {dataclass} from 'dataclasses';
+
+  // @dataclass
+class CommandResult {
+  // success: bool
+  // output: str
+  // error: str
+  // command: str
+
+class CLIAgent {
+  /** docstring */
+
+// 危险命令模式
+  static readonly DANGEROUS_PATTERNS = [;
+  // r"rm\s+-rf\s+/",
+  // r"dd\s+if=",
+  // r"mkfs\.",
+  // r"shutdown",
+  // r"reboot",
+  // r">\s*/dev/sda",
+  // r"chmod\s+777\s+/",
+  // r":\(\)\{.*\|.*&\};",  # fork bomb
+  // ]
+
+  constructor(allowed_commands: str[] = null) {
+  // self.history: List[str] = []
+  // self.allowed = allowed_commands or [
+  // "ls", "cat", "grep", "find", "wc", "head", "tail", "sort",
+  // "git", "docker", "kubectl", "python3", "node", "curl", "jq",
+  // "du", "df", "ps", "top", "lsof", "netstat", "diff", "echo",
+  // ]
+
+  // def is_safe(self, command: str) -> bool:
+  /** docstring */
+// 检查危险模式
+  for (const pattern of self.DANGEROUS_PATTERNS) {
+  if (re.search(pattern, command)) {
+  return false;
+// 检查白名单
+  // base_cmd = command.strip().split()[0] if command.strip() else ""
+  return base_cmd in self.allowed;
+
+  // def execute(self, command: str, timeout: int = 30) -> CommandResult:
+  /** docstring */
+  if (!self.is_safe(command)) {
+  return CommandResult(false, "", "命令被安全策略拦截", command);
+  try {
+  // ret = subprocess.run(
+  // command, shell=True, capture_output=True,
+  // text = True, timeout=timeout,
+  // env = {**os.environ, "LANG": "en_US.UTF-8"}
+  // )
+  // self.history.append(command)
+  return CommandResult(;
+  // ret.returncode == 0, ret.stdout, ret.stderr, command
+  // )
+  // except subprocess.TimeoutExpired:
+  return CommandResult(false, "", `命令超时（${$1}s）`, command);
+
+  // def chat(self, user_input: str) -> str:
+  /** docstring */
+// 这里接入 NL2Shell 模块
+// 简化示例：直接执行用户输入的命令
+  // result = self.execute(user_input)
+  if (result.success) {
+  return `✅ {result.output[:500]}`;
+  } else {
+  return `❌ {result.error}`;
+
+// 使用
+  // agent = CLIAgent()
+  console.log(agent.chat("ls -la"));
+  console.log(agent.chat("git log --oneline -5"));
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// import subprocess
+// import re
+// import os
+// from typing import Optional, List
+// from dataclasses import dataclass
+
+// CommandResult - CLI Agent class
+type CommandResult struct {
+	// Python: success: bool
+	// Python: output: str
+	// Python: error: str
+	// Python: command: str
+
+// CLIAgent - CLI Agent class
+type CLIAgent struct {
+
+// 危险命令模式
+	// Python: DANGEROUS_PATTERNS = [
+	// Python: r"rm\s+-rf\s+/",
+	// Python: r"dd\s+if=",
+	// Python: r"mkfs\.",
+	// Python: r"shutdown",
+	// Python: r"reboot",
+	// Python: r">\s*/dev/sda",
+	// Python: r"chmod\s+777\s+/",
+	// Python: r":\(\)\{.*\|.*&\};",  # fork bomb
+	// Python: ]
+
+func New__init__() *__init__ {
+	return &__init__{}
+}
+	// Python: self.history: List[str] = []
+	// Python: self.allowed = allowed_commands or [
+	// Python: "ls", "cat", "grep", "find", "wc", "head", "tail", "sort",
+	// Python: "git", "docker", "kubectl", "python3", "node", "curl", "jq",
+	// Python: "du", "df", "ps", "top", "lsof", "netstat", "diff", "echo",
+	// Python: ]
+
+	// Python: def is_safe(self, command: str) -> bool:
+// 检查危险模式
+	for _, pattern := range self.DANGEROUS_PATTERNS {
+	if re.search(pattern, command) {
+	return false
+// 检查白名单
+	// Python: base_cmd = command.strip().split()[0] if command.strip() else ""
+	return base_cmd in self.allowed
+
+	// Python: def execute(self, command: str, timeout: int = 30) -> CommandResult:
+	if not self.is_safe(command) {
+	return CommandResult(false, "", "命令被安全策略拦截", command)
+	// try block
+	// Python: ret = subprocess.run(
+	// Python: command, shell=True, capture_output=True,
+	// Python: text=True, timeout=timeout,
+	// Python: env={**os.environ, "LANG": "en_US.UTF-8"}
+	// Python: )
+	// Python: self.history.append(command)
+	return CommandResult(
+	// Python: ret.returncode == 0, ret.stdout, ret.stderr, command
+	// Python: )
+	// except block
+	return CommandResult(false, "", f"命令超时（{timeout}s）", command)
+
+	// Python: def chat(self, user_input: str) -> str:
+// 这里接入 NL2Shell 模块
+// 简化示例：直接执行用户输入的命令
+	// Python: result = self.execute(user_input)
+	if result.success {
+	return f"✅ {result.output[:500]}"
+	} else {
+	return f"❌ {result.error}"
+
+// 使用
+	// Python: agent = CLIAgent()
+	fmt.Println(agent.chat("ls -la"))
+	fmt.Println(agent.chat("git log --oneline -5"))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // import subprocess
+    // import re
+    // import os
+    // from typing import Optional, List
+    // from dataclasses import dataclass
+
+public class CommandResult {
+        // Python: success: bool
+        // Python: output: str
+        // Python: error: str
+        // Python: command: str
+
+public class CLIAgent {
+
+    // 危险命令模式
+        // Python: DANGEROUS_PATTERNS = [
+        // Python: r"rm\s+-rf\s+/",
+        // Python: r"dd\s+if=",
+        // Python: r"mkfs\.",
+        // Python: r"shutdown",
+        // Python: r"reboot",
+        // Python: r">\s*/dev/sda",
+        // Python: r"chmod\s+777\s+/",
+        // Python: r":\(\)\{.*\|.*&\};",  # fork bomb
+        // Python: ]
+
+    public CLIAgent(allowed_commandsList&lt;str> ) {
+        // Python: self.history: List[str] = []
+        // Python: self.allowed = allowed_commands or [
+        // Python: "ls", "cat", "grep", "find", "wc", "head", "tail", "sort",
+        // Python: "git", "docker", "kubectl", "python3", "node", "curl", "jq",
+        // Python: "du", "df", "ps", "top", "lsof", "netstat", "diff", "echo",
+        // Python: ]
+
+        // Python: def is_safe(self, command: str) -> bool:
+    // 检查危险模式
+        for (var pattern : self.DANGEROUS_PATTERNS) {
+        if (re.search(pattern, command)) {
+        return false;
+    // 检查白名单
+        // Python: base_cmd = command.strip().split()[0] if command.strip() else ""
+        return base_cmd in self.allowed;
+
+        // Python: def execute(self, command: str, timeout: int = 30) -> CommandResult:
+        if (!self.is_safe(command)) {
+        return CommandResult(false, "", "命令被安全策略拦截", command);
+        // Python: try:
+        // Python: ret = subprocess.run(
+        // Python: command, shell=True, capture_output=True,
+        // Python: text=True, timeout=timeout,
+        // Python: env={**os.environ, "LANG": "en_US.UTF-8"}
+        // Python: )
+        // Python: self.history.append(command)
+        return CommandResult(;
+        // Python: ret.returncode == 0, ret.stdout, ret.stderr, command
+        // Python: )
+        // Python: except subprocess.TimeoutExpired:
+        return CommandResult(false, "", f"命令超时（{timeout}s）", command);
+
+        // Python: def chat(self, user_input: str) -> str:
+    // 这里接入 NL2Shell 模块
+    // 简化示例：直接执行用户输入的命令
+        // Python: result = self.execute(user_input)
+        if (result.success) {
+        return f"✅ {result.output[:500]}";
+        } else {
+        return f"❌ {result.error}";
+
+    // 使用
+        // Python: agent = CLIAgent()
+        System.out.println(agent.chat("ls -la"));
+        System.out.println(agent.chat("git log --oneline -5"));
+    }
+}</pre></div>
 </div>
 
 <svg class="flowchart-svg" viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
@@ -1187,9 +2232,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">企业级 Agent 架构配置示例</h3>
 
-<div class="code-block">
-  <span class="code-label">企业级 Agent 架构配置（Python）</span>
-<pre># ===== 企业级 Agent 架构配置 =====
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># ===== 企业级 Agent 架构配置 =====
 
 # 1. Gateway 层配置
 gateway_config = {
@@ -1297,7 +2341,349 @@ agent = EnterpriseAgent(
 # 运行时，每个请求经过完整链路：
 # 用户请求 → Gateway(认证限流) → Safety(权限检查)
 # → Engine(意图识别) → Context(prompt组装) → LLM Router(模型路由)
-# → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)</pre>
+# → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// ===== 企业级 Agent 架构配置 =====
+
+// 1. Gateway 层配置
+  const gateway_config = {;
+  // "rate_limit": {
+  // "max_requests_per_minute": 100,
+  // "max_tokens_per_day": 500000
+  // },
+  // "auth": {
+  // "type": "oauth2",
+  // "scopes": ["agent:read", "agent:write", "agent:admin"]
+  // },
+  // "circuit_breaker": {
+  // "failure_threshold": 5,      # 连续5次失败→熔断
+  // "recovery_timeout": 30,       # 30秒后尝试恢复
+  // "fallback_response": "服务暂时不可用，请稍后重试"
+  // }
+  // }
+
+// 2. LLM Router 层配置
+  const llm_router_config = {;
+  // "models": {
+  // "complex": "gpt-4o",         # 复杂推理：强模型
+  // "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+  // "fallback": "qwen-turbo"      # 降级：国产模型兜底
+  // },
+  // "cache": {
+  // "enabled": True,
+  // "ttl": 3600,                  # 缓存1小时
+  // "similarity_threshold": 0.95   # 相似度≥0.95命中缓存
+  // },
+  // "cost_budget": {
+  // "daily_limit": 50.0,          # 日预算$50
+  // "alert_threshold": 0.8        # 超80%告警
+  // }
+  // }
+
+// 3. Memory 层配置
+  const memory_config = {;
+  // "short_term": {
+  // "max_turns": 10,              # 短期记忆保留10轮
+  // "compression_threshold": 4000 # 超4000 tokens触发压缩
+  // },
+  // "long_term": {
+  // "vector_db": "milvus",
+  // "embedding_model": "text-embedding-3-small"
+  // },
+  // "working": {
+  // "max_tasks": 5,               # 同时追踪5个任务状态
+  // "ttl": 86400                   # 任务状态24小时过期
+  // }
+  // }
+
+// 4. Safety 层配置
+  const safety_config = {;
+  // "permissions": {
+  // "admin": ["all"],
+  // "operator": ["tool:search", "tool:weather", "tool:translate"],
+  // "viewer": ["tool:search", "tool:weather"]
+  // },
+  // "content_filter": {
+  // "input_filter": True,          # 输入过滤（防注入）
+  // "output_filter": True          # 输出过滤（防泄露）
+  // },
+  // "audit": {
+  // "log_level": "full",           # 记录所有操作
+  // "retention_days": 90           # 审计日志保留90天
+  // },
+  // "approval_required": ["tool:delete", "tool:payment", "tool:email_send"]
+  // }
+
+// 5. Observability 层配置
+  const observability_config = {;
+  // "logging": {
+  // "level": "INFO",
+  // "format": "structured_json",
+  // "destination": "elasticsearch"
+  // },
+  // "metrics": {
+  // "tracer": "langfuse",
+  // "prometheus": {
+  // "track": ["latency", "token_usage", "task_success_rate", "cost"]
+  // }
+  // },
+  // "alerts": {
+  // "channels": ["feishu_webhook", "email"],
+  // "rules": [
+  // {"metric": "latency_p99", "threshold": 10, "unit": "seconds"},
+  // {"metric": "error_rate", "threshold": 0.05},
+  // {"metric": "daily_cost", "threshold": 40, "unit": "USD"}
+  // ]
+  // }
+  // }
+
+// ===== 组装完整架构 =====
+import {EnterpriseAgent} from 'agent_framework';
+
+  const agent = EnterpriseAgent(;
+  const gateway = gateway_config,;
+  const llm_router = llm_router_config,;
+  const memory = memory_config,;
+  const safety = safety_config,;
+  const observability = observability_config;
+  // )
+
+// 运行时，每个请求经过完整链路：
+// 用户请求 → Gateway(认证限流) → Safety(权限检查)
+// → Engine(意图识别) → Context(prompt组装) → LLM Router(模型路由)
+// → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// ===== 企业级 Agent 架构配置 =====
+
+// 1. Gateway 层配置
+	// Python: gateway_config = {
+	// Python: "rate_limit": {
+	// Python: "max_requests_per_minute": 100,
+	// Python: "max_tokens_per_day": 500000
+	// Python: },
+	// Python: "auth": {
+	// Python: "type": "oauth2",
+	// Python: "scopes": ["agent:read", "agent:write", "agent:admin"]
+	// Python: },
+	// Python: "circuit_breaker": {
+	// Python: "failure_threshold": 5,      # 连续5次失败→熔断
+	// Python: "recovery_timeout": 30,       # 30秒后尝试恢复
+	// Python: "fallback_response": "服务暂时不可用，请稍后重试"
+	// Python: }
+	// Python: }
+
+// 2. LLM Router 层配置
+	// Python: llm_router_config = {
+	// Python: "models": {
+	// Python: "complex": "gpt-4o",         # 复杂推理：强模型
+	// Python: "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+	// Python: "fallback": "qwen-turbo"      # 降级：国产模型兜底
+	// Python: },
+	// Python: "cache": {
+	// Python: "enabled": True,
+	// Python: "ttl": 3600,                  # 缓存1小时
+	// Python: "similarity_threshold": 0.95   # 相似度≥0.95命中缓存
+	// Python: },
+	// Python: "cost_budget": {
+	// Python: "daily_limit": 50.0,          # 日预算$50
+	// Python: "alert_threshold": 0.8        # 超80%告警
+	// Python: }
+	// Python: }
+
+// 3. Memory 层配置
+	// Python: memory_config = {
+	// Python: "short_term": {
+	// Python: "max_turns": 10,              # 短期记忆保留10轮
+	// Python: "compression_threshold": 4000 # 超4000 tokens触发压缩
+	// Python: },
+	// Python: "long_term": {
+	// Python: "vector_db": "milvus",
+	// Python: "embedding_model": "text-embedding-3-small"
+	// Python: },
+	// Python: "working": {
+	// Python: "max_tasks": 5,               # 同时追踪5个任务状态
+	// Python: "ttl": 86400                   # 任务状态24小时过期
+	// Python: }
+	// Python: }
+
+// 4. Safety 层配置
+	// Python: safety_config = {
+	// Python: "permissions": {
+	// Python: "admin": ["all"],
+	// Python: "operator": ["tool:search", "tool:weather", "tool:translate"],
+	// Python: "viewer": ["tool:search", "tool:weather"]
+	// Python: },
+	// Python: "content_filter": {
+	// Python: "input_filter": True,          # 输入过滤（防注入）
+	// Python: "output_filter": True          # 输出过滤（防泄露）
+	// Python: },
+	// Python: "audit": {
+	// Python: "log_level": "full",           # 记录所有操作
+	// Python: "retention_days": 90           # 审计日志保留90天
+	// Python: },
+	// Python: "approval_required": ["tool:delete", "tool:payment", "tool:email_send"]
+	// Python: }
+
+// 5. Observability 层配置
+	// Python: observability_config = {
+	// Python: "logging": {
+	// Python: "level": "INFO",
+	// Python: "format": "structured_json",
+	// Python: "destination": "elasticsearch"
+	// Python: },
+	// Python: "metrics": {
+	// Python: "tracer": "langfuse",
+	// Python: "prometheus": {
+	// Python: "track": ["latency", "token_usage", "task_success_rate", "cost"]
+	// Python: }
+	// Python: },
+	// Python: "alerts": {
+	// Python: "channels": ["feishu_webhook", "email"],
+	// Python: "rules": [
+	// Python: {"metric": "latency_p99", "threshold": 10, "unit": "seconds"},
+	// Python: {"metric": "error_rate", "threshold": 0.05},
+	// Python: {"metric": "daily_cost", "threshold": 40, "unit": "USD"}
+	// Python: ]
+	// Python: }
+	// Python: }
+
+// ===== 组装完整架构 =====
+// from agent_framework import EnterpriseAgent
+
+	// Python: agent = EnterpriseAgent(
+	// Python: gateway=gateway_config,
+	// Python: llm_router=llm_router_config,
+	// Python: memory=memory_config,
+	// Python: safety=safety_config,
+	// Python: observability=observability_config
+	// Python: )
+
+// 运行时，每个请求经过完整链路：
+// 用户请求 → Gateway(认证限流) → Safety(权限检查)
+// → Engine(意图识别) → Context(prompt组装) → LLM Router(模型路由)
+// → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // ===== 企业级 Agent 架构配置 =====
+
+    // 1. Gateway 层配置
+        // Python: gateway_config = {
+        // Python: "rate_limit": {
+        // Python: "max_requests_per_minute": 100,
+        // Python: "max_tokens_per_day": 500000
+        // Python: },
+        // Python: "auth": {
+        // Python: "type": "oauth2",
+        // Python: "scopes": ["agent:read", "agent:write", "agent:admin"]
+        // Python: },
+        // Python: "circuit_breaker": {
+        // Python: "failure_threshold": 5,      # 连续5次失败→熔断
+        // Python: "recovery_timeout": 30,       # 30秒后尝试恢复
+        // Python: "fallback_response": "服务暂时不可用，请稍后重试"
+        // Python: }
+        // Python: }
+
+    // 2. LLM Router 层配置
+        // Python: llm_router_config = {
+        // Python: "models": {
+        // Python: "complex": "gpt-4o",         # 复杂推理：强模型
+        // Python: "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+        // Python: "fallback": "qwen-turbo"      # 降级：国产模型兜底
+        // Python: },
+        // Python: "cache": {
+        // Python: "enabled": True,
+        // Python: "ttl": 3600,                  # 缓存1小时
+        // Python: "similarity_threshold": 0.95   # 相似度≥0.95命中缓存
+        // Python: },
+        // Python: "cost_budget": {
+        // Python: "daily_limit": 50.0,          # 日预算$50
+        // Python: "alert_threshold": 0.8        # 超80%告警
+        // Python: }
+        // Python: }
+
+    // 3. Memory 层配置
+        // Python: memory_config = {
+        // Python: "short_term": {
+        // Python: "max_turns": 10,              # 短期记忆保留10轮
+        // Python: "compression_threshold": 4000 # 超4000 tokens触发压缩
+        // Python: },
+        // Python: "long_term": {
+        // Python: "vector_db": "milvus",
+        // Python: "embedding_model": "text-embedding-3-small"
+        // Python: },
+        // Python: "working": {
+        // Python: "max_tasks": 5,               # 同时追踪5个任务状态
+        // Python: "ttl": 86400                   # 任务状态24小时过期
+        // Python: }
+        // Python: }
+
+    // 4. Safety 层配置
+        // Python: safety_config = {
+        // Python: "permissions": {
+        // Python: "admin": ["all"],
+        // Python: "operator": ["tool:search", "tool:weather", "tool:translate"],
+        // Python: "viewer": ["tool:search", "tool:weather"]
+        // Python: },
+        // Python: "content_filter": {
+        // Python: "input_filter": True,          # 输入过滤（防注入）
+        // Python: "output_filter": True          # 输出过滤（防泄露）
+        // Python: },
+        // Python: "audit": {
+        // Python: "log_level": "full",           # 记录所有操作
+        // Python: "retention_days": 90           # 审计日志保留90天
+        // Python: },
+        // Python: "approval_required": ["tool:delete", "tool:payment", "tool:email_send"]
+        // Python: }
+
+    // 5. Observability 层配置
+        // Python: observability_config = {
+        // Python: "logging": {
+        // Python: "level": "INFO",
+        // Python: "format": "structured_json",
+        // Python: "destination": "elasticsearch"
+        // Python: },
+        // Python: "metrics": {
+        // Python: "tracer": "langfuse",
+        // Python: "prometheus": {
+        // Python: "track": ["latency", "token_usage", "task_success_rate", "cost"]
+        // Python: }
+        // Python: },
+        // Python: "alerts": {
+        // Python: "channels": ["feishu_webhook", "email"],
+        // Python: "rules": [
+        // Python: {"metric": "latency_p99", "threshold": 10, "unit": "seconds"},
+        // Python: {"metric": "error_rate", "threshold": 0.05},
+        // Python: {"metric": "daily_cost", "threshold": 40, "unit": "USD"}
+        // Python: ]
+        // Python: }
+        // Python: }
+
+    // ===== 组装完整架构 =====
+    // from agent_framework import EnterpriseAgent
+
+        // Python: agent = EnterpriseAgent(
+        // Python: gateway=gateway_config,
+        // Python: llm_router=llm_router_config,
+        // Python: memory=memory_config,
+        // Python: safety=safety_config,
+        // Python: observability=observability_config
+        // Python: )
+
+    // 运行时，每个请求经过完整链路：
+    // 用户请求 → Gateway(认证限流) → Safety(权限检查)
+    // → Engine(意图识别) → Context(prompt组装) → LLM Router(模型路由)
+    // → Tool(执行) → Memory(存入) → 输出 → Observability(旁路记录)
+}</pre></div>
 </div>
 
 <!-- ===== 14.10 核心模块拆分与职责边界 ===== -->
@@ -1483,9 +2869,8 @@ setTimeout(() => {
 
 <h3 class="sub-heading">模块接口定义示例</h3>
 
-<div class="code-block">
-  <span class="code-label">六大核心模块接口定义（Python Protocol）</span>
-<pre># ===== 六大核心模块接口定义 =====
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># ===== 六大核心模块接口定义 =====
 from typing import Protocol, List, Optional
 from dataclasses import dataclass
 
@@ -1581,7 +2966,280 @@ class SafetyGuard(Protocol):
 # 1. 每个Protocol只定义自己职责范围内的方法
 # 2. 模块间不互相引用具体实现类，只依赖Protocol
 # 3. 任何模块可以替换实现（如Memory从Redis→Milvus，只要实现Protocol即可）
-# 4. 接口设计遵循"只进不出"原则：方法返回结果，不修改共享状态</pre>
+# 4. 接口设计遵循"只进不出"原则：方法返回结果，不修改共享状态</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// ===== 六大核心模块接口定义 =====
+// TypeScript has built-in types, no import needed for Protocol, List, Optional
+import {dataclass} from 'dataclasses';
+
+// ----- 数据结构定义 -----
+  // @dataclass
+class SubTask {
+  // task_id: str
+  // description: str
+  // tool_name: Optional[str]
+  // params: dict
+  // depends_on: List[str] = []      # 依赖哪些子任务
+
+  // @dataclass
+class ExecutionResult {
+  // task_id: str
+  // success: bool
+  // output: str
+  // tool_used: Optional[str]
+  // latency_ms: int
+
+  // @dataclass
+class MemoryItem {
+  // key: str
+  // value: str
+  // timestamp: float
+  // relevance_score: float
+
+  // @dataclass
+class SafeText {
+  // text: str
+  // is_safe: bool
+  // filtered_reason: Optional[str]
+
+// ----- 模块接口定义 -----
+class Planner {
+  /** docstring */
+  // def plan(self, task: str, context: dict) -> List[SubTask]:
+  /** docstring */
+  // ...
+
+class Executor {
+  /** docstring */
+  // def execute(self, plan: List[SubTask]) -> List[ExecutionResult]:
+  /** docstring */
+  // ...
+
+class Memory {
+  /** docstring */
+  // def store(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+  /** docstring */
+  // ...
+  // def retrieve(self, query: str, top_k: int = 5) -> List[MemoryItem]:
+  /** docstring */
+  // ...
+  // def compress(self) -> str:
+  /** docstring */
+  // ...
+
+class ToolRouter {
+  /** docstring */
+  // def register(self, name: str, tool: callable, fallback: Optional[callable] = None) -> None:
+  /** docstring */
+  // ...
+  // def match(self, intent: str) -> Optional[str]:
+  /** docstring */
+  // ...
+  // def invoke(self, name: str, params: dict, timeout: int = 5) -> str:
+  /** docstring */
+  // ...
+
+class LLMRouter {
+  /** docstring */
+  // def select_model(self, complexity: str) -> str:
+  /** docstring */
+  // ...
+  // def invoke(self, model: str, prompt: str) -> str:
+  /** docstring */
+  // ...
+
+class SafetyGuard {
+  /** docstring */
+  // def check_permission(self, user: str, action: str) -> bool:
+  /** docstring */
+  // ...
+  // def filter_content(self, text: str) -> SafeText:
+  /** docstring */
+  // ...
+  // def audit_log(self, user: str, action: str, result: str) -> None:
+  /** docstring */
+  // ...
+
+// ===== 关键设计点 =====
+// 1. 每个Protocol只定义自己职责范围内的方法
+// 2. 模块间不互相引用具体实现类，只依赖Protocol
+// 3. 任何模块可以替换实现（如Memory从Redis→Milvus，只要实现Protocol即可）
+// 4. 接口设计遵循"只进不出"原则：方法返回结果，不修改共享状态
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// ===== 六大核心模块接口定义 =====
+// from typing import Protocol, List, Optional
+// from dataclasses import dataclass
+
+// ----- 数据结构定义 -----
+// SubTask - CLI Agent class
+type SubTask struct {
+	// Python: task_id: str
+	// Python: description: str
+	// Python: tool_name: Optional[str]
+	// Python: params: dict
+	// Python: depends_on: List[str] = []      # 依赖哪些子任务
+
+// ExecutionResult - CLI Agent class
+type ExecutionResult struct {
+	// Python: task_id: str
+	// Python: success: bool
+	// Python: output: str
+	// Python: tool_used: Optional[str]
+	// Python: latency_ms: int
+
+// MemoryItem - CLI Agent class
+type MemoryItem struct {
+	// Python: key: str
+	// Python: value: str
+	// Python: timestamp: float
+	// Python: relevance_score: float
+
+// SafeText - CLI Agent class
+type SafeText struct {
+	// Python: text: str
+	// Python: is_safe: bool
+	// Python: filtered_reason: Optional[str]
+
+// ----- 模块接口定义 -----
+// Planner - CLI Agent class
+type Planner struct {
+	// Python: def plan(self, task: str, context: dict) -> List[SubTask]:
+	// Python: ...
+
+// Executor - CLI Agent class
+type Executor struct {
+	// Python: def execute(self, plan: List[SubTask]) -> List[ExecutionResult]:
+	// Python: ...
+
+// Memory - CLI Agent class
+type Memory struct {
+	// Python: def store(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+	// Python: ...
+	// Python: def retrieve(self, query: str, top_k: int = 5) -> List[MemoryItem]:
+	// Python: ...
+	// Python: def compress(self) -> str:
+	// Python: ...
+
+// ToolRouter - CLI Agent class
+type ToolRouter struct {
+	// Python: def register(self, name: str, tool: callable, fallback: Optional[callable] = None) -> None:
+	// Python: ...
+	// Python: def match(self, intent: str) -> Optional[str]:
+	// Python: ...
+	// Python: def invoke(self, name: str, params: dict, timeout: int = 5) -> str:
+	// Python: ...
+
+// LLMRouter - CLI Agent class
+type LLMRouter struct {
+	// Python: def select_model(self, complexity: str) -> str:
+	// Python: ...
+	// Python: def invoke(self, model: str, prompt: str) -> str:
+	// Python: ...
+
+// SafetyGuard - CLI Agent class
+type SafetyGuard struct {
+	// Python: def check_permission(self, user: str, action: str) -> bool:
+	// Python: ...
+	// Python: def filter_content(self, text: str) -> SafeText:
+	// Python: ...
+	// Python: def audit_log(self, user: str, action: str, result: str) -> None:
+	// Python: ...
+
+// ===== 关键设计点 =====
+// 1. 每个Protocol只定义自己职责范围内的方法
+// 2. 模块间不互相引用具体实现类，只依赖Protocol
+// 3. 任何模块可以替换实现（如Memory从Redis→Milvus，只要实现Protocol即可）
+// 4. 接口设计遵循"只进不出"原则：方法返回结果，不修改共享状态
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+import java.io.*;
+
+    // ===== 六大核心模块接口定义 =====
+    // from typing import Protocol, List, Optional
+    // from dataclasses import dataclass
+
+    // ----- 数据结构定义 -----
+public class SubTask {
+        // Python: task_id: str
+        // Python: description: str
+        // Python: tool_name: Optional[str]
+        // Python: params: dict
+        // Python: depends_on: List[str] = []      # 依赖哪些子任务
+
+public class ExecutionResult {
+        // Python: task_id: str
+        // Python: success: bool
+        // Python: output: str
+        // Python: tool_used: Optional[str]
+        // Python: latency_ms: int
+
+public class MemoryItem {
+        // Python: key: str
+        // Python: value: str
+        // Python: timestamp: float
+        // Python: relevance_score: float
+
+public class SafeText {
+        // Python: text: str
+        // Python: is_safe: bool
+        // Python: filtered_reason: Optional[str]
+
+    // ----- 模块接口定义 -----
+public class Planner {
+        // Python: def plan(self, task: str, context: dict) -> List[SubTask]:
+        // Python: ...
+
+public class Executor {
+        // Python: def execute(self, plan: List[SubTask]) -> List[ExecutionResult]:
+        // Python: ...
+
+public class Memory {
+        // Python: def store(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+        // Python: ...
+        // Python: def retrieve(self, query: str, top_k: int = 5) -> List[MemoryItem]:
+        // Python: ...
+        // Python: def compress(self) -> str:
+        // Python: ...
+
+public class ToolRouter {
+        // Python: def register(self, name: str, tool: callable, fallback: Optional[callable] = None) -> None:
+        // Python: ...
+        // Python: def match(self, intent: str) -> Optional[str]:
+        // Python: ...
+        // Python: def invoke(self, name: str, params: dict, timeout: int = 5) -> str:
+        // Python: ...
+
+public class LLMRouter {
+        // Python: def select_model(self, complexity: str) -> str:
+        // Python: ...
+        // Python: def invoke(self, model: str, prompt: str) -> str:
+        // Python: ...
+
+public class SafetyGuard {
+        // Python: def check_permission(self, user: str, action: str) -> bool:
+        // Python: ...
+        // Python: def filter_content(self, text: str) -> SafeText:
+        // Python: ...
+        // Python: def audit_log(self, user: str, action: str, result: str) -> None:
+        // Python: ...
+
+    // ===== 关键设计点 =====
+    // 1. 每个Protocol只定义自己职责范围内的方法
+    // 2. 模块间不互相引用具体实现类，只依赖Protocol
+    // 3. 任何模块可以替换实现（如Memory从Redis→Milvus，只要实现Protocol即可）
+    // 4. 接口设计遵循"只进不出"原则：方法返回结果，不修改共享状态
+    }
+}</pre></div>
 </div>
 
 
