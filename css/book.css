@@ -821,6 +821,96 @@ p {
   border-left: 3px solid var(--color-success);
 }
 
+/* Compare 对比面板 */
+.compare-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin: var(--space-xl) 0;
+}
+
+.compare-title {
+  text-align: center;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+  color: var(--color-text);
+}
+
+.compare-columns {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-md);
+  align-items: stretch;
+}
+
+.compare-column {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+}
+
+.compare-left {
+  border-left: 3px solid var(--color-error);
+}
+
+.compare-right {
+  border-left: 3px solid var(--color-success);
+}
+
+.compare-header {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compare-body {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+
+.compare-item {
+  padding: 2px 0;
+}
+
+.compare-conclusion {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: var(--space-sm);
+  padding: 4px 0;
+}
+
+.compare-spacer {
+  height: 8px;
+}
+
+.compare-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.compare-vs {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compare-rendered {
+  min-height: 0;
+}
+
 /* 标签 */
 .tag {
   display: inline-block;
