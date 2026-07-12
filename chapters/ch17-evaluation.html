@@ -2199,6 +2199,274 @@ public class AgentEvalTest {
   </div>
 </div>
 
+
+<!-- ===== 17.10 代码与 Agent 评测基准 ===== -->
+<h2 class="section-heading">17.10 代码与 Agent 评测基准</h2>
+
+<p>评估一个 Agent "到底有多强"，不能只靠主观感受，需要标准化的评测基准。2025-2026 年，业界形成了几大权威评测榜单，是企业招聘和技术选型的核心参考。</p>
+
+<h3 class="sub-heading">17.10.1 SWE-bench：Coding Agent 的黄金标准</h3>
+
+<p><strong>SWE-bench</strong> 是普林斯顿大学提出的软件工程评测基准，被 OpenAI、Anthropic、Google、字节跳动等头部厂商公认为 Coding Agent 的权威排行榜。</p>
+
+<div class="info-box">
+<strong>SWE-bench 的评测方式</strong>：从 12 个开源 Python 项目（Django、Flask、scikit-learn 等）中提取 <strong>2,294 个真实 GitHub Issue</strong>。Agent 需要自主理解 Issue → 定位代码 → 编写修复 → 提交 PR。评测标准：Agent 提交的代码是否能通过项目的<strong>隐藏单元测试</strong>。<br><br>
+<strong>SWE-bench Lite</strong>：精选 300 个单文件修复题，降低评测成本，适合快速验证。<br>
+<strong>SWE-bench Verified</strong>：人工标注的 500 题，确保题目描述清晰、可解，是目前最权威的子集。
+</div>
+
+<table class="data-table">
+<thead>
+<tr><th>模型/Agent</th><th>SWE-bench Verified</th><th>排名时间</th><th>关键技术</th></tr>
+</thead>
+<tbody>
+<tr><td>Claude Sonnet 4 + Claude Code</td><td>72.7%</td><td>2025.05</td><td>Harness + 工具调用 + 自验证</td></tr>
+<tr><td>GPT-4.1 + Codex</td><td>68.3%</td><td>2025.04</td><td>云沙箱 + 异步执行</td></tr>
+<tr><td>DeepSeek V3 + Agent</td><td>38.8%</td><td>2025.01</td><td>开源模型最佳</td></tr>
+<tr><td>纯 GPT-4o（无工具）</td><td>8.4%</td><td>2024.10</td><td>无 Harness 基线</td></tr>
+</tbody>
+</table>
+
+<p>从基线 8.4% 到 72.7% 的飞跃，证明的不是模型变强了多少，而是 <strong>Harness Engineering</strong>（测试沙箱 + 工具调用 + 自验证钩子）的价值。同一个模型加不加 Harness，成绩差 5-8 倍。</p>
+
+<h3 class="sub-heading">17.10.2 HumanEval / MBPP：代码生成评测</h3>
+
+<p><strong>HumanEval</strong> 是 OpenAI 提出的经典代码生成评测，包含 164 个 Python 编程题，评估指标为 <strong>pass@k</strong>（生成 k 个方案中至少一个通过测试的概率）。</p>
+
+<table class="data-table">
+<thead>
+<tr><th>评测基准</th><th>题目数</th><th>语言</th><th>评测指标</th><th>特点</th></tr>
+</thead>
+<tbody>
+<tr><td>HumanEval</td><td>164</td><td>Python</td><td>pass@1 / pass@10</td><td>函数级代码生成</td></tr>
+<tr><td>HumanEval+</td><td>164</td><td>Python</td><td>pass@1</td><td>增强测试用例（80k+ 断言）</td></tr>
+<tr><td>MBPP</td><td>974</td><td>Python</td><td>pass@1</td><td>基础编程题，难度偏低</td></tr>
+<tr><td>LiveCodeBench</td><td>持续更新</td><td>多语言</td><td>pass@1</td><td>从 LeetCode/Codeforces 实时抓取新题</td></tr>
+<tr><td>BigCodeBench</td><td>1140</td><td>Python</td><td>pass@1</td><td>需调用标准库 + 第三方库</td></tr>
+</tbody>
+</table>
+
+<div class="info-box">
+<strong>面试要点</strong>：HumanEval 评测的是"单次代码生成能力"（给定函数签名和文档，生成正确实现），不涉及 Agent 的工具调用、多轮交互、代码调试能力。<strong>SWE-bench 评测的才是"Coding Agent 综合能力"</strong>（理解 Issue → 搜索代码 → 编写修复 → 运行测试 → 修复错误）。面试时如果被问"怎么评测 Coding Agent"，回答 SWE-bench 比 HumanEval 更专业。
+</div>
+
+<h3 class="sub-heading">17.10.3 AgentBench：多维度 Agent 评测</h3>
+
+<p><strong>AgentBench</strong> 是清华大学的提出的多维度 Agent 评测框架，覆盖 8 个不同场景，全面评估 Agent 的综合能力：</p>
+
+<table class="data-table">
+<thead>
+<tr><th>评测维度</th><th>场景</th><th>评估能力</th></tr>
+</thead>
+<tbody>
+<tr><td>Operating System</td><td>Linux 终端操作</td><td>CLI 工具调用、文件操作</td></tr>
+<tr><td>Database</td><td>SQL 查询与数据操作</td><td>数据库交互、NL2SQL</td></tr>
+<tr><td>Knowledge Graph</td><td>知识图谱问答</td><td>多跳推理、知识检索</td></tr>
+<tr><td>Card Game</td><td>卡牌对战</td><td>策略推理、博弈论</td></tr>
+<tr><td>House Holding</td><td>家务模拟（ALFRED）</td><td>多步任务规划</td></tr>
+<tr><td>Web Shopping</td><td>网购模拟</td><td>Web 浏览、表单填写</td></tr>
+<tr><td>Web Browsing</td><td>网页浏览问答</td><td>信息提取、页面导航</td></tr>
+<tr><td>Mind2Web</td><td>真实网站操作</td><td>GUI Agent 能力</td></tr>
+</tbody>
+</table>
+
+<h3 class="sub-heading">17.10.4 评测基准选型决策</h3>
+
+<div class="compare-panel">
+<div class="compare-left">
+<h4>📋 评测目标 → 基准选择</h4>
+<div class="compare-item">▸ 代码生成能力 → HumanEval / MBPP</div>
+<div class="compare-item">▸ Coding Agent 综合能力 → SWE-bench</div>
+<div class="compare-item">▸ 多场景 Agent 通用能力 → AgentBench</div>
+<div class="compare-item">▸ RAG 系统质量 → Ragas / TruLens</div>
+<div class="compare-item">▸ 对话质量 → MT-Bench / AlpacaEval</div>
+<div class="compare-item">▸ 安全性 → Garak / OWASP LLM Top 10</div>
+</div>
+<div class="compare-right">
+<h4>🎯 企业实战建议</h4>
+<div class="compare-item">→ 不要只看榜单分数，要在自己的业务数据上评测</div>
+<div class="compare-item">→ 构建"私有评测集"：从真实业务中抽取 100-200 个 case</div>
+<div class="compare-item">→ 评测集要持续更新，防止 Agent 过拟合到固定测试题</div>
+<div class="compare-item">→ 同时跟踪公开榜单 + 私有评测集分数</div>
+<div class="compare-item">→ 评测自动化：CI/CD 中每次模型/Prompt 变更自动跑评测</div>
+</div>
+</div>
+
+<h3 class="sub-heading">17.10.5 构建私有 Agent 评测集</h3>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+</div>
+<div class="lang-pane active" data-lang="python">
+<pre><code class="language-python"># agent_eval_suite.py — 私有 Agent 评测框架
+import json
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class EvalCase:
+    case_id: str
+    input: str              # 用户输入
+    expected_tools: List[str]  # 期望调用的工具
+    expected_output_contains: Optional[List[str]]  # 输出应包含的关键信息
+    max_steps: int = 10     # 最大允许步数
+    max_tokens: int = 10000 # Token 预算
+    category: str = "general"
+
+@dataclass
+class EvalResult:
+    case_id: str
+    passed: bool
+    actual_tools: List[str]
+    steps_used: int
+    tokens_used: int
+    failure_reason: str = ""
+
+class AgentEvalSuite:
+    """Agent 评测套件"""
+    
+    def __init__(self, cases: List[EvalCase]):
+        self.cases = cases
+    
+    def run(self, agent_executor):
+        """运行所有评测用例"""
+        results = []
+        for case in self.cases:
+            result = self._run_case(case, agent_executor)
+            results.append(result)
+        
+        # 生成报告
+        total = len(results)
+        passed = sum(1 for r in results if r.passed)
+        avg_steps = sum(r.steps_used for r in results) / total
+        avg_tokens = sum(r.tokens_used for r in results) / total
+        
+        print(f"评测报告: {passed}/{total} 通过 ({passed/total*100:.1f}%)")
+        print(f"平均步数: {avg_steps:.1f}")
+        print(f"平均Token: {avg_tokens:.0f}")
+        
+        # 失败用例详情
+        failures = [r for r in results if not r.passed]
+        if failures:
+            print(f"\n失败用例 ({len(failures)}):")
+            for f in failures:
+                print(f"  ❌ {f.case_id}: {f.failure_reason}")
+        
+        return results
+    
+    def _run_case(self, case, agent_executor):
+        """运行单个用例"""
+        trace = agent_executor(case.input, max_steps=case.max_steps)
+        
+        # 检查工具调用
+        actual_tools = [t["name"] for t in trace.tool_calls]
+        tools_match = set(case.expected_tools).issubset(set(actual_tools))
+        
+        # 检查输出
+        output_match = True
+        if case.expected_output_contains:
+            for expected in case.expected_output_contains:
+                if expected.lower() not in trace.final_output.lower():
+                    output_match = False
+                    break
+        
+        # 检查预算
+        within_budget = trace.total_tokens <= case.max_tokens
+        within_steps = len(trace.steps) <= case.max_steps
+        
+        passed = tools_match and output_match and within_budget and within_steps
+        
+        return EvalResult(
+            case_id=case.case_id,
+            passed=passed,
+            actual_tools=actual_tools,
+            steps_used=len(trace.steps),
+            tokens_used=trace.total_tokens,
+            failure_reason="" if passed else self._failure_reason(
+                tools_match, output_match, within_budget, within_steps
+            )
+        )
+
+# === 示例：构建评测集 ===
+eval_cases = [
+    EvalCase(
+        case_id="weather-001",
+        input="北京今天天气怎么样？",
+        expected_tools=["get_weather"],
+        expected_output_contains=["温度", "天气"],
+        max_steps=3,
+        max_tokens=2000,
+        category="weather"
+    ),
+    EvalCase(
+        case_id="code-001",
+        input="帮我写一个 Python 快速排序函数",
+        expected_tools=[],  # 不需要工具，直接生成代码
+        expected_output_contains=["def", "sort", "pivot"],
+        max_steps=1,
+        max_tokens=1000,
+        category="coding"
+    ),
+]
+
+suite = AgentEvalSuite(eval_cases)
+# suite.run(my_agent)  # 接入你的 Agent</code></pre>
+</div>
+<div class="lang-pane" data-lang="typescript">
+<pre><code class="language-typescript">// agent-eval-suite.ts
+interface EvalCase {
+  caseId: string;
+  input: string;
+  expectedTools: string[];
+  expectedOutputContains?: string[];
+  maxSteps: number;
+  maxTokens: number;
+  category: string;
+}
+
+interface EvalResult {
+  caseId: string;
+  passed: boolean;
+  actualTools: string[];
+  stepsUsed: number;
+  tokensUsed: number;
+  failureReason?: string;
+}
+
+class AgentEvalSuite {
+  constructor(private cases: EvalCase[]) {}
+  
+  async run(agentFn: (input: string, maxSteps: number) => Promise<AgentTrace>): Promise<EvalResult[]> {
+    const results: EvalResult[] = [];
+    
+    for (const testCase of this.cases) {
+      const trace = await agentFn(testCase.input, testCase.maxSteps);
+      const passed = this.evaluate(trace, testCase);
+      results.push({
+        caseId: testCase.caseId,
+        passed: passed.ok,
+        actualTools: trace.toolCalls.map(t => t.name),
+        stepsUsed: trace.steps.length,
+        tokensUsed: trace.totalTokens,
+        failureReason: passed.reason,
+      });
+    }
+    
+    this.printReport(results);
+    return results;
+  }
+  
+  private printReport(results: EvalResult[]) {
+    const total = results.length;
+    const passed = results.filter(r => r.passed).length;
+    console.log(`评测报告: ${passed}/${total} 通过 (${(passed/total*100).toFixed(1)}%)`);
+  }
+}</code></pre>
+</div>
+</div>
+
 <!-- ===== 课后考试 ===== -->
 <div id="quizArea"></div>
 

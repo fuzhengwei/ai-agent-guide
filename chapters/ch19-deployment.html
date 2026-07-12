@@ -892,6 +892,419 @@ public class SemanticCache {
   </div>
 </div>
 
+
+<!-- ===== 19.7 Kubernetes 部署：企业级容器编排 ===== -->
+<h2 class="section-heading">19.7 Kubernetes 部署：企业级容器编排</h2>
+
+<p>当 Agent 服务从单机 Docker 走向多实例、多环境时，Kubernetes（K8s）成为企业级部署的标配。K8s 提供了<strong>自动扩缩容、自愈、滚动更新、服务发现</strong>等生产级能力，是 Agent 从"能跑"到"能扛流量"的关键基础设施。</p>
+
+<h3 class="sub-heading">19.7.1 Agent 的 K8s 部署模板</h3>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="yaml">YAML</button>
+<button class="lang-tab" data-lang="python">Python (kubectl)</button>
+</div>
+<div class="lang-pane active" data-lang="yaml">
+<pre><code class="language-yaml"># agent-deployment.yaml — Agent 服务部署
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent-service
+  namespace: production
+  labels:
+    app: ai-agent
+    tier: backend
+spec:
+  replicas: 3                    # 3 副本保证高可用
+  selector:
+    matchLabels:
+      app: ai-agent
+  strategy:
+    type: RollingUpdate          # 滚动更新
+    rollingUpdate:
+      maxSurge: 1                # 滚动更新时最多多出 1 个 Pod
+      maxUnavailable: 0          # 滚动更新时不允许减少可用 Pod
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+    spec:
+      containers:
+      - name: agent
+        image: registry.cn-beijing.aliyuncs.com/myorg/ai-agent:v1.2.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-secrets
+              key: api-key
+        - name: REDIS_URL
+          value: "redis://redis-cluster:6379"
+        - name: MAX_CONCURRENT_AGENTS
+          value: "50"
+        resources:
+          requests:              # 资源请求（调度依据）
+            cpu: "500m"
+            memory: "1Gi"
+          limits:                # 资源上限（防失控）
+            cpu: "2000m"
+            memory: "4Gi"
+        livenessProbe:           # 存活探针：挂了自动重启
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:          # 就绪探针：没准备好不接流量
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# HPA — 自动扩缩容
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-agent-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-agent-service
+  minReplicas: 3
+  maxReplicas: 20               # 最多扩到 20 个 Pod
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70   # CPU 超 70% 自动扩容
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80</code></pre>
+</div>
+<div class="lang-pane" data-lang="python">
+<pre><code class="language-python"># Python 部署脚本 — 通过 kubectl 管理 Agent 集群
+import subprocess
+import yaml
+
+def deploy_agent_cluster():
+    """一键部署 Agent 集群到 K8s"""
+    # 1. 应用部署配置
+    subprocess.run([
+        "kubectl", "apply", "-f", "agent-deployment.yaml"
+    ], check=True)
+    
+    # 2. 等待 Pod 就绪
+    subprocess.run([
+        "kubectl", "rollout", "status",
+        "deployment/ai-agent-service",
+        "-n", "production",
+        "--timeout=300s"
+    ], check=True)
+    
+    # 3. 验证服务可用
+    result = subprocess.run([
+        "kubectl", "get", "pods", "-n", "production",
+        "-l", "app=ai-agent",
+        "-o", "jsonpath={.items[*].status.phase}"
+    ], capture_output=True, text=True)
+    
+    phases = result.stdout.split()
+    ready_count = sum(1 for p in phases if p == "Running")
+    print(f"✅ {ready_count}/{len(phases)} Pods Running")
+    
+    if ready_count < 3:
+        raise Exception("❌ 可用 Pod 不足 3 个，部署失败")
+    
+    print("🎉 Agent 集群部署完成！")
+
+deploy_agent_cluster()
+# 输出：
+# deployment.apps/ai-agent-service created
+# horizontalpodautoscaler.autoscaling/ai-agent-hpa created
+# ✅ 3/3 Pods Running
+# 🎉 Agent 集群部署完成！</code></pre>
+</div>
+</div>
+
+<h3 class="sub-heading">19.7.2 Agent 专属 K8s 配置要点</h3>
+
+<div class="compare-panel">
+<div class="compare-left">
+<h4>❌ 普通Web服务的K8s配置</h4>
+<div class="compare-item">▸ 固定 2 副本，无需弹性扩缩</div>
+<div class="compare-item">▸ 请求/响应毫秒级，无长连接</div>
+<div class="compare-item">▸ CPU 密集型，内存固定</div>
+<div class="compare-item">▸ 健康检查：HTTP 200 即可</div>
+<div class="compare-item">▸ 无状态，Pod 可随意重启</div>
+</div>
+<div class="compare-right">
+<h4>✅ Agent 服务的K8s配置</h4>
+<div class="compare-item">▸ HPA 弹性扩缩（Agent 调用耗时不确定）</div>
+<div class="compare-item">▸ SSE 长连接，需要 sticky session</div>
+<div class="compare-item">▸ 内存波动大（上下文 + 记忆检索）</div>
+<div class="compare-item">▸ 就绪探针需检查 LLM API 连通性</div>
+<div class="compare-item">▸ 有状态（会话上下文），需 graceful shutdown</div>
+</div>
+</div>
+
+<div class="info-box">
+<strong>Agent 优雅关闭（Graceful Shutdown）</strong>：K8s 删除 Pod 时默认给 30 秒宽限期。但 Agent 可能正在执行一个 5 分钟的工具调用。解决方案：① 设置 <code>terminationGracePeriodSeconds: 300</code>（5分钟）；② 在 <code>preStop</code> 钩子中通知 Agent "正在关闭，请完成当前任务"；③ 配合就绪探针摘除流量，新请求不再进来。
+</div>
+
+<h3 class="sub-heading">19.7.3 Prometheus + Grafana 监控体系</h3>
+
+<p>Prometheus 负责指标采集，Grafana 负责可视化，二者组合是云原生监控的事实标准。Agent 服务需要暴露以下自定义指标：</p>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+</div>
+<div class="lang-pane active" data-lang="python">
+<pre><code class="language-python"># agent_metrics.py — Agent 自定义 Prometheus 指标
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
+
+# === Agent 核心指标 ===
+
+# 1. Agent 执行总次数（按状态分）
+agent_requests = Counter(
+    'agent_requests_total',
+    'Total agent requests',
+    ['status', 'agent_type']  # status: success/fail/timeout
+)
+
+# 2. Agent 执行耗时分布
+agent_duration = Histogram(
+    'agent_duration_seconds',
+    'Agent execution duration',
+    ['agent_type'],
+    buckets=[0.5, 1, 2, 5, 10, 30, 60, 120, 300]  # 秒
+)
+
+# 3. 当前活跃 Agent 数量
+active_agents = Gauge(
+    'active_agents',
+    'Currently running agents'
+)
+
+# 4. LLM API 调用次数与耗时
+llm_api_calls = Counter(
+    'llm_api_calls_total',
+    'LLM API calls',
+    ['provider', 'model', 'status']
+)
+
+# 5. Token 消耗总量
+token_consumption = Counter(
+    'agent_tokens_total',
+    'Token consumption',
+    ['type', 'model']  # type: input/output
+)
+
+# 6. 工具调用次数（按工具名分）
+tool_calls = Counter(
+    'agent_tool_calls_total',
+    'Tool calls by agent',
+    ['tool_name', 'status']
+)
+
+# === 使用示例 ===
+import time
+
+def run_agent(task):
+    active_agents.inc()  # 活跃数 +1
+    start = time.time()
+    try:
+        result = execute_agent(task)
+        agent_requests.labels(status='success', agent_type=task.type).inc()
+        agent_duration.labels(agent_type=task.type).observe(time.time() - start)
+        return result
+    except TimeoutError:
+        agent_requests.labels(status='timeout', agent_type=task.type).inc()
+        raise
+    except Exception as e:
+        agent_requests.labels(status='fail', agent_type=task.type).inc()
+        raise
+    finally:
+        active_agents.dec()  # 活跃数 -1</code></pre>
+</div>
+<div class="lang-pane" data-lang="typescript">
+<pre><code class="language-typescript">// agent-metrics.ts — Prometheus client for Node.js
+import { Counter, Histogram, Gauge, register } from 'prom-client';
+
+// Agent 核心指标定义
+const agentRequests = new Counter({
+  name: 'agent_requests_total',
+  help: 'Total agent requests',
+  labelNames: ['status', 'agent_type'] as const,
+});
+
+const agentDuration = new Histogram({
+  name: 'agent_duration_seconds',
+  help: 'Agent execution duration',
+  labelNames: ['agent_type'] as const,
+  buckets: [0.5, 1, 2, 5, 10, 30, 60, 120, 300],
+});
+
+const activeAgents = new Gauge({
+  name: 'active_agents',
+  help: 'Currently running agents',
+});
+
+const tokenConsumption = new Counter({
+  name: 'agent_tokens_total',
+  help: 'Token consumption',
+  labelNames: ['type', 'model'] as const,
+});
+
+// 中间件：自动记录 Agent 执行指标
+export function withMetrics<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  agentType: string
+): T {
+  return (async (...args: Parameters<T>) => {
+    activeAgents.inc();
+    const start = Date.now();
+    try {
+      const result = await fn(...args);
+      agentRequests.inc({ status: 'success', agent_type: agentType });
+      return result;
+    } catch (err) {
+      agentRequests.inc({ 
+        status: err instanceof TimeoutError ? 'timeout' : 'fail', 
+        agent_type: agentType 
+      });
+      throw err;
+    } finally {
+      agentDuration.observe({ agent_type: agentType }, (Date.now() - start) / 1000);
+      activeAgents.dec();
+    }
+  }) as T;
+}</code></pre>
+</div>
+</div>
+
+<p>对应的 Grafana 告警规则：</p>
+
+<pre><code class="language-yaml"># alerting-rules.yml — Prometheus 告警规则
+groups:
+- name: agent-alerts
+  rules:
+  # Agent 成功率低于 95%
+  - alert: AgentHighErrorRate
+    expr: |
+      sum(rate(agent_requests_total{status="fail"}[5m])) /
+      sum(rate(agent_requests_total[5m])) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Agent 错误率超过 5%"
+      description: "最近 5 分钟 Agent 失败率: {{ $value | humanizePercentage }}"
+  
+  # Agent P95 响应时间超过 30 秒
+  - alert: AgentSlowResponse
+    expr: |
+      histogram_quantile(0.95, 
+        sum(rate(agent_duration_seconds_bucket[5m])) by (le)
+      ) > 30
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Agent P95 响应时间超过 30 秒"
+  
+  # Token 消耗速率异常（可能是死循环）
+  - alert: TokenConsumptionSpike
+    expr: |
+      rate(agent_tokens_total[5m]) > 100000
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Token 消耗速率异常，可能存在 Agent 死循环"</code></pre>
+
+<h3 class="sub-heading">19.7.4 SLA 保障体系</h3>
+
+<p>企业级 Agent 服务需要明确的 SLA（Service Level Agreement）承诺。Agent 的 SLA 与传统 Web 服务不同，需要同时保证<strong>可用性</strong>和<strong>质量</strong>两个维度。</p>
+
+<table class="data-table">
+<thead>
+<tr><th>SLA 指标</th><th>目标值</th><th>测量方式</th><th>保障手段</th></tr>
+</thead>
+<tbody>
+<tr><td>服务可用性</td><td>99.9%（月级）</td><td>HTTP 200 响应率</td><td>多副本 + 自动故障转移</td></tr>
+<tr><td>响应延迟 P95</td><td>< 30 秒</td><td>从请求到首个 Token</td><td>模型分级路由 + 缓存</td></tr>
+<tr><td>任务成功率</td><td>> 92%</td><td>Agent 完成任务且用户满意</td><td>评估驱动开发 + 回归测试</td></tr>
+<tr><td>Token 成本/请求</td><td>< $0.05</td><td>平均每请求 Token 费用</td><td>上下文压缩 + 模型路由</td></tr>
+<tr><td>故障恢复时间</td><td>< 5 分钟</td><td>从故障到恢复</td><td>K8s 自愈 + 告警 + Runbook</td></tr>
+</tbody>
+</table>
+
+<div class="info-box">
+<strong>SLA 计算公式</strong>：<br>
+月度可用性 = (总分钟数 - 不可用分钟数) / 总分钟数 × 100%<br>
+99.9% = 每月最多停机 <strong>43.2 分钟</strong>。Agent 服务因 LLM API 依赖第三方，建议在 SLA 中明确"LLM API 不可用不计入停机时间"。
+</div>
+
+<!-- ===== 19.8 企业级部署 Checklist ===== -->
+<h2 class="section-heading">19.8 企业级部署 Checklist</h2>
+
+<p>以下是从 Demo 到生产环境的完整检查清单，每一条都必须打勾才能上线：</p>
+
+<div class="checklist-box">
+<h4>🏗️ 基础设施</h4>
+<ul>
+<li>☐ K8s 部署模板（Deployment + HPA + Service）</li>
+<li>☐ 多副本部署（至少 3 副本，跨可用区分布）</li>
+<li>☐ 配置中心（Secret 管理 API Key，不硬编码）</li>
+<li>☐ 私有镜像仓库（不依赖 Docker Hub）</li>
+</ul>
+
+<h4>📊 监控告警</h4>
+<ul>
+<li>☐ Prometheus 指标采集（自定义 Agent 指标）</li>
+<li>☐ Grafana 可视化面板（QPS/延迟/成功率/Token消耗）</li>
+<li>☐ 告警规则（错误率/P95延迟/Token异常）</li>
+<li>☐ 日志聚合（ELK/Loki，支持 Trace ID 追踪）</li>
+</ul>
+
+<h4>🔒 安全合规</h4>
+<ul>
+<li>☐ API Key 通过 Secret 注入，不进镜像</li>
+<li>☐ HTTPS 全链路加密</li>
+<li>☐ 审计日志（谁在什么时候调用了什么 Agent）</li>
+<li>☐ 数据脱敏（用户 PII 不入 LLM）</li>
+</ul>
+
+<h4>🔄 发布运维</h4>
+<ul>
+<li>☐ CI/CD 流水线（代码提交→测试→构建→部署）</li>
+<li>☐ 灰度发布（金丝雀 10%→50%→100%）</li>
+<li>☐ 回滚机制（一键回滚到上一版本）</li>
+<li>☐ Runbook（常见故障的处理手册）</li>
+</ul>
+
+<h4>💰 成本控制</h4>
+<ul>
+<li>☐ 模型分级路由（简单任务用 mini 模型）</li>
+<li>☐ 语义缓存（命中率监控）</li>
+<li>☐ Token 预算告警（日/月级别）</li>
+<li>☐ 步数限制（防死循环烧钱）</li>
+</ul>
+</div>
+
 <!-- ===== 考试 ===== -->
 <div id="quizArea"></div>
 

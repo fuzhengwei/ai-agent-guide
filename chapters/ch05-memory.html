@@ -5310,6 +5310,423 @@ public class MemoryService {
 }</pre></div>
 </div>
 
+<!-- ===== 5.12.6 压缩可靠性保障 ===== -->
+<h3 class="sub-heading">5.12.6 压缩可靠性保障</h3>
+
+<p>上下文压缩是 Agent 对话稳定性的最后一道防线,但如果压缩本身不可靠,反而会成为新的问题源。生产环境中必须解决三个可靠性挑战:<strong>压缩失败回退</strong>、<strong>语义丢失检测</strong>、<strong>压缩对对话连贯性的影响</strong>。</p>
+
+<h4 style="color: var(--color-primary); margin-top: 20px;">挑战 1：压缩失败回退</h4>
+
+<p>AI 摘要依赖 LLM 生成,而 LLM 可能超时、限流或返回乱码。WaLiCode 的做法是<strong>三层降级链</strong>:</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">层级</th>
+        <th style="text-align: left;">触发条件</th>
+        <th style="text-align: left;">策略</th>
+        <th style="text-align: left;">代价</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>L1 AI 摘要</strong></td><td>正常流程</td><td>调 LLM 生成 500 字以内摘要</td><td>消耗 ~2000 token</td></tr>
+      <tr><td><strong>L2 规则摘要</strong></td><td>AI 超时/限流/JSON 解析失败</td><td>正则提取关键信息（用户意图/文件操作/错误信息/决策）</td><td>质量较低,零 token</td></tr>
+      <tr><td><strong>L3 硬截断</strong></td><td>规则摘要也失败（极端情况）</td><td>只保留最近 2 轮对话 + system prompt</td><td>丢失全部历史</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class CompressionFallbackChain:
+    """三层降级压缩链"""
+
+    def __init__(self, llm_client):
+        self.llm = llm_client
+        self.max_ai_attempts = 2
+        self.max_ai_tokens = 2000
+
+    def compress(self, messages: list, target_ratio: float = 0.3) -> dict:
+        """压缩消息列表,返回 {success, strategy, compressed, error}"""
+        # L1: 尝试 AI 摘要
+        for attempt in range(self.max_ai_attempts):
+            try:
+                result = self._ai_compress(messages, target_ratio)
+                if result and self._validate(result):
+                    return {"success": True, "strategy": "ai", "compressed": result}
+            except (TimeoutError, RateLimitError) as e:
+                print(f"AI 摘要第{attempt+1}次失败: {e}")
+                continue
+            except Exception as e:
+                print(f"AI 摘要异常: {e}")
+                break
+
+        # L2: 降级为规则摘要
+        try:
+            result = self._rule_compress(messages)
+            if result:
+                return {"success": True, "strategy": "rule", "compressed": result}
+        except Exception as e:
+            print(f"规则摘要失败: {e}")
+
+        # L3: 硬截断
+        return {
+            "success": True,
+            "strategy": "truncate",
+            "compressed": messages[:4],  # system + 最近2轮
+            "warning": "硬截断,历史已丢失"
+        }
+
+    def _ai_compress(self, messages, ratio):
+        """AI 摘要"""
+        prompt = f"将以下对话压缩为500字以内的摘要,保留:用户意图/文件操作/错误与修复/关键决策/当前进度\n\n{messages}"
+        return self.llm.chat(prompt, max_tokens=self.max_ai_tokens)
+
+    def _rule_compress(self, messages):
+        """规则摘要:正则提取关键信息"""
+        import re
+        summary_parts = []
+        for msg in messages:
+            content = msg.get("content", "")
+            # 提取用户意图
+            if msg["role"] == "user":
+                summary_parts.append(f"[用户] {content[:100]}")
+            # 提取错误信息
+            elif "error" in content.lower() or "报错" in content:
+                error_match = re.search(r'(error|报错|异常)[:\s]*([^\n]+)', content, re.I)
+                if error_match:
+                    summary_parts.append(f"[错误] {error_match.group(2)[:80]}")
+            # 提取文件操作
+            file_match = re.search(r'(创建|修改|删除|读取)[文件了]*(.+?\.[a-z]+)', content)
+            if file_match:
+                summary_parts.append(f"[文件] {file_match.group(0)[:80]}")
+        return "\n".join(summary_parts) if summary_parts else None
+
+    def _validate(self, result):
+        """校验摘要质量"""
+        if not result or len(result) < 20:
+            return False
+        if len(result) > 2000:
+            return False
+        return True
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>interface CompressionResult {
+  success: boolean;
+  strategy: 'ai' | 'rule' | 'truncate';
+  compressed: Message[];
+  warning?: string;
+}
+
+class CompressionFallbackChain {
+  private llm: LLMClient;
+  private maxAiAttempts = 2;
+
+  constructor(llm: LLMClient) {
+    this.llm = llm;
+  }
+
+  async compress(messages: Message[], targetRatio = 0.3): Promise<CompressionResult> {
+    // L1: AI 摘要
+    for (let i = 0; i < this.maxAiAttempts; i++) {
+      try {
+        const result = await this.aiCompress(messages, targetRatio);
+        if (result && this.validate(result)) {
+          return { success: true, strategy: 'ai', compressed: result };
+        }
+      } catch (e) {
+        console.warn(`AI 摘要第${i + 1}次失败:`, e.message);
+      }
+    }
+
+    // L2: 规则摘要
+    try {
+      const result = this.ruleCompress(messages);
+      if (result) return { success: true, strategy: 'rule', compressed: result };
+    } catch (e) {
+      console.warn('规则摘要失败:', e);
+    }
+
+    // L3: 硬截断
+    return {
+      success: true,
+      strategy: 'truncate',
+      compressed: messages.slice(0, 4),
+      warning: '硬截断,历史已丢失'
+    };
+  }
+
+  private async aiCompress(messages: Message[], ratio: number): Promise<Message[] | null> {
+    const prompt = `将以下对话压缩为500字以内的摘要...\n\n${JSON.stringify(messages)}`;
+    const result = await this.llm.chat(prompt, { maxTokens: 2000 });
+    return [{ role: 'system', content: `[历史摘要] ${result}` }];
+  }
+
+  private ruleCompress(messages: Message[]): Message[] | null {
+    const parts: string[] = [];
+    for (const msg of messages) {
+      if (msg.role === 'user') parts.push(`[用户] ${msg.content.slice(0, 100)}`);
+      if (/error|报错|异常/i.test(msg.content)) {
+        const m = msg.content.match(/(error|报错|异常)[:\s]*([^\n]+)/i);
+        if (m) parts.push(`[错误] ${m[2].slice(0, 80)}`);
+      }
+    }
+    return parts.length ? [{ role: 'system', content: `[历史摘要] ${parts.join('\n')}` }] : null;
+  }
+
+  private validate(result: Message[]): boolean {
+    const content = result[0]?.content ?? '';
+    return content.length >= 20 && content.length <= 2000;
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// CompressionResult 压缩结果
+type CompressionResult struct {
+	Success    bool
+	Strategy   string // ai | rule | truncate
+	Compressed []Message
+	Warning    string
+}
+
+// Message 消息
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// CompressionFallbackChain 三层降级压缩链
+type CompressionFallbackChain struct {
+	LLMClient       LLMClient
+	MaxAIAttempts   int
+}
+
+type LLMClient interface {
+	Chat(prompt string, maxTokens int) (string, error)
+}
+
+func (c *CompressionFallbackChain) Compress(messages []Message, targetRatio float64) CompressionResult {
+	// L1: AI 摘要
+	for i := 0; i < c.MaxAIAttempts; i++ {
+		result, err := c.aiCompress(messages, targetRatio)
+		if err == nil && c.validate(result) {
+			return CompressionResult{Success: true, Strategy: "ai", Compressed: result}
+		}
+		fmt.Printf("AI 摘要第%d次失败: %v\n", i+1, err)
+	}
+
+	// L2: 规则摘要
+	result, err := c.ruleCompress(messages)
+	if err == nil && len(result) > 0 {
+		return CompressionResult{Success: true, Strategy: "rule", Compressed: result}
+	}
+
+	// L3: 硬截断
+	return CompressionResult{
+		Success:    true,
+		Strategy:   "truncate",
+		Compressed: messages[:min(4, len(messages))],
+		Warning:    "硬截断,历史已丢失",
+	}
+}
+
+func (c *CompressionFallbackChain) aiCompress(messages []Message, ratio float64) ([]Message, error) {
+	prompt := fmt.Sprintf("将以下对话压缩为500字以内的摘要...\n\n%v", messages)
+	result, err := c.LLMClient.Chat(prompt, 2000)
+	if err != nil {
+		return nil, err
+	}
+	if len(result) < 20 || len(result) > 2000 {
+		return nil, errors.New("摘要长度校验失败")
+	}
+	return []Message{{Role: "system", Content: "[历史摘要] " + result}}, nil
+}
+
+func (c *CompressionFallbackChain) ruleCompress(messages []Message) ([]Message, error) {
+	var parts []string
+	for _, msg := range messages {
+		if msg.Role == "user" {
+			parts = append(parts, "[用户] "+truncate(msg.Content, 100))
+		}
+		if regexp.MustCompile(`(?i)error|报错|异常`).MatchString(msg.Content) {
+			re := regexp.MustCompile(`(?i)(error|报错|异常)[:\s]*([^\n]+)`)
+			m := re.FindStringSubmatch(msg.Content)
+			if len(m) > 2 {
+				parts = append(parts, "[错误] "+truncate(m[2], 80))
+			}
+		}
+	}
+	if len(parts) == 0 {
+		return nil, errors.New("无关键信息")
+	}
+	return []Message{{Role: "system", Content: "[历史摘要] " + strings.Join(parts, "\n")}}, nil
+}
+
+func (c *CompressionFallbackChain) validate(result []Message) bool {
+	if len(result) == 0 {
+		return false
+	}
+	content := result[0].Content
+	return len(content) >= 20 && len(content) <= 2000
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+import java.util.regex.*;
+
+class CompressionResult {
+    boolean success;
+    String strategy; // ai | rule | truncate
+    List&lt;Map&lt;String, String&gt;&gt; compressed;
+    String warning;
+}
+
+class CompressionFallbackChain {
+    private final LLMClient llm;
+    private final int maxAiAttempts = 2;
+
+    public CompressionFallbackChain(LLMClient llm) {
+        this.llm = llm;
+    }
+
+    public CompressionResult compress(List&lt;Map&lt;String, String&gt;&gt; messages, double targetRatio) {
+        // L1: AI 摘要
+        for (int i = 0; i &lt; maxAiAttempts; i++) {
+            try {
+                List&lt;Map&lt;String, String&gt;&gt; result = aiCompress(messages, targetRatio);
+                if (result != null && validate(result)) {
+                    CompressionResult r = new CompressionResult();
+                    r.success = true;
+                    r.strategy = "ai";
+                    r.compressed = result;
+                    return r;
+                }
+            } catch (Exception e) {
+                System.err.println("AI 摘要第" + (i + 1) + "次失败: " + e.getMessage());
+            }
+        }
+
+        // L2: 规则摘要
+        try {
+            List&lt;Map&lt;String, String&gt;&gt; result = ruleCompress(messages);
+            if (result != null) {
+                CompressionResult r = new CompressionResult();
+                r.success = true;
+                r.strategy = "rule";
+                r.compressed = result;
+                return r;
+            }
+        } catch (Exception e) {
+            System.err.println("规则摘要失败: " + e.getMessage());
+        }
+
+        // L3: 硬截断
+        CompressionResult r = new CompressionResult();
+        r.success = true;
+        r.strategy = "truncate";
+        int endIdx = Math.min(4, messages.size());
+        r.compressed = new ArrayList&lt;&gt;(messages.subList(0, endIdx));
+        r.warning = "硬截断,历史已丢失";
+        return r;
+    }
+
+    private List&lt;Map&lt;String, String&gt;&gt; aiCompress(List&lt;Map&lt;String, String&gt;&gt; messages, double ratio) throws Exception {
+        String prompt = "将以下对话压缩为500字以内的摘要...\n\n" + messages.toString();
+        String result = llm.chat(prompt, 2000);
+        if (result == null || result.length() &lt; 20 || result.length() &gt; 2000) {
+            return null;
+        }
+        return List.of(Map.of("role", "system", "content", "[历史摘要] " + result));
+    }
+
+    private List&lt;Map&lt;String, String&gt;&gt; ruleCompress(List&lt;Map&lt;String, String&gt;&gt; messages) {
+        List&lt;String&gt; parts = new ArrayList&lt;&gt;();
+        Pattern errorPattern = Pattern.compile("(?i)(error|报错|异常)[:\\\\s]*([^\\\\n]+)");
+        for (Map&lt;String, String&gt; msg : messages) {
+            String content = msg.getOrDefault("content", "");
+            if ("user".equals(msg.get("role"))) {
+                parts.add("[用户] " + content.substring(0, Math.min(100, content.length())));
+            }
+            Matcher m = errorPattern.matcher(content);
+            if (m.find()) {
+                parts.add("[错误] " + m.group(2).substring(0, Math.min(80, m.group(2).length())));
+            }
+        }
+        if (parts.isEmpty()) return null;
+        return List.of(Map.of("role", "system", "content", "[历史摘要] " + String.join("\n", parts)));
+    }
+
+    private boolean validate(List&lt;Map&lt;String, String&gt;&gt; result) {
+        if (result == null || result.isEmpty()) return false;
+        String content = result.get(0).getOrDefault("content", "");
+        return content.length() &gt;= 20 && content.length() &lt;= 2000;
+    }
+}
+</pre></div>
+</div>
+
+<h4 style="color: var(--color-primary); margin-top: 20px;">挑战 2：语义丢失检测</h4>
+
+<p>压缩后,Agent 可能遗忘早期的重要约束（如"用中文回答""不要用 class"）。WaLiCode 通过<strong>约束快照 + 压缩后校验</strong>检测语义丢失:</p>
+
+<div class="code-block"><pre>// 压缩前:提取约束快照
+const constraintsBefore = extractConstraints(originalMessages);
+// constraintsBefore = ["用中文回答", "不要用 class", "目标文件: main.py"]
+
+// 压缩后:检查约束是否保留
+const constraintsAfter = extractConstraints(compressedMessages);
+const lost = constraintsBefore.filter(c =&gt; !constraintsAfter.includes(c));
+
+if (lost.length &gt; 0) {
+  // 将丢失的约束重新注入摘要
+  summary = `[重要约束] ${lost.join('; ')}\n` + summary;
+}</pre></div>
+
+<div class="info-box">
+<strong>实现要点</strong>:约束提取用正则匹配常见模式（"不要..."/"必须..."/"用..."/"目标..."）,不依赖 LLM。这是一个<strong>低成本高收益</strong>的保障措施——零额外 API 调用,只需几十行正则代码,就能避免最常见的压缩事故。
+</div>
+
+<h4 style="color: var(--color-primary); margin-top: 20px;">挑战 3：压缩对对话连贯性的影响</h4>
+
+<p>压缩会改变上下文结构,可能导致 LLM 的回答出现<strong>断层</strong>——比如用户问"刚才那个文件改好了吗?",但压缩后历史中已经没有文件操作的记录了。三种应对策略:</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">策略</th>
+        <th style="text-align: left;">做法</th>
+        <th style="text-align: left;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>压缩标记注入</strong></td><td>在压缩位置插入 <code>[已压缩 N 轮对话]</code> 标记,让 LLM 知道有历史被省略</td><td>大多数场景</td></tr>
+      <tr><td><strong>关键实体保留</strong></td><td>压缩时强制保留最近提及的文件名、函数名、变量名,即使轮次被压缩</td><td>代码 Agent / IDE Agent</td></tr>
+      <tr><td><strong>按需展开</strong></td><td>用户追问历史细节时,从向量库检索被压缩的原始对话片段,临时注入上下文</td><td>长对话 &gt; 50 轮</td></tr>
+    </tbody>
+  </table>
+</div>
+
 <div class="summary-box">
 <div class="summary-title">🔗 5.12 核心要点</div>
 <p><strong>轮次分割</strong>:按 user message 分割对话为多个轮次,inline tool_result 不开新轮次。</p>

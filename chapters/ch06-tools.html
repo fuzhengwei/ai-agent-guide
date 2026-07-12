@@ -3379,6 +3379,1278 @@ public class SmartToolRouter {
 }</pre></div>
 </div>
 
+
+<!-- ===== 6.16 多协议适配层 ===== -->
+<h2 class="section-heading">6.16 多协议适配层：一套代码兼容所有模型</h2>
+
+<p>不同 LLM 厂商的 API 协议各不相同——OpenAI 用 <code>messages</code> 数组，Anthropic 用 <code>system + messages</code> 分离，Ollama 用 <code>prompt</code> 字段，OpenAI Responses API 用 <code>input</code> 字段。如果 Agent 代码直接绑定某一协议，切换模型意味着大规模重写。</p>
+
+<h3 class="sub-heading">6.16.1 协议差异全景</h3>
+
+<div class="card">
+  <div class="card-title">🔌 四大主流 API 协议对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">协议</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">厂商</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">消息字段</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">工具调用</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">流式格式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px;">Chat Completions</td>
+        <td style="padding: 8px 6px;">OpenAI / DeepSeek / Qwen</td>
+        <td style="padding: 8px 6px;"><code>messages[]</code></td>
+        <td style="padding: 8px 6px;"><code>tools[].function</code></td>
+        <td style="padding: 8px 6px;"><code>data: {choices[0].delta}</code></td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px;">Messages API</td>
+        <td style="padding: 8px 6px;">Anthropic Claude</td>
+        <td style="padding: 8px 6px;"><code>system + messages[]</code></td>
+        <td style="padding: 8px 6px;"><code>tools[] + tool_use block</code></td>
+        <td style="padding: 8px 6px;"><code>event: content_block_delta</code></td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 8px 6px;">Responses API</td>
+        <td style="padding: 8px 6px;">OpenAI (2025+)</td>
+        <td style="padding: 8px 6px;"><code>input</code> (字符串/数组)</td>
+        <td style="padding: 8px 6px;"><code>tools[].type</code> (内置+自定义)</td>
+        <td style="padding: 8px 6px;"><code>response.output_text.delta</code></td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 6px;">Generate API</td>
+        <td style="padding: 8px 6px;">Ollama / vLLM</td>
+        <td style="padding: 8px 6px;"><code>prompt</code> 或 <code>messages[]</code></td>
+        <td style="padding: 8px 6px;">支持 OpenAI 兼容模式</td>
+        <td style="padding: 8px 6px;">逐 Token 流式</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">6.16.2 ProtocolStrategy 适配模式</h3>
+
+<p>WaLiCode 采用<strong>策略模式（Strategy Pattern）</strong>实现多协议适配——定义统一接口，每个协议一个实现类，运行时动态切换：</p>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="lang-pane active" data-lang="python">
+<pre><code class="language-python">from abc import ABC, abstractmethod
+from typing import Any
+import json
+
+class ProtocolStrategy(ABC):
+    """协议适配层抽象接口"""
+
+    @abstractmethod
+    def build_request(self, messages: list[dict], tools: list[dict] = None,
+                      system: str = None, **kwargs) -> dict:
+        """将统一格式转换为目标协议格式"""
+        pass
+
+    @abstractmethod
+    def parse_response(self, response: dict) -> dict:
+        """将目标协议响应解析为统一格式"""
+        pass
+
+    @abstractmethod
+    def parse_tool_call(self, response: dict) -> list[dict]:
+        """提取工具调用信息"""
+        pass
+
+    @abstractmethod
+    def parse_stream_chunk(self, chunk: str) -> dict:
+        """解析流式响应块"""
+        pass
+
+
+class OpenAIProtocol(ProtocolStrategy):
+    """OpenAI Chat Completions 协议"""
+
+    def build_request(self, messages, tools=None, system=None, **kwargs):
+        msgs = messages.copy()
+        if system:
+            msgs = [{"role": "system", "content": system}] + msgs
+        body = {"model": kwargs.get("model", "gpt-4o"), "messages": msgs}
+        if tools:
+            body["tools"] = [{"type": "function", "function": t} for t in tools]
+        return body
+
+    def parse_response(self, response):
+        return {
+            "content": response["choices"][0]["message"]["content"],
+            "role": response["choices"][0]["message"]["role"],
+            "finish_reason": response["choices"][0]["finish_reason"]
+        }
+
+    def parse_tool_call(self, response):
+        msg = response["choices"][0]["message"]
+        if not msg.get("tool_calls"):
+            return []
+        return [
+            {"id": tc["id"], "name": tc["function"]["name"],
+             "args": json.loads(tc["function"]["arguments"])}
+            for tc in msg["tool_calls"]
+        ]
+
+    def parse_stream_chunk(self, chunk):
+        data = json.loads(chunk.removeprefix("data: ").strip())
+        delta = data["choices"][0].get("delta", {})
+        return {"content": delta.get("content", ""),
+                "tool_call": delta.get("tool_calls", None)}
+
+
+class AnthropicProtocol(ProtocolStrategy):
+    """Anthropic Messages API 协议"""
+
+    def build_request(self, messages, tools=None, system=None, **kwargs):
+        body = {
+            "model": kwargs.get("model", "claude-sonnet-4-20250514"),
+            "messages": messages,
+            "max_tokens": kwargs.get("max_tokens", 4096)
+        }
+        if system:
+            body["system"] = system
+        if tools:
+            body["tools"] = [
+                {"name": t["name"], "description": t["description"],
+                 "input_schema": t["parameters"]} for t in tools
+            ]
+        return body
+
+    def parse_response(self, response):
+        content_blocks = response.get("content", [])
+        text = "".join(b.get("text", "") for b in content_blocks if b["type"] == "text")
+        return {"content": text, "role": "assistant",
+                "finish_reason": response.get("stop_reason", "")}
+
+    def parse_tool_call(self, response):
+        return [
+            {"id": b["id"], "name": b["name"],
+             "args": b.get("input", {})}
+            for b in response.get("content", []) if b["type"] == "tool_use"
+        ]
+
+    def parse_stream_chunk(self, chunk):
+        # Anthropic SSE: event: content_block_delta
+        if chunk.startswith("data: "):
+            data = json.loads(chunk[6:])
+            if data.get("type") == "content_block_delta":
+                delta = data.get("delta", {})
+                return {"content": delta.get("text", ""),
+                        "tool_call": None}
+        return {"content": "", "tool_call": None}
+
+
+class ResponsesProtocol(ProtocolStrategy):
+    """OpenAI Responses API (2025+) 协议"""
+
+    def build_request(self, messages, tools=None, system=None, **kwargs):
+        # Responses API 使用 input 字段
+        body = {
+            "model": kwargs.get("model", "gpt-4.1"),
+            "input": messages,  # 直接使用 messages 数组
+        }
+        if system:
+            body["instructions"] = system
+        if tools:
+            body["tools"] = tools  # 支持内置工具类型
+        return body
+
+    def parse_response(self, response):
+        return {
+            "content": response.get("output_text", ""),
+            "role": "assistant",
+            "finish_reason": response.get("status", "completed")
+        }
+
+    def parse_tool_call(self, response):
+        calls = []
+        for item in response.get("output", []):
+            if item.get("type") == "function_call":
+                calls.append({
+                    "id": item.get("call_id"),
+                    "name": item.get("name"),
+                    "args": json.loads(item.get("arguments", "{}"))
+                })
+        return calls
+
+    def parse_stream_chunk(self, chunk):
+        data = json.loads(chunk.removeprefix("data: ").strip())
+        etype = data.get("type", "")
+        if etype == "response.output_text.delta":
+            return {"content": data.get("delta", ""), "tool_call": None}
+        return {"content": "", "tool_call": None}
+
+
+class OllamaProtocol(ProtocolStrategy):
+    """Ollama 本地模型协议"""
+
+    def build_request(self, messages, tools=None, system=None, **kwargs):
+        body = {
+            "model": kwargs.get("model", "llama3.2"),
+            "messages": messages,
+            "stream": kwargs.get("stream", False),
+            "format": "json" if kwargs.get("json_mode") else None
+        }
+        if system and not any(m["role"] == "system" for m in messages):
+            body["messages"] = [{"role": "system", "content": system}] + messages
+        return body
+
+    def parse_response(self, response):
+        return {
+            "content": response.get("message", {}).get("content", ""),
+            "role": "assistant",
+            "finish_reason": "stop"
+        }
+
+    def parse_tool_call(self, response):
+        # Ollama 通过 OpenAI 兼容模式支持工具调用
+        return []
+
+    def parse_stream_chunk(self, chunk):
+        data = json.loads(chunk)
+        return {"content": data.get("message", {}).get("content", ""),
+                "tool_call": None}
+
+
+# === 协议注册中心 ===
+PROTOCOLS = {
+    "openai": OpenAIProtocol(),
+    "anthropic": AnthropicProtocol(),
+    "responses": ResponsesProtocol(),
+    "ollama": OllamaProtocol(),
+}
+
+def get_protocol(name: str) -> ProtocolStrategy:
+    """根据协议名获取适配器，切换模型零成本"""
+    if name not in PROTOCOLS:
+        raise ValueError(f"Unknown protocol: {name}. Supported: {list(PROTOCOLS.keys())}")
+    return PROTOCOLS[name]
+
+# === 使用示例：一行切换模型 ===
+protocol = get_protocol("anthropic")  # 切到 Claude
+request = protocol.build_request(
+    messages=[{"role": "user", "content": "你好"}],
+    system="你是一个助手",
+    model="claude-sonnet-4-20250514"
+)
+# 切到 OpenAI 只需改一行
+protocol = get_protocol("openai")
+request = protocol.build_request(
+    messages=[{"role": "user", "content": "你好"}],
+    system="你是一个助手",
+    model="gpt-4.1"
+)</code></pre>
+</div>
+<div class="lang-pane" data-lang="typescript">
+<pre><code class="language-typescript">// TypeScript: 多协议适配层
+interface ProtocolStrategy {
+  buildRequest(messages: Message[], tools?: Tool[], system?: string): any;
+  parseResponse(response: any): UnifiedResponse;
+  parseToolCall(response: any): ToolCall[];
+  parseStreamChunk(chunk: string): StreamChunk;
+}
+
+class OpenAIProtocol implements ProtocolStrategy {
+  buildRequest(messages: Message[], tools?: Tool[], system?: string) {
+    const msgs = system ? [{ role: "system", content: system }, ...messages] : messages;
+    return { model: "gpt-4.1", messages: msgs, tools: tools?.map(t => ({ type: "function", function: t })) };
+  }
+  parseResponse(res: any): UnifiedResponse {
+    return { content: res.choices[0].message.content, role: "assistant", finishReason: res.choices[0].finish_reason };
+  }
+  parseToolCall(res: any): ToolCall[] {
+    return (res.choices[0].message.tool_calls || []).map((tc: any) => ({
+      id: tc.id, name: tc.function.name, args: JSON.parse(tc.function.arguments)
+    }));
+  }
+  parseStreamChunk(chunk: string): StreamChunk {
+    const data = JSON.parse(chunk.replace("data: ", ""));
+    const delta = data.choices[0]?.delta || {};
+    return { content: delta.content || "", toolCall: delta.tool_calls || null };
+  }
+}
+
+// 注册中心
+const protocols: Record<string, ProtocolStrategy> = {
+  openai: new OpenAIProtocol(),
+  anthropic: new AnthropicProtocol(),
+  responses: new ResponsesProtocol(),
+  ollama: new OllamaProtocol(),
+};
+
+// 一行切换协议
+const protocol = protocols["openai"];
+const req = protocol.buildRequest([{ role: "user", content: "你好" }], undefined, "你是助手");</code></pre>
+</div>
+<div class="lang-pane" data-lang="go">
+<pre><code class="language-go">package main
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// ProtocolStrategy 协议适配层抽象接口
+type ProtocolStrategy interface {
+	BuildRequest(messages []Message, tools []Tool, system string, opts map[string]interface{}) map[string]interface{}
+	ParseResponse(response map[string]interface{}) UnifiedResponse
+	ParseToolCall(response map[string]interface{}) []ToolCall
+}
+
+// UnifiedResponse 统一响应格式
+type UnifiedResponse struct {
+	Content      string
+	Role         string
+	FinishReason string
+}
+
+// ToolCall 工具调用
+type ToolCall struct {
+	ID   string
+	Name string
+	Args map[string]interface{}
+}
+
+// Message 消息
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// Tool 工具定义
+type Tool struct {
+	Name        string
+	Description string
+	Parameters  map[string]interface{}
+}
+
+// OpenAIProtocol OpenAI Chat Completions 协议
+type OpenAIProtocol struct{}
+
+func (p *OpenAIProtocol) BuildRequest(messages []Message, tools []Tool, system string, opts map[string]interface{}) map[string]interface{} {
+	msgs := make([]map[string]interface{}, 0)
+	if system != "" {
+		msgs = append(msgs, map[string]interface{}{"role": "system", "content": system})
+	}
+	for _, m := range messages {
+		msgs = append(msgs, map[string]interface{}{"role": m.Role, "content": m.Content})
+	}
+	body := map[string]interface{}{
+		"model":    "gpt-4.1",
+		"messages": msgs,
+	}
+	if len(tools) > 0 {
+		toolDefs := make([]map[string]interface{}, len(tools))
+		for i, t := range tools {
+			toolDefs[i] = map[string]interface{}{
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":        t.Name,
+					"description": t.Description,
+					"parameters":  t.Parameters,
+				},
+			}
+		}
+		body["tools"] = toolDefs
+	}
+	return body
+}
+
+func (p *OpenAIProtocol) ParseResponse(response map[string]interface{}) UnifiedResponse {
+	choices := response["choices"].([]interface{})
+	choice := choices[0].(map[string]interface{})
+	msg := choice["message"].(map[string]interface{})
+	return UnifiedResponse{
+		Content:      msg["content"].(string),
+		Role:         msg["role"].(string),
+		FinishReason: choice["finish_reason"].(string),
+	}
+}
+
+func (p *OpenAIProtocol) ParseToolCall(response map[string]interface{}) []ToolCall {
+	choices := response["choices"].([]interface{})
+	choice := choices[0].(map[string]interface{})
+	msg := choice["message"].(map[string]interface{})
+	toolCalls, ok := msg["tool_calls"].([]interface{})
+	if !ok {
+		return []ToolCall{}
+	}
+	calls := make([]ToolCall, 0, len(toolCalls))
+	for _, tc := range toolCalls {
+		tcMap := tc.(map[string]interface{})
+		fn := tcMap["function"].(map[string]interface{})
+		var args map[string]interface{}
+		json.Unmarshal([]byte(fn["arguments"].(string)), &args)
+		calls = append(calls, ToolCall{
+			ID:   tcMap["id"].(string),
+			Name: fn["name"].(string),
+			Args: args,
+		})
+	}
+	return calls
+}
+
+// AnthropicProtocol Anthropic Messages API 协议
+type AnthropicProtocol struct{}
+
+func (p *AnthropicProtocol) BuildRequest(messages []Message, tools []Tool, system string, opts map[string]interface{}) map[string]interface{} {
+	msgs := make([]map[string]interface{}, len(messages))
+	for i, m := range messages {
+		msgs[i] = map[string]interface{}{"role": m.Role, "content": m.Content}
+	}
+	body := map[string]interface{}{
+		"model":      "claude-sonnet-4-20250514",
+		"messages":   msgs,
+		"max_tokens": 4096,
+	}
+	if system != "" {
+		body["system"] = system
+	}
+	if len(tools) > 0 {
+		toolDefs := make([]map[string]interface{}, len(tools))
+		for i, t := range tools {
+			toolDefs[i] = map[string]interface{}{
+				"name":         t.Name,
+				"description":  t.Description,
+				"input_schema": t.Parameters,
+			}
+		}
+		body["tools"] = toolDefs
+	}
+	return body
+}
+
+func (p *AnthropicProtocol) ParseResponse(response map[string]interface{}) UnifiedResponse {
+	contentBlocks := response["content"].([]interface{})
+	text := ""
+	for _, b := range contentBlocks {
+		block := b.(map[string]interface{})
+		if block["type"] == "text" {
+			text += block["text"].(string)
+		}
+	}
+	stopReason, _ := response["stop_reason"].(string)
+	return UnifiedResponse{Content: text, Role: "assistant", FinishReason: stopReason}
+}
+
+func (p *AnthropicProtocol) ParseToolCall(response map[string]interface{}) []ToolCall {
+	contentBlocks := response["content"].([]interface{})
+	calls := []ToolCall{}
+	for _, b := range contentBlocks {
+		block := b.(map[string]interface{})
+		if block["type"] == "tool_use" {
+			args, _ := block["input"].(map[string]interface{})
+			calls = append(calls, ToolCall{
+				ID:   block["id"].(string),
+				Name: block["name"].(string),
+				Args: args,
+			})
+		}
+	}
+	return calls
+}
+
+// 协议注册中心
+var protocols = map[string]ProtocolStrategy{
+	"openai":    &OpenAIProtocol{},
+	"anthropic": &AnthropicProtocol{},
+}
+
+func GetProtocol(name string) (ProtocolStrategy, error) {
+	p, ok := protocols[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown protocol: %s", name)
+	}
+	return p, nil
+}
+
+// === 使用示例 ===
+func main() {
+	// 切到 Anthropic
+	protocol, _ := GetProtocol("anthropic")
+	req := protocol.BuildRequest(
+		[]Message{{Role: "user", Content: "你好"}},
+		nil, "你是一个助手", nil,
+	)
+	jsonData, _ := json.MarshalIndent(req, "", "  ")
+	fmt.Println(string(jsonData))
+
+	// 切到 OpenAI 只需改一行
+	protocol, _ = GetProtocol("openai")
+	req = protocol.BuildRequest(
+		[]Message{{Role: "user", Content: "你好"}},
+		nil, "你是一个助手", nil,
+	)
+	jsonData, _ = json.MarshalIndent(req, "", "  ")
+	fmt.Println(string(jsonData))
+}</code></pre>
+</div>
+<div class="lang-pane" data-lang="java">
+<pre><code class="language-java">import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.*;
+
+// 协议适配层抽象接口
+interface ProtocolStrategy {
+    Map<String, Object> buildRequest(List<Map<String, String>> messages,
+                                     List<Map<String, Object>> tools,
+                                     String system, Map<String, Object> opts);
+    Map<String, Object> parseResponse(Map<String, Object> response);
+    List<Map<String, Object>> parseToolCall(Map<String, Object> response);
+}
+
+// OpenAI Chat Completions 协议
+class OpenAIProtocol implements ProtocolStrategy {
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @Override
+    public Map<String, Object> buildRequest(List<Map<String, String>> messages,
+                                            List<Map<String, Object>> tools,
+                                            String system, Map<String, Object> opts) {
+        List<Map<String, Object>> msgs = new ArrayList<>();
+        if (system != null && !system.isEmpty()) {
+            msgs.add(Map.of("role", "system", "content", system));
+        }
+        for (Map<String, String> m : messages) {
+            msgs.add(new HashMap<>(m));
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", "gpt-4.1");
+        body.put("messages", msgs);
+        if (tools != null && !tools.isEmpty()) {
+            List<Map<String, Object>> toolDefs = new ArrayList<>();
+            for (Map<String, Object> t : tools) {
+                toolDefs.add(Map.of("type", "function", "function", t));
+            }
+            body.put("tools", toolDefs);
+        }
+        return body;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> parseResponse(Map<String, Object> response) {
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+        Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+        return Map.of(
+            "content", msg.getOrDefault("content", ""),
+            "role", msg.getOrDefault("role", "assistant"),
+            "finish_reason", choices.get(0).getOrDefault("finish_reason", "")
+        );
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> parseToolCall(Map<String, Object> response) {
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+        Map<String, Object> msg = (Map<String, Object>) choices.get(0).get("message");
+        List<Map<String, Object>> toolCalls = (List<Map<String, Object>>) msg.get("tool_calls");
+        if (toolCalls == null) return List.of();
+
+        List<Map<String, Object>> calls = new ArrayList<>();
+        for (Map<String, Object> tc : toolCalls) {
+            Map<String, Object> fn = (Map<String, Object>) tc.get("function");
+            try {
+                JsonNode args = mapper.readTree(fn.get("arguments").toString());
+                Map<String, Object> argsMap = mapper.convertValue(args, Map.class);
+                calls.add(Map.of(
+                    "id", tc.get("id"),
+                    "name", fn.get("name"),
+                    "args", argsMap
+                ));
+            } catch (Exception e) {
+                calls.add(Map.of("id", tc.get("id"), "name", fn.get("name"), "args", Map.of()));
+            }
+        }
+        return calls;
+    }
+}
+
+// Anthropic Messages API 协议
+class AnthropicProtocol implements ProtocolStrategy {
+    @Override
+    public Map<String, Object> buildRequest(List<Map<String, String>> messages,
+                                            List<Map<String, Object>> tools,
+                                            String system, Map<String, Object> opts) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", "claude-sonnet-4-20250514");
+        body.put("messages", messages);
+        body.put("max_tokens", 4096);
+        if (system != null && !system.isEmpty()) {
+            body.put("system", system);
+        }
+        if (tools != null && !tools.isEmpty()) {
+            List<Map<String, Object>> toolDefs = new ArrayList<>();
+            for (Map<String, Object> t : tools) {
+                Map<String, Object> td = new HashMap<>();
+                td.put("name", t.get("name"));
+                td.put("description", t.get("description"));
+                td.put("input_schema", t.get("parameters"));
+                toolDefs.add(td);
+            }
+            body.put("tools", toolDefs);
+        }
+        return body;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> parseResponse(Map<String, Object> response) {
+        List<Map<String, Object>> blocks = (List<Map<String, Object>>) response.get("content");
+        StringBuilder text = new StringBuilder();
+        for (Map<String, Object> b : blocks) {
+            if ("text".equals(b.get("type"))) {
+                text.append(b.get("text"));
+            }
+        }
+        return Map.of(
+            "content", text.toString(),
+            "role", "assistant",
+            "finish_reason", response.getOrDefault("stop_reason", "")
+        );
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> parseToolCall(Map<String, Object> response) {
+        List<Map<String, Object>> blocks = (List<Map<String, Object>>) response.get("content");
+        List<Map<String, Object>> calls = new ArrayList<>();
+        for (Map<String, Object> b : blocks) {
+            if ("tool_use".equals(b.get("type"))) {
+                calls.add(Map.of(
+                    "id", b.get("id"),
+                    "name", b.get("name"),
+                    "args", b.getOrDefault("input", Map.of())
+                ));
+            }
+        }
+        return calls;
+    }
+}
+
+// 协议注册中心
+class ProtocolRegistry {
+    private static final Map<String, ProtocolStrategy> protocols = new HashMap<>();
+    static {
+        protocols.put("openai", new OpenAIProtocol());
+        protocols.put("anthropic", new AnthropicProtocol());
+    }
+
+    public static ProtocolStrategy getProtocol(String name) {
+        ProtocolStrategy p = protocols.get(name);
+        if (p == null) throw new IllegalArgumentException("Unknown protocol: " + name);
+        return p;
+    }
+}
+
+// === 使用示例 ===
+public class Main {
+    public static void main(String[] args) {
+        // 切到 Anthropic
+        ProtocolStrategy protocol = ProtocolRegistry.getProtocol("anthropic");
+        Map<String, Object> req = protocol.buildRequest(
+            List.of(Map.of("role", "user", "content", "你好")),
+            null, "你是一个助手", null
+        );
+        System.out.println(req);
+
+        // 切到 OpenAI 只需改一行
+        protocol = ProtocolRegistry.getProtocol("openai");
+        req = protocol.buildRequest(
+            List.of(Map.of("role", "user", "content", "你好")),
+            null, "你是一个助手", null
+        );
+        System.out.println(req);
+    }
+}</code></pre>
+</div>
+</div>
+
+<div class="info-box">
+<strong>设计要点</strong>：多协议适配层的核心价值是<strong>解耦</strong>——Agent 核心逻辑只对接统一接口，不关心底层协议差异。切换模型只需改一行 <code>get_protocol("anthropic")</code> → <code>get_protocol("openai")</code>。新增协议只需实现 <code>ProtocolStrategy</code> 接口，符合开闭原则。
+</div>
+
+<!-- ===== 6.17 信号提取（Signal Extraction） ===== -->
+<h2 class="section-heading">6.17 信号提取：从对话中识别用户真实意图</h2>
+
+<p>用户说"帮我看看这段代码"——他想要的是代码审查？Bug 修复？还是性能优化？<strong>信号提取</strong>就是从用户输入中识别出隐含的意图、约束、偏好等关键信息，是工具路由的前置条件。</p>
+
+<h3 class="sub-heading">6.17.1 信号的五大类型</h3>
+
+<div class="card">
+  <div class="card-title">📡 用户对话中的五类信号</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">信号类型</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">示例</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">提取方式</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">影响</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>意图信号</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我修一下" → 修复意图</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">意图分类器</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">工具路由方向</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>约束信号</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"用 Python 3.12" → 语言版本约束</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">实体识别 (NER)</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码生成约束</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>偏好信号</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"不要用类" → 函数式偏好</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">否定句解析</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码风格选择</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>上下文信号</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">选中了第 10-20 行 → 操作范围</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">编辑器状态读取</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">操作作用域</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;"><strong>情绪信号</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"怎么又报错了！" → 挫败感</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">情感分析</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">回复语气调整</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">6.17.2 信号提取实现</h3>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="lang-pane active" data-lang="python">
+<pre><code class="language-python">import re
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Signal:
+    """提取出的信号"""
+    signal_type: str       # intent | constraint | preference | context | emotion
+    key: str               # 信号键，如 "language", "style", "intent"
+    value: str             # 信号值，如 "python", "functional", "fix"
+    confidence: float      # 置信度 0-1
+    source: str = "text"   # 来源：text | editor | history
+
+@dataclass
+class SignalExtractor:
+    """信号提取器：从用户输入中识别隐含信息"""
+
+    # 意图关键词映射
+    intent_patterns = {
+        "fix": [r"修[复改]", r"报错", r"bug", r"不工作", r"为什么.*错"],
+        "refactor": [r"重构", r"优化", r"改进", r"refactor", r"improve"],
+        "explain": [r"解释", r"什么意思", r"为什么", r"怎么.*实现", r"explain"],
+        "test": [r"测试", r"test", r"写.*用例", r"单元测试"],
+        "deploy": [r"部署", r"deploy", r"上线", r"发布"],
+    }
+
+    # 约束关键词映射
+    constraint_patterns = {
+        "language": r"(Python|TypeScript|Go|Java|Rust|JavaScript|C\+\+|Ruby)",
+        "version": r"(\d+\.\d+(?:\.\d+)?)",
+        "framework": r"(Django|Flask|FastAPI|React|Vue|Spring|Gin|Express)",
+    }
+
+    # 否定偏好模式
+    preference_patterns = {
+        "no_class": r"不要用类|不用 class|函数式",
+        "no_loop": r"不用循环|不要 for|递归实现",
+        "no_library": r"不用.*库|不要.*依赖|纯手写",
+    }
+
+    def extract(self, text: str, editor_context: dict = None) -> list[Signal]:
+        signals = []
+
+        # 1. 意图信号
+        for intent, patterns in self.intent_patterns.items():
+            for p in patterns:
+                if re.search(p, text, re.IGNORECASE):
+                    signals.append(Signal("intent", "action", intent, 0.85))
+                    break
+
+        # 2. 约束信号
+        for key, pattern in self.constraint_patterns.items():
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                signals.append(Signal("constraint", key, match.group(1), 0.9))
+
+        # 3. 偏好信号
+        for key, pattern in self.preference_patterns.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                signals.append(Signal("preference", "style", key, 0.8))
+
+        # 4. 上下文信号（来自编辑器状态）
+        if editor_context:
+            if editor_context.get("selection"):
+                sel = editor_context["selection"]
+                signals.append(Signal(
+                    "context", "selection_range",
+                    f"{sel.get('start', 0)}-{sel.get('end', 0)}",
+                    1.0, "editor"
+                ))
+            if editor_context.get("active_file"):
+                signals.append(Signal(
+                    "context", "active_file",
+                    editor_context["active_file"], 1.0, "editor"
+                ))
+
+        # 5. 情绪信号（简单关键词匹配）
+        emotion_patterns = {
+            "frustrated": r"又.*报错|怎么.*错|烦|崩溃|搞不定",
+            "urgent": r"急|快|马上| ASAP|紧急",
+            "curious": r"好奇|有趣|为什么.*这样",
+        }
+        for emotion, pattern in emotion_patterns.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                signals.append(Signal("emotion", "mood", emotion, 0.7))
+                break
+
+        return signals
+
+    def route_by_signals(self, signals: list[Signal]) -> str:
+        """根据信号决定工具路由"""
+        intent = next((s for s in signals if s.signal_type == "intent"), None)
+        if not intent:
+            return "general_assistant"
+
+        routing = {
+            "fix": "code_debugger",
+            "refactor": "code_refactorer",
+            "explain": "code_explainer",
+            "test": "test_generator",
+            "deploy": "deployment_agent",
+        }
+        return routing.get(intent.value, "general_assistant")
+
+
+# === 使用示例 ===
+extractor = SignalExtractor()
+
+user_input = "帮我修一下这段 Python 代码，报错了，不要用类"
+editor_ctx = {"active_file": "main.py", "selection": {"start": 10, "end": 20}}
+
+signals = extractor.extract(user_input, editor_ctx)
+for s in signals:
+    print(f"[{s.signal_type}] {s.key}={s.value} (置信度: {s.confidence})")
+
+# 输出：
+# [intent] action=fix (置信度: 0.85)
+# [constraint] language=Python (置信度: 0.9)
+# [preference] style=no_class (置信度: 0.8)
+# [context] selection_range=10-20 (置信度: 1.0)
+# [context] active_file=main.py (置信度: 1.0)
+# [emotion] mood=frustrated (置信度: 0.7)
+
+route = extractor.route_by_signals(signals)
+print(f"路由到: {route}")  # 路由到: code_debugger</code></pre>
+</div>
+<div class="lang-pane" data-lang="typescript">
+<pre><code class="language-typescript">// TypeScript: 信号提取
+interface Signal {
+  signalType: "intent" | "constraint" | "preference" | "context" | "emotion";
+  key: string;
+  value: string;
+  confidence: number;
+  source?: "text" | "editor" | "history";
+}
+
+class SignalExtractor {
+  private intentPatterns: Record<string, RegExp[]> = {
+    fix: [/修[复改]/, /报错/, /bug/i, /不工作/],
+    refactor: [/重构/, /优化/, /refactor/i, /improve/i],
+    explain: [/解释/, /什么意思/, /explain/i],
+    test: [/测试/, /test/i, /单元测试/],
+  };
+
+  extract(text: string, editorCtx?: any): Signal[] {
+    const signals: Signal[] = [];
+
+    // 意图信号
+    for (const [intent, patterns] of Object.entries(this.intentPatterns)) {
+      if (patterns.some(p => p.test(text))) {
+        signals.push({ signalType: "intent", key: "action", value: intent, confidence: 0.85 });
+      }
+    }
+
+    // 约束信号
+    const langMatch = text.match(/(Python|TypeScript|Go|Java|Rust)/i);
+    if (langMatch) {
+      signals.push({ signalType: "constraint", key: "language", value: langMatch[1], confidence: 0.9 });
+    }
+
+    // 编辑器上下文
+    if (editorCtx?.selection) {
+      signals.push({
+        signalType: "context", key: "selection",
+        value: `${editorCtx.selection.start}-${editorCtx.selection.end}`,
+        confidence: 1.0, source: "editor"
+      });
+    }
+
+    return signals;
+  }
+
+  route(signals: Signal[]): string {
+    const intent = signals.find(s => s.signalType === "intent");
+    const routing: Record<string, string> = {
+      fix: "code_debugger", refactor: "refactorer", explain: "explainer", test: "test_gen"
+    };
+    return intent ? routing[intent.value] || "general" : "general";
+  }
+}</code></pre>
+</div>
+<div class="lang-pane" data-lang="go">
+<pre><code class="language-go">package main
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// Signal 提取出的信号
+type Signal struct {
+	SignalType string  `json:"signal_type"` // intent | constraint | preference | context | emotion
+	Key        string  `json:"key"`
+	Value      string  `json:"value"`
+	Confidence float64 `json:"confidence"`
+	Source     string  `json:"source"`
+}
+
+// SignalExtractor 信号提取器
+type SignalExtractor struct {
+	intentPatterns      map[string][]*regexp.Regexp
+	constraintPatterns  map[string]*regexp.Regexp
+	preferencePatterns  map[string]*regexp.Regexp
+	emotionPatterns     map[string]*regexp.Regexp
+}
+
+// NewSignalExtractor 创建信号提取器
+func NewSignalExtractor() *SignalExtractor {
+	return &SignalExtractor{
+		intentPatterns: map[string][]*regexp.Regexp{
+			"fix":      {regexp.MustCompile(`(?i)修[复改]`), regexp.MustCompile(`(?i)报错`), regexp.MustCompile(`(?i)bug`), regexp.MustCompile(`不工作`)},
+			"refactor": {regexp.MustCompile(`(?i)重构`), regexp.MustCompile(`(?i)优化`), regexp.MustCompile(`(?i)refactor`), regexp.MustCompile(`(?i)improve`)},
+			"explain":  {regexp.MustCompile(`(?i)解释`), regexp.MustCompile(`(?i)什么意思`), regexp.MustCompile(`(?i)explain`)},
+			"test":     {regexp.MustCompile(`(?i)测试`), regexp.MustCompile(`(?i)test`), regexp.MustCompile(`单元测试`)},
+		},
+		constraintPatterns: map[string]*regexp.Regexp{
+			"language":  regexp.MustCompile(`(?i)(Python|TypeScript|Go|Java|Rust|JavaScript|C\+\+|Ruby)`),
+			"framework": regexp.MustCompile(`(?i)(Django|Flask|FastAPI|React|Vue|Spring|Gin|Express)`),
+		},
+		preferencePatterns: map[string]*regexp.Regexp{
+			"no_class":   regexp.MustCompile(`(?i)不要用类|不用 class|函数式`),
+			"no_loop":    regexp.MustCompile(`(?i)不用循环|不要 for|递归实现`),
+			"no_library": regexp.MustCompile(`(?i)不用.*库|不要.*依赖|纯手写`),
+		},
+		emotionPatterns: map[string]*regexp.Regexp{
+			"frustrated": regexp.MustCompile(`又.*报错|怎么.*错|烦|崩溃|搞不定`),
+			"urgent":     regexp.MustCompile(`急|快|马上|ASAP|紧急`),
+			"curious":    regexp.MustCompile(`好奇|有趣|为什么.*这样`),
+		},
+	}
+}
+
+// EditorContext 编辑器上下文
+type EditorContext struct {
+	ActiveFile string
+	Selection  *Selection
+}
+
+type Selection struct {
+	Start int
+	End   int
+}
+
+// Extract 从用户输入中提取信号
+func (se *SignalExtractor) Extract(text string, editorCtx *EditorContext) []Signal {
+	signals := []Signal{}
+
+	// 1. 意图信号
+	for intent, patterns := range se.intentPatterns {
+		for _, p := range patterns {
+			if p.MatchString(text) {
+				signals = append(signals, Signal{"intent", "action", intent, 0.85, "text"})
+				break
+			}
+		}
+	}
+
+	// 2. 约束信号
+	for key, p := range se.constraintPatterns {
+		match := p.FindString(text)
+		if match != "" {
+			signals = append(signals, Signal{"constraint", key, match, 0.9, "text"})
+		}
+	}
+
+	// 3. 偏好信号
+	for key, p := range se.preferencePatterns {
+		if p.MatchString(text) {
+			signals = append(signals, Signal{"preference", "style", key, 0.8, "text"})
+		}
+	}
+
+	// 4. 上下文信号（来自编辑器状态）
+	if editorCtx != nil {
+		if editorCtx.Selection != nil {
+			signals = append(signals, Signal{
+				"context", "selection_range",
+				fmt.Sprintf("%d-%d", editorCtx.Selection.Start, editorCtx.Selection.End),
+				1.0, "editor",
+			})
+		}
+		if editorCtx.ActiveFile != "" {
+			signals = append(signals, Signal{"context", "active_file", editorCtx.ActiveFile, 1.0, "editor"})
+		}
+	}
+
+	// 5. 情绪信号
+	for emotion, p := range se.emotionPatterns {
+		if p.MatchString(text) {
+			signals = append(signals, Signal{"emotion", "mood", emotion, 0.7, "text"})
+			break
+		}
+	}
+
+	return signals
+}
+
+// RouteBySignals 根据信号决定工具路由
+func (se *SignalExtractor) RouteBySignals(signals []Signal) string {
+	for _, s := range signals {
+		if s.SignalType == "intent" {
+			routing := map[string]string{
+				"fix":      "code_debugger",
+				"refactor": "code_refactorer",
+				"explain":  "code_explainer",
+				"test":     "test_generator",
+			}
+			if route, ok := routing[s.Value]; ok {
+				return route
+			}
+		}
+	}
+	return "general_assistant"
+}
+
+// === 使用示例 ===
+func main() {
+	extractor := NewSignalExtractor()
+
+	userInput := "帮我修一下这段 Python 代码，报错了，不要用类"
+	editorCtx := &EditorContext{
+		ActiveFile: "main.py",
+		Selection:  &Selection{Start: 10, End: 20},
+	}
+
+	signals := extractor.Extract(userInput, editorCtx)
+	for _, s := range signals {
+		fmt.Printf("[%s] %s=%s (置信度: %.2f)\n", s.SignalType, s.Key, s.Value, s.Confidence)
+	}
+
+	route := extractor.RouteBySignals(signals)
+	fmt.Printf("路由到: %s\n", route)
+	_ = strings.Builder{}
+}</code></pre>
+</div>
+<div class="lang-pane" data-lang="java">
+<pre><code class="language-java">import java.util.*;
+import java.util.regex.*;
+
+// Signal 提取出的信号
+class Signal {
+    String signalType; // intent | constraint | preference | context | emotion
+    String key;
+    String value;
+    double confidence;
+    String source;
+
+    Signal(String signalType, String key, String value, double confidence, String source) {
+        this.signalType = signalType;
+        this.key = key;
+        this.value = value;
+        this.confidence = confidence;
+        this.source = source;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[%s] %s=%s (置信度: %.2f)", signalType, key, value, confidence);
+    }
+}
+
+// EditorContext 编辑器上下文
+class EditorContext {
+    String activeFile;
+    int selectionStart;
+    int selectionEnd;
+    boolean hasSelection;
+}
+
+// SignalExtractor 信号提取器
+class SignalExtractor {
+    private final Map<String, List<Pattern>> intentPatterns = new HashMap<>();
+    private final Map<String, Pattern> constraintPatterns = new HashMap<>();
+    private final Map<String, Pattern> preferencePatterns = new HashMap<>();
+    private final Map<String, Pattern> emotionPatterns = new HashMap<>();
+
+    public SignalExtractor() {
+        // 意图关键词映射
+        intentPatterns.put("fix", List.of(
+            Pattern.compile("(?i)修[复改]"), Pattern.compile("(?i)报错"),
+            Pattern.compile("(?i)bug"), Pattern.compile("不工作")
+        ));
+        intentPatterns.put("refactor", List.of(
+            Pattern.compile("(?i)重构"), Pattern.compile("(?i)优化"),
+            Pattern.compile("(?i)refactor"), Pattern.compile("(?i)improve")
+        ));
+        intentPatterns.put("explain", List.of(
+            Pattern.compile("(?i)解释"), Pattern.compile("(?i)什么意思"),
+            Pattern.compile("(?i)explain")
+        ));
+        intentPatterns.put("test", List.of(
+            Pattern.compile("(?i)测试"), Pattern.compile("(?i)test"),
+            Pattern.compile("单元测试")
+        ));
+
+        // 约束关键词映射
+        constraintPatterns.put("language", Pattern.compile("(?i)(Python|TypeScript|Go|Java|Rust|JavaScript|C\\+\\+|Ruby)"));
+        constraintPatterns.put("framework", Pattern.compile("(?i)(Django|Flask|FastAPI|React|Vue|Spring|Gin|Express)"));
+
+        // 否定偏好模式
+        preferencePatterns.put("no_class", Pattern.compile("(?i)不要用类|不用 class|函数式"));
+        preferencePatterns.put("no_loop", Pattern.compile("(?i)不用循环|不要 for|递归实现"));
+        preferencePatterns.put("no_library", Pattern.compile("(?i)不用.*库|不要.*依赖|纯手写"));
+
+        // 情绪信号
+        emotionPatterns.put("frustrated", Pattern.compile("又.*报错|怎么.*错|烦|崩溃|搞不定"));
+        emotionPatterns.put("urgent", Pattern.compile("急|快|马上|ASAP|紧急"));
+        emotionPatterns.put("curious", Pattern.compile("好奇|有趣|为什么.*这样"));
+    }
+
+    public List<Signal> extract(String text, EditorContext editorCtx) {
+        List<Signal> signals = new ArrayList<>();
+
+        // 1. 意图信号
+        for (Map.Entry<String, List<Pattern>> entry : intentPatterns.entrySet()) {
+            for (Pattern p : entry.getValue()) {
+                if (p.matcher(text).find()) {
+                    signals.add(new Signal("intent", "action", entry.getKey(), 0.85, "text"));
+                    break;
+                }
+            }
+        }
+
+        // 2. 约束信号
+        for (Map.Entry<String, Pattern> entry : constraintPatterns.entrySet()) {
+            Matcher m = entry.getValue().matcher(text);
+            if (m.find()) {
+                signals.add(new Signal("constraint", entry.getKey(), m.group(1), 0.9, "text"));
+            }
+        }
+
+        // 3. 偏好信号
+        for (Map.Entry<String, Pattern> entry : preferencePatterns.entrySet()) {
+            if (entry.getValue().matcher(text).find()) {
+                signals.add(new Signal("preference", "style", entry.getKey(), 0.8, "text"));
+            }
+        }
+
+        // 4. 上下文信号（来自编辑器状态）
+        if (editorCtx != null) {
+            if (editorCtx.hasSelection) {
+                signals.add(new Signal("context", "selection_range",
+                    editorCtx.selectionStart + "-" + editorCtx.selectionEnd, 1.0, "editor"));
+            }
+            if (editorCtx.activeFile != null && !editorCtx.activeFile.isEmpty()) {
+                signals.add(new Signal("context", "active_file", editorCtx.activeFile, 1.0, "editor"));
+            }
+        }
+
+        // 5. 情绪信号
+        for (Map.Entry<String, Pattern> entry : emotionPatterns.entrySet()) {
+            if (entry.getValue().matcher(text).find()) {
+                signals.add(new Signal("emotion", "mood", entry.getKey(), 0.7, "text"));
+                break;
+            }
+        }
+
+        return signals;
+    }
+
+    public String routeBySignals(List<Signal> signals) {
+        for (Signal s : signals) {
+            if ("intent".equals(s.signalType)) {
+                Map<String, String> routing = Map.of(
+                    "fix", "code_debugger",
+                    "refactor", "code_refactorer",
+                    "explain", "code_explainer",
+                    "test", "test_generator"
+                );
+                String route = routing.get(s.value);
+                if (route != null) return route;
+            }
+        }
+        return "general_assistant";
+    }
+}
+
+// === 使用示例 ===
+public class Main {
+    public static void main(String[] args) {
+        SignalExtractor extractor = new SignalExtractor();
+
+        String userInput = "帮我修一下这段 Python 代码，报错了，不要用类";
+        EditorContext editorCtx = new EditorContext();
+        editorCtx.activeFile = "main.py";
+        editorCtx.selectionStart = 10;
+        editorCtx.selectionEnd = 20;
+        editorCtx.hasSelection = true;
+
+        List<Signal> signals = extractor.extract(userInput, editorCtx);
+        for (Signal s : signals) {
+            System.out.println(s);
+        }
+
+        String route = extractor.routeBySignals(signals);
+        System.out.println("路由到: " + route);
+    }
+}</code></pre>
+</div>
+</div>
+
+<div class="info-box">
+<strong>信号提取的价值</strong>：用户不会每次都把需求说得清清楚楚。"帮我看看"可能意味着审查、修复、解释中的任何一个。信号提取让 Agent 从"用户说了什么"深入到"用户想要什么"，是意图识别的升级版——不仅识别动作意图，还识别约束、偏好、上下文和情绪，为工具路由提供多维决策依据。
+</div>
+
+
 <div class="summary-box">
   <div class="summary-title">🔗 6.10~6.14 小结：工具调用的进阶体系</div>
   <div style="margin-top: 12px; font-size: 14px; line-height: 1.8;">

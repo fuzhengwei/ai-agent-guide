@@ -838,6 +838,83 @@ multi_agent:
   fallback: "通用回复: 抱歉，我无法处理此类问题，已为您转接人工客服。"</pre>
 </div>
 
+
+<h3 class="sub-heading">13.6.5 n8n：开源自动化工作流平台</h3>
+
+<div class="card" style="border-left: 3px solid #FF6D5A;">
+  <div class="card-title">🟠 n8n — 开源的自动化工作流引擎</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">n8n 是一个<strong>开源的工作流自动化平台</strong>，定位介于 Zapier（纯无代码）和 LangChain（纯代码）之间。它用可视化节点编辑器编排工作流，每个节点可以是一段代码、一个 API 调用、一个 AI 模型调用。与 Dify/Coze 不同，n8n 的核心是<strong>通用自动化</strong>（不只是 AI Agent），但通过 AI 节点可以构建 Agent 工作流。</p>
+</div>
+
+<p><strong>n8n 的核心特点：</strong></p>
+<ul>
+<li><strong>可视化节点编辑</strong>：拖拽式编排，每个节点有输入/输出端口，支持分支、循环、并行</li>
+<li><strong>400+ 内置集成</strong>：覆盖 Slack、Gmail、Notion、GitHub、数据库等主流服务，开箱即用</li>
+<li><strong>代码节点</strong>：内置 JavaScript/Python 代码执行节点，灵活处理复杂逻辑</li>
+<li><strong>自托管开源</strong>：Fair-code 许可，可免费自托管，数据完全自主可控</li>
+<li><strong>AI Agent 节点</strong>：2024 年新增 LangChain 集成节点，支持 LLM Chain、Agent、Memory、Tools 等</li>
+<li><strong>Webhook 触发</strong>：任何工作流都可以通过 Webhook 触发，适合构建事件驱动架构</li>
+</ul>
+
+<div class="info-box">
+<strong>n8n vs Dify vs Coze 定位差异</strong>：<br>
+• <strong>n8n</strong>：通用自动化平台 + AI 节点 → 适合"AI + 非 AI 混合工作流"<br>
+• <strong>Dify</strong>：AI 原生平台 → 适合"纯 AI Agent 应用"<br>
+• <strong>Coze</strong>：Bot 工厂 → 适合"快速构建聊天 Bot"<br><br>
+如果你需要"用户提交表单 → AI 分析内容 → 存入数据库 → 发送 Slack 通知"这种混合流程，n8n 是最佳选择；如果只需要纯 AI 对话 Agent，Dify 更合适。
+</div>
+
+<h3 class="sub-heading">13.6.6 Dify DSL 配置示例</h3>
+
+<p>Dify 的工作流可以通过 DSL（Domain Specific Language）文件定义，实现版本控制和 CI/CD：</p>
+
+<pre><code class="language-yaml"># Dify Chatflow DSL 示例
+app:
+  name: "智能客服 Agent"
+  description: "处理用户咨询，自动检索知识库"
+  mode: "advanced-chat"
+
+workflow:
+  nodes:
+    - id: "start"
+      type: "start"
+      variables:
+        - name: "query"
+          type: "string"
+          required: true
+
+    - id: "knowledge_retrieval"
+      type: "knowledge-retrieval"
+      config:
+        dataset_id: "kb_123456"
+        query: "{{#start.query#}}"
+        top_k: 3
+        score_threshold: 0.7
+
+    - id: "llm"
+      type: "llm"
+      config:
+        model: "deepseek-chat"
+        prompt: |
+          你是客服助手。根据以下知识回答用户问题。
+          知识：{{#knowledge_retrieval.result#}}
+          问题：{{#start.query#}}
+        temperature: 0.3
+        max_tokens: 1024
+
+    - id: "end"
+      type: "end"
+      outputs:
+        answer: "{{#llm.text#}}"
+
+edges:
+  - source: "start"
+    target: "knowledge_retrieval"
+  - source: "knowledge_retrieval"
+    target: "llm"
+  - source: "llm"
+    target: "end"</code></pre>
+
 <!-- ===== 13.7 Dify vs Coze vs n8n 三方对比 ===== -->
 <h2 class="section-heading">13.7 Dify vs Coze vs n8n 三方对比</h2>
 

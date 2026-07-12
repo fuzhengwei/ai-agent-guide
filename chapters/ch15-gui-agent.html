@@ -1705,6 +1705,262 @@ class MergedResult {
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">组合检索的关键在于<strong>流程编排</strong>：先用关键词快速锁定入口，再用向量扩展语义范围，然后用 AST 理解代码结构关系，最后用调用链追踪完整执行路径。每一步的结果都为下一步提供线索，形成层层递进的检索链条。去重时采用"多策略投票加权"——被越多策略命中的代码片段可信度越高，排名越靠前。</p>
 </div>
 
+
+<h3 class="sub-heading">15.9.5 AST 级代码检索：超越文本的精准定位</h3>
+
+<p>向量检索虽然能找到语义相关的代码，但它有一个致命弱点——<strong>它不理解代码结构</strong>。"找到所有调用了 <code>getUserById</code> 的地方"这样的查询，向量检索可能返回包含类似方法名的代码，但无法精确匹配函数调用关系。<strong>AST（抽象语法树）级检索</strong>填补了这一空白。</p>
+
+<div class="card">
+  <div class="card-title">🌳 AST 检索 vs 传统检索</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">维度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">全文检索 (grep)</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">向量检索</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">AST 检索</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>精确度</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">字符串匹配，有误报</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">语义近似，有噪声</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong>语法精确，零误报</strong></td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>查询能力</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">关键词搜索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">自然语言搜索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong>结构化查询</strong>（函数调用、继承关系、类型引用）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;"><strong>理解层级</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">字符级</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">语义级</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong>语法级</strong></td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;"><strong>适用场景</strong></td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">快速搜索变量名</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">探索性搜索"相关代码"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);"><strong>重构、影响分析、调用链追踪</strong></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">15.9.6 AST 检索实现：Python 示例</h3>
+
+<div class="multi-lang">
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+</div>
+<div class="lang-pane active" data-lang="python">
+<pre><code class="language-python">import ast
+import os
+from dataclasses import dataclass
+from typing import Optional
+from pathlib import Path
+
+@dataclass
+class CodeSymbol:
+    """代码符号信息"""
+    name: str                 # 符号名称
+    type: str                 # function | class | method | import | variable
+    file: str                 # 所在文件
+    line: int                 # 行号
+    end_line: int             # 结束行号
+    params: list[str] = None  # 参数列表（函数/方法）
+    decorators: list[str] = None  # 装饰器
+    docstring: str = None     # 文档字符串
+    parent_class: str = None  # 父类名（方法）
+
+class ASTIndexer:
+    """AST 级代码索引器"""
+
+    def __init__(self):
+        self.symbols: list[CodeSymbol] = []
+        self.call_graph: dict[str, list[str]] = {}  # caller -> [callees]
+        self.import_map: dict[str, str] = {}        # alias -> module
+
+    def index_file(self, filepath: str):
+        """索引单个文件"""
+        source = Path(filepath).read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=filepath)
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                self._index_function(node, filepath)
+            elif isinstance(node, ast.ClassDef):
+                self._index_class(node, filepath)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    name = alias.asname or alias.name
+                    self.import_map[name] = filepath
+                    self.symbols.append(CodeSymbol(
+                        name=name, type="import",
+                        file=filepath, line=node.lineno, end_line=node.lineno
+                    ))
+
+    def _index_function(self, node: ast.FunctionDef, filepath: str):
+        params = [arg.arg for arg in node.args.args]
+        decorators = [ast.unparse(d) for d in node.decorator_list]
+        docstring = ast.get_docstring(node)
+        self.symbols.append(CodeSymbol(
+            name=node.name, type="function",
+            file=filepath, line=node.lineno, end_line=node.end_lineno,
+            params=params, decorators=decorators, docstring=docstring
+        ))
+        # 构建调用图
+        calls = []
+        for child in ast.walk(node):
+            if isinstance(child, ast.Call):
+                func_name = ast.unparse(child.func)
+                calls.append(func_name)
+        self.call_graph[node.name] = calls
+
+    def _index_class(self, node: ast.ClassDef, filepath: str):
+        decorators = [ast.unparse(d) for d in node.decorator_list]
+        docstring = ast.get_docstring(node)
+        self.symbols.append(CodeSymbol(
+            name=node.name, type="class",
+            file=filepath, line=node.lineno, end_line=node.end_lineno,
+            decorators=decorators, docstring=docstring
+        ))
+        # 索引方法
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef):
+                self._index_method(item, filepath, node.name)
+
+    def _index_method(self, node, filepath, class_name):
+        params = [arg.arg for arg in node.args.args]
+        self.symbols.append(CodeSymbol(
+            name=node.name, type="method",
+            file=filepath, line=node.lineno, end_line=node.end_lineno,
+            params=params, parent_class=class_name
+        ))
+
+    def index_project(self, root_dir: str):
+        """索引整个项目"""
+        for root, dirs, files in os.walk(root_dir):
+            # 跳过 .git, node_modules, __pycache__
+            dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "__pycache__", ".venv"}]
+            for f in files:
+                if f.endswith(".py"):
+                    self.index_file(os.path.join(root, f))
+
+    # === 查询接口 ===
+
+    def find_callers(self, func_name: str) -> list[CodeSymbol]:
+        """查找所有调用指定函数的地方"""
+        callers = []
+        for caller, callees in self.call_graph.items():
+            if any(func_name in c for c in callees):
+                # 找到 caller 对应的符号
+                for sym in self.symbols:
+                    if sym.name == caller:
+                        callers.append(sym)
+        return callers
+
+    def find_definitions(self, name: str) -> list[CodeSymbol]:
+        """查找定义（函数/类/方法）"""
+        return [s for s in self.symbols if s.name == name and s.type in ("function", "class", "method")]
+
+    def find_by_pattern(self, pattern: str) -> list[CodeSymbol]:
+        """模式匹配查询：如 "User*.get*" """
+        import fnmatch
+        return [s for s in self.symbols if fnmatch.fnmatch(s.name, pattern)]
+
+    def get_call_chain(self, func_name: str, depth: int = 3) -> dict:
+        """获取调用链（递归展开）"""
+        if depth <= 0:
+            return {func_name: "..."}
+        callees = self.call_graph.get(func_name, [])
+        return {
+            func_name: {
+                callee: self.get_call_chain(callee, depth - 1)
+                for callee in callees[:5]  # 限制宽度
+            }
+        }
+
+# === 使用示例 ===
+indexer = ASTIndexer()
+indexer.index_project("./src")
+
+# 查找 getUserById 的所有调用者
+callers = indexer.find_callers("getUserById")
+print(f"getUserById 的调用者: {[c.name for c in callers]}")
+
+# 查找所有定义
+defs = indexer.find_definitions("UserService")
+for d in defs:
+    print(f"  {d.type} {d.name} at {d.file}:{d.line}")
+
+# 调用链分析
+chain = indexer.get_call_chain("handleRequest", depth=3)
+print(f"调用链: {chain}")</code></pre>
+</div>
+<div class="lang-pane" data-lang="typescript">
+<pre><code class="language-typescript">// TypeScript: 使用 TS Compiler API 进行 AST 检索
+import * as ts from "typescript";
+
+interface CodeSymbol {
+  name: string;
+  type: "function" | "class" | "method" | "import";
+  file: string;
+  line: number;
+  params?: string[];
+}
+
+class ASTIndexer {
+  symbols: CodeSymbol[] = [];
+  callGraph: Map<string, string[]> = new Map();
+
+  indexFile(filepath: string): void {
+    const source = ts.readFileSync(filepath, "utf-8");
+    const sourceFile = ts.createSourceFile(filepath, source, ts.ScriptTarget.Latest, true);
+
+    const visit = (node: ts.Node) => {
+      if (ts.isFunctionDeclaration(node)) {
+        const name = node.name?.text || "anonymous";
+        this.symbols.push({
+          name, type: "function", file: filepath, line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+          params: node.parameters.map(p => p.name.getText())
+        });
+      }
+      if (ts.isClassDeclaration(node)) {
+        const name = node.name?.text || "anonymous";
+        this.symbols.push({ name, type: "class", file: filepath, line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 });
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+
+  findCallers(funcName: string): CodeSymbol[] {
+    const callers: CodeSymbol[] = [];
+    for (const [caller, callees] of this.callGraph) {
+      if (callees.includes(funcName)) {
+        const sym = this.symbols.find(s => s.name === caller);
+        if (sym) callers.push(sym);
+      }
+    }
+    return callers;
+  }
+}</code></pre>
+</div>
+</div>
+
+<div class="info-box">
+<strong>AST 检索的独特价值</strong>：<br>
+① <strong>调用链追踪</strong>：从入口函数出发，递归展开所有被调用函数，形成完整调用树。这在"修改一个函数会影响哪些地方"的影响分析中极为重要。<br>
+② <strong>精确重构</strong>：重命名一个方法时，AST 检索能精确找到所有调用点（包括 <code>self.method()</code>、<code>obj.method()</code> 等不同调用形式），不会遗漏也不会误报。<br>
+③ <strong>架构分析</strong>：通过分析 import 关系和调用图，可以自动生成模块依赖图、检测循环依赖、识别架构层次违规。<br><br>
+<strong>三层检索策略</strong>：生产级 Coding Agent 通常组合使用——grep 做快速初筛 → AST 做精确定位 → 向量检索做语义补充。三层互补，覆盖从"字符串匹配"到"语法结构"到"语义理解"的全光谱。
+</div>
+
 <!-- ===== 15.10 Coding Agent的权限设计 ===== -->
 <h2 class="section-heading">15.10 Coding Agent 的权限设计</h2>
 

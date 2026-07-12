@@ -340,8 +340,14 @@ setTimeout(() => {
 
 <p>来看一段模拟完整链路执行的代码：</p>
 
-<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-# 模拟 Agent 完整执行链路
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 模拟 Agent 完整执行链路
 
 class AgentChain:
     def __init__(self):
@@ -410,8 +416,223 @@ result = agent.run("帮我分析最近北京房价趋势")
 # [Step6] 工具 search_api 返回: {...房价数据...}
 # [Step5→推理] 模型推理结果: 一线城市环比下降2%
 # [Step7] 整合完成: 北京房价分析报告
-# [Step8] 输出返回给用户
-</pre>
+# [Step8] 输出返回给用户</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 模拟 Agent 完整执行链路
+
+class AgentChain {
+  private llm = new LLMEngine();       // Step 2/5/7 的核心引擎
+  private memory = new MemoryStore();   // 记忆模块
+  private tools = new ToolRegistry();   // Step 6 的工具集
+  private classifier = new TaskClassifier();  // Step 3 分类器
+  private planner = new TaskPlanner();        // Step 4 规划器
+
+  run(userInput: string): string {
+    // Step 1: 用户输入接收
+    const rawMsg = InputHandler.receive(userInput);
+    console.log(`[Step1] 收到原始消息: ${rawMsg}`);
+
+    // Step 2: 意图识别
+    const intent = this.llm.identifyIntent(rawMsg);
+    console.log(`[Step2] 意图识别结果: ${intent}`);
+
+    // Step 3: 任务分类
+    const { taskType, complexity } = this.classifier.classify(intent);
+    console.log(`[Step3] 任务类型=${taskType}, 复杂度=${complexity}`);
+
+    // Step 4: 任务拆解（仅复杂任务）
+    let subTasks: string[];
+    if (complexity === 'complex') {
+      subTasks = this.planner.decompose(rawMsg, intent);
+      console.log(`[Step4] 拆解为 ${subTasks.length} 个子任务`);
+    } else {
+      subTasks = [rawMsg];
+      console.log('[Step4] 简单任务，无需拆解');
+    }
+
+    // Step 5: 执行调度
+    const schedule = this.llm.schedule(subTasks, this.tools.availableTools());
+    console.log(`[Step5] 调度计划: ${schedule}`);
+
+    const results: any[] = [];
+    for (const task of schedule) {
+      // Step 6: 工具调用（需要时）
+      if (task.needTool) {
+        const toolResult = this.tools.call(task.toolName, task.toolArgs);
+        console.log(`[Step6] 工具 ${task.toolName} 返回: ${toolResult}`);
+        results.push(toolResult);
+      } else {
+        // 纯模型推理
+        const modelResult = this.llm.reason(task.prompt);
+        console.log(`[Step5→推理] 模型推理结果: ${modelResult}`);
+        results.push(modelResult);
+      }
+    }
+
+    // Step 7: 结果整合
+    const finalAnswer = this.llm.synthesize(results, intent);
+    console.log(`[Step7] 整合完成: ${finalAnswer}`);
+
+    // Step 8: 输出返回
+    const formatted = OutputFormatter.format(finalAnswer);
+    this.memory.saveInteraction(rawMsg, intent, formatted);
+    console.log('[Step8] 输出返回给用户');
+    return formatted;
+  }
+}
+
+// 执行示例
+const agent = new AgentChain();
+const result = agent.run('帮我分析最近北京房价趋势');</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 模拟 Agent 完整执行链路
+
+package main
+
+import "fmt"
+
+// AgentChain Agent 执行链路
+type AgentChain struct {
+	llm        *LLMEngine
+	memory     *MemoryStore
+	tools      *ToolRegistry
+	classifier *TaskClassifier
+	planner    *TaskPlanner
+}
+
+func NewAgentChain() *AgentChain {
+	return &AgentChain{
+		llm:        NewLLMEngine(),
+		memory:     NewMemoryStore(),
+		tools:      NewToolRegistry(),
+		classifier: NewTaskClassifier(),
+		planner:    NewTaskPlanner(),
+	}
+}
+
+func (a *AgentChain) Run(userInput string) string {
+	// Step 1: 用户输入接收
+	rawMsg := InputHandlerReceive(userInput)
+	fmt.Printf("[Step1] 收到原始消息: %s\n", rawMsg)
+
+	// Step 2: 意图识别
+	intent := a.llm.IdentifyIntent(rawMsg)
+	fmt.Printf("[Step2] 意图识别结果: %v\n", intent)
+
+	// Step 3: 任务分类
+	taskType, complexity := a.classifier.Classify(intent)
+	fmt.Printf("[Step3] 任务类型=%s, 复杂度=%s\n", taskType, complexity)
+
+	// Step 4: 任务拆解
+	var subTasks []string
+	if complexity == "complex" {
+		subTasks = a.planner.Decompose(rawMsg, intent)
+		fmt.Printf("[Step4] 拆解为 %d 个子任务\n", len(subTasks))
+	} else {
+		subTasks = []string{rawMsg}
+		fmt.Println("[Step4] 简单任务，无需拆解")
+	}
+
+	// Step 5: 执行调度
+	schedule := a.llm.Schedule(subTasks, a.tools.AvailableTools())
+	fmt.Printf("[Step5] 调度计划: %v\n", schedule)
+
+	var results []interface{}
+	for _, task := range schedule {
+		// Step 6: 工具调用
+		if task.NeedTool {
+			toolResult := a.tools.Call(task.ToolName, task.ToolArgs)
+			fmt.Printf("[Step6] 工具 %s 返回: %v\n", task.ToolName, toolResult)
+			results = append(results, toolResult)
+		} else {
+			modelResult := a.llm.Reason(task.Prompt)
+			fmt.Printf("[Step5→推理] 模型推理结果: %v\n", modelResult)
+			results = append(results, modelResult)
+		}
+	}
+
+	// Step 7: 结果整合
+	finalAnswer := a.llm.Synthesize(results, intent)
+	fmt.Printf("[Step7] 整合完成: %s\n", finalAnswer)
+
+	// Step 8: 输出返回
+	formatted := OutputFormatterFormat(finalAnswer)
+	a.memory.SaveInteraction(rawMsg, intent, formatted)
+	fmt.Println("[Step8] 输出返回给用户")
+	return formatted
+}
+
+func main() {
+	agent := NewAgentChain()
+	result := agent.Run("帮我分析最近北京房价趋势")
+	fmt.Println(result)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 模拟 Agent 完整执行链路
+
+public class AgentChain {
+    private LLMEngine llm = new LLMEngine();           // Step 2/5/7 的核心引擎
+    private MemoryStore memory = new MemoryStore();     // 记忆模块
+    private ToolRegistry tools = new ToolRegistry();    // Step 6 的工具集
+    private TaskClassifier classifier = new TaskClassifier(); // Step 3 分类器
+    private TaskPlanner planner = new TaskPlanner();         // Step 4 规划器
+
+    public String run(String userInput) {
+        // Step 1: 用户输入接收
+        String rawMsg = InputHandler.receive(userInput);
+        System.out.println("[Step1] 收到原始消息: " + rawMsg);
+
+        // Step 2: 意图识别
+        Intent intent = llm.identifyIntent(rawMsg);
+        System.out.println("[Step2] 意图识别结果: " + intent);
+
+        // Step 3: 任务分类
+        ClassifyResult result = classifier.classify(intent);
+        System.out.printf("[Step3] 任务类型=%s, 复杂度=%s%n", result.taskType, result.complexity);
+
+        // Step 4: 任务拆解
+        List&lt;String&gt; subTasks;
+        if ("complex".equals(result.complexity)) {
+            subTasks = planner.decompose(rawMsg, intent);
+            System.out.printf("[Step4] 拆解为 %d 个子任务%n", subTasks.size());
+        } else {
+            subTasks = List.of(rawMsg);
+            System.out.println("[Step4] 简单任务，无需拆解");
+        }
+
+        // Step 5: 执行调度
+        List&lt;Task&gt; schedule = llm.schedule(subTasks, tools.availableTools());
+        System.out.println("[Step5] 调度计划: " + schedule);
+
+        List&lt;Object&gt; results = new ArrayList&lt;&gt;();
+        for (Task task : schedule) {
+            // Step 6: 工具调用
+            if (task.needTool) {
+                Object toolResult = tools.call(task.toolName, task.toolArgs);
+                System.out.printf("[Step6] 工具 %s 返回: %s%n", task.toolName, toolResult);
+                results.add(toolResult);
+            } else {
+                // 纯模型推理
+                Object modelResult = llm.reason(task.prompt);
+                System.out.printf("[Step5→推理] 模型推理结果: %s%n", modelResult);
+                results.add(modelResult);
+            }
+        }
+
+        // Step 7: 结果整合
+        String finalAnswer = llm.synthesize(results, intent);
+        System.out.println("[Step7] 整合完成: " + finalAnswer);
+
+        // Step 8: 输出返回
+        String formatted = OutputFormatter.format(finalAnswer);
+        memory.saveInteraction(rawMsg, intent, formatted);
+        System.out.println("[Step8] 输出返回给用户");
+        return formatted;
+    }
+
+    public static void main(String[] args) {
+        AgentChain agent = new AgentChain();
+        String result = agent.run("帮我分析最近北京房价趋势");
+    }
+}</pre></div>
+</div>
 
 <p>代码中每一步都打印了日志，你可以清楚地看到<strong>一条消息从进入 Agent 到变成最终输出，走过了哪些节点</strong>。面试时，能讲出这 8 步并解释每步的作用，就是满分回答。</p>
 
@@ -462,8 +683,14 @@ result = agent.run("帮我分析最近北京房价趋势")
 
 <p>实际工程中，<strong>三者通常组合使用</strong>：先用关键词匹配快速筛选常见意图，命中后直接走快速路径；没命中则交给 LLM 做语义理解；长期积累的模式数据用于优化匹配规则。这就是<strong>分层意图识别</strong>策略。</p>
 
-<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-# 分层意图识别：关键词 → 语义 → 模式
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 分层意图识别：关键词 → 语义 → 模式
 
 def identify_intent(user_input, context):
     # 第一层：关键词匹配（快路径）
@@ -487,8 +714,93 @@ print(identify_intent("明天天气咋样", []))
 # → Intent(type="查询", sub_type="天气", confidence=0.95)  # 关键词命中
 
 print(identify_intent("我项目里这段代码跑不通，帮我看看", []))
-# → Intent(type="代码修改", confidence=0.85)  # 语义理解命中
-</pre>
+# → Intent(type="代码修改", confidence=0.85)  # 语义理解命中</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+function identifyIntent(userInput: string, context: Context[]): Intent {
+  // 第一层：关键词匹配（快路径）
+  const keywordIntent = matchKeywords(userInput);
+  if (keywordIntent && keywordIntent.confidence > 0.9) {
+    return keywordIntent;  // 高置信度，直接返回
+  }
+
+  // 第二层：语义理解（慢路径）
+  const semanticIntent = llmUnderstandIntent(userInput, context);
+  if (semanticIntent.confidence > 0.7) {
+    // 记录新模式，丰富规则库
+    patternDB.record(userInput, semanticIntent);
+    return semanticIntent;
+  }
+
+  // 第三层：模式识别（兜底）
+  const patternIntent = matchPatterns(userInput, patternDB);
+  return patternIntent || semanticIntent;
+}
+
+// 示例
+console.log(identifyIntent('明天天气咋样', []));
+// → Intent(type="查询", subType="天气", confidence=0.95)  // 关键词命中
+
+console.log(identifyIntent('我项目里这段代码跑不通，帮我看看', []));
+// → Intent(type="代码修改", confidence=0.85)  // 语义理解命中</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+package main
+
+// Intent 意图
+type Intent struct {
+	Type       string
+	SubType   string
+	Confidence float64
+}
+
+func identifyIntent(userInput string, context []Context) Intent {
+	// 第一层：关键词匹配（快路径）
+	keywordIntent := matchKeywords(userInput)
+	if keywordIntent.Confidence > 0.9 {
+		return keywordIntent // 高置信度，直接返回
+	}
+
+	// 第二层：语义理解（慢路径）
+	semanticIntent := llmUnderstandIntent(userInput, context)
+	if semanticIntent.Confidence > 0.7 {
+		// 记录新模式，丰富规则库
+		patternDB.Record(userInput, semanticIntent)
+		return semanticIntent
+	}
+
+	// 第三层：模式识别（兜底）
+	patternIntent := matchPatterns(userInput, patternDB)
+	if patternIntent.Confidence > 0 {
+		return patternIntent
+	}
+	return semanticIntent
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+public class IntentIdentifier {
+
+    public Intent identifyIntent(String userInput, List&lt;Context&gt; context) {
+        // 第一层：关键词匹配（快路径）
+        Intent keywordIntent = matchKeywords(userInput);
+        if (keywordIntent != null && keywordIntent.getConfidence() > 0.9) {
+            return keywordIntent;  // 高置信度，直接返回
+        }
+
+        // 第二层：语义理解（慢路径）
+        Intent semanticIntent = llmUnderstandIntent(userInput, context);
+        if (semanticIntent.getConfidence() > 0.7) {
+            // 记录新模式，丰富规则库
+            patternDB.record(userInput, semanticIntent);
+            return semanticIntent;
+        }
+
+        // 第三层：模式识别（兜底）
+        Intent patternIntent = matchPatterns(userInput, patternDB);
+        return patternIntent != null ? patternIntent : semanticIntent;
+    }
+}</pre></div>
+</div>
 
 <h3 style="color: var(--color-primary); margin-top: 24px;">📊 任务分类矩阵</h3>
 
@@ -572,8 +884,14 @@ setTimeout(() => {
 }, 600);
 </script>
 
-<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-# 任务分类器：判断复杂度并选择执行路径
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 任务分类器：判断复杂度并选择执行路径
 
 class TaskClassifier:
     # 关键词 → 复杂度的映射规则
@@ -616,8 +934,136 @@ print(classifier.classify(Intent(raw_input="Python list 怎么排序？")))
 # → ("简单问答", "low", "direct_answer")
 
 print(classifier.classify(Intent(raw_input="帮我搭建一个 REST API")))
-# → ("复杂开发", "high", "decompose_execute")
-</pre>
+# → ("复杂开发", "high", "decompose_execute")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 任务分类器：判断复杂度并选择执行路径
+
+const COMPLEXITY_RULES: Record&lt;string, {
+  keywords: string[]; path: string; complexity: string;
+}&gt; = {
+  '简单问答': {
+    keywords: ['是什么', '怎么用', '区别', '概念'],
+    path: 'direct_answer',
+    complexity: 'low'
+  },
+  '代码解释': {
+    keywords: ['这段代码', '什么意思', '解释一下'],
+    path: 'analyze_explain',
+    complexity: 'medium'
+  },
+  '代码修改': {
+    keywords: ['修改', '改成', '优化', '修复', '重构'],
+    path: 'locate_modify',
+    complexity: 'medium_high'
+  },
+  '复杂开发': {
+    keywords: ['搭建', '实现', '开发', '创建项目', '从零开始'],
+    path: 'decompose_execute',
+    complexity: 'high'
+  }
+};
+
+function classify(intent: Intent): ClassifyResult {
+  // 规则匹配
+  for (const [taskType, rule] of Object.entries(COMPLEXITY_RULES)) {
+    if (rule.keywords.some(kw =&gt; intent.rawInput.includes(kw))) {
+      return { taskType, complexity: rule.complexity, path: rule.path };
+    }
+  }
+  // 规则未命中，交给 LLM 判断
+  return llmClassify(intent);
+}
+
+// 示例
+console.log(classify({ rawInput: 'Python list 怎么排序？' }));
+// → { taskType: '简单问答', complexity: 'low', path: 'direct_answer' }
+
+console.log(classify({ rawInput: '帮我搭建一个 REST API' }));
+// → { taskType: '复杂开发', complexity: 'high', path: 'decompose_execute' }</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 任务分类器：判断复杂度并选择执行路径
+
+package main
+
+// ComplexityRule 复杂度规则
+type ComplexityRule struct {
+	Keywords   []string
+	Path       string
+	Complexity string
+}
+
+// TaskClassifier 任务分类器
+type TaskClassifier struct {
+	rules map[string]ComplexityRule
+}
+
+func NewTaskClassifier() *TaskClassifier {
+	return &TaskClassifier{
+		rules: map[string]ComplexityRule{
+			"简单问答": {Keywords: []string{"是什么", "怎么用", "区别", "概念"}, Path: "direct_answer", Complexity: "low"},
+			"代码解释": {Keywords: []string{"这段代码", "什么意思", "解释一下"}, Path: "analyze_explain", Complexity: "medium"},
+			"代码修改": {Keywords: []string{"修改", "改成", "优化", "修复", "重构"}, Path: "locate_modify", Complexity: "medium_high"},
+			"复杂开发": {Keywords: []string{"搭建", "实现", "开发", "创建项目", "从零开始"}, Path: "decompose_execute", Complexity: "high"},
+		},
+	}
+}
+
+func (c *TaskClassifier) Classify(intent Intent) (taskType, complexity, path string) {
+	// 规则匹配
+	for name, rule := range c.rules {
+		for _, kw := range rule.Keywords {
+			if strings.Contains(intent.RawInput, kw) {
+				return name, rule.Complexity, rule.Path
+			}
+		}
+	}
+	// 规则未命中，交给 LLM 判断
+	return llmClassify(intent)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 任务分类器：判断复杂度并选择执行路径
+
+import java.util.*;
+
+public class TaskClassifier {
+
+    private static final Map&lt;String, ComplexityRule&gt; COMPLEXITY_RULES = new HashMap&lt;&gt;();
+
+    static {
+        COMPLEXITY_RULES.put("简单问答", new ComplexityRule(
+            Arrays.asList("是什么", "怎么用", "区别", "概念"), "direct_answer", "low"));
+        COMPLEXITY_RULES.put("代码解释", new ComplexityRule(
+            Arrays.asList("这段代码", "什么意思", "解释一下"), "analyze_explain", "medium"));
+        COMPLEXITY_RULES.put("代码修改", new ComplexityRule(
+            Arrays.asList("修改", "改成", "优化", "修复", "重构"), "locate_modify", "medium_high"));
+        COMPLEXITY_RULES.put("复杂开发", new ComplexityRule(
+            Arrays.asList("搭建", "实现", "开发", "创建项目", "从零开始"), "decompose_execute", "high"));
+    }
+
+    public ClassifyResult classify(Intent intent) {
+        // 规则匹配
+        for (Map.Entry&lt;String, ComplexityRule&gt; entry : COMPLEXITY_RULES.entrySet()) {
+            String taskType = entry.getKey();
+            ComplexityRule rule = entry.getValue();
+            for (String kw : rule.keywords) {
+                if (intent.getRawInput().contains(kw)) {
+                    return new ClassifyResult(taskType, rule.complexity, rule.path);
+                }
+            }
+        }
+        // 规则未命中，交给 LLM 判断
+        return llmClassify(intent);
+    }
+
+    static class ComplexityRule {
+        List&lt;String&gt; keywords;
+        String path;
+        String complexity;
+        ComplexityRule(List&lt;String&gt; keywords, String path, String complexity) {
+            this.keywords = keywords;
+            this.path = path;
+            this.complexity = complexity;
+        }
+    }
+}</pre></div>
+</div>
 
 <!-- ===== 2.9 执行调度决策 ===== -->
 <h2 class="section-heading">2.9 执行调度决策</h2>
@@ -699,8 +1145,14 @@ setTimeout(() => {
 
 <p>一个关键原则：<strong>模型擅长"思考"，工具擅长"行动"</strong>。调度器的核心职责就是判断当前子任务属于哪一类，把任务分给最合适的执行者。</p>
 
-<pre style="background: var(--color-bg-code); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.6; overflow-x: auto;">
-# 调度器实现：根据任务特征分配执行路径
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 调度器实现：根据任务特征分配执行路径
 
 class Scheduler:
     def __init__(self, llm, tools):
@@ -768,8 +1220,174 @@ scheduler.dispatch(SubTask(type="analyze", requires_reasoning=True))
 
 # 验证类任务 → 工具+模型
 scheduler.dispatch(SubTask(type="verify", requires_verification=True))
-# [调度] 交叉验证 → 工具:数据查询结果, 模型:验证通过
-</pre>
+# [调度] 交叉验证 → 工具:数据查询结果, 模型:验证通过</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 调度器实现：根据任务特征分配执行路径
+
+class Scheduler {
+  constructor(private llm: LLMEngine, private tools: ToolRegistry) {}
+
+  dispatch(subTask: SubTask): any {
+    // 判断1：是否需要外部数据？
+    if (subTask.requiresExternalData) {
+      const toolName = this.selectTool(subTask);
+      const result = this.tools.call(toolName, subTask.params);
+      console.log(`[调度] 工具执行: ${toolName} → ${result}`);
+      return result;
+    }
+
+    // 判断2：是否需要逻辑推理？
+    if (subTask.requiresReasoning) {
+      const result = this.llm.reason(subTask.prompt);
+      console.log(`[调度] 模型推理: ${subTask.prompt} → ${result}`);
+      return result;
+    }
+
+    // 判断3：是否需要格式化输出？
+    if (subTask.requiresFormatting) {
+      const result = this.llm.format(subTask.rawOutput);
+      console.log(`[调度] 模型格式化 → ${result}`);
+      return result;
+    }
+
+    // 判断4：是否需要验证结果？
+    if (subTask.requiresVerification) {
+      const toolResult = this.tools.call('verify', subTask.params);
+      const modelResult = this.llm.reason(`验证以下结果是否合理: ${toolResult}`);
+      console.log(`[调度] 交叉验证 → 工具:${toolResult}, 模型:${modelResult}`);
+      return modelResult;
+    }
+
+    // 默认：模型处理
+    return this.llm.reason(subTask.prompt);
+  }
+
+  private selectTool(subTask: SubTask): string {
+    const toolMap: Record&lt;string, string&gt; = {
+      search: 'search_api',
+      database: 'db_query',
+      code_execution: 'code_runner',
+      file_operation: 'file_handler',
+      calculation: 'calculator'
+    };
+    return toolMap[subTask.toolType] || 'general_tool';
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 调度器实现：根据任务特征分配执行路径
+
+package main
+
+// Scheduler 调度器
+type Scheduler struct {
+	llm   *LLMEngine
+	tools *ToolRegistry
+}
+
+func (s *Scheduler) Dispatch(subTask *SubTask) interface{} {
+	// 判断1：是否需要外部数据？
+	if subTask.RequiresExternalData {
+		toolName := s.selectTool(subTask)
+		result := s.tools.Call(toolName, subTask.Params)
+		fmt.Printf("[调度] 工具执行: %s → %v\n", toolName, result)
+		return result
+	}
+
+	// 判断2：是否需要逻辑推理？
+	if subTask.RequiresReasoning {
+		result := s.llm.Reason(subTask.Prompt)
+		fmt.Printf("[调度] 模型推理: %s → %v\n", subTask.Prompt, result)
+		return result
+	}
+
+	// 判断3：是否需要格式化输出？
+	if subTask.RequiresFormatting {
+		result := s.llm.Format(subTask.RawOutput)
+		fmt.Printf("[调度] 模型格式化 → %v\n", result)
+		return result
+	}
+
+	// 判断4：是否需要验证结果？
+	if subTask.RequiresVerification {
+		toolResult := s.tools.Call("verify", subTask.Params)
+		modelResult := s.llm.Reason(fmt.Sprintf("验证以下结果是否合理: %v", toolResult))
+		fmt.Printf("[调度] 交叉验证 → 工具:%v, 模型:%v\n", toolResult, modelResult)
+		return modelResult
+	}
+
+	// 默认：模型处理
+	return s.llm.Reason(subTask.Prompt)
+}
+
+func (s *Scheduler) selectTool(subTask *SubTask) string {
+	toolMap := map[string]string{
+		"search":          "search_api",
+		"database":        "db_query",
+		"code_execution":  "code_runner",
+		"file_operation":  "file_handler",
+		"calculation":     "calculator",
+	}
+	if name, ok := toolMap[subTask.ToolType]; ok {
+		return name
+	}
+	return "general_tool"
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 调度器实现：根据任务特征分配执行路径
+
+public class Scheduler {
+    private final LLMEngine llm;
+    private final ToolRegistry tools;
+
+    public Scheduler(LLMEngine llm, ToolRegistry tools) {
+        this.llm = llm;
+        this.tools = tools;
+    }
+
+    public Object dispatch(SubTask subTask) {
+        // 判断1：是否需要外部数据？
+        if (subTask.requiresExternalData) {
+            String toolName = selectTool(subTask);
+            Object result = tools.call(toolName, subTask.params);
+            System.out.printf("[调度] 工具执行: %s → %s%n", toolName, result);
+            return result;
+        }
+
+        // 判断2：是否需要逻辑推理？
+        if (subTask.requiresReasoning) {
+            Object result = llm.reason(subTask.prompt);
+            System.out.printf("[调度] 模型推理: %s → %s%n", subTask.prompt, result);
+            return result;
+        }
+
+        // 判断3：是否需要格式化输出？
+        if (subTask.requiresFormatting) {
+            Object result = llm.format(subTask.rawOutput);
+            System.out.printf("[调度] 模型格式化 → %s%n", result);
+            return result;
+        }
+
+        // 判断4：是否需要验证结果？
+        if (subTask.requiresVerification) {
+            Object toolResult = tools.call("verify", subTask.params);
+            Object modelResult = llm.reason("验证以下结果是否合理: " + toolResult);
+            System.out.printf("[调度] 交叉验证 → 工具:%s, 模型:%s%n", toolResult, modelResult);
+            return modelResult;
+        }
+
+        // 默认：模型处理
+        return llm.reason(subTask.prompt);
+    }
+
+    private String selectTool(SubTask subTask) {
+        return switch (subTask.toolType) {
+            case "search" -> "search_api";
+            case "database" -> "db_query";
+            case "code_execution" -> "code_runner";
+            case "file_operation" -> "file_handler";
+            case "calculation" -> "calculator";
+            default -> "general_tool";
+        };
+    }
+}</pre></div>
+</div>
 
 <p>调度器的核心价值在于<strong>避免无谓的调用</strong>：如果用户只是问"Python 怎么排序"，不需要调用搜索工具，模型直接回答即可；如果用户问"北京明天天气"，模型无法知道实时数据，必须调用工具。调度器就是在做这个判断。</p>
 

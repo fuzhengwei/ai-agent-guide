@@ -1040,6 +1040,103 @@ public class FullHarnessAgent {
   两者的联系：Harness Inc. 是 DevOps 领域的 Harness 工程——为"代码交付"这个任务搭建完整基础设施；本章讨论的是 AI Agent 领域的 Harness 工程——为"Agent 执行任务"搭建完整基础设施。<strong>思路一致，领域不同</strong>。</p>
 </div>
 
+
+<h3 class="sub-heading">22.4.6 Trae（字节跳动）— 国内最火 AI IDE</h3>
+
+<div class="card" style="border-left: 3px solid #00D4AA;">
+  <div class="card-title">🟢 Trae — 字节跳动的 AI 原生 IDE</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Trae 是字节跳动 2025 年推出的 AI 原生 IDE，基于 VS Code 二次开发，<strong>国内市场份额增长最快</strong>的 AI IDE 产品。与 Cursor 不同，Trae 针对中国开发者做了深度优化。</p>
+</div>
+
+<p><strong>Trae 的核心差异化：</strong></p>
+<ul>
+<li><strong>中文原生支持</strong>：UI 全中文、中文意图识别准确率高、国内文档/博客覆盖率好</li>
+<li><strong>多模型免费策略</strong>：内置 Claude 3.5 Sonnet、GPT-4o、DeepSeek 等模型，新用户免费额度充足</li>
+<li><strong>Builder 模式</strong>：类似 Cursor 的 Composer，支持多文件编辑、项目级代码生成</li>
+<li><strong>Chat 模式</strong>：对话式编程，支持 @file、@codebase、@web 等上下文引用</li>
+<li><strong>免费使用</strong>：对标 Cursor $20/月的订阅，Trae 目前免费，对国内开发者吸引力极大</li>
+</ul>
+
+<div class="info-box">
+<strong>Trae vs Cursor 对比</strong>：<br>
+• <strong>语言适配</strong>：Trae 中文优化 > Cursor 英文原生<br>
+• <strong>模型选择</strong>：Trae 多模型切换 = Cursor 多模型<br>
+• <strong>价格</strong>：Trae 免费 > Cursor $20/月<br>
+• <strong>生态</strong>：Cursor 插件生态 > Trae（基于 VS Code 兼容插件）<br>
+• <strong>上下文工程</strong>：Cursor @codebase > Trae Builder 模式（Cursor 更精准）
+</div>
+
+<h3 class="sub-heading">22.4.7 WaLiCode — 小傅哥的开源 AI IDE</h3>
+
+<div class="card" style="border-left: 3px solid #FF6B35;">
+  <div class="card-title">🟠 WaLiCode — <a href="https://walicode.xiaofuge.cn" target="_blank">walicode.xiaofuge.cn</a></div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">WaLiCode 是一款<strong>非常强的 AI IDE 工具</strong>，由知名技术博主小傅哥（付政委）开发，基于 Tauri 2 + React 19 + Rust 技术栈。与商业 IDE 不同，WaLiCode 有自己独特的优势——<strong>SSH DevOps 模式</strong>和<strong>全栈开源架构</strong>。</p>
+</div>
+
+<p><strong>WaLiCode 的核心优势：</strong></p>
+<ul>
+<li><strong>SSH DevOps 模式</strong>：支持通过 SSH 直接连接远程服务器执行命令、管理文件、部署应用。这是绝大多数 AI IDE 不具备的能力，对于运维场景和远程开发至关重要</li>
+<li><strong>多协议适配层</strong>：同时支持 Anthropic、OpenAI、Ollama、Responses API 四种协议，模型切换零成本</li>
+<li><strong>五层权限递进</strong>：Bash AST 分析 → 规则引擎 → AI 安全审判 → 用户审批 → 熔断器，企业级安全保障</li>
+<li><strong>子代理系统</strong>：Explore（探索）、Verification（验证）、General（通用）三类型子代理，复杂任务自动分解</li>
+<li><strong>工具懒加载</strong>：核心工具 + SSH 工具 + 调试工具 + 部署工具分类加载，启动快、内存省</li>
+<li><strong>Rust 后端</strong>：用 Rust 实现的 SSH 客户端（russh）、LSP 轻量实现、AST 符号解析，性能高、内存安全</li>
+<li><strong>全开源</strong>：前端 React + 后端 Rust 全部开源，可私有化部署、可定制扩展</li>
+</ul>
+
+<div class="info-box">
+<strong>WaLiCode 独特价值</strong>：<br>
+WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以让 Agent 通过 SSH 连到生产服务器，执行诊断命令、查看日志、重启服务、部署应用。这在企业运维场景中极为重要，而 Claude Code、Cursor、Trae 等产品都不具备这一能力。<br><br>
+此外，WaLiCode 的<strong>多协议适配层</strong>让企业在 OpenAI/Anthropic/Ollama 之间切换零成本，配合国产模型（DeepSeek/Qwen/GLM）可实现完全自主可控的 AI 编程环境。
+</div>
+
+<h3 class="sub-heading">22.4.8 Manus — 通用 Agent 的破圈者</h3>
+
+<div class="card" style="border-left: 3px solid #6366F1;">
+  <div class="card-title">🟣 Manus — 2026 年初爆火的通用 Agent</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Manus 是 2026 年初由中国团队发布的<strong>通用 AI Agent</strong>，上线 48 小时内邀请码被炒到数千元，引发全网讨论。与 Coding Agent 不同，Manus 定位是<strong>"数字员工"</strong>——能处理报表分析、市场调研、旅行规划、PPT 制作等各类白领工作。</p>
+</div>
+
+<p><strong>Manus 的 Harness 设计特点：</strong></p>
+<ul>
+<li><strong>虚拟机沙箱</strong>：每个任务在独立虚拟机中执行，配备浏览器 + 终端 + 文件系统 + Python 环境</li>
+<li><strong>异步执行</strong>：用户提交任务后可关闭浏览器，Manus 在云端自主完成，完成后通知用户</li>
+<li><strong>多模态输出</strong>：可生成 Excel、PPT、PDF、网页等各种格式的工作成果</li>
+<li><strong>自主规划</strong>：Agent 自主分解任务、上网搜索、编写代码、生成报告，全程无需人工干预</li>
+<li><strong>可复现性</strong>：每个任务的执行过程完全记录，可回放、可分享、可复用</li>
+</ul>
+
+<h3 class="sub-heading">22.4.9 Windsurf（Codeium）— 企业级 AI IDE</h3>
+
+<div class="card" style="border-left: 3px solid #06B6D4;">
+  <div class="card-title">🔷 Windsurf — Codeium 的企业级 AI IDE</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Windsurf 是 Codeium 推出的 AI IDE，核心特点是 <strong>Flow 模式</strong>——Agent 不仅写代码，还理解你的开发意图，主动建议下一步操作。适合企业级团队协作场景。</p>
+</div>
+
+<p><strong>Windsurf 核心特点：</strong></p>
+<ul>
+<li><strong> Cascade 功能</strong>：类似 Cursor 的 Composer，支持多文件编辑和项目级重构</li>
+<li><strong>企业安全</strong>：SOC 2 Type II 合规，代码不上传云端，支持私有化部署</li>
+<li><strong>多模型支持</strong>：Claude、GPT、自研 Codeium 模型可切换</li>
+<li><strong>上下文理解</strong>：自动索引项目代码，精准定位相关文件</li>
+</ul>
+
+<h3 class="sub-heading">22.4.10 Cline — VSCode Agent 插件</h3>
+
+<div class="card" style="border-left: 3px solid #F59E0B;">
+  <div class="card-title">🟡 Cline — VSCode 中的自主 Agent 插件</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Cline 是一个<strong>开源的 VSCode 插件</strong>，将 VSCode 变成 Agent 工作环境。它的核心价值是<strong>零成本门槛</strong>——不需要换 IDE，在现有 VSCode 中即可获得 Agent 能力。</p>
+</div>
+
+<p><strong>Cline 核心特点：</strong></p>
+<ul>
+<li><strong>开源免费</strong>：MIT 协议，社区活跃，可自行扩展</li>
+<li><strong>终端集成</strong>：Agent 可直接在 VSCode 终端中执行命令</li>
+<li><strong>文件编辑</strong>：支持多文件创建、编辑、Diff 预览</li>
+<li><strong>多模型</strong>：支持 OpenAI、Anthropic、Ollama、OpenRouter 等</li>
+<li><strong> MCP 支持</strong>：可连接 MCP Server 扩展工具能力</li>
+</ul>
+
 <h3 class="sub-heading">22.4.6 代表项目对比</h3>
 
 <div class="comparison-table">
@@ -1059,6 +1156,11 @@ public class FullHarnessAgent {
       <tr><td><strong>Cursor</strong></td><td>上下文工程 + 编辑器集成</td><td>IDE 内交互</td><td>日常开发辅助</td><td>订阅制</td></tr>
       <tr><td><strong>Devin</strong></td><td>全沙箱 + 自主规划 + 自纠错</td><td>任务提交+监控</td><td>复杂长程任务</td><td>$10-50/任务</td></tr>
       <tr><td><strong>Harness Inc.</strong></td><td>CI/CD + 安全 + 成本 + Feature Flags</td><td>平台 Dashboard</td><td>企业软件交付</td><td>企业订阅</td></tr>
+      <tr><td><strong>Trae</strong></td><td>Builder 模式 + 多模型 + 中文优化</td><td>IDE 内交互</td><td>国内开发、中文编程</td><td>免费</td></tr>
+      <tr><td><strong>WaLiCode</strong></td><td>SSH DevOps + 多协议适配 + 五层权限 + 子代理</td><td>IDE + SSH 远程</td><td>运维 Agent、远程开发、私有化</td><td>开源免费</td></tr>
+      <tr><td><strong>Manus</strong></td><td>虚拟机沙箱 + 异步执行 + 多模态输出</td><td>任务提交+通知</td><td>通用白领任务</td><td>按任务计费</td></tr>
+      <tr><td><strong>Windsurf</strong></td><td>Cascade + 企业安全 + 上下文索引</td><td>IDE 内交互</td><td>企业团队协作</td><td>订阅制</td></tr>
+      <tr><td><strong>Cline</strong></td><td>VSCode 插件 + 终端集成 + MCP</td><td>VSCode 内交互</td><td>零成本 Agent 入门</td><td>开源免费</td></tr>
     </tbody>
   </table>
 </div>

@@ -979,6 +979,280 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
   </table>
 </div>
 
+<!-- ===== 21.6 Agent Loop 稳定性设计 ===== -->
+<h2 class="section-heading">21.6 Agent Loop 稳定性设计</h2>
+
+<p>21.2.4 介绍了 Loop 的设计陷阱,但生产环境中 Agent Loop 面临的稳定性挑战远不止死循环和 Token 爆炸。本节基于 WaLiCode 项目的真实生产经验,讲解 Agent Loop 稳定性的<strong>五大保障机制</strong>。</p>
+
+<h3 class="sub-heading">21.6.1 上下文溢出熔断</h3>
+
+<p>当上下文压缩系统（参见第5章 5.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class LoopCircuitBreaker:
+    """Agent Loop 熔断器"""
+
+    def __init__(self):
+        self.max_turns = 20               # 最大轮次
+        self.max_context_tokens = 120000  # Context 上限（留 20% 安全余量）
+        self.max_tool_errors = 3          # 同一工具连续失败上限
+        self.max_total_errors = 5         # 全局错误上限
+        self.max_cost_usd = 5.0           # 单任务成本上限
+
+    def check(self, state) -> tuple[bool, str]:
+        """返回 (是否熔断, 原因)"""
+        if state.turn >= self.max_turns:
+            return True, f"超过最大轮次 {self.max_turns}"
+
+        if state.context_tokens > self.max_context_tokens:
+            return True, f"Context 超过熔断阈值 {self.max_context_tokens}"
+
+        if state.consecutive_tool_errors >= self.max_tool_errors:
+            return True, f"工具连续失败 {self.max_tool_errors} 次"
+
+        if state.total_errors >= self.max_total_errors:
+            return True, f"全局错误累计 {self.max_total_errors} 次"
+
+        if state.cost_usd >= self.max_cost_usd:
+            return True, f"任务成本超过 ${self.max_cost_usd}"
+
+        return False, ""
+
+    def handle_circuit_break(self, reason: str, state):
+        """熔断时的处理逻辑"""
+        print(f"⚠️ Agent Loop 熔断: {reason}")
+        # 1. 保存当前状态（用于恢复）
+        state.save_checkpoint()
+        # 2. 通知用户
+        return {
+            "status": "circuit_broken",
+            "reason": reason,
+            "turn": state.turn,
+            "checkpoint_id": state.checkpoint_id,
+            "suggestion": "任务已暂停,可从 checkpoint 恢复或调整参数后重试"
+        }
+</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class LoopCircuitBreaker {
+  maxTurns = 20;
+  maxContextTokens = 120000;
+  maxToolErrors = 3;
+  maxTotalErrors = 5;
+  maxCostUsd = 5.0;
+
+  check(state: LoopState): [boolean, string] {
+    if (state.turn &gt;= this.maxTurns)
+      return [true, `超过最大轮次 ${this.maxTurns}`];
+    if (state.contextTokens &gt; this.maxContextTokens)
+      return [true, `Context 超过熔断阈值 ${this.maxContextTokens}`];
+    if (state.consecutiveToolErrors &gt;= this.maxToolErrors)
+      return [true, `工具连续失败 ${this.maxToolErrors} 次`];
+    if (state.totalErrors &gt;= this.maxTotalErrors)
+      return [true, `全局错误累计 ${this.maxTotalErrors} 次`];
+    if (state.costUsd &gt;= this.maxCostUsd)
+      return [true, `任务成本超过 $${this.maxCostUsd}`];
+    return [false, ''];
+  }
+
+  handleCircuitBreak(reason: string, state: LoopState) {
+    console.warn(`⚠️ Agent Loop 熔断: ${reason}`);
+    state.saveCheckpoint();
+    return {
+      status: 'circuit_broken',
+      reason,
+      turn: state.turn,
+      checkpointId: state.checkpointId,
+      suggestion: '任务已暂停,可从 checkpoint 恢复'
+    };
+  }
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import "fmt"
+
+// LoopCircuitBreaker Agent Loop 熔断器
+type LoopCircuitBreaker struct {
+	MaxTurns          int
+	MaxContextTokens   int
+	MaxToolErrors      int
+	MaxTotalErrors     int
+	MaxCostUSD         float64
+}
+
+// LoopState Loop 状态
+type LoopState struct {
+	Turn                  int
+	ContextTokens          int
+	ConsecutiveToolErrors  int
+	TotalErrors            int
+	CostUSD                float64
+	CheckpointID           string
+}
+
+// Check 检查是否需要熔断
+func (cb *LoopCircuitBreaker) Check(state *LoopState) (bool, string) {
+	if state.Turn &gt;= cb.MaxTurns {
+		return true, fmt.Sprintf("超过最大轮次 %d", cb.MaxTurns)
+	}
+	if state.ContextTokens &gt; cb.MaxContextTokens {
+		return true, fmt.Sprintf("Context 超过熔断阈值 %d", cb.MaxContextTokens)
+	}
+	if state.ConsecutiveToolErrors &gt;= cb.MaxToolErrors {
+		return true, fmt.Sprintf("工具连续失败 %d 次", cb.MaxToolErrors)
+	}
+	if state.TotalErrors &gt;= cb.MaxTotalErrors {
+		return true, fmt.Sprintf("全局错误累计 %d 次", cb.MaxTotalErrors)
+	}
+	if state.CostUSD &gt;= cb.MaxCostUSD {
+		return true, fmt.Sprintf("任务成本超过 $%.2f", cb.MaxCostUSD)
+	}
+	return false, ""
+}
+
+// HandleCircuitBreak 熔断处理
+func (cb *LoopCircuitBreaker) HandleCircuitBreak(reason string, state *LoopState) map[string]interface{} {
+	fmt.Printf("⚠️ Agent Loop 熔断: %s\n", reason)
+	// state.SaveCheckpoint()
+	return map[string]interface{}{
+		"status":        "circuit_broken",
+		"reason":        reason,
+		"turn":          state.Turn,
+		"checkpoint_id": state.CheckpointID,
+		"suggestion":    "任务已暂停,可从 checkpoint 恢复",
+	}
+}
+
+func NewDefaultCircuitBreaker() *LoopCircuitBreaker {
+	return &LoopCircuitBreaker{
+		MaxTurns:        20,
+		MaxContextTokens: 120000,
+		MaxToolErrors:    3,
+		MaxTotalErrors:   5,
+		MaxCostUSD:       5.0,
+	}
+}
+</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>class LoopCircuitBreaker {
+    int maxTurns = 20;
+    int maxContextTokens = 120000;
+    int maxToolErrors = 3;
+    int maxTotalErrors = 5;
+    double maxCostUsd = 5.0;
+
+    public CheckResult check(LoopState state) {
+        if (state.turn &gt;= maxTurns)
+            return new CheckResult(true, "超过最大轮次 " + maxTurns);
+        if (state.contextTokens &gt; maxContextTokens)
+            return new CheckResult(true, "Context 超过熔断阈值 " + maxContextTokens);
+        if (state.consecutiveToolErrors &gt;= maxToolErrors)
+            return new CheckResult(true, "工具连续失败 " + maxToolErrors + " 次");
+        if (state.totalErrors &gt;= maxTotalErrors)
+            return new CheckResult(true, "全局错误累计 " + maxTotalErrors + " 次");
+        if (state.costUsd &gt;= maxCostUsd)
+            return new CheckResult(true, String.format("任务成本超过 $%.2f", maxCostUsd));
+        return new CheckResult(false, "");
+    }
+
+    public Map&lt;String, Object&gt; handleCircuitBreak(String reason, LoopState state) {
+        System.err.println("⚠️ Agent Loop 熔断: " + reason);
+        state.saveCheckpoint();
+        return Map.of(
+            "status", "circuit_broken",
+            "reason", reason,
+            "turn", state.turn,
+            "checkpointId", state.checkpointId,
+            "suggestion", "任务已暂停,可从 checkpoint 恢复"
+        );
+    }
+}
+
+class CheckResult {
+    boolean shouldBreak;
+    String reason;
+    CheckResult(boolean shouldBreak, String reason) {
+        this.shouldBreak = shouldBreak;
+        this.reason = reason;
+    }
+}
+</pre></div>
+</div>
+
+<h3 class="sub-heading">21.6.2 对话状态恢复</h3>
+
+<p>熔断或异常中断后,用户可能想继续任务。WaLiCode 实现了<strong>Checkpoint 恢复机制</strong>——将 Loop 状态序列化存储,下次启动时反序列化恢复:</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">状态项</th>
+        <th style="text-align: left;">存储内容</th>
+        <th style="text-align: left;">恢复策略</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>对话历史</strong></td><td>压缩后的消息列表</td><td>直接加载,不重新压缩</td></tr>
+      <tr><td><strong>工具调用记录</strong></td><td>每个工具的调用参数和返回结果</td><td>加载到工作记忆,供 LLM 参考</td></tr>
+      <tr><td><strong>任务进度</strong></td><td>当前步骤索引、已完成步骤、待完成步骤</td><td>从上次中断处继续执行</td></tr>
+      <tr><td><strong>上下文摘要</strong></td><td>历史压缩生成的摘要</td><td>作为 system message 注入</td></tr>
+      <tr><td><strong>错误上下文</strong></td><td>最后 N 个错误信息</td><td>注入上下文,避免重复犯错</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">21.6.3 心跳检测与空闲超时</h3>
+
+<p>Agent 在执行长任务时,用户可能已经离开。为避免浪费 Token 和算力,Loop 应实现<strong>心跳检测</strong>:</p>
+
+<div class="code-block"><pre>// 空闲超时配置
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
+
+// Loop 中心跳检测
+let lastActivityTime = Date.now();
+
+function checkHeartbeat() {
+  const idle = Date.now() - lastActivityTime;
+  if (idle &gt; IDLE_TIMEOUT_MS) {
+    return {
+      action: 'pause',
+      reason: `空闲超过 ${IDLE_TIMEOUT_MS / 60000} 分钟,自动暂停`,
+      canResume: true
+    };
+  }
+  return { action: 'continue' };
+}
+
+// 用户交互时重置计时器
+function onUserActivity() {
+  lastActivityTime = Date.now();
+}</pre></div>
+
+<h3 class="sub-heading">21.6.4 五大稳定性保障总结</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">保障机制</th>
+        <th style="text-align: left;">解决问题</th>
+        <th style="text-align: left;">关键参数</th>
+        <th style="text-align: left;">章节参考</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>上下文溢出熔断</strong></td><td>Context 无限增长导致 API 报错</td><td>max_context_tokens = 120K</td><td>ch05 5.12 + 本节</td></tr>
+      <tr><td><strong>死循环检测</strong></td><td>工具反复失败导致 Loop 卡死</td><td>max_turns = 20, max_tool_errors = 3</td><td>ch21 21.2.4</td></tr>
+      <tr><td><strong>压缩降级链</strong></td><td>压缩失败导致历史丢失</td><td>AI→规则→硬截断</td><td>ch05 5.12.6</td></tr>
+      <tr><td><strong>Checkpoint 恢复</strong></td><td>中断后无法继续任务</td><td>状态序列化 + 反序列化</td><td>本节</td></tr>
+      <tr><td><strong>心跳检测</strong></td><td>用户离开后 Agent 继续烧钱</td><td>idle_timeout = 10min</td><td>ch04 4.13.6 + 本节</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="info-box">
+<strong>生产级 Agent Loop 的核心原则</strong>:宁可提前终止,不可带病运行。熔断不是失败,而是<strong>主动保护</strong>——保护用户的钱包、保护对话质量、保护系统稳定性。一个会"自己喊停"的 Agent,才是生产可用的 Agent。
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -1044,6 +1318,18 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
       面试要点：80%场景 ReAct 够用；需要减少 LLM 调用选 ReWOO；追求效率选 LLM Compiler；需要自我纠正选 Reflexion。
     </div>
   </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q7: 生产环境 Agent Loop 的五大稳定性保障机制是什么？</div>
+    <div class="qa-answer">
+      <strong>① 上下文溢出熔断</strong>：Context 超过阈值（如 120K token）自动终止,防止 API 报错。<br>
+      <strong>② 死循环检测</strong>：max_turns 上限 + 同工具连续失败上限,防止 Loop 卡死。<br>
+      <strong>③ 压缩降级链</strong>：AI 摘要→规则摘要→硬截断,确保压缩始终有结果（参见 ch05 5.12.6）。<br>
+      <strong>④ Checkpoint 恢复</strong>：序列化 Loop 状态,中断后可从断点恢复任务。<br>
+      <strong>⑤ 心跳检测</strong>：空闲超时自动暂停,防止用户离开后 Agent 继续烧钱。<br><br>
+      <strong>核心原则</strong>:宁可提前终止,不可带病运行。熔断是主动保护,不是失败。
+    </div>
+  </div>
 </div>
 
 <!-- ===== Quiz ===== -->
@@ -1098,6 +1384,102 @@ const ch21Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '三大陷阱：① 死循环——工具连续失败但Agent不停重试（对策：max_turns + 错误重试退避）；② Token 爆炸——每轮重复全部历史（对策：滑动窗口压缩 + 摘要替代）；③ 幻觉工具调用——LLM 调用不存在的工具或传错参数（对策：Runtime 层参数校验）。'
+  },
+  {
+    type: 'single',
+    question: 'Agent Loop 中 max_turns 参数的主要作用是？',
+    options: [
+      '限制每轮工具调用的最大次数',
+      '限制 Agent 循环的最大迭代轮数',
+      '限制 LLM 的最大 Token 输出',
+      '限制 Agent 的最大运行时间'
+    ],
+    answer: [1],
+    explanation: 'max_turns 限制 Agent 循环的最大迭代轮数（如设为 20，则 Agent 最多循环 20 轮后强制停止）。这是防止死循环和成本失控的硬性兜底措施，与超时限制（timeout）配合使用。'
+  },
+  {
+    type: 'single',
+    question: 'Runtime 层的核心职责不包括以下哪项？',
+    options: [
+      '管理 Agent 生命周期（启动、暂停、恢复、终止）',
+      '提供工具执行环境（文件系统、进程、网络）',
+      '执行 LLM 推理计算（前向传播）',
+      '资源配额管理（CPU、内存、时间限制）'
+    ],
+    answer: [2],
+    explanation: 'Runtime 层负责 Agent 生命周期管理、工具执行环境和资源配额，但不执行 LLM 推理计算。LLM 推理由模型服务端（如 OpenAI API、本地 vLLM）完成，Runtime 只负责调用 API 并处理响应。'
+  },
+  {
+    type: 'single',
+    question: 'WaLiCode 的五层权限递进系统中，第一层是？',
+    options: [
+      '规则引擎匹配（正则 + 关键词）',
+      'Bash AST 分析（解析命令结构）',
+      'AI 安全审判（LLM 判断风险）',
+      '用户审批（Human-in-the-Loop）'
+    ],
+    answer: [1],
+    explanation: '五层权限递进为：① Bash AST 分析（解析命令结构，识别危险操作）→ ② 规则引擎匹配 → ③ AI 安全审判 → ④ 用户审批 → ⑤ 熔断器。从自动到人工，从快速到审慎，分层递进。'
+  },
+  {
+    type: 'multiple',
+    question: '沙箱隔离的常见实现方式有哪些？（多选）',
+    options: [
+      'Docker 容器隔离（进程+文件系统级）',
+      'Firecracker 微虚拟机（内核级隔离）',
+      'WASM 沙箱（内存安全+快速启动）',
+      'gVisor 系统调用拦截（内核接口级）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四种主流沙箱方案：Docker（进程级，共享内核）、Firecracker（微VM，独立内核，AWS Lambda 使用）、WASM（内存安全，毫秒级启动，适合轻量任务）、gVisor（拦截系统调用，Google 设计）。隔离级别从低到高：Docker < gVisor < WASM < Firecracker。'
+  },
+  {
+    type: 'single',
+    question: 'Agent Loop 中“滑动窗口压缩”策略的核心思想是？',
+    options: [
+      '只保留最近 N 轮对话历史，更早的丢弃',
+      '只保留最近 N 轮对话，更早的用摘要替代',
+      '只保留工具调用结果，丢弃对话内容',
+      '把所有历史压缩成单个摘要'
+    ],
+    answer: [1],
+    explanation: '滑动窗口压缩：保留最近 N 轮完整对话（保证近期上下文不丢失），更早的历史用摘要替代（保留关键信息但大幅减少 Token）。这是 Token 爆炸问题的标准解决方案，兼顾上下文完整性和 Token 效率。'
+  },
+  {
+    type: 'single',
+    question: '以下哪个不是 Loop Engineering 的核心原则？',
+    options: [
+      '事件驱动：工具结果触发下一轮推理，而非固定间隔',
+      '可中断：用户随时可以暂停或终止 Agent 循环',
+      '无状态：每轮循环独立，不依赖前轮结果',
+      '可观测：每一步都有日志和 trace，可回放调试'
+    ],
+    answer: [2],
+    explanation: 'Loop Engineering 的核心原则包括事件驱动、可中断、可观测，但不包括“无状态”。恰恰相反，Agent Loop 是有状态的——每轮循环依赖前轮结果（工具输出、推理结论），状态在轮次间传递。无状态设计会破坏 Agent 的连贯推理能力。'
+  },
+  {
+    type: 'multiple',
+    question: 'Coding Agent（如 Claude Code）的 Harness 参数包括哪些？（多选）',
+    options: [
+      'allowedTools：允许使用的工具白名单',
+      'max-turns：最大循环轮数',
+      'model：指定使用的 LLM 模型',
+      'systemPrompt：系统提示词约束 Agent 行为'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: 'Claude Code 的 Harness 参数：allowedTools（工具白名单，如只允许读文件不允许写）、max-turns（循环上限，防止死循环）、model（模型选择，影响能力和成本）、systemPrompt（行为约束，如“只能修改 src/ 目录下的文件”）。四个参数共同构成 Agent 的安全约束体系。'
+  },
+  {
+    type: 'single',
+    question: 'OpenAI Codex 的“异步任务模式”相比同步交互的最大优势是？',
+    options: [
+      '可以同时处理多个用户请求',
+      '用户提交任务后无需等待，完成后通知',
+      '可以使用更强的模型（GPT-4 vs GPT-3.5）',
+      '成本更低，因为非实时处理'
+    ],
+    answer: [1],
+    explanation: '异步任务模式的最大优势是用户体验——用户提交任务后可以去做别的事，Agent 在云端自主执行（通常需要几分钟到几十分钟），完成后通知用户。这适合复杂编码任务（如“重构这个模块”），用户不需要盯着屏幕等。'
   }
 ];
 

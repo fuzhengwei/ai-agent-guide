@@ -95,8 +95,59 @@
   </table>
 </div>
 
+
+<h3 class="sub-heading">23.2.1 API 范式演进：从 Chat Completions 到 Responses API</h3>
+
+<p>2025 年 OpenAI 发布 <strong>Responses API</strong>，标志着 Agent 开发范式的重大转变。这不是简单的 API 升级，而是<strong>从"对话模型"向"任务模型"的范式迁移</strong>。</p>
+
+<div class="card">
+  <div class="card-title">🔄 三代 API 范式对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">代际</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">API</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">核心抽象</th>
+        <th style="text-align: left; padding: 10px 6px; color: var(--color-primary);">Agent 构建</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 6px;"><strong>第一代</strong></td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">Completions API (2020)</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">文本补全（prompt → completion）</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">手动拼 prompt，无状态</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 6px;"><strong>第二代</strong></td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">Chat Completions API (2023)</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">对话消息（messages[] → response）</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">手动管理 messages + Function Calling 循环</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 6px;"><strong>第三代</strong></td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">Responses API (2025)</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">任务执行（input → output + 工具自动执行）</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">内置工具 + 状态管理 + 事件流</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>Responses API 的核心变革：</strong></p>
+<ul>
+<li><strong>内置工具原生支持</strong>：Web Search、Code Interpreter、File Search 等工具直接在 API 层实现，不再需要开发者自行搭建 Function Calling 循环。Agent 代码从"管理工具调用循环"简化为"配置工具列表"</li>
+<li><strong>有状态会话</strong>：<code>previous_response_id</code> 参数让 API 自动维护对话历史，客户端不再需要管理 messages 数组。大幅减少 Token 消耗（不需要每次重传完整历史）</li>
+<li><strong>事件驱动流式</strong>：SSE 事件流区分 <code>response.output_text.delta</code>、<code>response.function_call_arguments.delta</code>、<code>response.web_search_call</code> 等，Agent 可以精确感知每一步进展</li>
+<li><strong>多模态原生</strong>：图片、文件直接在 <code>input</code> 中以结构化方式传入，不需要 Base64 编码</li>
+</ul>
+
+<div class="info-box">
+<strong>对 Agent 开发者的影响</strong>：Responses API 不会立刻取代 Chat Completions API（两者并行支持），但新项目应该优先选择 Responses API。它大幅降低了 Agent 开发复杂度——以前需要自行实现的"工具循环+状态管理+流式解析"三件套，现在 API 层原生支持。LangChain、AutoGen 等框架已陆续适配 Responses API。
+</div>
+
 <!-- ===== 23.3 全课回顾 ===== -->
-<h2 class="section-heading">23.3 全课回顾：21章知识地图</h2>
+<h2 class="section-heading">23.3 全课回顾：24章知识地图</h2>
 
 <div class="card">
   <div class="card-title">📚 知识地图</div>
@@ -128,12 +179,12 @@
     </div>
     
     <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 8px; background: rgba(20, 184, 166, 0.05);">
-      <strong style="color: #14b8a6;">⚙️ 第六篇：工程化（17-20章）</strong><br>
-      <span style="color: var(--color-text-secondary);">第17章 评估 → 第18章 安全 → 第19章 部署 → 第20章 推理框架</span>
+      <strong style="color: #14b8a6;">⚙️ 第六篇：工程化（17-22章）</strong><br>
+      <span style="color: var(--color-text-secondary);">第17章 评估 → 第18章 安全 → 第19章 部署 → 第20章 推理框架 → 第21章 运行时架构 → 第22章 Harness Engineering</span>
     </div>
     
     <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: rgba(244, 114, 182, 0.05);">
-      <strong style="color: #f472b6;">🔮 终章（21章）</strong><br>
+      <strong style="color: #f472b6;">🔮 终章（23章）</strong><br>
       <span style="color: var(--color-text-secondary);">第23章 2026展望 — 未来趋势、全课回顾、职业思考</span>
     </div>
     

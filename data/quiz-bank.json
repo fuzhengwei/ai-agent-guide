@@ -4683,6 +4683,93 @@
         1
       ],
       "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
+    },
+    {
+      "type": "single",
+      "question": "Agent Loop 中 max_turns 参数的主要作用是？",
+      "options": [
+        "限制每轮工具调用的最大次数",
+        "限制 Agent 循环的最大迭代轮数",
+        "限制 LLM 的最大 Token 输出",
+        "限制 Agent 的最大运行时间"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "max_turns 限制 Agent 循环的最大迭代轮数（如设为 20，则 Agent 最多循环 20 轮后强制停止）。这是防止死循环和成本失控的硬性兜底措施，与超时限制（timeout）配合使用。"
+    },
+    {
+      "type": "single",
+      "question": "Runtime 层的核心职责不包括以下哪项？",
+      "options": [
+        "管理 Agent 生命周期（启动、暂停、恢复、终止）",
+        "提供工具执行环境（文件系统、进程、网络）",
+        "执行 LLM 推理计算（前向传播）",
+        "资源配额管理（CPU、内存、时间限制）"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Runtime 层负责 Agent 生命周期管理、工具执行环境和资源配额，但不执行 LLM 推理计算。LLM 推理由模型服务端完成，Runtime 只负责调用 API 并处理响应。"
+    },
+    {
+      "type": "single",
+      "question": "WaLiCode 的五层权限递进系统中，第一层是？",
+      "options": [
+        "规则引擎匹配（正则 + 关键词）",
+        "Bash AST 分析（解析命令结构）",
+        "AI 安全审判（LLM 判断风险）",
+        "用户审批（Human-in-the-Loop）"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "五层权限递进为：① Bash AST 分析 → ② 规则引擎匹配 → ③ AI 安全审判 → ④ 用户审批 → ⑤ 熔断器。从自动到人工，从快速到审慎，分层递进。"
+    },
+    {
+      "type": "multiple",
+      "question": "沙箱隔离的常见实现方式有哪些？（多选）",
+      "options": [
+        "Docker 容器隔离（进程+文件系统级）",
+        "Firecracker 微虚拟机（内核级隔离）",
+        "WASM 沙箱（内存安全+快速启动）",
+        "gVisor 系统调用拦截（内核接口级）"
+      ],
+      "answer": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "四种主流沙箱方案：Docker（进程级）、Firecracker（微VM，独立内核）、WASM（内存安全，毫秒级启动）、gVisor（拦截系统调用）。隔离级别从低到高：Docker < gVisor < WASM < Firecracker。"
+    },
+    {
+      "type": "single",
+      "question": "Agent Loop 中'滑动窗口压缩'策略的核心思想是？",
+      "options": [
+        "只保留最近 N 轮对话历史，更早的丢弃",
+        "只保留最近 N 轮对话，更早的用摘要替代",
+        "只保留工具调用结果，丢弃对话内容",
+        "把所有历史压缩成单个摘要"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "滑动窗口压缩：保留最近 N 轮完整对话（保证近期上下文不丢失），更早的历史用摘要替代（保留关键信息但大幅减少 Token）。这是 Token 爆炸问题的标准解决方案。"
+    },
+    {
+      "type": "single",
+      "question": "以下哪个不是 Loop Engineering 的核心原则？",
+      "options": [
+        "事件驱动：工具结果触发下一轮推理，而非固定间隔",
+        "可中断：用户随时可以暂停或终止 Agent 循环",
+        "无状态：每轮循环独立，不依赖前轮结果",
+        "可观测：每一步都有日志和 trace，可回放调试"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Loop Engineering 的核心原则包括事件驱动、可中断、可观测，但不包括'无状态'。Agent Loop 是有状态的——每轮循环依赖前轮结果，状态在轮次间传递。无状态设计会破坏 Agent 的连贯推理能力。"
     }
   ],
   "ch23": [
