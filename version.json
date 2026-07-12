@@ -1,4 +1,4 @@
 {
-  "version": "20260712.5",
-  "changelog": "ch02多语言代码升级:4个裸<pre>代码块(Agent执行链路/意图识别/任务分类器/调度器)全部升级为Python/TypeScript/Go/Java四语言multi-lang格式(+618行);ch00导航修复+ch14导航修复+ch23知识地图修复+ch05压缩可靠性+ch21 Loop稳定性(20260712.4已含)"
+  "version": "20260712.7",
+  "changelog": "第四篇更名为\"协作与编排\"（原\"多Agent协作\"）"
 }

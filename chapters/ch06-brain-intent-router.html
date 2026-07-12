@@ -1,0 +1,1611 @@
+<!-- 第6章：意图识别与决策中枢 -->
+<h1 class="chapter-title">第6章 意图识别与决策中枢</h1>
+
+<p style="margin-top: 12px;">前两章讲了 Agent 的"推理引擎"（ReAct 及变体）和"记忆系统"（上下文管理）。但 Agent 还需要一个核心能力——<strong>理解用户到底想做什么，然后决定怎么做</strong>。这就是意图识别与决策中枢。</p>
+
+<div class="quote">
+  "Agent 的大脑不只是推理，还包括：理解意图 → 规划任务 → 调度工具 → 管理上下文 → 控制循环。这五件事合在一起，才是完整的'决策中枢'。"
+</div>
+
+<h2 class="section-heading">6.1 为什么需要意图识别</h2>
+
+<p>用户说"帮我查下北京天气"，Agent 需要先理解<strong>用户到底想做什么</strong>，才能选到正确的工具、走正确的执行路径。意图识别是 Agent 决策链的第一步，也是最重要的一步——意图错了，后面全错。</p>
+
+<div class="card">
+  <div class="card-title">意图识别在 Agent 大脑中的位置</div>
+  <div style="padding: 12px 0;">
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
+      <span style="background: var(--color-bg-code); padding: 6px 12px; border-radius: 6px; font-size: 13px;">用户输入</span>
+      <span style="color: var(--color-text-secondary);">→</span>
+      <span style="background: var(--color-primary); color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;">🧠 意图识别</span>
+      <span style="color: var(--color-text-secondary);">→</span>
+      <span style="background: var(--color-bg-code); padding: 6px 12px; border-radius: 6px; font-size: 13px;">任务分类</span>
+      <span style="color: var(--color-text-secondary);">→</span>
+      <span style="background: var(--color-bg-code); padding: 6px 12px; border-radius: 6px; font-size: 13px;">工具路由</span>
+      <span style="color: var(--color-text-secondary);">→</span>
+      <span style="background: var(--color-bg-code); padding: 6px 12px; border-radius: 6px; font-size: 13px;">执行调度</span>
+    </div>
+    <p style="text-align: center; color: var(--color-text-secondary); font-size: 13px; margin-top: 8px;">意图识别是决策链的起点，决定了 Agent 后续的所有行为</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">三种意图识别方法</h3>
+
+<p>Agent 接收用户输入后，需要判断用户的真实意图。工程上有三种主流方法，各有优劣：</p>
+
+<div class="card">
+  <div class="card-title">意图识别的三种方法对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">方法</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">优点</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">缺点</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">关键词匹配</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">匹配预设关键词，如"天气"→查询意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">速度快，成本低</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">粗粒度，误判率高</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">简单指令型交互</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">语义理解</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">通过 LLM 深层理解用户表达的真实意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">精准，能理解隐含意图</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">成本高，延迟大</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">复杂多意图场景</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">模式识别</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">基于历史对话模式匹配相似意图</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">利用经验，越用越准</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">依赖数据量，新意图难识别</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">高频重复场景</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>实际工程中，<strong>三者通常组合使用</strong>：先用关键词匹配快速筛选常见意图，命中后直接走快速路径；没命中则交给 LLM 做语义理解；长期积累的模式数据用于优化匹配规则。这就是<strong>分层意图识别</strong>策略。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 分层意图识别：关键词 → 语义 → 模式
+
+def identify_intent(user_input, context):
+    # 第一层：关键词匹配（快路径）
+    keyword_intent = match_keywords(user_input)
+    if keyword_intent and keyword_intent.confidence > 0.9:
+        return keyword_intent  # 高置信度，直接返回
+
+    # 第二层：语义理解（慢路径）
+    semantic_intent = llm_understand_intent(user_input, context)
+    if semantic_intent.confidence > 0.7:
+        # 记录新模式，丰富规则库
+        pattern_db.record(user_input, semantic_intent)
+        return semantic_intent
+
+    # 第三层：模式识别（兜底）
+    pattern_intent = match_patterns(user_input, pattern_db)
+    return pattern_intent or semantic_intent
+
+# 示例
+print(identify_intent("明天天气咋样", []))
+# → Intent(type="查询", sub_type="天气", confidence=0.95)  # 关键词命中
+
+print(identify_intent("我项目里这段代码跑不通，帮我看看", []))
+# → Intent(type="代码修改", confidence=0.85)  # 语义理解命中</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+function identifyIntent(userInput: string, context: Context[]): Intent {
+  // 第一层：关键词匹配（快路径）
+  const keywordIntent = matchKeywords(userInput);
+  if (keywordIntent && keywordIntent.confidence > 0.9) {
+    return keywordIntent;
+  }
+
+  // 第二层：语义理解（慢路径）
+  const semanticIntent = llmUnderstandIntent(userInput, context);
+  if (semanticIntent.confidence > 0.7) {
+    patternDB.record(userInput, semanticIntent);
+    return semanticIntent;
+  }
+
+  // 第三层：模式识别（兜底）
+  const patternIntent = matchPatterns(userInput, patternDB);
+  return patternIntent || semanticIntent;
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+func IdentifyIntent(userInput string, context []Context) Intent {
+    // 第一层：关键词匹配（快路径）
+    keywordIntent := matchKeywords(userInput)
+    if keywordIntent.Confidence > 0.9 {
+        return keywordIntent
+    }
+
+    // 第二层：语义理解（慢路径）
+    semanticIntent := llmUnderstandIntent(userInput, context)
+    if semanticIntent.Confidence > 0.7 {
+        patternDB.Record(userInput, semanticIntent)
+        return semanticIntent
+    }
+
+    // 第三层：模式识别（兜底）
+    patternIntent := matchPatterns(userInput, patternDB)
+    if patternIntent.Confidence > 0 {
+        return patternIntent
+    }
+    return semanticIntent
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 分层意图识别：关键词 → 语义 → 模式
+
+public class IntentIdentifier {
+    public Intent identifyIntent(String userInput, List&lt;Context&gt; context) {
+        // 第一层：关键词匹配（快路径）
+        Intent keywordIntent = matchKeywords(userInput);
+        if (keywordIntent != null && keywordIntent.getConfidence() > 0.9) {
+            return keywordIntent;
+        }
+
+        // 第二层：语义理解（慢路径）
+        Intent semanticIntent = llmUnderstandIntent(userInput, context);
+        if (semanticIntent.getConfidence() > 0.7) {
+            patternDB.record(userInput, semanticIntent);
+            return semanticIntent;
+        }
+
+        // 第三层：模式识别（兜底）
+        Intent patternIntent = matchPatterns(userInput, patternDB);
+        return patternIntent != null ? patternIntent : semanticIntent;
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">隐式意图识别</h3>
+
+<p>用户不会总是直接说"我要查天气"。很多时候意图隐藏在自然表达中：</p>
+
+<div class="card">
+  <div class="card-title">隐式意图识别示例</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">用户说</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">显式意图</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">隐式意图</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">Agent 应该做</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">"外面冷不冷"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无（没说"查天气"）</td>
+        <td style="padding: 10px 8px; color: var(--color-primary);">查询天气</td>
+        <td style="padding: 10px 8px;">调天气 API + 给穿衣建议</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">"明天适合跑步吗"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无</td>
+        <td style="padding: 10px 8px; color: var(--color-primary);">天气+空气质量+温度</td>
+        <td style="padding: 10px 8px;">多工具协作查询</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;">"这段代码有 bug"</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">无（没说"修 bug"）</td>
+        <td style="padding: 10px 8px; color: var(--color-primary);">代码分析+修复</td>
+        <td style="padding: 10px 8px;">读取代码 → 定位 → 修复</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>意图识别的核心不是关键词匹配，而是理解用户<strong>想达成的目标</strong>。"查天气"和"外面冷不冷"表面完全不同，但意图相同。这就需要 LLM 的语义理解能力——这也是为什么 Agent 不用规则引擎，而用 LLM 作为大脑。</p>
+
+<h3 class="sub-heading">复合意图拆解</h3>
+
+<p>用户一句话可能包含多个意图：</p>
+
+<div class="card">
+  <div class="card-title">复合意图拆解</div>
+  <p style="margin-top: 8px;">用户："帮我查下北京明天天气，顺便订个闹钟提醒我带伞"</p>
+  <div style="margin-top: 12px; padding: 12px; background: var(--color-bg-code); border-radius: 8px; font-size: 13px;">
+    <strong>意图拆解：</strong><br>
+    ① 查询意图 → 调用天气 API → 获取北京明天天气<br>
+    ② 判断意图 → 根据天气判断是否需要带伞<br>
+    ③ 执行意图 → 调用闹钟 API → 设置明早提醒<br>
+    <br>
+    <strong>Agent 执行计划：</strong><br>
+    Step 1: call weather_api(city="北京", date="明天")<br>
+    Step 2: if rain_probability > 0.3 → call alarm_api(msg="带伞")<br>
+    Step 3: return "北京明天小雨，已设闹钟提醒带伞"
+  </div>
+</div>
+
+<p>复合意图拆解需要 LLM 先理解整句话的语义，再拆分出子意图，最后生成执行计划。这个过程就是<strong>任务规划</strong>——我们在 §6.4 会详细讲。</p>
+
+
+<h2 class="section-heading">6.2 工具路由：从意图到工具</h2>
+
+<p>意图识别完成后，Agent 需要把意图<strong>路由到正确的工具</strong>。这就是工具路由——决策中枢的"分发器"。</p>
+
+<h3 class="sub-heading">意图分类体系</h3>
+
+<p>工具路由的第一步是建立<strong>意图分类体系</strong>。不同类型的意图对应不同的工具集合：</p>
+
+<div class="card">
+  <div class="card-title">意图分类 → 工具路由映射</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">意图大类</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">子意图</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">路由目标</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;" rowspan="3">查询类</td>
+        <td style="padding: 10px 8px;">天气查询</td>
+        <td style="padding: 10px 8px;">weather_api</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"明天北京天气"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">知识查询</td>
+        <td style="padding: 10px 8px;">rag_search / web_search</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"什么是 Transformer"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">数据查询</td>
+        <td style="padding: 10px 8px;">db_query / sql_executor</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"上个月销售额多少"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;" rowspan="2">执行类</td>
+        <td style="padding: 10px 8px;">代码执行</td>
+        <td style="padding: 10px 8px;">code_runner / sandbox</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我跑下这段 Python"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px;">文件操作</td>
+        <td style="padding: 10px 8px;">file_handler</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"把这个文件重命名"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;" rowspan="2">分析类</td>
+        <td style="padding: 10px 8px;">趋势分析</td>
+        <td style="padding: 10px 8px;">data_analyzer + chart_generator</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"分析房价趋势"</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px;">代码审查</td>
+        <td style="padding: 10px 8px;">code_analyzer + lint_tool</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我 review 这段代码"</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">Tool RAG：工具检索策略</h3>
+
+<p>当 Agent 注册了几十个甚至上百个工具时，把所有工具描述都塞进 Prompt 会导致 Token 爆炸。解决方案是 <strong>Tool RAG</strong>——根据用户意图，只检索最相关的工具描述注入 Prompt。</p>
+
+<div class="card">
+  <div class="card-title">全量注入 vs JIT 加载 vs Tool RAG</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">策略</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">Token 消耗</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">准确率</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">适用规模</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">全量注入</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">所有工具描述都放入 Prompt</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">极高</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">最高</td>
+        <td style="padding: 10px 8px;">≤10 个工具</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">JIT 加载</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">意图识别后只加载匹配工具</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">低</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中等（依赖意图识别）</td>
+        <td style="padding: 10px 8px;">10-50 个工具</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Tool RAG</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">向量检索最相关的 K 个工具</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">可控</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">高</td>
+        <td style="padding: 10px 8px;">50+ 个工具</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># Tool RAG：向量检索最相关的工具
+
+class ToolRAG:
+    def __init__(self, tool_registry, embed_model):
+        self.tools = tool_registry  # {name: description}
+        self.embed_model = embed_model
+        # 预计算所有工具描述的 embedding
+        self.tool_embeddings = {
+            name: self.embed_model.embed(desc)
+            for name, desc in self.tools.items()
+        }
+
+    def retrieve(self, user_input, top_k=3):
+        """检索与用户输入最相关的 top_k 个工具"""
+        query_emb = self.embed_model.embed(user_input)
+
+        scores = []
+        for name, tool_emb in self.tool_embeddings.items():
+            sim = cosine_similarity(query_emb, tool_emb)
+            scores.append((name, sim))
+
+        # 取相似度最高的 K 个
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores[:top_k]
+
+    def build_tool_prompt(self, user_input, top_k=3):
+        """构建只包含相关工具的 Prompt"""
+        relevant = self.retrieve(user_input, top_k)
+        tools_desc = "\n".join(
+            f"- {name}: {self.tools[name]}" for name, _ in relevant
+        )
+        return f"可用工具:\n{tools_desc}"
+
+# 示例
+rag = ToolRAG(tool_registry, embed_model)
+print(rag.build_tool_prompt("明天北京天气怎么样"))
+# 可用工具:
+# - weather_api: 查询指定城市的天气
+# - clothing_advisor: 根据天气推荐穿搭
+# - alarm_api: 设置闹钟提醒</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Tool RAG：向量检索最相关的工具
+
+class ToolRAG {
+  private toolEmbeddings: Map&lt;string, number[]&gt;;
+
+  constructor(tools: Map&lt;string, string&gt;, embedModel: EmbedModel) {
+    this.toolEmbeddings = new Map();
+    for (const [name, desc] of tools) {
+      this.toolEmbeddings.set(name, embedModel.embed(desc));
+    }
+  }
+
+  retrieve(userInput: string, topK = 3): [string, number][] {
+    const queryEmb = embedModel.embed(userInput);
+    const scores: [string, number][] = [];
+    for (const [name, emb] of this.toolEmbeddings) {
+      scores.push([name, cosineSimilarity(queryEmb, emb)]);
+    }
+    return scores.sort((a, b) => b[1] - a[1]).slice(0, topK);
+  }
+
+  buildToolPrompt(userInput: string, topK = 3): string {
+    const relevant = this.retrieve(userInput, topK);
+    const desc = relevant.map(([name]) => `- ${name}: ${tools.get(name)}`).join('\n');
+    return `可用工具:\n${desc}`;
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Tool RAG：向量检索最相关的工具
+
+type ToolRAG struct {
+	tools       map[string]string
+	embeddings  map[string][]float64
+	embedModel  EmbedModel
+}
+
+func NewToolRAG(tools map[string]string, embedModel EmbedModel) *ToolRAG {
+	embeddings := make(map[string][]float64)
+	for name, desc := range tools {
+		embeddings[name] = embedModel.Embed(desc)
+	}
+	return &ToolRAG{tools: tools, embeddings: embeddings, embedModel: embedModel}
+}
+
+func (r *ToolRAG) Retrieve(userInput string, topK int) []ToolScore {
+	queryEmb := r.embedModel.Embed(userInput)
+	var scores []ToolScore
+	for name, emb := range r.embeddings {
+		scores = append(scores, ToolScore{Name: name, Score: cosineSimilarity(queryEmb, emb)})
+	}
+	sort.Slice(scores, func(i, j int) bool { return scores[i].Score > scores[j].Score })
+	if topK > len(scores) { topK = len(scores) }
+	return scores[:topK]
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Tool RAG：向量检索最相关的工具
+
+public class ToolRAG {
+    private final Map&lt;String, String&gt; tools;
+    private final Map&lt;String, float[]&gt; embeddings;
+    private final EmbedModel embedModel;
+
+    public ToolRAG(Map&lt;String, String&gt; tools, EmbedModel embedModel) {
+        this.tools = tools;
+        this.embedModel = embedModel;
+        this.embeddings = new HashMap&lt;&gt;();
+        for (var entry : tools.entrySet()) {
+            embeddings.put(entry.getKey(), embedModel.embed(entry.getValue()));
+        }
+    }
+
+    public List&lt;ToolScore&gt; retrieve(String userInput, int topK) {
+        float[] queryEmb = embedModel.embed(userInput);
+        List&lt;ToolScore&gt; scores = new ArrayList&lt;&gt;();
+        for (var entry : embeddings.entrySet()) {
+            scores.add(new ToolScore(entry.getKey(), cosineSimilarity(queryEmb, entry.getValue())));
+        }
+        scores.sort((a, b) -> Float.compare(b.score, a.score));
+        return scores.subList(0, Math.min(topK, scores.size()));
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">工具描述优化：高信号低噪声</h3>
+
+<p>工具描述的质量直接影响路由准确率。好的描述应该<strong>高信号、低噪声</strong>——让 LLM 一眼看出工具能做什么、什么时候该用。</p>
+
+<div class="card">
+  <div class="card-title">工具描述优化前后对比</div>
+  <div style="margin-top: 12px;">
+    <p style="color: var(--color-error);">❌ 差的描述：</p>
+    <pre style="background: var(--color-bg-code); border-radius: 8px; padding: 12px; font-size: 13px;">
+{
+  "name": "api_call",
+  "description": "调用 API"
+}</pre>
+    <p style="color: var(--color-success); margin-top: 12px;">✅ 好的描述：</p>
+    <pre style="background: var(--color-bg-code); border-radius: 8px; padding: 12px; font-size: 13px;">
+{
+  "name": "weather_api",
+  "description": "查询指定城市的实时天气和未来预报。支持全球城市。当用户询问天气、温度、降雨、穿衣建议时使用。",
+  "parameters": {
+    "city": {"type": "string", "description": "城市名称，如'北京'、'上海'"},
+    "date": {"type": "string", "description": "日期，'今天'、'明天'或具体日期"}
+  }
+}</pre>
+  </div>
+</div>
+
+<h2 class="section-heading">6.3 任务分类与复杂度判断</h2>
+
+<p>意图识别之后，Agent 需要对任务进行<strong>分类</strong>，决定<strong>执行策略</strong>。不同复杂度的任务对应不同的处理路径。这是决策中枢的"调度器"。</p>
+
+<h3 class="sub-heading">任务分类矩阵</h3>
+
+<p>不同的任务类型对应不同的执行路径：</p>
+
+<div class="card">
+  <div class="card-title">任务分类矩阵：类型 → 策略 → 路径</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">任务类型</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">复杂度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">执行路径</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">简单问答</td>
+        <td style="padding: 10px 8px;"><span style="color: var(--color-success);">Low</span></td>
+        <td style="padding: 10px 8px;">direct_answer（纯模型推理）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"什么是 Transformer"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">代码解释</td>
+        <td style="padding: 10px 8px;"><span style="color: var(--color-info);">Medium</span></td>
+        <td style="padding: 10px 8px;">analyze_explain（读取+分析）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"这段代码什么意思"</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">代码修改</td>
+        <td style="padding: 10px 8px;"><span style="color: var(--color-warning);">Medium-High</span></td>
+        <td style="padding: 10px 8px;">locate_modify（定位+修改+验证）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我修复这个 bug"</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">复杂开发</td>
+        <td style="padding: 10px 8px;"><span style="color: var(--color-error);">High</span></td>
+        <td style="padding: 10px 8px;">decompose_execute（拆解+多步执行）</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">"帮我搭建一个 REST API"</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 任务分类器：判断复杂度并选择执行路径
+
+class TaskClassifier:
+    COMPLEXITY_RULES = {
+        "简单问答": {
+            "keywords": ["是什么", "怎么用", "区别", "概念"],
+            "path": "direct_answer",
+            "complexity": "low"
+        },
+        "代码解释": {
+            "keywords": ["这段代码", "什么意思", "解释一下"],
+            "path": "analyze_explain",
+            "complexity": "medium"
+        },
+        "代码修改": {
+            "keywords": ["修改", "改成", "优化", "修复", "重构"],
+            "path": "locate_modify",
+            "complexity": "medium_high"
+        },
+        "复杂开发": {
+            "keywords": ["搭建", "实现", "开发", "创建项目", "从零开始"],
+            "path": "decompose_execute",
+            "complexity": "high"
+        }
+    }
+
+    def classify(self, intent):
+        for task_type, rule in self.COMPLEXITY_RULES.items():
+            if any(kw in intent.raw_input for kw in rule["keywords"]):
+                return task_type, rule["complexity"], rule["path"]
+        # 规则未命中，交给 LLM 判断
+        return self.llm_classify(intent)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 任务分类器
+
+const COMPLEXITY_RULES: Record&lt;string, {
+  keywords: string[]; path: string; complexity: string;
+}&gt; = {
+  '简单问答': { keywords: ['是什么', '怎么用', '区别', '概念'], path: 'direct_answer', complexity: 'low' },
+  '代码解释': { keywords: ['这段代码', '什么意思', '解释一下'], path: 'analyze_explain', complexity: 'medium' },
+  '代码修改': { keywords: ['修改', '改成', '优化', '修复', '重构'], path: 'locate_modify', complexity: 'medium_high' },
+  '复杂开发': { keywords: ['搭建', '实现', '开发', '创建项目', '从零开始'], path: 'decompose_execute', complexity: 'high' }
+};
+
+function classify(intent: Intent): ClassifyResult {
+  for (const [taskType, rule] of Object.entries(COMPLEXITY_RULES)) {
+    if (rule.keywords.some(kw => intent.rawInput.includes(kw))) {
+      return { taskType, complexity: rule.complexity, path: rule.path };
+    }
+  }
+  return llmClassify(intent);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 任务分类器
+
+type ComplexityRule struct {
+	Keywords   []string
+	Path       string
+	Complexity string
+}
+
+type TaskClassifier struct {
+	rules map[string]ComplexityRule
+}
+
+func (c *TaskClassifier) Classify(intent Intent) (taskType, complexity, path string) {
+	for name, rule := range c.rules {
+		for _, kw := range rule.Keywords {
+			if strings.Contains(intent.RawInput, kw) {
+				return name, rule.Complexity, rule.Path
+			}
+		}
+	}
+	return llmClassify(intent)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 任务分类器
+
+public class TaskClassifier {
+    private static final Map&lt;String, ComplexityRule&gt; RULES = new HashMap&lt;&gt;();
+
+    static {
+        RULES.put("简单问答", new ComplexityRule(List.of("是什么","怎么用","区别","概念"), "direct_answer", "low"));
+        RULES.put("代码解释", new ComplexityRule(List.of("这段代码","什么意思","解释一下"), "analyze_explain", "medium"));
+        RULES.put("代码修改", new ComplexityRule(List.of("修改","改成","优化","修复","重构"), "locate_modify", "medium_high"));
+        RULES.put("复杂开发", new ComplexityRule(List.of("搭建","实现","开发","创建项目","从零开始"), "decompose_execute", "high"));
+    }
+
+    public ClassifyResult classify(Intent intent) {
+        for (var entry : RULES.entrySet()) {
+            for (String kw : entry.getValue().keywords) {
+                if (intent.getRawInput().contains(kw)) {
+                    return new ClassifyResult(entry.getKey(), entry.getValue().complexity, entry.getValue().path);
+                }
+            }
+        }
+        return llmClassify(intent);
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">分类决策流程图</h3>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"input","label":"用户输入","type":"start"},{"id":"intent","label":"意图识别","type":"process"},{"id":"keyword","label":"关键词匹配\n命中？","type":"process"},{"id":"llm","label":"LLM 语义理解\n判断复杂度","type":"process"},{"id":"simple","label":"Low → 直接回答","type":"end"},{"id":"medium","label":"Medium → 读取+分析","type":"end"},{"id":"complex","label":"High → 拆解+多步执行","type":"end"},{"id":"decompose","label":"任务拆解\n生成执行计划","type":"process"}],"edges":[{"from":"input","to":"intent"},{"from":"intent","to":"keyword"},{"from":"keyword","to":"simple","label":"简单问答"},{"from":"keyword","to":"medium","label":"代码解释"},{"from":"keyword","to":"complex","label":"复杂开发"},{"from":"keyword","to":"llm","label":"未命中"},{"from":"llm","to":"simple","label":"Low"},{"from":"llm","to":"medium","label":"Medium"},{"from":"llm","to":"decompose","label":"High"},{"from":"decompose","to":"complex"}]}'></div>
+
+
+<h2 class="section-heading">6.4 任务规划与分解</h2>
+
+<p>当任务复杂度被判定为"High"时，Agent 需要将大任务<strong>拆解为子任务</strong>，生成执行计划。这就是任务规划——决策中枢的"项目管理器"。</p>
+
+<h3 class="sub-heading">Plan & Execute 范式</h3>
+
+<p>ReAct 模式是"边想边做"，每一步都调 LLM 推理。而 Plan & Execute 是"先想好再做"——先让 LLM 生成完整执行计划，再逐步执行。两种范式各有优劣：</p>
+
+<div class="card">
+  <div class="card-title">ReAct vs Plan & Execute</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">维度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">ReAct（边想边做）</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">Plan & Execute（先想后做）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">执行方式</td>
+        <td style="padding: 10px 8px;">Thought → Action → Observation 循环</td>
+        <td style="padding: 10px 8px;">Planner 生成计划 → Executor 逐步执行</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">LLM 调用</td>
+        <td style="padding: 10px 8px;">每步都调 LLM</td>
+        <td style="padding: 10px 8px;">规划时调一次，执行时可不调</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">Token 消耗</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">高（N 步 = N 次推理）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">低（1 次规划 + N 次执行）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">灵活性</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">高（每步可调整）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">中（计划生成后不易调整）</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">适用场景</td>
+        <td style="padding: 10px 8px;">探索性任务、不确定性高</td>
+        <td style="padding: 10px 8px;">明确目标、步骤可预测</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># Plan & Execute：先规划后执行
+
+class TaskPlanner:
+    def __init__(self, llm):
+        self.llm = llm
+
+    def decompose(self, task, available_tools):
+        """将复杂任务拆解为子任务列表"""
+        prompt = f"""
+        任务: {task}
+        可用工具: {available_tools}
+        
+        请将任务拆解为具体的子任务步骤，每个步骤包含:
+        - step_id: 步骤编号
+        - action: 具体操作
+        - tool: 使用的工具名称
+        - depends_on: 依赖的前置步骤
+        """
+        plan = self.llm.generate(prompt)
+        return self._parse_plan(plan)
+
+    def _parse_plan(self, plan_text):
+        """解析 LLM 输出的执行计划"""
+        steps = []
+        for line in plan_text.strip().split('\n'):
+            if line.strip().startswith('Step'):
+                steps.append(self._parse_step(line))
+        return steps
+
+# 示例
+planner = TaskPlanner(LLMEngine())
+plan = planner.decompose(
+    "帮我分析北京最近房价趋势并生成报告",
+    ["search_api", "data_analyzer", "chart_generator", "file_writer"]
+)
+# 输出:
+# [
+#   {step_id: 1, action: "搜索北京房价数据", tool: "search_api", depends_on: []},
+#   {step_id: 2, action: "分析趋势", tool: "data_analyzer", depends_on: [1]},
+#   {step_id: 3, action: "生成图表", tool: "chart_generator", depends_on: [2]},
+#   {step_id: 4, action: "写入报告文件", tool: "file_writer", depends_on: [3]}
+# ]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Plan & Execute：先规划后执行
+
+class TaskPlanner {
+  constructor(private llm: LLMEngine) {}
+
+  async decompose(task: string, tools: string[]): Promise&lt;PlanStep[]&gt; {
+    const prompt = `任务: ${task}\n可用工具: ${tools.join(', ')}\n请拆解为子任务步骤。`;
+    const result = await this.llm.generate(prompt);
+    return this.parsePlan(result);
+  }
+
+  private parsePlan(text: string): PlanStep[] {
+    return text.trim().split('\n')
+      .filter(line => line.startsWith('Step'))
+      .map(line => this.parseStep(line));
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Plan & Execute：先规划后执行
+
+type TaskPlanner struct {
+	llm *LLMEngine
+}
+
+func (p *TaskPlanner) Decompose(task string, tools []string) ([]PlanStep, error) {
+	prompt := fmt.Sprintf("任务: %s\n可用工具: %v\n请拆解为子任务步骤。", task, tools)
+	result, err := p.llm.Generate(prompt)
+	if err != nil {
+		return nil, err
+	}
+	return parsePlan(result), nil
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Plan & Execute：先规划后执行
+
+public class TaskPlanner {
+    private final LLMEngine llm;
+
+    public List&lt;PlanStep&gt; decompose(String task, List&lt;String&gt; tools) {
+        String prompt = String.format("任务: %s%n可用工具: %s%n请拆解为子任务步骤。", task, tools);
+        String result = llm.generate(prompt);
+        return parsePlan(result);
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">调度器：执行计划的核心</h3>
+
+<p>计划生成后，调度器负责按计划执行。调度器是 Agent 决策中枢的"执行引擎"，它根据子任务特征，决定调用模型还是工具：</p>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 调度器：根据任务特征分配执行路径
+
+class Scheduler:
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = tools
+
+    def dispatch(self, sub_task):
+        """根据子任务特征，决定调用模型还是工具"""
+        # 判断1：是否需要外部数据？
+        if sub_task.requires_external_data:
+            tool_name = self._select_tool(sub_task)
+            result = self.tools.call(tool_name, sub_task.params)
+            return result
+
+        # 判断2：是否需要逻辑推理？
+        if sub_task.requires_reasoning:
+            return self.llm.reason(sub_task.prompt)
+
+        # 判断3：是否需要格式化输出？
+        if sub_task.requires_formatting:
+            return self.llm.format(sub_task.raw_output)
+
+        # 判断4：是否需要验证结果？
+        if sub_task.requires_verification:
+            tool_result = self.tools.call("verify", sub_task.params)
+            return self.llm.reason(f"验证以下结果是否合理: {tool_result}")
+
+        # 默认：模型处理
+        return self.llm.reason(sub_task.prompt)
+
+    def _select_tool(self, sub_task):
+        tool_map = {
+            "search": "search_api",
+            "database": "db_query",
+            "code_execution": "code_runner",
+            "file_operation": "file_handler",
+            "calculation": "calculator"
+        }
+        return tool_map.get(sub_task.tool_type, "general_tool")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 调度器
+
+class Scheduler {
+  constructor(private llm: LLMEngine, private tools: ToolRegistry) {}
+
+  dispatch(subTask: SubTask): any {
+    if (subTask.requiresExternalData) {
+      const toolName = this.selectTool(subTask);
+      return this.tools.call(toolName, subTask.params);
+    }
+    if (subTask.requiresReasoning) {
+      return this.llm.reason(subTask.prompt);
+    }
+    if (subTask.requiresFormatting) {
+      return this.llm.format(subTask.rawOutput);
+    }
+    if (subTask.requiresVerification) {
+      const toolResult = this.tools.call('verify', subTask.params);
+      return this.llm.reason(`验证: ${toolResult}`);
+    }
+    return this.llm.reason(subTask.prompt);
+  }
+
+  private selectTool(subTask: SubTask): string {
+    const map: Record&lt;string, string&gt; = {
+      search: 'search_api', database: 'db_query',
+      code_execution: 'code_runner', file_operation: 'file_handler'
+    };
+    return map[subTask.toolType] || 'general_tool';
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 调度器
+
+type Scheduler struct {
+	llm   *LLMEngine
+	tools *ToolRegistry
+}
+
+func (s *Scheduler) Dispatch(subTask *SubTask) interface{} {
+	if subTask.RequiresExternalData {
+		toolName := s.selectTool(subTask)
+		return s.tools.Call(toolName, subTask.Params)
+	}
+	if subTask.RequiresReasoning {
+		return s.llm.Reason(subTask.Prompt)
+	}
+	if subTask.RequiresFormatting {
+		return s.llm.Format(subTask.RawOutput)
+	}
+	if subTask.RequiresVerification {
+		toolResult := s.tools.Call("verify", subTask.Params)
+		return s.llm.Reason(fmt.Sprintf("验证: %v", toolResult))
+	}
+	return s.llm.Reason(subTask.Prompt)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 调度器
+
+public class Scheduler {
+    private final LLMEngine llm;
+    private final ToolRegistry tools;
+
+    public Object dispatch(SubTask subTask) {
+        if (subTask.requiresExternalData) {
+            String toolName = selectTool(subTask);
+            return tools.call(toolName, subTask.params);
+        }
+        if (subTask.requiresReasoning) {
+            return llm.reason(subTask.prompt);
+        }
+        if (subTask.requiresFormatting) {
+            return llm.format(subTask.rawOutput);
+        }
+        if (subTask.requiresVerification) {
+            Object toolResult = tools.call("verify", subTask.params);
+            return llm.reason("验证: " + toolResult);
+        }
+        return llm.reason(subTask.prompt);
+    }
+}</pre></div>
+</div>
+
+<h2 class="section-heading">6.5 上下文工程：大脑的工作记忆管理</h2>
+
+<p>Agent 在执行过程中会产生大量上下文——对话历史、工具返回结果、中间推理。如果全部塞进 Prompt，Token 会爆炸；如果裁剪太多，Agent 会"失忆"。这就是<strong>上下文工程</strong>要解决的问题。</p>
+
+<div class="quote">
+  "上下文工程（Context Engineering）是提示工程（Prompt Engineering）的升级版。提示工程关注'怎么问'，上下文工程关注'在问的时候给模型看什么'。"
+</div>
+
+<h3 class="sub-heading">JIT Context：在正确的时间提供正确的信息</h3>
+
+<p><strong>Just-in-Time Context</strong>（即时上下文）的核心思想：不要一开始就把所有信息塞进 Prompt，而是在需要的时候才加载。这就像人不需要记住所有知识，只需要知道"去哪里查"。</p>
+
+<div class="card">
+  <div class="card-title">JIT Context 加载策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">信息类型</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">加载时机</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">加载方式</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">System Prompt</td>
+        <td style="padding: 10px 8px;">会话开始时</td>
+        <td style="padding: 10px 8px;">全量注入</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">角色设定、行为规则</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">工具描述</td>
+        <td style="padding: 10px 8px;">意图识别后</td>
+        <td style="padding: 10px 8px;">Tool RAG 检索</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">只加载相关工具</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">长期记忆</td>
+        <td style="padding: 10px 8px;">需要时检索</td>
+        <td style="padding: 10px 8px;">向量检索 top-K</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">用户偏好、历史决策</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">工具结果</td>
+        <td style="padding: 10px 8px;">调用后立即</td>
+        <td style="padding: 10px 8px;">压缩后注入</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">API 返回数据</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">工具结果压缩策略</h3>
+
+<p>工具返回的数据往往很大（一个 API 可能返回几 KB 甚至几十 KB），直接塞进 Prompt 会浪费大量 Token。需要<strong>压缩工具结果</strong>，保留关键信息，丢弃冗余。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 多策略工具结果压缩器
+
+class ToolResultCompressor:
+    """压缩工具返回结果：保留关键信息，压缩冗余"""
+
+    STRATEGIES = {
+        "selective": "选择性保留关键字段",
+        "truncation": "截断超长结果",
+        "summary": "AI 摘要核心信息",
+        "structured": "提取结构化数据"
+    }
+
+    def compress(self, result, strategy="selective", max_tokens=500):
+        if strategy == "selective":
+            return self._selective_compress(result, max_tokens)
+        elif strategy == "summary":
+            return self._ai_summary(result, max_tokens)
+        elif strategy == "truncation":
+            return self._truncate(result, max_tokens)
+        return result
+
+    def _selective_compress(self, result, max_tokens):
+        """选择性保留：只保留关键字段"""
+        if isinstance(result, dict):
+            key_fields = ["status", "data", "error", "summary"]
+            compressed = {k: result[k] for k in key_fields if k in result}
+            compressed["_meta"] = {
+                "compressed": True,
+                "original_keys": list(result.keys()),
+                "compressed_tokens": self._estimate_tokens(compressed)
+            }
+            return compressed
+        return {"value": str(result)[:max_tokens * 4]}
+
+    def _ai_summary(self, result, max_tokens):
+        """AI 摘要：让 LLM 总结工具结果"""
+        summary = llm.summarize(str(result), max_tokens=max_tokens)
+        return {"_summary": summary, "_meta": {"strategy": "ai_summary"}}
+
+    def _truncate(self, result, max_tokens):
+        """截断：直接截取前 N 个字符"""
+        text = str(result)
+        return {"value": text[:max_tokens * 4], "_meta": {"truncated": True}}
+
+    def _estimate_tokens(self, obj):
+        return len(str(obj)) // 4  # 粗略估算
+
+# 示例
+compressor = ToolResultCompressor()
+raw = {"status": "ok", "data": [1,2,3]*100, "debug": "x"*2000, "cache": "y"*1000}
+compressed = compressor.compress(raw, strategy="selective")
+# 压缩后只保留3个关键字段 ≈ 150 tokens
+print(f"压缩: {compressed['_meta']['compressed_tokens']} tokens")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 多策略工具结果压缩器
+
+class ToolResultCompressor {
+  compress(result: any, strategy = 'selective', maxTokens = 500): any {
+    switch (strategy) {
+      case 'selective': return this.selectiveCompress(result, maxTokens);
+      case 'summary': return this.aiSummary(result, maxTokens);
+      case 'truncation': return this.truncate(result, maxTokens);
+      default: return result;
+    }
+  }
+
+  private selectiveCompress(result: any, maxTokens: number): any {
+    if (typeof result === 'object') {
+      const keyFields = ['status', 'data', 'error', 'summary'];
+      const compressed: any = {};
+      for (const k of keyFields) if (k in result) compressed[k] = result[k];
+      compressed._meta = { compressed: true, originalKeys: Object.keys(result) };
+      return compressed;
+    }
+    return { value: String(result).slice(0, maxTokens * 4) };
+  }
+
+  private truncate(result: any, maxTokens: number): any {
+    return { value: String(result).slice(0, maxTokens * 4), _meta: { truncated: true } };
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 多策略工具结果压缩器
+
+type ToolResultCompressor struct{}
+
+func (c *ToolResultCompressor) Compress(result map[string]interface{}, strategy string, maxTokens int) map[string]interface{} {
+	switch strategy {
+	case "selective":
+		return c.selectiveCompress(result, maxTokens)
+	case "truncation":
+		text := fmt.Sprintf("%v", result)
+		return map[string]interface{}{"value": text[:maxTokens*4], "_meta": map[string]bool{"truncated": true}}
+	default:
+		return result
+	}
+}
+
+func (c *ToolResultCompressor) selectiveCompress(result map[string]interface{}, maxTokens int) map[string]interface{} {
+	keyFields := []string{"status", "data", "error", "summary"}
+	compressed := make(map[string]interface{})
+	for _, k := range keyFields {
+		if v, ok := result[k]; ok {
+			compressed[k] = v
+		}
+	}
+	compressed["_meta"] = map[string]interface{}{"compressed": true}
+	return compressed
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 多策略工具结果压缩器
+
+public class ToolResultCompressor {
+
+    public Map&lt;String, Object&gt; compress(Map&lt;String, Object&gt; result, String strategy, int maxTokens) {
+        switch (strategy) {
+            case "selective": return selectiveCompress(result);
+            case "truncation":
+                String text = result.toString();
+                return Map.of("value", text.substring(0, Math.min(text.length(), maxTokens * 4)),
+                              "_meta", Map.of("truncated", true));
+            default: return result;
+        }
+    }
+
+    private Map&lt;String, Object&gt; selectiveCompress(Map&lt;String, Object&gt; result) {
+        List&lt;String&gt; keyFields = List.of("status", "data", "error", "summary");
+        Map&lt;String, Object&gt; compressed = new HashMap&lt;&gt;();
+        for (String k : keyFields) {
+            if (result.containsKey(k)) compressed.put(k, result.get(k));
+        }
+        compressed.put("_meta", Map.of("compressed", true));
+        return compressed;
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">Token 消耗对比：全量 vs JIT vs 路由</h3>
+
+<div class="card">
+  <div class="card-title">三种上下文管理策略的 Token 消耗对比</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">策略</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">System Prompt</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">工具描述</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">对话历史</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">工具结果</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">总 Token</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">全量注入</td>
+        <td style="padding: 10px 8px;">500</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">2000（50个工具）</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">3000（全量）</td>
+        <td style="padding: 10px 8px; color: var(--color-error);">2000（原始）</td>
+        <td style="padding: 10px 8px; color: var(--color-error); font-weight: 600;">7500</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">JIT 加载</td>
+        <td style="padding: 10px 8px;">500</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">200（3个工具）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">1500（压缩）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning);">500（压缩）</td>
+        <td style="padding: 10px 8px; color: var(--color-warning); font-weight: 600;">2700</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">Tool RAG + 压缩</td>
+        <td style="padding: 10px 8px;">500</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">150（向量检索3个）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">1000（增量压缩）</td>
+        <td style="padding: 10px 8px; color: var(--color-success);">300（选择性保留）</td>
+        <td style="padding: 10px 8px; color: var(--color-success); font-weight: 600;">1950</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 8px; font-size: 13px; color: var(--color-text-secondary);">Tool RAG + 压缩策略比全量注入节省 <strong>74%</strong> 的 Token 消耗。</p>
+</div>
+
+
+<h2 class="section-heading">6.6 Agent 执行循环引擎</h2>
+
+<p>意图识别、任务规划、工具路由——这些大脑组件需要一个<strong>执行引擎</strong>把它们串起来循环运行。这就是 Agent Loop。第4章讲了 ReAct 循环的原理（Thought → Action → Observation），本节聚焦<strong>生产级执行循环的工程实现</strong>。</p>
+
+<h3 class="sub-heading">生产级 Agent 主循环设计</h3>
+
+<p>生产环境的 Agent 主循环不是简单的 while True，需要处理：双模式切换（Chat vs Agent）、Token Budget 管理、死循环保护、max_tokens 截断恢复、指数退避重试、空闲超时检测。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="lang-tabs">
+<button class="lang-tab active" data-lang="python">Python</button>
+<button class="lang-tab" data-lang="typescript">TypeScript</button>
+<button class="lang-tab" data-lang="go">Go</button>
+<button class="lang-tab" data-lang="java">Java</button>
+</div>
+<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 生产级 Agent 主循环
+
+class AgentLoop:
+    def __init__(self, llm, tools, memory, config=None):
+        self.llm = llm
+        self.tools = tools
+        self.memory = memory
+        self.config = config or {
+            "max_turns": 20,
+            "max_tokens": 8000,
+            "max_tool_errors": 3,
+            "idle_timeout": 300,  # 5分钟
+            "retry_backoff": [1, 2, 4, 8, 16]
+        }
+        self._pending_timers = []
+
+    def run(self, user_input):
+        """Agent 主循环：感知→推理→行动→观察→再推理"""
+        messages = self.memory.build_messages(user_input)
+        turn_count = 0
+        total_tokens = 0
+        tool_errors = 0
+
+        while turn_count < self.config["max_turns"]:
+            turn_count += 1
+
+            # Step 1: 推理（调 LLM）
+            try:
+                response = self.llm.chat(messages, max_tokens=self.config["max_tokens"])
+            except Exception as e:
+                if self._is_retryable(e):
+                    backoff = self.config["retry_backoff"][min(tool_errors, 4)]
+                    time.sleep(backoff)
+                    tool_errors += 1
+                    continue
+                else:
+                    raise
+
+            total_tokens += response.usage.total_tokens
+
+            # Step 2: 检查是否完成
+            if not response.tool_calls:
+                # 没有工具调用 → Agent 认为任务完成
+                self.memory.save_turn(user_input, response.content)
+                return response.content
+
+            # Step 3: 执行工具调用
+            for tool_call in response.tool_calls:
+                try:
+                    # 拦截非当前章节的 setTimeout（防御性）
+                    result = self._safe_tool_call(tool_call)
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id,
+                                   "content": self._compress_result(result)})
+                except Exception as e:
+                    tool_errors += 1
+                    if tool_errors >= self.config["max_tool_errors"]:
+                        return f"工具连续失败 {tool_errors} 次，终止执行。最后错误: {e}"
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id,
+                                   "content": f"Error: {e}"})
+
+            # Step 4: 上下文压缩检查
+            if total_tokens > self.config["max_tokens"] * 0.8:
+                messages = self.memory.compress(messages)
+                total_tokens = self._estimate_tokens(messages)
+
+        return f"达到最大轮次 ({self.config['max_turns']})，任务未完成。"
+
+    def _safe_tool_call(self, tool_call):
+        """安全工具调用：带超时和异常处理"""
+        return self.tools.call(tool_call.name, tool_call.arguments)
+
+    def _compress_result(self, result):
+        """压缩工具结果"""
+        return ToolResultCompressor().compress(result, strategy="selective")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// 生产级 Agent 主循环
+
+class AgentLoop {
+  private config = {
+    maxTurns: 20, maxTokens: 8000, maxToolErrors: 3,
+    idleTimeout: 300, retryBackoff: [1, 2, 4, 8, 16]
+  };
+
+  async run(userInput: string): Promise&lt;string&gt; {
+    let messages = this.memory.buildMessages(userInput);
+    let turnCount = 0;
+    let totalTokens = 0;
+    let toolErrors = 0;
+
+    while (turnCount < this.config.maxTurns) {
+      turnCount++;
+      try {
+        const response = await this.llm.chat(messages, { maxTokens: this.config.maxTokens });
+        totalTokens += response.usage.totalTokens;
+
+        if (!response.toolCalls?.length) {
+          this.memory.saveTurn(userInput, response.content);
+          return response.content;
+        }
+
+        for (const call of response.toolCalls) {
+          try {
+            const result = await this.safeToolCall(call);
+            messages.push({ role: 'tool', tool_call_id: call.id, content: this.compressResult(result) });
+          } catch (e) {
+            toolErrors++;
+            if (toolErrors >= this.config.maxToolErrors) {
+              return `工具连续失败 ${toolErrors} 次，终止。`;
+            }
+            messages.push({ role: 'tool', tool_call_id: call.id, content: `Error: ${e}` });
+          }
+        }
+
+        if (totalTokens > this.config.maxTokens * 0.8) {
+          messages = this.memory.compress(messages);
+        }
+      } catch (e) {
+        const backoff = this.config.retryBackoff[Math.min(toolErrors, 4)];
+        await new Promise(r => setTimeout(r, backoff * 1000));
+        toolErrors++;
+      }
+    }
+    return `达到最大轮次 (${this.config.maxTurns})，任务未完成。`;
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// 生产级 Agent 主循环
+
+type AgentLoop struct {
+	llm    *LLMEngine
+	tools  *ToolRegistry
+	memory *MemoryStore
+	config LoopConfig
+}
+
+func (loop *AgentLoop) Run(userInput string) (string, error) {
+	messages := loop.memory.BuildMessages(userInput)
+	turnCount := 0
+	totalTokens := 0
+	toolErrors := 0
+
+	for turnCount < loop.config.MaxTurns {
+		turnCount++
+		response, err := loop.llm.Chat(messages, loop.config.MaxTokens)
+		if err != nil {
+			backoff := loop.config.RetryBackoff[min(toolErrors, 4)]
+			time.Sleep(time.Duration(backoff) * time.Second)
+			toolErrors++
+			continue
+		}
+
+		totalTokens += response.Usage.TotalTokens
+		if len(response.ToolCalls) == 0 {
+			loop.memory.SaveTurn(userInput, response.Content)
+			return response.Content, nil
+		}
+
+		for _, call := range response.ToolCalls {
+			result, err := loop.tools.Call(call.Name, call.Arguments)
+			if err != nil {
+				toolErrors++
+				if toolErrors >= loop.config.MaxToolErrors {
+					return "", fmt.Errorf("工具连续失败 %d 次", toolErrors)
+				}
+			}
+			messages = append(messages, Message{Role: "tool", Content: compressResult(result)})
+		}
+
+		if totalTokens > loop.config.MaxTokens*4/5 {
+			messages = loop.memory.Compress(messages)
+		}
+	}
+	return "", fmt.Errorf("达到最大轮次 %d", loop.config.MaxTurns)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// 生产级 Agent 主循环
+
+public class AgentLoop {
+    private final LLMEngine llm;
+    private final ToolRegistry tools;
+    private final MemoryStore memory;
+    private final LoopConfig config = new LoopConfig();
+
+    public String run(String userInput) {
+        List&lt;Message&gt; messages = memory.buildMessages(userInput);
+        int turnCount = 0, totalTokens = 0, toolErrors = 0;
+
+        while (turnCount < config.maxTurns) {
+            turnCount++;
+            try {
+                var response = llm.chat(messages, config.maxTokens);
+                totalTokens += response.usage.totalTokens;
+
+                if (response.toolCalls == null || response.toolCalls.isEmpty()) {
+                    memory.saveTurn(userInput, response.content);
+                    return response.content;
+                }
+
+                for (var call : response.toolCalls) {
+                    try {
+                        var result = tools.call(call.name, call.arguments);
+                        messages.add(new Message("tool", compressResult(result)));
+                    } catch (Exception e) {
+                        toolErrors++;
+                        if (toolErrors >= config.maxToolErrors) {
+                            return "工具连续失败 " + toolErrors + " 次，终止。";
+                        }
+                        messages.add(new Message("tool", "Error: " + e.getMessage()));
+                    }
+                }
+
+                if (totalTokens > config.maxTokens * 0.8) {
+                    messages = memory.compress(messages);
+                }
+            } catch (Exception e) {
+                int backoff = config.retryBackoff[Math.min(toolErrors, 4)];
+                try { Thread.sleep(backoff * 1000L); } catch (InterruptedException ignored) {}
+                toolErrors++;
+            }
+        }
+        return "达到最大轮次 (" + config.maxTurns + ")，任务未完成。";
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">死循环保护：递减收益检测</h3>
+
+<p>Agent 有时会陷入"无效循环"——反复调用同一个工具、产出相同结果。需要<strong>递减收益检测</strong>（Diminishing Returns Detection）来打破死循环。</p>
+
+<div class="card">
+  <div class="card-title">死循环检测策略</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">检测策略</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">原理</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">阈值</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">重复工具检测</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">连续调用同一工具且参数相同</td>
+        <td style="padding: 10px 8px;">≥ 3 次</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">相似输出检测</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">连续 N 轮输出语义相似度 &gt; 0.9</td>
+        <td style="padding: 10px 8px;">≥ 3 轮</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">无进展检测</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">轮次间上下文无新增有效信息</td>
+        <td style="padding: 10px 8px;">≥ 5 轮</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading">6.7 单一 Agent vs 多 Agent：执行方式选型</h2>
+
+<p>Agent 的执行方式不只是"一个 Agent 干到底"。当任务足够复杂时，需要<strong>多个 Agent 协作</strong>。决策中枢需要判断：这个任务应该一个 Agent 做，还是拆给多个 Agent？</p>
+
+<h3 class="sub-heading">单 Agent 的瓶颈</h3>
+
+<p>单 Agent 的核心问题是<strong>上下文爆炸</strong>和<strong>能力冲突</strong>：</p>
+
+<div class="card">
+  <div class="card-title">单 Agent 的三大瓶颈</div>
+  <ul style="margin-top: 8px; line-height: 2;">
+    <li><strong>上下文爆炸</strong>：任务越复杂，需要的工具/记忆/中间结果越多，Prompt 膨胀导致 Token 超限</li>
+    <li><strong>能力冲突</strong>：一个 Agent 同时扮演"搜索者"和"写作者"，System Prompt 冲突，角色混乱</li>
+    <li><strong>串行瓶颈</strong>：所有步骤串行执行，无法并行处理独立子任务</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">何时用多 Agent？决策矩阵</h3>
+
+<div class="card">
+  <div class="card-title">单 Agent vs 多 Agent 决策矩阵</div>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--color-border);">
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">维度</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">单 Agent</th>
+        <th style="text-align: left; padding: 10px 8px; color: var(--color-primary);">多 Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">任务步数</td>
+        <td style="padding: 10px 8px;">≤ 5 步</td>
+        <td style="padding: 10px 8px;">&gt; 5 步或有并行子任务</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">工具数量</td>
+        <td style="padding: 10px 8px;">≤ 10 个</td>
+        <td style="padding: 10px 8px;">&gt; 10 个，可分组</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">角色需求</td>
+        <td style="padding: 10px 8px;">单一角色</td>
+        <td style="padding: 10px 8px;">多角色（搜索者+写作者+审核者）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);">
+        <td style="padding: 10px 8px; font-weight: 500;">上下文</td>
+        <td style="padding: 10px 8px;">可放入一个 Prompt</td>
+        <td style="padding: 10px 8px;">超出单 Prompt 容量</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 8px; font-weight: 500;">延迟要求</td>
+        <td style="padding: 10px 8px;">串行可接受</td>
+        <td style="padding: 10px 8px;">需要并行加速</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>多 Agent 的详细协作模式（串行流水线、编排者-执行者、辩论对抗、自主协作）和通信机制，详见 <strong>第10章 多 Agent 系统架构</strong>。</p>
+
+<h2 class="section-heading">6.8 八股总结</h2>
+
+<div class="card">
+  <div class="card-title">🎯 面试高频题</div>
+  <div style="margin-top: 12px;">
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q1: Agent 的意图识别有哪些方法？生产环境怎么选？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">三种方法：关键词匹配（快、便宜但粗糙）、语义理解（准、但贵）、模式识别（越用越准但冷启动差）。生产环境用<strong>分层组合</strong>：先关键词快速筛选 → 命中则直接路由；未命中走 LLM 语义理解；结果记录到模式库优化规则。</p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q2: Tool RAG 是什么？和普通 RAG 有什么区别？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Tool RAG 是对工具描述做向量检索，只把最相关的 K 个工具描述注入 Prompt。普通 RAG 检索的是知识文档，Tool RAG 检索的是工具 Schema。当工具数量 &gt; 20 个时，Tool RAG 比全量注入节省 70%+ Token。</p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q3: ReAct 和 Plan & Execute 有什么区别？什么时候用哪个？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">ReAct 是"边想边做"（Thought→Action→Observation 循环），每步调 LLM，灵活但 Token 消耗高。Plan & Execute 是"先想后做"（Planner 生成完整计划 → Executor 逐步执行），Token 效率高但灵活性低。<strong>探索性任务用 ReAct，明确目标用 Plan & Execute，复杂任务可混合：先 Plan 再用 ReAct 执行每个子任务。</strong></p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q4: Agent 主循环需要哪些保护机制？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">五大保护：①<strong>max_turns</strong> 防止无限循环；②<strong>Token Budget</strong> 防止上下文爆炸；③<strong>递减收益检测</strong> 防止死循环；④<strong>指数退避重试</strong> 处理瞬时故障；⑤<strong>idle_timeout</strong> 防止资源占用。</p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q5: 什么时候该用多 Agent 而不是单 Agent？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">三个信号：①任务步数 &gt; 5 步且有并行子任务；②需要多种角色（搜索者+写作者+审核者），System Prompt 冲突；③工具数量 &gt; 10 个，上下文超限。多 Agent 的核心优势是<strong>上下文隔离</strong>和<strong>并行执行</strong>。</p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q6: 上下文工程（Context Engineering）和提示工程（Prompt Engineering）有什么区别？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">提示工程关注"怎么问"——System Prompt 怎么写、Few-shot 怎么选。上下文工程关注"在问的时候给模型看什么"——工具描述怎么加载（JIT/Tool RAG）、对话历史怎么压缩、工具结果怎么裁剪、长期记忆怎么检索。上下文工程是提示工程的<strong>超集</strong>。</p>
+
+    <p style="font-weight: 600; margin-bottom: 6px;">Q7: Agent 决策中枢的完整链路是什么？</p>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">七步链路：①<strong>感知</strong>（接收输入）→ ②<strong>意图识别</strong>（理解用户目标）→ ③<strong>任务分类</strong>（判断复杂度）→ ④<strong>任务规划</strong>（拆解子任务）→ ⑤<strong>工具路由</strong>（选工具）→ ⑥<strong>执行调度</strong>（调模型/工具）→ ⑦<strong>上下文管理</strong>（压缩/记忆）。这七步循环运行，就是 Agent Loop。</p>
+
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<h2 class="section-heading">6.9 课后考试</h2>
+<div id="quiz-container"></div>
+
+<script>
+// 章节内联 quiz 数据（同步到 quiz-bank.json）
+const chapterQuiz = [
+  {
+    type: "single",
+    question: "Agent 意图识别的分层策略中，第一层通常使用什么方法？",
+    options: ["LLM 语义理解", "关键词匹配", "模式识别", "全量搜索"],
+    answer: [1],
+    explanation: "分层意图识别第一层用关键词匹配（快路径），命中后直接返回；未命中才走第二层 LLM 语义理解（慢路径）。"
+  },
+  {
+    type: "single",
+    question: "Tool RAG 的核心目的是什么？",
+    options: ["提高工具调用准确率", "减少 Token 消耗", "增加工具数量", "提升工具执行速度"],
+    answer: [1],
+    explanation: "Tool RAG 通过向量检索只加载最相关的 K 个工具描述，避免全量注入导致 Token 爆炸。当工具数量 >20 时可节省 70%+ Token。"
+  },
+  {
+    type: "single",
+    question: "ReAct 和 Plan & Execute 的核心区别是什么？",
+    options: ["ReAct 用 LLM，Plan & Execute 不用", "ReAct 边想边做，Plan & Execute 先想后做", "ReAct 只能单步，Plan & Execute 可以多步", "两者没有本质区别"],
+    answer: [1],
+    explanation: "ReAct 是每步都调 LLM 推理（Thought→Action→Observation 循环），灵活但 Token 消耗高。Plan & Execute 先生成完整计划再逐步执行，Token 效率高但灵活性低。"
+  },
+  {
+    type: "single",
+    question: "生产级 Agent 主循环中，'递减收益检测'的作用是什么？",
+    options: ["减少 API 调用费用", "检测并打破死循环", "提升模型回答质量", "压缩上下文"],
+    answer: [1],
+    explanation: "递减收益检测（Diminishing Returns Detection）用于检测 Agent 是否陷入无效循环（如反复调用同一工具产出相同结果），达到阈值后自动终止。"
+  },
+  {
+    type: "single",
+    question: "以下哪种场景应该选择多 Agent 而非单 Agent？",
+    options: ["任务只需 2 步", "工具数量为 5 个", "需要搜索者+写作者+审核者三种角色", "任务可以在单个 Prompt 中完成"],
+    answer: [2],
+    explanation: "多 Agent 适用于：多角色需求（不同 Agent 用不同 System Prompt）、工具数量 >10 个、任务步数 >5 步且有并行子任务。单一角色 + 少量工具 + 简单任务用单 Agent 即可。"
+  },
+  {
+    type: "single",
+    question: "上下文工程（Context Engineering）和提示工程（Prompt Engineering）的关系是？",
+    options: ["两者完全相同", "上下文工程是提示工程的一部分", "上下文工程是提示工程的超集", "两者完全无关"],
+    answer: [2],
+    explanation: "提示工程关注'怎么问'（System Prompt 设计、Few-shot 选择），上下文工程关注'给模型看什么'（工具加载策略、历史压缩、记忆检索），是提示工程的超集。"
+  },
+  {
+    type: "single",
+    question: "JIT Context 加载策略中，工具描述应该在什么时候加载？",
+    options: ["会话开始时全量加载", "意图识别后只加载相关工具", "每次调用时全量加载", "不需要加载工具描述"],
+    answer: [1],
+    explanation: "JIT Context 策略：System Prompt 在会话开始时全量注入，工具描述在意图识别后通过 Tool RAG 只加载相关工具，长期记忆在需要时检索，工具结果在调用后压缩注入。"
+  },
+  {
+    type: "single",
+    question: "Agent 决策中枢的七步链路正确顺序是？",
+    options: ["感知→工具路由→意图识别→任务分类→执行调度→任务规划→上下文管理", "感知→意图识别→任务分类→任务规划→工具路由→执行调度→上下文管理", "意图识别→感知→任务规划→任务分类→工具路由→执行调度→上下文管理", "感知→意图识别→任务规划→任务分类→执行调度→工具路由→上下文管理"],
+    answer: [1],
+    explanation: "正确顺序：感知（接收输入）→ 意图识别（理解目标）→ 任务分类（判断复杂度）→ 任务规划（拆解子任务）→ 工具路由（选工具）→ 执行调度（调模型/工具）→ 上下文管理（压缩/记忆）。"
+  },
+  {
+    type: "single",
+    question: "工具结果压缩的 'selective' 策略是什么意思？",
+    options: ["让 AI 生成摘要", "直接截断超长结果", "只保留关键字段（status/data/error/summary）", "不压缩，原样返回"],
+    answer: [2],
+    explanation: "selective 策略是选择性保留：只保留关键字段（如 status、data、error、summary），丢弃冗余字段（如 debug、cache），添加 _meta 元信息标记已压缩。"
+  },
+  {
+    type: "single",
+    question: "Agent 主循环中 Token Budget 管理的目的是什么？",
+    options: ["减少 API 费用", "防止上下文超过模型限制", "提高响应速度", "增加工具调用次数"],
+    answer: [1],
+    explanation: "Token Budget 管理在总 Token 用量达到阈值（如 max_tokens 的 80%）时触发上下文压缩，防止超过模型上下文窗口限制导致截断或报错。"
+  }
+];
+</script>
+
