@@ -1,0 +1,1307 @@
+<!-- 第22章：Harness Engineering -->
+<h1 class="chapter-title">第22章 Harness Engineering：从 Prompt 到 Context 到 Harness</h1>
+<p class="chapter-subtitle">第六篇：工程化 — 模型不动，只优化 Harness 就提升 10 倍</p>
+
+<!-- ===== 22.1 三个范式 ===== -->
+<h2 class="section-heading">22.1 三个范式：Prompt → Context → Harness</h2>
+
+<p>2025年底，一位创业者在社交媒体发了一条动态，迅速引爆了技术圈：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning); background: linear-gradient(135deg, rgba(255,193,7,0.08), rgba(255,193,7,0.02));">
+  <div class="card-title">🔥 一条引爆技术圈的动态</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"我花了三个月调 Prompt，模型回答质量提升了 20%。然后我花了两周搭 Harness，整体任务完成率从 35% 飙到了 82%。"</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">点赞最高的评论只有四个字：<strong>方向错了</strong>。</p>
+</div>
+
+<p>这条动态揭示了一个反直觉的事实：<strong>变量是 Harness，不是 Model</strong>。过去两年，行业都在追更强的模型——GPT-5、Claude 4.5、Gemini 2.5。但三组实验给行业泼了一盆冷水。</p>
+
+<h3 class="sub-heading">22.1.1 三组关键实验</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">实验</th>
+        <th style="text-align: left;">方法</th>
+        <th style="text-align: left;">结果</th>
+        <th style="text-align: left;">关键洞察</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bölük (2026a)</strong></td>
+        <td>模型完全不动，只调整 edit-tool 格式与外围工具脚手架</td>
+        <td>15 个模型上最高 <strong>10 倍</strong>提升</td>
+        <td>工具格式 > 模型代际</td>
+      </tr>
+      <tr>
+        <td><strong>Trivedy (2026)</strong></td>
+        <td>固定 GPT-5.2-Codex，重构系统提示 + 中间件上下文 + 自验证钩子</td>
+        <td>Terminal-Bench 2.0 从 52.8% 拉到 66.5%（<strong>+13.7pp</strong>）</td>
+        <td>Harness 优化 > 模型升级（代际通常只 +2-4pp）</td>
+      </tr>
+      <tr>
+        <td><strong>Meta-Harness (Lee et al., 2026)</strong></td>
+        <td>自动化 Harness 优化，模型权重一个字节都没改</td>
+        <td>达成 <strong>76.4%</strong>，超越所有手工方案</td>
+        <td>自动优化 > 人工调参</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">💡 反直觉对比</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">模型代际升级在同一 Benchmark 上通常只能带来 <strong>2-4 个百分点</strong>的提升。而 Harness 优化可以带来 <strong>10 倍</strong>的差距。变量是 Harness，不是 Model——这就是<strong>绑定约束论</strong>。</p>
+</div>
+
+<h3 class="sub-heading">22.1.2 绑定约束论 (Binding-Constraint Thesis)</h3>
+
+<p>论文把这个观察命名为<strong>绑定约束论</strong>：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent); background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(102,126,234,0.02));">
+  <div class="card-title">📌 绑定约束论</div>
+  <p style="font-size: 14px;">对于长程任务，跨可比的前沿模型，<strong>Benchmark 方差由 Harness 主导</strong>，而非模型本身。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">类比：一辆赛车（模型）再快，如果赛道（Harness）坑坑洼洼、没有导航、油箱漏油，最终成绩也不会好。决定成绩方差的是赛道质量，而不是赛车品牌。</p>
+</div>
+
+<h3 class="sub-heading">22.1.3 三层范式迁移</h3>
+
+<p>过去三年 LLM 应用工程经历了三次范式迁移，三者是<strong>嵌套关系</strong>，不是替代关系：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"prompt","label":"阶段1：Prompt Engineering\n(2022-2023)\n关注一次性对话艺术\n怎么写指令、怎么要输出格式","type":"start"},{"id":"context","label":"阶段2：Context Engineering\n(2023-2025)\n关注持续对话的上下文管理\n窗口策略、中间件注入、自验证","type":"process"},{"id":"harness","label":"阶段3：Harness Engineering\n(2025-2026+)\n关注模型外面的整套基础设施\n执行环境、工具协议、生命周期、可观测、治理","type":"end"}],"edges":[{"from":"prompt","to":"context","label":"Prompt不够用"},{"from":"context","to":"harness","label":"Context不够用"},{"from":"harness","to":"prompt","label":"嵌套包含Prompt"}]}'></div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🔑 核心洞察</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">三个阶段是<strong>嵌套关系</strong>，不是替代关系。Harness 工程师必须懂 Context 工程，Context 工程师必须懂 Prompt 工程。但工程效益的<strong>边际产出</strong>已经从 Prompt 转移到了 Harness。</p>
+</div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">维度</th>
+        <th style="text-align: left;">Prompt Engineering</th>
+        <th style="text-align: left;">Context Engineering</th>
+        <th style="text-align: left;">Harness Engineering</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>关注点</strong></td><td>怎么写指令</td><td>怎么管理对话上下文</td><td>怎么搭建整套基础设施</td></tr>
+      <tr><td><strong>典型操作</strong></td><td>改措辞、加示例、调格式</td><td>设计窗口策略、注入中间件</td><td>选沙箱、配权限、搭可观测</td></tr>
+      <tr><td><strong>边际产出</strong></td><td>低（调3个月只+20%）</td><td>中（+30-50%）</td><td>高（2周+47pp）</td></tr>
+      <tr><td><strong>代表项目</strong></td><td>ChatGPT prompt 模板</td><td>RAG、滑动窗口</td><td>Claude Code、Codex、Cursor</td></tr>
+      <tr><td><strong>裸模型硬伤</strong></td><td>输出格式不稳定</td><td>无记忆、信息腐烂</td><td>无工作环境、不能执行代码</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 22.2 Harness 六大组件 ===== -->
+<h2 class="section-heading">22.2 Harness 六大组件</h2>
+
+<p>裸模型有四大硬伤：<strong>无记忆、不能执行代码、知识过时、无工作环境</strong>。Harness 的六大组件逐一补救：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"model","label":"裸模型\n四大硬伤：\n无记忆/不能执行/\n知识过时/无环境","type":"start"},{"id":"fs","label":"① 文件系统\n存储与版本管理\n→ 解决无工作环境","type":"process"},{"id":"sandbox","label":"② 沙箱执行\n代码自验证\n→ 解决不能执行代码","type":"process"},{"id":"agentsmd","label":"③ AGENTS.md\n无需训练注入知识\n→ 解决知识过时","type":"process"},{"id":"websearch","label":"④ Web Search + MCP\n打破知识截止\n→ 解决知识截止日期","type":"process"},{"id":"ctx","label":"⑤ 上下文工程\n滑动窗口/摘要/保留\n→ 解决无记忆与信息腐烂","type":"process"},{"id":"orch","label":"⑥ 编排 + Hooks\n多Agent协同质量\n→ 解决无法协作","type":"end"}],"edges":[{"from":"model","to":"fs"},{"from":"fs","to":"sandbox"},{"from":"sandbox","to":"agentsmd"},{"from":"agentsmd","to":"websearch"},{"from":"websearch","to":"ctx"},{"from":"ctx","to":"orch"}]}'></div>
+
+<h3 class="sub-heading">22.2.1 文件系统——解决"无工作环境"</h3>
+
+<p>裸模型没有文件系统，没有工作空间，没有项目目录。它不能创建文件、不能组织代码结构、不能管理依赖、不能运行构建工具。这意味着它无法完成任何"工程级"任务。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📁 文件系统的作用</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">工程不是写代码，工程是<strong>在正确的位置写正确的代码</strong>，并确保它与其他代码正确协作。文件系统提供了：<br>
+  ① <strong>工作空间</strong>：项目目录、文件组织、依赖管理<br>
+  ② <strong>版本控制</strong>：git 跟踪变更，回滚出错修改<br>
+  ③ <strong>持久存储</strong>：跨会话保持状态，不会每次从零开始<br>
+  ④ <strong>协作基础</strong>：多 Agent 共享同一文件系统协同工作</p>
+</div>
+
+<h3 class="sub-heading">22.2.2 沙箱执行——解决"不能执行代码"</h3>
+
+<p>裸模型只能输出文本，不能真正执行代码。但 Agent 需要运行代码来验证结果——写了一段排序算法，得跑一下确认没问题。沙箱让 Agent 拥有了"动手验证"的能力。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🔒 沙箱的三层隔离</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">① <strong>进程隔离</strong>：在子进程中运行代码，Agent 主进程不受影响<br>
+  ② <strong>资源限制</strong>：CPU/内存/网络/时间上限，防止资源耗尽<br>
+  ③ <strong>权限限制</strong>：文件系统白名单、网络白名单、禁止危险操作<br><br>
+  代表项目：E2B（云沙箱）、Docker 容器沙箱、Jupyter kernel</p>
+</div>
+
+<h3 class="sub-heading">22.2.3 AGENTS.md / System Prompt——解决"知识过时"</h3>
+
+<p>模型的知识有截止日期——截止之后的新 API、新框架版本、新安全漏洞它都不知道。AGENTS.md 是一个<strong>无需训练</strong>就能注入知识的机制。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">📝 AGENTS.md 的核心思路</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">把项目的规则、约定、架构说明写在一个 Markdown 文件里，每次 Agent 启动时自动加载。就像给新员工发了一份入职手册。<br><br>
+  <strong>为什么比微调更好？</strong><br>
+  ① 微调要花钱花时间，AGENTS.md 写完即生效<br>
+  ② 微调的知识嵌入权重里很难更新，AGENTS.md 改了就更新了<br>
+  ③ 微调需要大量训练数据，AGENTS.md 只需要你项目的事实规则<br>
+  ④ 微调的模型不能同时服务多个项目，AGENTS.md 可以每个项目一份</p>
+</div>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># AGENTS.md 示例 — Python 项目
+# 文件：AGENTS.md
+
+# 项目规则
+- 使用 Python 3.11+
+- 代码风格遵循 PEP 8
+- 所有函数必须有类型注解
+- 测试覆盖率要求 > 80%
+- 禁止使用 eval() 和 exec()
+
+# 架构说明
+- 入口：app/main.py
+- 配置：config/settings.py
+- 数据库模型：models/
+- API 路由：routes/
+- 工具函数：utils/
+
+# 编码约定
+- 变量名用 snake_case
+- 类名用 PascalCase
+- 常量用 UPPER_SNAKE_CASE
+- 异步函数必须加 async 前缀</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// AGENTS.md 示例 — TypeScript 项目
+// 文件：AGENTS.md
+
+// 项目规则
+- 使用 TypeScript 5.x strict 模式
+- 代码风格遵循 ESLint + Prettier
+- 所有函数必须有返回类型注解
+- 测试覆盖率要求 > 80%
+- 禁止使用 any 类型（除非显式标注）
+
+// 架构说明
+- 入口：src/index.ts
+- 配置：src/config/
+- 数据模型：src/models/
+- API 路由：src/routes/
+- 工具函数：src/utils/
+
+// 编码约定
+- 变量名用 camelCase
+- 类名用 PascalCase
+- 常量用 camelCase（不用 UPPER）
+- 异步函数返回 Promise&lt;T&gt;</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// AGENTS.md 示例 — Go 项目
+// 文件：AGENTS.md
+
+// 项目规则
+- 使用 Go 1.22+
+- 代码风格遵循 gofmt + go vet
+- 所有公开函数必须有 godoc 注释
+- 测试覆盖率要求 > 80%
+- 禁止使用 init() 函数
+
+// 架构说明
+- 入口：cmd/server/main.go
+- 配置：internal/config/
+- 数据模型：internal/models/
+- API 路由：internal/handler/
+- 工具函数：pkg/utils/
+
+// 编码约定
+- 包名用小写单词（不用下划线）
+- 导出标识符用 PascalCase
+- 未导出标识符用 camelCase
+- 错误处理必须显式检查（不用 _ 忽略）</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// AGENTS.md 示例 — Java 项目
+// 文件：AGENTS.md
+
+// 项目规则
+- 使用 Java 21+ (LTS)
+- 代码风格遵循 Google Java Style
+- 所有公开方法必须有 Javadoc
+- 测试覆盖率要求 > 80%
+- 禁止使用 System.out.println（用 SLF4J）
+
+// 架构说明
+- 入口：src/main/java/com/example/App.java
+- 配置：src/main/resources/application.yml
+- 数据模型：src/main/java/com/example/model/
+- API 路由：src/main/java/com/example/controller/
+- 工具函数：src/main/java/com/example/util/
+
+// 编码约定
+- 类名用 PascalCase
+- 方法名用 camelCase
+- 常量用 UPPER_SNAKE_CASE
+- 包名全小写（不用下划线）</pre></div>
+</div>
+
+<h3 class="sub-heading">22.2.4 Web Search + MCP——解决"知识截止日期"</h3>
+
+<p>模型的知识有截止日期，截止之后的一切它统统不知道。Web Search 让 Agent 能主动搜索最新信息，MCP 让 Agent 能调用外部工具获取实时数据。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🌐 Web Search + MCP 的组合威力</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">① <strong>Web Search</strong>：Agent 主动搜索互联网，获取最新信息（新闻、文档、API 变更）<br>
+  ② <strong>MCP（Model Context Protocol）</strong>：标准化工具接口，让 Agent 调用数据库、API、文件系统等外部资源<br>
+  ③ <strong>组合使用</strong>：先搜索到新 API 文档 → 再通过 MCP 调用实际 API 验证<br><br>
+  这就像给一个只能看教科书的学生配了手机和实验室——教科书（训练数据）是基础，手机（Web Search）获取最新资讯，实验室（MCP）动手验证。</p>
+</div>
+
+<h3 class="sub-heading">22.2.5 上下文工程——解决"无记忆与信息腐烂"</h3>
+
+<p>裸模型没有记忆——每次对话都是从零开始。上下文工程的核心是<strong>让关键信息不丢失</strong>。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">策略</th>
+        <th style="text-align: left;">原理</th>
+        <th style="text-align: left;">适用场景</th>
+        <th style="text-align: left;">代表实现</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>滑动窗口</strong></td><td>保留最近 N 条消息，丢弃更早的</td><td>短期对话、实时交互</td><td>大多数 LLM SDK 默认策略</td></tr>
+      <tr><td><strong>摘要压缩</strong></td><td>把早期对话压缩成摘要，保留关键信息</td><td>长对话、多轮任务</td><td>LangChain ConversationSummaryMemory</td></tr>
+      <tr><td><strong>关键信息保留</strong></td><td>显式标记重要信息，永远不丢弃</td><td>任务约束、用户偏好</td><td>System Prompt + 变量注入</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">22.2.6 编排 + Hooks——解决"无法协作"</h3>
+
+<p>单个 Agent 能力有限，复杂任务需要多个 Agent 协作。编排引擎负责调度，Hooks 保障协同质量。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🪝 Hooks 的四种类型</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">① <strong>pre-hook</strong>：执行前检查——参数校验、权限检查、成本预估<br>
+  ② <strong>post-hook</strong>：执行后验证——结果校验、格式检查、日志记录<br>
+  ③ <strong>error-hook</strong>：异常时处理——重试策略、降级方案、告警通知<br>
+  ④ <strong>approval-hook</strong>：高危操作审批——暂停执行，等待人工确认<br><br>
+  Hooks 是 Harness 的<strong>安全网</strong>——即使 Agent 决策出错，Hooks 也能在执行前拦截。</p>
+</div>
+
+<!-- ===== 22.3 Harness 实战 ===== -->
+<h2 class="section-heading">22.3 Harness 实战：构建一个最简 Agent Harness</h2>
+
+<p>让我们从裸模型开始，逐步添加 Harness 组件，观察每一步的性能提升。</p>
+
+<h3 class="sub-heading">22.3.1 Step 0：裸模型（仅 Prompt）</h3>
+
+<p>最基础的调用——只靠 Prompt 让 LLM 回答问题。没有工具、没有记忆、没有沙箱。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Step 0: 裸模型调用 — 只有 Prompt
+import openai
+
+client = openai.OpenAI()
+
+def ask_bare_model(question: str) -> str:
+    """纯 Prompt 调用，无工具、无记忆、无验证"""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": question}]
+    )
+    return response.choices[0].message.content
+
+# 测试：问一个需要实时数据的问题
+answer = ask_bare_model("北京今天天气怎么样？")
+print(f"裸模型回答: {answer}")
+# 输出：可能基于过时知识回答，无法获取实时天气
+# 任务完成率：~35%</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Step 0: 裸模型调用 — 只有 Prompt
+import OpenAI from "openai";
+
+const client = new OpenAI();
+
+async function askBareModel(question: string): Promise<string> {
+  // 纯 Prompt 调用，无工具、无记忆、无验证
+  const response = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: question }],
+  });
+  return response.choices[0].message.content || "";
+}
+
+// 测试：问一个需要实时数据的问题
+const answer = await askBareModel("北京今天天气怎么样？");
+console.log(`裸模型回答: ${answer}`);
+// 输出：可能基于过时知识回答，无法获取实时天气
+// 任务完成率：~35%</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Step 0: 裸模型调用 — 只有 Prompt
+package main
+
+import (
+	"context"
+	"fmt"
+	openai "github.com/sashabaranov/go-openai"
+)
+
+func askBareModel(question string) (string, error) {
+	client := openai.NewClient("your-api-key")
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model:    openai.GPT4o,
+			Messages: []openai.ChatCompletionMessage{
+				{Role: openai.ChatMessageRoleUser, Content: question},
+			},
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Message.Content, nil
+}
+
+// 测试：需要实时数据的问题
+answer, _ := askBareModel("北京今天天气怎么样？")
+fmt.Printf("裸模型回答: %s\n", answer)
+// 任务完成率：~35%</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Step 0: 裸模型调用 — 只有 Prompt
+import com.theokanning.openai4j.*;
+import com.theokanning.openai4j.chat.*;
+
+public class BareModel {
+    static OpenAiService service = new OpenAiService("your-api-key");
+
+    static String askBareModel(String question) {
+        ChatCompletionRequest req = ChatCompletionRequest.builder()
+            .model("gpt-4o")
+            .messages(List.of(
+                new ChatMessage("user", question)
+            ))
+            .build();
+        ChatCompletionResult result = service.createChatCompletion(req);
+        return result.getChoices().get(0).getMessage().getContent();
+    }
+
+    public static void main(String[] args) {
+        String answer = askBareModel("北京今天天气怎么样？");
+        System.out.println("裸模型回答: " + answer);
+        // 任务完成率：~35%
+    }
+}</pre></div>
+</div>
+
+<h3 class="sub-heading">22.3.2 Step 1：加 System Prompt（知识注入）</h3>
+
+<p>加入 AGENTS.md 风格的 System Prompt，注入项目规则和上下文知识。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Step 1: 加 System Prompt — AGENTS.md 知识注入
+import openai
+
+client = openai.OpenAI()
+
+AGENTS_MD = """# 项目规则
+- 你是一个天气查询助手
+- 回答时必须附带温度数据
+- 如果无法获取实时数据，明确告知用户
+- 使用中文回答
+"""
+
+def ask_with_system_prompt(question: str) -> str:
+    """加入 System Prompt，注入项目知识"""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": AGENTS_MD},
+            {"role": "user", "content": question}
+        ]
+    )
+    return response.choices[0].message.content
+
+answer = ask_with_system_prompt("北京今天天气怎么样？")
+# 现在Agent会明确告知无法获取实时数据，而不是瞎编
+# 任务完成率：~45%（知识更准确，但仍无法执行）</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Step 1: 加 System Prompt — AGENTS.md 知识注入
+import OpenAI from "openai";
+
+const client = new OpenAI();
+
+const AGENTS_MD = `# 项目规则
+- 你是一个天气查询助手
+- 回答时必须附带温度数据
+- 如果无法获取实时数据，明确告知用户
+- 使用中文回答
+`;
+
+async function askWithSystemPrompt(question: string): Promise<string> {
+  const response = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: AGENTS_MD },
+      { role: "user", content: question },
+    ],
+  });
+  return response.choices[0].message.content || "";
+}
+
+const answer = await askWithSystemPrompt("北京今天天气怎么样？");
+// 现在Agent会明确告知无法获取实时数据，而不是瞎编
+// 任务完成率：~45%</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Step 1: 加 System Prompt — AGENTS.md 知识注入
+package main
+
+import (
+	"context"
+	"fmt"
+	openai "github.com/sashabaranov/go-openai"
+)
+
+const agentsMD = `# 项目规则
+- 你是一个天气查询助手
+- 回答时必须附带温度数据
+- 如果无法获取实时数据，明确告知用户
+- 使用中文回答
+`
+
+func askWithSystemPrompt(question string) (string, error) {
+	client := openai.NewClient("your-api-key")
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model: openai.GPT4o,
+			Messages: []openai.ChatCompletionMessage{
+				{Role: openai.ChatMessageRoleSystem, Content: agentsMD},
+				{Role: openai.ChatMessageRoleUser, Content: question},
+			},
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Message.Content, nil
+}
+// 任务完成率：~45%</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Step 1: 加 System Prompt — AGENTS.md 知识注入
+import com.theokanning.openai4j.*;
+import com.theokanning.openai4j.chat.*;
+
+public class SystemPromptAgent {
+    static OpenAiService service = new OpenAiService("your-api-key");
+    static String AGENTS_MD = """
+# 项目规则
+- 你是一个天气查询助手
+- 回答时必须附带温度数据
+- 如果无法获取实时数据，明确告知用户
+- 使用中文回答
+""";
+
+    static String askWithSystemPrompt(String question) {
+        ChatCompletionRequest req = ChatCompletionRequest.builder()
+            .model("gpt-4o")
+            .messages(List.of(
+                new ChatMessage("system", AGENTS_MD),
+                new ChatMessage("user", question)
+            ))
+            .build();
+        return service.createChatCompletion(req)
+            .getChoices().get(0).getMessage().getContent();
+    }
+}
+// 任务完成率：~45%</pre></div>
+</div>
+
+<h3 class="sub-heading">22.3.3 Step 2：加工具调用（Web Search + MCP）</h3>
+
+<p>加入 Function Calling，让 Agent 能调用真实天气 API 获取实时数据。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Step 2: 加工具调用 — Function Calling + 外部API
+import openai, requests, json
+
+client = openai.OpenAI()
+
+AGENTS_MD = """你是一个天气查询助手，可以调用 get_weather 工具获取实时天气。
+回答时附带温度数据，使用中文回答。"""
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "获取指定城市的实时天气",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string", "description": "城市名称"}
+            },
+            "required": ["city"]
+        }
+    }
+}]
+
+def get_weather(city: str) -> str:
+    """调用外部天气API获取实时数据"""
+    resp = requests.get(f"https://wttr.in/{city}?format=j1")
+    data = resp.json()
+    temp = data["current_condition"][0]["temp_C"]
+    desc = data["current_condition"][0]["weatherDesc"][0]["value"]
+    return json.dumps({"city": city, "temp": temp, "desc": desc})
+
+def ask_with_tools(question: str) -> str:
+    """带工具的Agent调用"""
+    messages = [
+        {"role": "system", "content": AGENTS_MD},
+        {"role": "user", "content": question}
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4o", messages=messages, tools=tools
+    )
+    msg = response.choices[0].message
+    if msg.tool_calls:
+        for tc in msg.tool_calls:
+            args = json.loads(tc.function.arguments)
+            result = get_weather(args["city"])
+            messages.append(msg)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": result
+            })
+        response = client.chat.completions.create(
+            model="gpt-4o", messages=messages, tools=tools
+        )
+        return response.choices[0].message.content
+    return msg.content
+
+# 任务完成率：~65%（能获取实时数据了）</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Step 2: 加工具调用 — Function Calling + 外部API
+import OpenAI from "openai";
+
+const client = new OpenAI();
+
+const AGENTS_MD = `你是一个天气查询助手，可以调用 get_weather 工具获取实时天气。
+回答时附带温度数据，使用中文回答。`;
+
+const tools: OpenAI.ChatCompletionTool[] = [{
+  type: "function",
+  function: {
+    name: "get_weather",
+    description: "获取指定城市的实时天气",
+    parameters: {
+      type: "object",
+      properties: { city: { type: "string", description: "城市名称" } },
+      required: ["city"],
+    },
+  },
+}];
+
+async function getWeather(city: string): Promise<string> {
+  const resp = await fetch(`https://wttr.in/${city}?format=j1`);
+  const data = await resp.json();
+  const temp = data.current_condition[0].temp_C;
+  const desc = data.current_condition[0].weatherDesc[0].value;
+  return JSON.stringify({ city, temp, desc });
+}
+
+async function askWithTools(question: string): Promise<string> {
+  const messages: any[] = [
+    { role: "system", content: AGENTS_MD },
+    { role: "user", content: question },
+  ];
+  const response = await client.chat.completions.create({
+    model: "gpt-4o", messages, tools,
+  });
+  const msg = response.choices[0].message;
+  if (msg.tool_calls) {
+    for (const tc of msg.tool_calls) {
+      const args = JSON.parse(tc.function.arguments);
+      const result = await getWeather(args.city);
+      messages.push(msg);
+      messages.push({ role: "tool", tool_call_id: tc.id, content: result });
+    }
+    const r2 = await client.chat.completions.create({
+      model: "gpt-4o", messages, tools,
+    });
+    return r2.choices[0].message.content || "";
+  }
+  return msg.content || "";
+}
+// 任务完成率：~65%</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Step 2: 加工具调用 — Function Calling + 外部API
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	openai "github.com/sashabaranov/go-openai"
+)
+
+func getWeather(city string) string {
+	url := fmt.Sprintf("https://wttr.in/%s?format=j1", city)
+	resp, err := http.Get(url)
+	if err != nil { return fmt.Sprintf(`{"error":"%s"}`, err) }
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var data map[string]interface{}
+	json.Unmarshal(body, &data)
+	current := data["current_condition"].([]interface{})[0].(map[string]interface{})
+	temp := current["temp_C"].(string)
+	descArr := current["weatherDesc"].([]interface{})
+	desc := descArr[0].(map[string]interface{})["value"].(string)
+	result, _ := json.Marshal(map[string]string{"city": city, "temp": temp, "desc": desc})
+	return string(result)
+}
+// 任务完成率：~65%（能获取实时数据了）</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Step 2: 加工具调用 — Function Calling + 外部API
+import com.theokanning.openai4j.*;
+import com.theokanning.openai4j.chat.*;
+import java.net.http.*;
+import java.net.URI;
+import org.json.*;
+
+public class ToolAgent {
+    static OpenAiService service = new OpenAiService("your-api-key");
+
+    static String getWeather(String city) {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create("https://wttr.in/" + city + "?format=j1"))
+            .build();
+        HttpResponse<String> resp = client.send(req,
+            HttpResponse.BodyHandlers.ofString());
+        JSONObject data = new JSONObject(resp.body());
+        JSONObject current = data.getJSONArray("current_condition")
+            .getJSONObject(0);
+        String temp = current.getString("temp_C");
+        String desc = current.getJSONArray("weatherDesc")
+            .getJSONObject(0).getString("value");
+        return new JSONObject()
+            .put("city", city).put("temp", temp).put("desc", desc)
+            .toString();
+    }
+}
+// 任务完成率：~65%（能获取实时数据了）</pre></div>
+</div>
+
+<h3 class="sub-heading">22.3.4 Step 3：加沙箱验证 + Hooks（完整 Harness）</h3>
+
+<p>加入沙箱执行验证结果、Hooks 拦截危险操作——这就是一个完整的 Harness。</p>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Step 3: 完整 Harness — 沙箱 + Hooks + 工具 + System Prompt
+import openai, requests, json, subprocess, sys
+
+client = openai.OpenAI()
+
+# === AGENTS.md (知识注入) ===
+AGENTS_MD = """你是一个天气查询助手。
+规则：1) 必须调用 get_weather 获取实时数据  2) 回答附带温度
+3) 不允许访问用户私人数据  4) 使用中文回答"""
+
+# === 工具定义 (MCP) ===
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "获取指定城市的实时天气",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"]
+        }
+    }
+}]
+
+# === 工具实现 ===
+def get_weather(city: str) -> str:
+    resp = requests.get(f"https://wttr.in/{city}?format=j1")
+    data = resp.json()
+    return json.dumps({
+        "city": city,
+        "temp": data["current_condition"][0]["temp_C"],
+        "desc": data["current_condition"][0]["weatherDesc"][0]["value"]
+    })
+
+# === Hooks (安全网) ===
+def pre_hook(tool_name: str, args: dict) -> dict:
+    """执行前检查：权限校验 + 参数过滤"""
+    if tool_name == "get_weather" and "私人" in args.get("city", ""):
+        return {"blocked": True, "reason": "禁止查询私人地址"}
+    return {"blocked": False}
+
+def post_hook(result: str) -> str:
+    """执行后验证：格式校验"""
+    try:
+        data = json.loads(result)
+        if "temp" not in data:
+            return json.dumps({"error": "返回数据缺少温度字段"})
+    except json.JSONDecodeError:
+        return json.dumps({"error": "返回数据格式错误"})
+    return result
+
+# === 沙箱验证 (代码自验证) ===
+def sandbox_verify(result: str) -> bool:
+    """在沙箱中验证结果合理性"""
+    data = json.loads(result)
+    temp = int(data.get("temp", 0))
+    return -50 < temp < 60  # 温度范围合理性检查
+
+# === 完整 Harness Agent Loop ===
+def harness_agent(question: str, max_turns: int = 5) -> str:
+    messages = [
+        {"role": "system", "content": AGENTS_MD},
+        {"role": "user", "content": question}
+    ]
+    for _ in range(max_turns):
+        response = client.chat.completions.create(
+            model="gpt-4o", messages=messages, tools=tools
+        )
+        msg = response.choices[0].message
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                args = json.loads(tc.function.arguments)
+                # pre-hook 检查
+                hook_result = pre_hook(tc.function.name, args)
+                if hook_result.get("blocked"):
+                    messages.append(msg)
+                    messages.append({"role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps(hook_result)})
+                    continue
+                # 执行工具
+                result = get_weather(args["city"])
+                # post-hook 验证
+                result = post_hook(result)
+                # sandbox 验证
+                if not sandbox_verify(result):
+                    result = json.dumps({"error": "数据不合理"})
+                messages.append(msg)
+                messages.append({"role": "tool",
+                    "tool_call_id": tc.id, "content": result})
+        else:
+            return msg.content
+    return "达到最大轮次限制"
+
+# 任务完成率：~82%（完整 Harness）
+answer = harness_agent("北京今天天气怎么样？")
+print(answer)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Step 3: 完整 Harness — 沙箱 + Hooks + 工具 + System Prompt
+import OpenAI from "openai";
+
+const client = new OpenAI();
+
+// === AGENTS.md (知识注入) ===
+const AGENTS_MD = `你是一个天气查询助手。
+规则：1) 必须调用 get_weather 获取实时数据  2) 回答附带温度
+3) 不允许访问用户私人数据  4) 使用中文回答`;
+
+// === 工具定义 ===
+const tools: OpenAI.ChatCompletionTool[] = [{
+  type: "function",
+  function: {
+    name: "get_weather",
+    description: "获取指定城市的实时天气",
+    parameters: {
+      type: "object",
+      properties: { city: { type: "string" } },
+      required: ["city"],
+    },
+  },
+}];
+
+// === 工具实现 ===
+async function getWeather(city: string): Promise<string> {
+  const resp = await fetch(`https://wttr.in/${city}?format=j1`);
+  const data = await resp.json();
+  return JSON.stringify({
+    city,
+    temp: data.current_condition[0].temp_C,
+    desc: data.current_condition[0].weatherDesc[0].value,
+  });
+}
+
+// === Hooks ===
+function preHook(toolName: string, args: Record<string, string>) {
+  if (toolName === "get_weather" && args.city?.includes("私人"))
+    return { blocked: true, reason: "禁止查询私人地址" };
+  return { blocked: false };
+}
+
+function postHook(result: string): string {
+  try {
+    const data = JSON.parse(result);
+    if (!data.temp) return JSON.stringify({ error: "缺少温度字段" });
+  } catch { return JSON.stringify({ error: "格式错误" }); }
+  return result;
+}
+
+// === 沙箱验证 ===
+function sandboxVerify(result: string): boolean {
+  const data = JSON.parse(result);
+  const temp = Number(data.temp || 0);
+  return temp > -50 && temp < 60;
+}
+
+// === 完整 Harness Agent Loop ===
+async function harnessAgent(question: string, maxTurns = 5) {
+  const messages: any[] = [
+    { role: "system", content: AGENTS_MD },
+    { role: "user", content: question },
+  ];
+  for (let i = 0; i < maxTurns; i++) {
+    const r = await client.chat.completions.create({
+      model: "gpt-4o", messages, tools,
+    });
+    const msg = r.choices[0].message;
+    if (msg.tool_calls) {
+      for (const tc of msg.tool_calls) {
+        const args = JSON.parse(tc.function.arguments);
+        const hook = preHook(tc.function.name, args);
+        if (hook.blocked) {
+          messages.push(msg);
+          messages.push({ role: "tool", tool_call_id: tc.id,
+            content: JSON.stringify(hook) });
+          continue;
+        }
+        let result = await getWeather(args.city);
+        result = postHook(result);
+        if (!sandboxVerify(result))
+          result = JSON.stringify({ error: "数据不合理" });
+        messages.push(msg);
+        messages.push({ role: "tool", tool_call_id: tc.id, content: result });
+      }
+    } else return msg.content || "";
+  }
+  return "达到最大轮次限制";
+}
+// 任务完成率：~82%</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Step 3: 完整 Harness — 沙箱 + Hooks + 工具 + System Prompt
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	openai "github.com/sashabaranov/go-openai"
+)
+
+// === AGENTS.md ===
+const agentsMD = `你是一个天气查询助手。
+规则：1) 必须调用 get_weather 获取实时数据  2) 回答附带温度
+3) 不允许访问用户私人数据  4) 使用中文回答`
+
+// === Hooks ===
+func preHook(toolName string, args map[string]interface{}) map[string]interface{} {
+	if toolName == "get_weather" {
+		city, _ := args["city"].(string)
+		if city == "私人地址" {
+			return map[string]interface{}{"blocked": true, "reason": "禁止查询私人地址"}
+		}
+	}
+	return map[string]interface{}{"blocked": false}
+}
+
+func postHook(result string) string {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return `{"error":"格式错误"}`
+	}
+	if data["temp"] == nil {
+		return `{"error":"缺少温度字段"}`
+	}
+	return result
+}
+
+// === 沙箱验证 ===
+func sandboxVerify(result string) bool {
+	var data map[string]interface{}
+	json.Unmarshal([]byte(result), &data)
+	temp, _ := data["temp"].(float64)
+	return temp > -50 && temp < 60
+}
+
+// 任务完成率：~82%（完整 Harness）</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Step 3: 完整 Harness — 沙箱 + Hooks + 工具 + System Prompt
+import com.theokanning.openai4j.*;
+import org.json.*;
+
+public class FullHarnessAgent {
+    static OpenAiService service = new OpenAiService("your-api-key");
+
+    static String AGENTS_MD = """
+你是一个天气查询助手。
+规则：1) 必须调用 get_weather 获取实时数据  2) 回答附带温度
+3) 不允许访问用户私人数据  4) 使用中文回答""";
+
+    // === Hooks ===
+    static JSONObject preHook(String toolName, JSONObject args) {
+        if ("get_weather".equals(toolName)) {
+            String city = args.optString("city", "");
+            if (city.contains("私人")) {
+                return new JSONObject()
+                    .put("blocked", true)
+                    .put("reason", "禁止查询私人地址");
+            }
+        }
+        return new JSONObject().put("blocked", false);
+    }
+
+    static String postHook(String result) {
+        try {
+            JSONObject data = new JSONObject(result);
+            if (!data.has("temp"))
+                return new JSONObject().put("error", "缺少温度字段").toString();
+        } catch (JSONException e) {
+            return new JSONObject().put("error", "格式错误").toString();
+        }
+        return result;
+    }
+
+    // === 沙箱验证 ===
+    static boolean sandboxVerify(String result) {
+        JSONObject data = new JSONObject(result);
+        int temp = data.optInt("temp", 0);
+        return temp > -50 && temp < 60;
+    }
+}
+// 任务完成率：~82%（完整 Harness）</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">📊 性能提升路径</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Step 0 裸模型：~35% → Step 1 + System Prompt：~45% → Step 2 + 工具调用：~65% → Step 3 + Hooks + 沙箱：~82%<br><br>
+  模型一个字节没改，只是把 Harness 从无到有逐步搭建起来，任务完成率就翻了近 2.5 倍。这就是 Harness Engineering 的威力。</p>
+</div>
+
+<!-- ===== 22.4 代表项目与产品分析 ===== -->
+<h2 class="section-heading">22.4 代表项目与产品分析</h2>
+
+<p>2025-2026年，一批"代码写完之后的一切"产品爆发，它们本质上都是在搭建不同层次的 Harness。让我们逐一分析：</p>
+
+<h3 class="sub-heading">22.4.1 Claude Code（Anthropic）</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🟣 Claude Code — Anthropic 的终端 Agent</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Claude Code 是 Harness Engineering 的教科书级实现。它不是一个聊天界面，而是一个<strong>在终端中运行的完整 Harness 系统</strong>。</p>
+</div>
+
+<p>Claude Code 的 Harness 设计包含以下关键参数：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">参数</th>
+        <th style="text-align: left;">作用</th>
+        <th style="text-align: left;">对应组件</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>--allowedTools</strong></td><td>限制可用工具白名单</td><td>权限控制（Hooks）</td></tr>
+      <tr><td><strong>--max-turns</strong></td><td>限制最大循环轮次</td><td>资源限制（沙箱）</td></tr>
+      <tr><td><strong>--model</strong></td><td>指定使用哪个模型</td><td>模型选择（编排）</td></tr>
+      <tr><td><strong>--verbose</strong></td><td>详细日志输出</td><td>可观测性（Hooks）</td></tr>
+      <tr><td><strong>headless 模式</strong></td><td>无交互纯命令行运行</td><td>CI/CD 集成（编排）</td></tr>
+      <tr><td><strong>CLAUDE.md</strong></td><td>项目级知识注入文件</td><td>AGENTS.md（知识注入）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 Claude Code 的核心洞察</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Claude Code 证明了：<strong>headless 模式 + allowedTools + max-turns</strong> 就是一个完整的 Harness 安全架构。它不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。这是 Harness Engineering 的"最小可行架构"。</p>
+</div>
+
+<h3 class="sub-heading">22.4.2 OpenAI Codex</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔵 OpenAI Codex — 沙箱执行的典范</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Codex 的核心创新是<strong>云沙箱</strong>——每个任务在一个独立的容器中执行，网络受限、资源受限、时间受限。Agent 写的代码真的能跑，跑完结果自动验证。<br><br>
+  异步任务模式：用户提交任务 → Codex 在沙箱中独立执行 → 完成后返回结果。用户不需要盯着屏幕等，去做别的事，回来再看结果。这是"异步 Harness"的典范。</p>
+</div>
+
+<h3 class="sub-heading">22.4.3 Cursor</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🟡 Cursor — 上下文工程的典范</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Cursor 的核心优势在<strong>上下文工程</strong>——它能精准判断哪些文件、哪些代码片段与当前任务相关，只把最相关的上下文送进 LLM。<br><br>
+  Cursor 的上下文策略：① <strong>@file</strong> 手动指定相关文件；② <strong>@folder</strong> 引入整个目录；③ <strong>@web</strong> 搜索互联网最新信息；④ <strong>@codebase</strong> 自动分析整个项目。四层策略覆盖了从精确到模糊的所有上下文需求。</p>
+</div>
+
+<h3 class="sub-heading">22.4.4 Devin</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🔴 Devin — 全自主 Agent</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Devin 是 Cognition AI 打造的"全自主软件工程师"——它拥有完整的开发环境（浏览器、代码编辑器、终端），可以独立完成从需求理解到代码编写、测试、调试、部署的全流程。<br><br>
+  Devin 的 Harness 特点：① 完整沙箱环境（独立浏览器+终端+编辑器）；② 自主规划能力（分解任务、排定优先级）；③ 自我纠错能力（发现错误自动修复）；④ 但<strong>成本极高</strong>——每任务 $10-50，只适合复杂长程任务。</p>
+</div>
+
+<h3 class="sub-heading">22.4.5 Harness Inc.（DevOps 平台）</h3>
+
+<div class="card" style="border-left: 3px solid #8B5CF6;">
+  <div class="card-title">🟤 Harness Inc. — AI for Everything After Code</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">注意！这里的 <strong>Harness Inc.</strong> 是一家估值 55 亿美元的 DevOps 平台公司，和本章讨论的 Harness Engineering 概念<strong>同名但领域不同</strong>。<br><br>
+  Harness Inc. 的产品覆盖代码写完之后的一切——CI/CD、安全测试编排（STO）、云成本管理（CCM）、Feature Flags、混沌工程。核心差异化是 <strong>AIDA（AI Development Assistant）</strong>，贯穿整个软件交付生命周期的 AI 助手。<br><br>
+  两者的联系：Harness Inc. 是 DevOps 领域的 Harness 工程——为"代码交付"这个任务搭建完整基础设施；本章讨论的是 AI Agent 领域的 Harness 工程——为"Agent 执行任务"搭建完整基础设施。<strong>思路一致，领域不同</strong>。</p>
+</div>
+
+<h3 class="sub-heading">22.4.6 代表项目对比</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">项目</th>
+        <th style="text-align: left;">核心 Harness 组件</th>
+        <th style="text-align: left;">交互模式</th>
+        <th style="text-align: left;">适用场景</th>
+        <th style="text-align: left;">成本</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Claude Code</strong></td><td>参数约束 + 文件系统 + CLAUDE.md</td><td>终端 CLI / headless</td><td>代码编写、调试、重构</td><td>按 Token 计费</td></tr>
+      <tr><td><strong>Codex</strong></td><td>云沙箱 + 异步任务 + 自验证</td><td>异步提交+查看</td><td>独立编码任务、CI/CD</td><td>按任务计费</td></tr>
+      <tr><td><strong>Cursor</strong></td><td>上下文工程 + 编辑器集成</td><td>IDE 内交互</td><td>日常开发辅助</td><td>订阅制</td></tr>
+      <tr><td><strong>Devin</strong></td><td>全沙箱 + 自主规划 + 自纠错</td><td>任务提交+监控</td><td>复杂长程任务</td><td>$10-50/任务</td></tr>
+      <tr><td><strong>Harness Inc.</strong></td><td>CI/CD + 安全 + 成本 + Feature Flags</td><td>平台 Dashboard</td><td>企业软件交付</td><td>企业订阅</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 22.5 Harness 设计陷阱与最佳实践 ===== -->
+<h2 class="section-heading">22.5 Harness 设计陷阱与最佳实践</h2>
+
+<p>Harness 不是"越多越好"，过度约束和约束不足都会出问题。</p>
+
+<h3 class="sub-heading">22.5.1 三大设计陷阱</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">陷阱 1：过度约束 — 限制太多 Agent 无法完成任务</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">想象一个被层层束缚的人——手脚都被绳子绑着，虽然绝对安全，但什么也干不了。<br><br>
+  典型症状：① Agent 总是说"我没有权限执行这个操作"；② max-turns 设得太低，复杂任务还没做完就被强制终止；③ 工具白名单太窄，连最基本的文件读写都不允许。<br><br>
+  <strong>解法</strong>：按任务复杂度分级授权。简单任务严格约束，复杂任务适度放开。Claude Code 的 --allowedTools 就是这种思路——你可以精确控制哪些工具可用。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">陷阱 2：约束不足 — 不加限制 Agent 可能做危险操作</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">想象一个没有任何交通规则的城市——虽然出行自由，但车祸频发。<br><br>
+  典型症状：① Agent 删除了重要文件；② Agent 泄露了 API Key；③ Agent 无限循环消耗大量 Token；④ Agent 执行了 rm -rf / 这样的危险命令。<br><br>
+  <strong>解法</strong>：至少要有三层防护——工具白名单（声明式权限）、运行时拦截（动态检查参数）、审计日志（事后追溯）。详见第18章 Agent 安全与防护。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">陷阱 3：组件缺失 — 缺了关键组件导致系统性失败</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">六大组件缺了任何一个，都会导致特定类型的失败：<br><br>
+  ① <strong>缺文件系统</strong> → Agent 无法持久化工作成果，每次从零开始<br>
+  ② <strong>缺沙箱</strong> → Agent 不能验证代码结果，只能"纸上谈兵"<br>
+  ③ <strong>缺 AGENTS.md</strong> → Agent 不知道项目规则，按旧知识行事<br>
+  ④ <strong>缺 Web Search</strong> → Agent 无法获取最新信息，回答过时<br>
+  ⑤ <strong>缺上下文工程</strong> → Agent 长对话时丢失关键信息<br>
+  ⑥ <strong>缺 Hooks</strong> → Agent 协作时无法互相检查质量</p>
+</div>
+
+<h3 class="sub-heading">22.5.2 Harness 设计最佳实践清单</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">原则</th>
+        <th style="text-align: left;">具体做法</th>
+        <th style="text-align: left;">避免的问题</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>最小权限</strong></td><td>工具白名单只列必需工具，高危操作需审批</td><td>误操作、数据泄露</td></tr>
+      <tr><td><strong>最大轮次限制</strong></td><td>设置 max-turns（一般 10-20），防止无限循环</td><td>Token 耗尽、死循环</td></tr>
+      <tr><td><strong>沙箱隔离</strong></td><td>代码执行在沙箱中，资源受限、网络受限</td><td>恶意代码、资源耗尽</td></tr>
+      <tr><td><strong>知识注入</strong></td><td>AGENTS.md 写明项目规则、架构说明、编码约定</td><td>知识过时、违反约定</td></tr>
+      <tr><td><strong>上下文管理</strong></td><td>滑动窗口 + 摘要压缩 + 关键信息保留</td><td>信息腐烂、忘记约束</td></tr>
+      <tr><td><strong>可观测性</strong></td><td>全链路日志：每步输入/输出/耗时/Token</td><td>无法调试、无法回溯</td></tr>
+      <tr><td><strong>自验证</strong></td><td>工具执行结果在沙箱中自动验证合理性</td><td>幻觉、错误结果</td></tr>
+      <tr><td><strong>渐进授权</strong></td><td>简单任务严约束，复杂任务宽约束</td><td>过度约束无法完成任务</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success); background: linear-gradient(135deg, rgba(76,175,80,0.08), rgba(76,175,80,0.02));">
+  <div class="card-title">✅ 一句话总结</div>
+  <p style="font-size: 14px;">Harness 的设计目标不是"绝对安全"（那是过度约束），而是<strong>"安全边界内的最大自主性"</strong>——让 Agent 在安全范围内尽量自由地完成任务。就像高速公路——有护栏（安全边界），但车可以自由开到 120km/h（最大自主性）。</p>
+</div>
+
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q1: 什么是 Harness Engineering？和 Prompt Engineering 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Harness Engineering</strong>：为 AI Agent 搭建模型之外的整套基础设施——文件系统、沙箱、知识注入、工具协议、上下文管理、编排 Hooks。核心观点是"变量是 Harness，不是 Model"。<br><br>
+      <strong>与 Prompt Engineering 的区别</strong>：Prompt Engineering 关注怎么写指令（一次性对话艺术），Harness Engineering 关注怎么搭基础设施（让 Agent 能真正干活）。两者是<strong>嵌套关系</strong>而非替代——Harness 包含 Context，Context 包含 Prompt，但边际产出已从 Prompt 转移到 Harness。<br><br>
+      面试要点：不要说"取代 Prompt"，要说"嵌套包含 Prompt，但工程效益的边际产出已转移"。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q2: 绑定约束论是什么？有哪些实验证据？</div>
+    <div class="qa-answer">
+      <strong>绑定约束论</strong>：对于长程任务，跨可比的前沿模型，Benchmark 方差由 Harness 主导，而非模型本身。类比：赛车再快，赛道坑坑洼洼成绩也不会好。<br><br>
+      <strong>三组实验证据</strong>：<br>
+      ① Bölük (2026a)：模型不动，只调 edit-tool 格式与脚手架 → 最高 10 倍提升<br>
+      ② Trivedy (2026)：固定 GPT-5.2，重构系统提示 + 中间件 + 自验证 → +13.7pp<br>
+      ③ Meta-Harness (Lee et al., 2026)：自动化 Harness 优化 → 76.4%，超越所有手工方案，模型权重一个字节没改<br><br>
+      面试要点：对比数据——模型代际升级通常只 +2-4pp，Harness 优化可以 +10pp 以上甚至 10 倍差距。变量是 Harness，不是 Model。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q3: Harness 六大组件分别解决什么问题？</div>
+    <div class="qa-answer">
+      ① <strong>文件系统</strong> → 解决"无工作环境"：Agent 不能只在空中编代码，必须有项目目录、文件组织、版本控制<br>
+      ② <strong>沙箱执行</strong> → 解决"不能执行代码"：Agent 写了代码得能跑，跑完能验证结果对不对<br>
+      ③ <strong>AGENTS.md</strong> → 解决"知识过时"：无需训练就能注入项目规则、架构说明、编码约定<br>
+      ④ <strong>Web Search + MCP</strong> → 解决"知识截止日期"：Agent 能搜索最新信息、调用实时 API<br>
+      ⑤ <strong>上下文工程</strong> → 解决"无记忆与信息腐烂"：滑动窗口 + 摘要压缩 + 关键信息保留<br>
+      ⑥ <strong>编排 + Hooks</strong> → 解决"无法协作"：多 Agent 调度 + 执行前后检查（pre/post/error/approval hooks）
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q4: 为什么 AGENTS.md 比训练微调更适合 Agent 知识注入？</div>
+    <div class="qa-answer">
+      四个优势：<br>
+      ① <strong>即写即生效</strong>：微调要花钱花时间训练，AGENTS.md 写完立刻生效<br>
+      ② <strong>随时可更新</strong>：微调的知识嵌入权重里很难修改，AGENTS.md 改了文件就更新了<br>
+      ③ <strong>无需训练数据</strong>：微调需要大量训练样本，AGENTS.md 只需要你项目的事实规则<br>
+      ④ <strong>多项目并行</strong>：微调的模型不能同时服务多个项目（知识混在一起），AGENTS.md 可以每个项目一份<br><br>
+      面试要点：AGENTS.md 解决的是<strong>知识时效性</strong>问题，不是知识深度问题。对于需要深度专业知识的场景，微调仍然有用——两者互补，不是互斥。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q5: 上下文工程的三大策略是什么？</div>
+    <div class="qa-answer">
+      ① <strong>滑动窗口</strong>：保留最近 N 条消息，丢弃更早的。简单粗暴但有效，适合短期对话。大多数 LLM SDK 的默认策略。<br>
+      ② <strong>摘要压缩</strong>：把早期对话压缩成摘要，保留关键信息但大幅减少 Token。适合长对话、多轮任务。LangChain 的 ConversationSummaryMemory 就是这种实现。<br>
+      ③ <strong>关键信息保留</strong>：显式标记重要信息（任务约束、用户偏好、安全规则），永远不丢弃。通过 System Prompt + 变量注入实现。<br><br>
+      面试要点：三种策略<strong>组合使用</strong>效果最好——滑动窗口管近期、摘要管远期、关键信息永不丢。单独用任何一种都有缺陷。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q6: Claude Code 的 Harness 设计思路是什么？</div>
+    <div class="qa-answer">
+      Claude Code 是 Harness Engineering 的<strong>教科书级实现</strong>，核心参数体现完整的安全架构：<br><br>
+      ① <strong>--allowedTools</strong>：工具白名单，限制可用工具 → 权限控制<br>
+      ② <strong>--max-turns</strong>：最大循环轮次限制 → 资源限制<br>
+      ③ <strong>--model</strong>：指定使用哪个模型 → 模型选择<br>
+      ④ <strong>--verbose</strong>：详细日志 → 可观测性<br>
+      ⑤ <strong>headless 模式</strong>：无交互纯命令行 → CI/CD 集成<br>
+      ⑥ <strong>CLAUDE.md</strong>：项目级知识注入 → AGENTS.md<br><br>
+      面试要点：Claude Code 证明了"headless + allowedTools + max-turns"就是最小可行 Harness 安全架构。不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q7: 设计一个安全的 Agent Harness 架构需要考虑什么？</div>
+    <div class="qa-answer">
+      核心原则：<strong>安全边界内的最大自主性</strong>——不是"绝对安全"（那是过度约束），而是让 Agent 在安全范围内尽量自由地完成任务。<br><br>
+      必须考虑的七个要素：<br>
+      ① <strong>最小权限</strong>：工具白名单只列必需工具，高危操作需审批<br>
+      ② <strong>最大轮次限制</strong>：max-turns 防止无限循环和 Token 耗尽<br>
+      ③ <strong>沙箱隔离</strong>：代码执行在沙箱中，资源受限、网络受限<br>
+      ④ <strong>知识注入</strong>：AGENTS.md 写明项目规则和编码约定<br>
+      ⑤ <strong>上下文管理</strong>：滑动窗口 + 摘要 + 关键信息保留<br>
+      ⑥ <strong>可观测性</strong>：全链路日志，每步记录输入/输出/耗时/Token<br>
+      ⑦ <strong>渐进授权</strong>：简单任务严约束，复杂任务宽约束
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: Harness Engineering 的未来方向是什么？</div>
+    <div class="qa-answer">
+      三个方向：<br>
+      ① <strong>自动化 Harness 优化</strong>：Meta-Harness 论文证明了自动优化超越人工调参。未来会有"Harness 优化器"——像编译器优化代码一样自动优化 Agent 的 Harness 配置。<br>
+      ② <strong>Harness 标准化</strong>：MCP 已经在标准化工具接口，未来 AGENTS.md、沙箱配置、Hooks 定义都会有统一标准，就像 Docker 标准化了容器格式。<br>
+      ③ <strong>Harness 即产品</strong>：Claude Code、Codex、Cursor 这些产品本质上是在卖 Harness。未来会有更多"Harness as a Service"——用户选模型，平台提供 Harness。<br><br>
+      面试要点：类比"编译器优化"——Harness Engineering 正在从手工调参走向自动化优化，就像 C 编译器从手工优化走向 -O3 自动优化一样。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+var ch22Questions = [
+  {
+    type: 'single',
+    question: '绑定约束论的核心观点是什么？',
+    options: [
+      '模型代际升级是提升Agent性能的唯一路径',
+      'Benchmark方差由Harness主导，而非模型本身',
+      'Prompt Engineering已经完全被Context Engineering取代',
+      '训练微调比AGENTS.md更高效'
+    ],
+    answer: [1],
+    explanation: '绑定约束论指出：对于长程任务，跨可比的前沿模型，Benchmark方差由Harness主导，而非模型本身。模型代际通常只+2-4pp，而Harness优化可以+10pp以上。'
+  },
+  {
+    type: 'single',
+    question: 'Harness三大范式的迁移顺序是？',
+    options: [
+      'Harness → Context → Prompt',
+      'Context → Prompt → Harness',
+      'Prompt → Context → Harness',
+      'Prompt → Harness → Context'
+    ],
+    answer: [2],
+    explanation: '范式迁移顺序是 Prompt Engineering(2022-2023) → Context Engineering(2023-2025) → Harness Engineering(2025-2026+)。三者是嵌套关系，不是替代关系。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code中用于限制Agent最大循环轮次的参数是？',
+    options: [
+      '--allowedTools',
+      '--max-turns',
+      '--model',
+      '--verbose'
+    ],
+    answer: [1],
+    explanation: '--max-turns 限制最大循环轮次，防止Agent无限循环消耗Token。--allowedTools限制可用工具白名单，--model指定模型，--verbose输出详细日志。'
+  },
+  {
+    type: 'multiple',
+    question: 'Harness六大组件中，哪些直接解决Agent"无法获取实时信息"的问题？（多选）',
+    options: [
+      'AGENTS.md / System Prompt',
+      'Web Search + MCP',
+      '沙箱执行',
+      '文件系统'
+    ],
+    answer: [0, 1],
+    explanation: 'AGENTS.md解决知识过时（注入项目规则），Web Search+MCP解决知识截止日期（搜索最新信息+调用实时API）。沙箱解决不能执行代码，文件系统解决无工作环境。'
+  },
+  {
+    type: 'single',
+    question: 'Bölük (2026a) 实验的核心发现是什么？',
+    options: [
+      '微调模型比裸模型好10倍',
+      '模型不动，只调整edit-tool格式与外围脚手架，最高10倍提升',
+      'Prompt优化比Harness优化更有效',
+      '更大的模型一定比小模型好'
+    ],
+    answer: [1],
+    explanation: 'Bölük实验：模型完全不动，只调整edit-tool格式与外围工具脚手架，在15个模型上最高获得10倍提升。证明工具格式的影响力远超模型代际差异。'
+  },
+  {
+    type: 'multiple',
+    question: '上下文工程的三大策略包括哪些？（多选）',
+    options: [
+      '滑动窗口（保留最近N条消息）',
+      '摘要压缩（把早期对话压缩成摘要）',
+      '关键信息保留（显式标记重要信息永不丢弃）',
+      '全量存储（保存所有历史消息不做压缩）'
+    ],
+    answer: [0, 1, 2],
+    explanation: '上下文工程三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch22Questions); }, 500);
+</script>

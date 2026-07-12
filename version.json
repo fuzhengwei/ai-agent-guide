@@ -1,4 +1,4 @@
 {
-  "version": "20260707",
-  "changelog": "新增 LLM API 代理配置，优化缓存策略"
+  "version": "20260712",
+  "changelog": "修复章节切换 FlowChart/SyntaxError 报错，考试交卷判分修复"
 }

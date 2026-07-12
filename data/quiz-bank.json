@@ -3695,7 +3695,9 @@
         "C. 当用户说 'quit' 时",
         "D. 当达到最大循环次数时"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "Agent 循环的核心是 AI 自主决定是否继续调工具。当 AI 不再请求 tool_calls 时，说明它已经有足够信息回答用户，循环自然结束。"
     },
     {
@@ -3707,7 +3709,9 @@
         "C. description",
         "D. type"
       ],
-      "answer": "C",
+      "answer": [
+        2
+      ],
       "explanation": "description 是 AI 决定是否调工具的关键依据。写得越具体（如'查询指定城市指定日期的天气'），AI 的判断越准确。"
     },
     {
@@ -3719,7 +3723,9 @@
         "C. Agent 只能查天气",
         "D. Agent 不需要 API Key"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "普通 LLM 是一问一答，没有工具。Agent = AI + 工具 + 循环。三者缺一不可：没有工具的 AI 只能聊天，没有循环只能做一次调用。"
     },
     {
@@ -3731,7 +3737,9 @@
         "C. AI 有内置数据库",
         "D. AI 不需要工具也能查天气"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "Agent 的'记忆'就是对话历史。当用户追问'哪个城市更热'时，AI 从历史中已有两次天气查询结果，直接推理比较，无需再次调工具。"
     },
     {
@@ -3743,7 +3751,9 @@
         "C. 失败后立即重试",
         "D. 只重试一次"
       ],
-      "answer": "A",
+      "answer": [
+        0
+      ],
       "explanation": "指数退避避免雪崩效应：第一次重试等1秒，第二次2秒，第三次4秒...给服务端恢复时间，同时避免客户端过度请求。"
     },
     {
@@ -3755,7 +3765,9 @@
         "C. 需要多步推理的编程助手",
         "D. 需要调用多个工具的旅行规划"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "固定格式、确定性强的任务用传统程序更可靠、更快、更便宜。Agent 的价值在于处理不确定性——意图不明确、步骤不固定的场景。"
     },
     {
@@ -3767,7 +3779,9 @@
         "C. 工具自己解析用户输入",
         "D. 前端 JavaScript 组装"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "这是 Agent 的核心优势：AI 读 Schema，理解参数格式，从用户自然语言中提取参数值，自动组装成符合 Schema 的 JSON。"
     },
     {
@@ -3779,7 +3793,9 @@
         "C. 通过修改 system prompt",
         "D. 通过全局变量"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "工具结果必须以 role='tool' 消息返回，且必须携带对应的 tool_call_id，AI 才能将结果与之前的工具调用请求对应起来。"
     },
     {
@@ -3791,7 +3807,9 @@
         "C. 它控制工具的返回格式",
         "D. 它限制工具的调用频率"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "required 字段告诉 AI 必须组装哪些参数。如果 city 是 required 而 date 不是，AI 知道必须从用户输入中提取城市名，但日期可以省略。"
     },
     {
@@ -3803,7 +3821,9 @@
         "C. 打印日志到终端",
         "D. 清除之前的对话历史"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "观察步骤将工具结果以 role='tool' 消息加入 messages 数组。AI 在下一轮循环中能看到这些结果，决定是否继续调工具或直接回答。"
     }
   ],
@@ -3817,7 +3837,9 @@
         "C. Skill 只能是 MCP 工具",
         "D. Tool 比 Skill 更高级"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "Tool 是单一操作（函数级），Skill 是复合能力（模块级）。Skill 不只是工具集合，还包含使用策略、调用顺序、参数约束等知识。"
     },
     {
@@ -3829,7 +3851,9 @@
         "C. 第一层加载代码、第二层加载Schema、第三层加载文档",
         "D. 按字母排序、按时间排序、按使用频率排序"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "三层懒加载控制 Prompt 长度：第一层始终列出 Skill 名称和描述（几行）；第二层当用户消息匹配触发词时激活完整定义；第三层罕见 Skill 需 AI 用 ToolSearch 主动查找。"
     },
     {
@@ -3841,7 +3865,9 @@
         "C. 前端层、后端层、数据库层",
         "D. 输入层、处理层、输出层"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "元数据层定义 Skill 的身份和触发条件；工具层列出包含的工具及 Schema；知识层提供使用策略、调用顺序、参数约束。"
     },
     {
@@ -3853,7 +3879,9 @@
         "C. 控制工具的调用频率",
         "D. 决定 Skill 的版本号"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "触发词是懒加载第二层的核心机制。用户说'天气'时，weather-advisor Skill 被激活，完整 Schema 和使用策略注入 Prompt。"
     },
     {
@@ -3865,7 +3893,9 @@
         "C. Skills 是 MCP 的子集",
         "D. Function Calling 是 Skills 的新名称"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "三者层次不同：Function Calling 是 AI 调用函数的底层机制；MCP 是工具发现和调用的标准化协议；Skills 是把多个工具打包成可复用能力单元的上层组织。一个 Skill 可以包含 MCP 工具。"
     },
     {
@@ -3877,7 +3907,9 @@
         "C. 自动修复 Skill 的 bug",
         "D. 让多个 Agent 同时使用同一个 Skill"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "热重载通过 watchdog 监控 skills/ 目录文件变更，检测到修改后自动重新扫描和加载，生产环境中无需停机更新 Skill。"
     },
     {
@@ -3889,7 +3921,9 @@
         "C. 免费 Skill、付费 Skill、企业 Skill",
         "D. Python Skill、Java Skill、Go Skill"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "基础 Skill 如 get_weather（单工具调用）；复合 Skill 如 weather-advisor（多工具+策略）；领域 Skill 如 medical-diagnosis（行业知识+全套工具+专业术语）。"
     },
     {
@@ -3901,7 +3935,9 @@
         "C. 不需要安全机制，AI 会自动判断",
         "D. 只限制调用频率"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "企业级 Skill 需要多层安全：YAML 中声明 permissions（network/location/file_access），危险操作需审批，执行在沙箱中，所有操作留审计日志。"
     },
     {
@@ -3913,7 +3949,9 @@
         "C. 把所有 Skill 合并为一个",
         "D. 删除不常用的 Skill"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "沉淀是从具体项目中抽象出通用能力（如从3个项目中提炼出1个通用的数据库查询 Skill），演进是版本迭代（v1.0单表查询→v2.0多表关联→v3.0智能优化）。"
     },
     {
@@ -3925,7 +3963,9 @@
         "C. Skill 只能通过 MCP 加载",
         "D. Skill 必须用 Java 编写"
       ],
-      "answer": "B",
+      "answer": [
+        1
+      ],
       "explanation": "OpenClaw 的 Skill 是文件系统组织的：每个 Skill 一个目录，SKILL.md 定义元数据和流程，scripts/ 存执行脚本，templates/ 存模板。Agent 启动时扫描目录自动发现。"
     }
   ],
@@ -4645,7 +4685,7 @@
       "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
     }
   ],
-  "ch22": [
+  "ch23": [
     {
       "type": "single",
       "question": "2026 年 AI Agent 发展的五大趋势中，'Agent 成为操作系统的一部分'是指什么？",
@@ -4769,6 +4809,95 @@
         4
       ],
       "explanation": "Agent 未来趋势：多 Agent 协作标准化、MCP 统一工具生态、具身智能（机器人+Agent）、评估基准完善。Agent 不会完全取代人类——而是增强人类能力，人机协作才是未来。说'完全取代'是过度炒作。"
+    }
+  ],
+  "ch22": [
+    {
+      "type": "single",
+      "question": "绑定约束论的核心观点是什么？",
+      "options": [
+        "模型代际升级是提升Agent性能的唯一路径",
+        "Benchmark方差由Harness主导，而非模型本身",
+        "Prompt Engineering已经完全被Context Engineering取代",
+        "训练微调比AGENTS.md更高效"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "绑定约束论指出：对于长程任务，跨可比的前沿模型，Benchmark方差由Harness主导，而非模型本身。模型代际通常只+2-4pp，而Harness优化可以+10pp以上。"
+    },
+    {
+      "type": "single",
+      "question": "Harness三大范式的迁移顺序是？",
+      "options": [
+        "Harness → Context → Prompt",
+        "Context → Prompt → Harness",
+        "Prompt → Context → Harness",
+        "Prompt → Harness → Context"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "范式迁移顺序是 Prompt Engineering → Context Engineering → Harness Engineering。三者是嵌套关系，不是替代关系。"
+    },
+    {
+      "type": "single",
+      "question": "Claude Code中用于限制Agent最大循环轮次的参数是？",
+      "options": [
+        "--allowedTools",
+        "--max-turns",
+        "--model",
+        "--verbose"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "--max-turns限制最大循环轮次，防止Agent无限循环消耗Token。--allowedTools限制工具白名单，--model指定模型，--verbose输出详细日志。"
+    },
+    {
+      "type": "multiple",
+      "question": "Harness六大组件中，哪些直接解决Agent'无法获取实时信息'的问题？（多选）",
+      "options": [
+        "AGENTS.md / System Prompt",
+        "Web Search + MCP",
+        "沙箱执行",
+        "文件系统"
+      ],
+      "answer": [
+        0,
+        1
+      ],
+      "explanation": "AGENTS.md解决知识过时（注入项目规则），Web Search+MCP解决知识截止日期（搜索最新信息+调用实时API）。"
+    },
+    {
+      "type": "single",
+      "question": "Bölük (2026a) 实验的核心发现是什么？",
+      "options": [
+        "微调模型比裸模型好10倍",
+        "模型不动，只调整edit-tool格式与外围脚手架，最高10倍提升",
+        "Prompt优化比Harness优化更有效",
+        "更大的模型一定比小模型好"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Bölük实验：模型完全不动，只调整edit-tool格式与外围工具脚手架，在15个模型上最高获得10倍提升。"
+    },
+    {
+      "type": "multiple",
+      "question": "上下文工程的三大策略包括哪些？（多选）",
+      "options": [
+        "滑动窗口（保留最近N条消息）",
+        "摘要压缩（把早期对话压缩成摘要）",
+        "关键信息保留（显式标记重要信息永不丢弃）",
+        "全量存储（保存所有历史消息不做压缩）"
+      ],
+      "answer": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。"
     }
   ]
 }

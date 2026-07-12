@@ -9,6 +9,7 @@ const App = {
   examAnswers: {},
   examStartTime: null,
   examTimer: null,
+  _pendingTimers: [], // 记录章节内 setTimeout 的 ID，切换章节时统一清除
 
   chapters: [
     // 序章
@@ -47,8 +48,10 @@ const App = {
     { id: 'ch20', num: 20, title: '推理框架与模型服务化', section: '⚙️ 第六篇：工程化', file: 'chapters/ch20-inference-framework.html' },
     { id: 'ch21', num: 21, title: '运行时架构：Loop、Runtime 与 Sandbox', section: '⚙️ 第六篇：工程化', file: 'chapters/ch21-loop-runtime-sandbox.html' },
 
+    { id: 'ch22', num: 22, title: 'Harness Engineering：从 Prompt 到 Context 到 Harness', section: '⚙️ 第六篇：工程化', file: 'chapters/ch22-harness.html' },
+
     // 终章
-    { id: 'ch22', num: 22, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch22-future-summary.html' }
+    { id: 'ch23', num: 23, title: '2026 Agent 技术展望', section: '🔮 终章', file: 'chapters/ch23-future-summary.html' }
   ],
 
   /**
@@ -614,7 +617,7 @@ const App = {
             </div>
           </div>
 
-          <div class="cover-badge">2026 · 22章渐进式可视化教程</div>
+          <div class="cover-badge">2026 · 23章渐进式可视化教程</div>
           <h1 class="hero-title">AI Agent Guide - 通识教程</h1>
           <p class="hero-subtitle">从基础认知到面试通关 · 22章渐进式可视化教程</p>
           
@@ -963,6 +966,18 @@ const App = {
    * 使用 <script> 元素 append 方式替代 eval()，更安全且支持调试
    */
   executeChapterScripts(container) {
+    // 清除之前章节的 pending setTimeout，避免 "Container not found" 报错
+    this._pendingTimers.forEach(id => clearTimeout(id));
+    this._pendingTimers = [];
+
+    // 暂时替换 setTimeout 为追踪版本，捕获章节脚本中所有定时器 ID
+    const originalSetTimeout = window.setTimeout;
+    window.setTimeout = (fn, delay, ...args) => {
+      const id = originalSetTimeout(fn, delay, ...args);
+      this._pendingTimers.push(id);
+      return id;
+    };
+
     const scripts = container.querySelectorAll('script');
     const scriptTexts = []; // 收集脚本内容
     scripts.forEach(oldScript => {
@@ -983,23 +998,26 @@ const App = {
             newScript.src = src;
             document.head.appendChild(newScript);
           } else if (text) {
-            // 内联脚本：通过 <script> 元素执行（替代 eval，更安全且支持调试）
-            // 使用 try/catch 包裹 appendChild 以捕获 SyntaxError
+            // 内联脚本：将 const/let 替换为 var，避免切换章节时重复声明报错
+            // var 在全局作用域可重复声明不报错，且全局可访问（Quiz.render 需要 chXXQuestions）
+            const safeText = text.replace(/\bconst\b/g, 'var').replace(/\blet\b/g, 'var');
             try {
               const newScript = document.createElement('script');
-              newScript.textContent = text;
+              newScript.textContent = safeText;
               document.head.appendChild(newScript);
               // 执行后移除，避免 DOM 膨胀
               document.head.removeChild(newScript);
             } catch (e) {
-              // SyntaxError 在 appendChild 时同步抛出，这里可以捕获
               console.error('[ChapterScript] execution error:', e);
-              // 尝试使用 Function 构造器作为降级方案（仅对非语法错误的运行时错误有效）
-              // 如果是 SyntaxError，则无法降级，仅记录错误
             }
           }
         });
+        // 脚本执行完毕，恢复原始 setTimeout
+        window.setTimeout = originalSetTimeout;
       });
+    } else {
+      // 无脚本，立即恢复 setTimeout
+      window.setTimeout = originalSetTimeout;
     }
   },
 
@@ -2011,10 +2029,19 @@ const App = {
 
     this.examQuestions.forEach((q, i) => {
       const userAnswer = this.examAnswers[i] || [];
-      const correctAnswer = q.answer || [];
+      const correctAnswer = Array.isArray(q.answer) ? q.answer : (typeof q.answer === 'number' ? [q.answer] : []);
       
-      const isCorrect = userAnswer.length === correctAnswer.length &&
-        correctAnswer.every(a => userAnswer.includes(a));
+      // Normalize letter answers (A→0, B→1, C→2, D→3) to indices
+      const normalizedCorrect = correctAnswer.map(a => {
+        if (typeof a === 'string' && /^[A-D]$/.test(a)) return a.charCodeAt(0) - 65;
+        return a;
+      });
+      const normalizedUser = userAnswer.map(a => {
+        if (typeof a === 'string' && /^[A-D]$/.test(a)) return a.charCodeAt(0) - 65;
+        return a;
+      });
+      const isCorrect = normalizedUser.length === normalizedCorrect.length &&
+        normalizedCorrect.every(a => normalizedUser.includes(a));
       
       if (isCorrect) {
         correct++;
@@ -2099,10 +2126,19 @@ const App = {
 
     this.examQuestions.forEach((q, i) => {
       const userAnswer = this.examAnswers[i] || [];
-      const correctAnswer = q.answer || [];
+      const correctAnswer = Array.isArray(q.answer) ? q.answer : (typeof q.answer === 'number' ? [q.answer] : []);
       const chNum = parseInt(q.chapterId.replace('ch', ''));
-      const isCorrect = userAnswer.length === correctAnswer.length &&
-        correctAnswer.every(a => userAnswer.includes(a));
+      // Normalize letter answers (A→0, B→1, C→2, D→3) to indices
+      const normalizedCorrect = correctAnswer.map(a => {
+        if (typeof a === 'string' && /^[A-D]$/.test(a)) return a.charCodeAt(0) - 65;
+        return a;
+      });
+      const normalizedUser = userAnswer.map(a => {
+        if (typeof a === 'string' && /^[A-D]$/.test(a)) return a.charCodeAt(0) - 65;
+        return a;
+      });
+      const isCorrect = normalizedUser.length === normalizedCorrect.length &&
+        normalizedCorrect.every(a => normalizedUser.includes(a));
 
       html += `
         <div class="exam-answer-item ${isCorrect ? 'is-correct' : 'is-wrong'}">
@@ -2117,8 +2153,8 @@ const App = {
       `;
       q.options.forEach((opt, oi) => {
         const letter = String.fromCharCode(65 + oi);
-        const isUserChoice = userAnswer.includes(oi);
-        const isCorrectChoice = correctAnswer.includes(oi);
+        const isUserChoice = normalizedUser.includes(oi);
+        const isCorrectChoice = normalizedCorrect.includes(oi);
         let optClass = 'answer-option';
         if (isCorrectChoice) optClass += ' opt-correct';
         if (isUserChoice && !isCorrectChoice) optClass += ' opt-wrong';

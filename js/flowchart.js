@@ -8,8 +8,11 @@ const FlowChart = {
    * 自动查找页面上带有 data-flowchart 的元素并渲染
    */
   init() {
+    const contentBody = document.getElementById('contentBody');
     const containers = document.querySelectorAll('.flowchart-container[data-flowchart]');
     containers.forEach(container => {
+      // 仅渲染当前章节内容区域内的流程图容器
+      if (contentBody && !contentBody.contains(container)) return;
       if (!container.id) {
         container.id = 'flowchart_' + Math.random().toString(36).substring(2, 9);
       }
@@ -17,7 +20,7 @@ const FlowChart = {
         const config = JSON.parse(container.dataset.flowchart);
         this.render(container.id, config);
       } catch (e) {
-        console.error('[FlowChart] Parse config error for', container.id, e);
+        console.warn('[FlowChart] Parse config error for', container.id, e);
       }
     });
   },
@@ -29,8 +32,10 @@ const FlowChart = {
    */
   render(containerId, config) {
     const container = document.getElementById(containerId);
-    if (!container) {
-      console.error('[FlowChart] Container not found:', containerId);
+    // 仅在容器存在于当前章节内容区域时渲染，避免切换章节后旧 setTimeout 回调报错
+    const contentBody = document.getElementById('contentBody');
+    if (!container || !contentBody || !contentBody.contains(container)) {
+      // 静默跳过：章节已切换，该容器不再属于当前页面
       return;
     }
 

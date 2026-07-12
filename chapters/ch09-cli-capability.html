@@ -1161,31 +1161,31 @@ var ch09Questions = [
   {
     question: "CLI Agent 操作本地工具的核心技术挑战是什么？",
     options: ["LLM 调用 HTTP API 的速度", "Shell 命令生成 + 安全执行 + 错误自愈", "前端界面的渲染性能", "数据库的查询优化"],
-    answer: 1,
+    answer: [1],
     explanation: "CLI Agent 的核心挑战不在远程调用，而在本地：如何准确生成 Shell 命令（NL2Shell）、如何在沙箱中安全执行（权限隔离）、如何自动修复执行错误（自愈机制）。"
   },
   {
     question: "NL2Shell 的工具 Schema 方式为什么比直接生成准确率更高？",
     options: ["因为 Schema 限制了 LLM 的自由度", "因为 Schema 提供了更多训练数据", "因为 Schema 用了更大的模型", "因为 Schema 不需要 LLM 参与"],
-    answer: 0,
+    answer: [0],
     explanation: "工具 Schema 方式把命令的参数类型、枚举值、约束条件都定义好了，LLM 只需选择工具并填参数（像调 API一样），不需要'猜'命令格式，大幅减少幻觉输出。"
   },
   {
     question: "以下哪个命令属于 Level 3 高风险，默认应被拒绝？",
     options: ["git status", "docker compose up -d", "rm -rf /data", "mvn clean package"],
-    answer: 2,
+    answer: [2],
     explanation: "rm -rf 是不可逆的删除操作，一旦执行数据无法恢复，属于 Level 3 高风险命令，默认拒绝，特殊场景需管理员二次审批。"
   },
   {
     question: "CLI 工具 Schema 和 MCP Tool 的关系是什么？",
     options: ["两者是完全替代的关系", "CLI Schema 可以注册为 MCP Tool，由 MCP 协议统一调度", "MCP 只能调 HTTP API，不能调 CLI", "CLI Schema 比 MCP Tool 更底层，不能兼容"],
-    answer: 1,
+    answer: [1],
     explanation: "CLI 工具的 Schema 可以直接映射为 MCP Server 的 Tool 定义，MCP Client 调用后由 CLI 沙箱执行 Shell 命令。两者互补而非替代——MCP 管'怎么调'，CLI 管'怎么执行'。"
   },
   {
     question: "CLI Agent 的错误自愈机制，最多重试几次是合理的？",
     options: ["1 次", "3 次", "10 次", "无限次直到成功"],
-    answer: 1,
+    answer: [1],
     explanation: "企业级实践推荐最多重试 3 次：① 防止循环重试产生副作用；② 超过 3 次说明 LLM 无法解决，应人工介入；③ 每次重试都消耗 Token 和时间。"
   }
 ];

@@ -135,10 +135,17 @@ const Quiz = {
     
     this.currentQuestions.forEach((q, i) => {
       const userAnswer = this.currentAnswers[i] || [];
-      const correctAnswer = q.answer;
+      // Normalize answer: handle bare number, letter string, or array
+      let correctAnswer = q.answer;
+      if (typeof correctAnswer === 'number') correctAnswer = [correctAnswer];
+      if (typeof correctAnswer === 'string' && /^[A-D]$/.test(correctAnswer)) correctAnswer = [correctAnswer.charCodeAt(0) - 65];
+      if (!Array.isArray(correctAnswer)) correctAnswer = [];
+      // Normalize letter answers in arrays (A→0, B→1, C→2, D→3)
+      correctAnswer = correctAnswer.map(a => (typeof a === 'string' && /^[A-D]$/.test(a)) ? a.charCodeAt(0) - 65 : a);
+      const normalizedUser = userAnswer.map(a => (typeof a === 'string' && /^[A-D]$/.test(a)) ? a.charCodeAt(0) - 65 : a);
       
-      const isCorrect = userAnswer.length === correctAnswer.length &&
-        correctAnswer.every(a => userAnswer.includes(a));
+      const isCorrect = normalizedUser.length === correctAnswer.length &&
+        correctAnswer.every(a => normalizedUser.includes(a));
       
       if (isCorrect) {
         correct++;
@@ -146,7 +153,7 @@ const Quiz = {
         wrongQuestions.push({
           chapter: q.chapter || 'unknown',
           question: q.question,
-          userAnswer: userAnswer.map(idx => String.fromCharCode(65 + idx)),
+          userAnswer: normalizedUser.map(idx => String.fromCharCode(65 + idx)),
           correctAnswer: correctAnswer.map(idx => String.fromCharCode(65 + idx)),
           explanation: q.explanation
         });
@@ -159,7 +166,7 @@ const Quiz = {
         
         if (correctAnswer.includes(optIndex)) {
           el.classList.add('correct');
-        } else if (userAnswer.includes(optIndex)) {
+        } else if (normalizedUser.includes(optIndex)) {
           el.classList.add('wrong');
         }
       });
