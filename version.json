@@ -1,4 +1,4 @@
 {
-  "version": "20260712.7",
-  "changelog": "第四篇更名为\"协作与编排\"（原\"多Agent协作\"）"
+  "version": "20260713.1",
+  "changelog": "修复ch06代码高亮不渲染：删除7个手动lang-tabs块，统一为main.js自动生成模式"
 }

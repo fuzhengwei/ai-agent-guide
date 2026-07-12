@@ -74,13 +74,7 @@
 <p>实际工程中，<strong>三者通常组合使用</strong>：先用关键词匹配快速筛选常见意图，命中后直接走快速路径；没命中则交给 LLM 做语义理解；长期积累的模式数据用于优化匹配规则。这就是<strong>分层意图识别</strong>策略。</p>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 分层意图识别：关键词 → 语义 → 模式
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 分层意图识别：关键词 → 语义 → 模式
 
 def identify_intent(user_input, context):
     # 第一层：关键词匹配（快路径）
@@ -340,13 +334,7 @@ public class IntentIdentifier {
 </div>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># Tool RAG：向量检索最相关的工具
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Tool RAG：向量检索最相关的工具
 
 class ToolRAG:
     def __init__(self, tool_registry, embed_model):
@@ -542,13 +530,7 @@ public class ToolRAG {
 </div>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 任务分类器：判断复杂度并选择执行路径
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 任务分类器：判断复杂度并选择执行路径
 
 class TaskClassifier:
     COMPLEXITY_RULES = {
@@ -700,13 +682,7 @@ public class TaskClassifier {
 </div>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># Plan & Execute：先规划后执行
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Plan & Execute：先规划后执行
 
 class TaskPlanner:
     def __init__(self, llm):
@@ -797,13 +773,7 @@ public class TaskPlanner {
 <p>计划生成后，调度器负责按计划执行。调度器是 Agent 决策中枢的"执行引擎"，它根据子任务特征，决定调用模型还是工具：</p>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 调度器：根据任务特征分配执行路径
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 调度器：根据任务特征分配执行路径
 
 class Scheduler:
     def __init__(self, llm, tools):
@@ -981,13 +951,7 @@ public class Scheduler {
 <p>工具返回的数据往往很大（一个 API 可能返回几 KB 甚至几十 KB），直接塞进 Prompt 会浪费大量 Token。需要<strong>压缩工具结果</strong>，保留关键信息，丢弃冗余。</p>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 多策略工具结果压缩器
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 多策略工具结果压缩器
 
 class ToolResultCompressor:
     """压缩工具返回结果：保留关键信息，压缩冗余"""
@@ -1176,13 +1140,7 @@ public class ToolResultCompressor {
 <p>生产环境的 Agent 主循环不是简单的 while True，需要处理：双模式切换（Chat vs Agent）、Token Budget 管理、死循环保护、max_tokens 截断恢复、指数退避重试、空闲超时检测。</p>
 
 <div class="code-block" data-multi-lang>
-<div class="lang-tabs">
-<button class="lang-tab active" data-lang="python">Python</button>
-<button class="lang-tab" data-lang="typescript">TypeScript</button>
-<button class="lang-tab" data-lang="go">Go</button>
-<button class="lang-tab" data-lang="java">Java</button>
-</div>
-<div class="code-lang-pane active" data-lang="python" data-label="Python"><pre># 生产级 Agent 主循环
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># 生产级 Agent 主循环
 
 class AgentLoop:
     def __init__(self, llm, tools, memory, config=None):
@@ -1499,113 +1457,153 @@ public class AgentLoop {
 
 <p>多 Agent 的详细协作模式（串行流水线、编排者-执行者、辩论对抗、自主协作）和通信机制，详见 <strong>第10章 多 Agent 系统架构</strong>。</p>
 
-<h2 class="section-heading">6.8 八股总结</h2>
+<!-- ===== 八股总结 ===== -->
+<div class="summary-box">
+  <div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
-<div class="card">
-  <div class="card-title">🎯 面试高频题</div>
-  <div style="margin-top: 12px;">
+  <div class="qa-item">
+    <div class="qa-question">Q1: Agent 的意图识别有哪些方法？生产环境怎么选？</div>
+    <div class="qa-answer">
+      三种方法：关键词匹配（快、便宜但粗糙）、语义理解（准、但贵）、模式识别（越用越准但冷启动差）。<br><br>
+      生产环境用<strong>分层组合</strong>：先关键词快速筛选 → 命中则直接路由；未命中走 LLM 语义理解；结果记录到模式库优化规则。这样兼顾速度和准确率，90% 的常见意图走快路径，只有 10% 走昂贵的 LLM 路径。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q1: Agent 的意图识别有哪些方法？生产环境怎么选？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">三种方法：关键词匹配（快、便宜但粗糙）、语义理解（准、但贵）、模式识别（越用越准但冷启动差）。生产环境用<strong>分层组合</strong>：先关键词快速筛选 → 命中则直接路由；未命中走 LLM 语义理解；结果记录到模式库优化规则。</p>
+  <div class="qa-item">
+    <div class="qa-question">Q2: Tool RAG 是什么？和普通 RAG 有什么区别？</div>
+    <div class="qa-answer">
+      Tool RAG 是对工具描述做向量检索，只把最相关的 K 个工具描述注入 Prompt。<br><br>
+      普通 RAG 检索的是<strong>知识文档</strong>，Tool RAG 检索的是<strong>工具 Schema</strong>。当工具数量 > 20 个时，Tool RAG 比全量注入节省 70%+ Token，同时减少工具选择混淆（工具太多 LLM 反而选不对）。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q2: Tool RAG 是什么？和普通 RAG 有什么区别？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Tool RAG 是对工具描述做向量检索，只把最相关的 K 个工具描述注入 Prompt。普通 RAG 检索的是知识文档，Tool RAG 检索的是工具 Schema。当工具数量 &gt; 20 个时，Tool RAG 比全量注入节省 70%+ Token。</p>
+  <div class="qa-item">
+    <div class="qa-question">Q3: ReAct 和 Plan & Execute 有什么区别？什么时候用哪个？</div>
+    <div class="qa-answer">
+      <strong>ReAct</strong> 是"边想边做"（Thought→Action→Observation 循环），每步调 LLM，灵活但 Token 消耗高。<br>
+      <strong>Plan & Execute</strong> 是"先想后做"（Planner 生成完整计划 → Executor 逐步执行），Token 效率高但灵活性低。<br><br>
+      <strong>选型原则</strong>：探索性任务用 ReAct，明确目标用 Plan & Execute，复杂任务可混合——先 Plan 再用 ReAct 执行每个子任务。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q3: ReAct 和 Plan & Execute 有什么区别？什么时候用哪个？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">ReAct 是"边想边做"（Thought→Action→Observation 循环），每步调 LLM，灵活但 Token 消耗高。Plan & Execute 是"先想后做"（Planner 生成完整计划 → Executor 逐步执行），Token 效率高但灵活性低。<strong>探索性任务用 ReAct，明确目标用 Plan & Execute，复杂任务可混合：先 Plan 再用 ReAct 执行每个子任务。</strong></p>
+  <div class="qa-item">
+    <div class="qa-question">Q4: Agent 主循环需要哪些保护机制？</div>
+    <div class="qa-answer">
+      五大保护：<br>
+      ①<strong>max_turns</strong> 防止无限循环；<br>
+      ②<strong>Token Budget</strong> 防止上下文爆炸（达 80% 阈值触发压缩）；<br>
+      ③<strong>递减收益检测</strong> 防止死循环（连续 3 轮输出相似度 > 0.9 则终止）；<br>
+      ④<strong>指数退避重试</strong> 处理瞬时故障（1s→2s→4s→8s→16s）；<br>
+      ⑤<strong>idle_timeout</strong> 防止资源占用（5 分钟无进展自动释放）。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q4: Agent 主循环需要哪些保护机制？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">五大保护：①<strong>max_turns</strong> 防止无限循环；②<strong>Token Budget</strong> 防止上下文爆炸；③<strong>递减收益检测</strong> 防止死循环；④<strong>指数退避重试</strong> 处理瞬时故障；⑤<strong>idle_timeout</strong> 防止资源占用。</p>
+  <div class="qa-item">
+    <div class="qa-question">Q5: 什么时候该用多 Agent 而不是单 Agent？</div>
+    <div class="qa-answer">
+      三个信号：<br>
+      ①任务步数 > 5 步且有并行子任务；<br>
+      ②需要多种角色（搜索者+写作者+审核者），System Prompt 冲突；<br>
+      ③工具数量 > 10 个，上下文超限。<br><br>
+      多 Agent 的核心优势是<strong>上下文隔离</strong>（每个 Agent 只看自己需要的信息）和<strong>并行执行</strong>（独立子任务同时跑）。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q5: 什么时候该用多 Agent 而不是单 Agent？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">三个信号：①任务步数 &gt; 5 步且有并行子任务；②需要多种角色（搜索者+写作者+审核者），System Prompt 冲突；③工具数量 &gt; 10 个，上下文超限。多 Agent 的核心优势是<strong>上下文隔离</strong>和<strong>并行执行</strong>。</p>
+  <div class="qa-item">
+    <div class="qa-question">Q6: 上下文工程（Context Engineering）和提示工程（Prompt Engineering）有什么区别？</div>
+    <div class="qa-answer">
+      提示工程关注"怎么问"——System Prompt 怎么写、Few-shot 怎么选。<br>
+      上下文工程关注"在问的时候给模型看什么"——工具描述怎么加载（JIT/Tool RAG）、对话历史怎么压缩、工具结果怎么裁剪、长期记忆怎么检索。<br><br>
+      上下文工程是提示工程的<strong>超集</strong>，它涵盖了所有进入 LLM 上下文窗口的信息管理。
+    </div>
+  </div>
 
-    <p style="font-weight: 600; margin-bottom: 6px;">Q6: 上下文工程（Context Engineering）和提示工程（Prompt Engineering）有什么区别？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">提示工程关注"怎么问"——System Prompt 怎么写、Few-shot 怎么选。上下文工程关注"在问的时候给模型看什么"——工具描述怎么加载（JIT/Tool RAG）、对话历史怎么压缩、工具结果怎么裁剪、长期记忆怎么检索。上下文工程是提示工程的<strong>超集</strong>。</p>
-
-    <p style="font-weight: 600; margin-bottom: 6px;">Q7: Agent 决策中枢的完整链路是什么？</p>
-    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">七步链路：①<strong>感知</strong>（接收输入）→ ②<strong>意图识别</strong>（理解用户目标）→ ③<strong>任务分类</strong>（判断复杂度）→ ④<strong>任务规划</strong>（拆解子任务）→ ⑤<strong>工具路由</strong>（选工具）→ ⑥<strong>执行调度</strong>（调模型/工具）→ ⑦<strong>上下文管理</strong>（压缩/记忆）。这七步循环运行，就是 Agent Loop。</p>
-
+  <div class="qa-item">
+    <div class="qa-question">Q7: Agent 决策中枢的完整链路是什么？</div>
+    <div class="qa-answer">
+      七步链路：<br>
+      ①<strong>感知</strong>（接收输入）→ ②<strong>意图识别</strong>（理解用户目标）→ ③<strong>任务分类</strong>（判断复杂度）→ ④<strong>任务规划</strong>（拆解子任务）→ ⑤<strong>工具路由</strong>（选工具）→ ⑥<strong>执行调度</strong>（调模型/工具）→ ⑦<strong>上下文管理</strong>（压缩/记忆）。<br><br>
+      这七步循环运行，就是 Agent Loop。每一轮的上下文管理结果会反馈到下一轮的感知阶段，形成闭环。
+    </div>
   </div>
 </div>
 
 <!-- ===== 课后考试 ===== -->
-<h2 class="section-heading">6.9 课后考试</h2>
-<div id="quiz-container"></div>
+<div id="quizArea"></div>
 
 <script>
-// 章节内联 quiz 数据（同步到 quiz-bank.json）
-const chapterQuiz = [
+var ch06Questions = [
   {
-    type: "single",
-    question: "Agent 意图识别的分层策略中，第一层通常使用什么方法？",
-    options: ["LLM 语义理解", "关键词匹配", "模式识别", "全量搜索"],
+    type: 'single',
+    question: 'Agent 意图识别的分层策略中，第一层通常使用什么方法？',
+    options: ['LLM 语义理解', '关键词匹配', '模式识别', '全量搜索'],
     answer: [1],
-    explanation: "分层意图识别第一层用关键词匹配（快路径），命中后直接返回；未命中才走第二层 LLM 语义理解（慢路径）。"
+    explanation: '分层意图识别第一层用关键词匹配（快路径），命中后直接返回；未命中才走第二层 LLM 语义理解（慢路径）。'
   },
   {
-    type: "single",
-    question: "Tool RAG 的核心目的是什么？",
-    options: ["提高工具调用准确率", "减少 Token 消耗", "增加工具数量", "提升工具执行速度"],
+    type: 'single',
+    question: 'Tool RAG 的核心目的是什么？',
+    options: ['提高工具调用准确率', '减少 Token 消耗', '增加工具数量', '提升工具执行速度'],
     answer: [1],
-    explanation: "Tool RAG 通过向量检索只加载最相关的 K 个工具描述，避免全量注入导致 Token 爆炸。当工具数量 >20 时可节省 70%+ Token。"
+    explanation: 'Tool RAG 通过向量检索只加载最相关的 K 个工具描述，避免全量注入导致 Token 爆炸。当工具数量 >20 时可节省 70%+ Token。'
   },
   {
-    type: "single",
-    question: "ReAct 和 Plan & Execute 的核心区别是什么？",
-    options: ["ReAct 用 LLM，Plan & Execute 不用", "ReAct 边想边做，Plan & Execute 先想后做", "ReAct 只能单步，Plan & Execute 可以多步", "两者没有本质区别"],
+    type: 'single',
+    question: 'ReAct 和 Plan & Execute 的核心区别是什么？',
+    options: ['ReAct 用 LLM，Plan & Execute 不用', 'ReAct 边想边做，Plan & Execute 先想后做', 'ReAct 只能单步，Plan & Execute 可以多步', '两者没有本质区别'],
     answer: [1],
-    explanation: "ReAct 是每步都调 LLM 推理（Thought→Action→Observation 循环），灵活但 Token 消耗高。Plan & Execute 先生成完整计划再逐步执行，Token 效率高但灵活性低。"
+    explanation: 'ReAct 是每步都调 LLM 推理（Thought→Action→Observation 循环），灵活但 Token 消耗高。Plan & Execute 先生成完整计划再逐步执行，Token 效率高但灵活性低。'
   },
   {
-    type: "single",
+    type: 'single',
     question: "生产级 Agent 主循环中，'递减收益检测'的作用是什么？",
-    options: ["减少 API 调用费用", "检测并打破死循环", "提升模型回答质量", "压缩上下文"],
+    options: ['减少 API 调用费用', '检测并打破死循环', '提升模型回答质量', '压缩上下文'],
     answer: [1],
-    explanation: "递减收益检测（Diminishing Returns Detection）用于检测 Agent 是否陷入无效循环（如反复调用同一工具产出相同结果），达到阈值后自动终止。"
+    explanation: '递减收益检测用于检测 Agent 是否陷入无效循环（如反复调用同一工具产出相同结果），达到阈值后自动终止。'
   },
   {
-    type: "single",
-    question: "以下哪种场景应该选择多 Agent 而非单 Agent？",
-    options: ["任务只需 2 步", "工具数量为 5 个", "需要搜索者+写作者+审核者三种角色", "任务可以在单个 Prompt 中完成"],
+    type: 'single',
+    question: '以下哪种场景应该选择多 Agent 而非单 Agent？',
+    options: ['任务只需 2 步', '工具数量为 5 个', '需要搜索者+写作者+审核者三种角色', '任务可以在单个 Prompt 中完成'],
     answer: [2],
-    explanation: "多 Agent 适用于：多角色需求（不同 Agent 用不同 System Prompt）、工具数量 >10 个、任务步数 >5 步且有并行子任务。单一角色 + 少量工具 + 简单任务用单 Agent 即可。"
+    explanation: '多 Agent 适用于：多角色需求（不同 Agent 用不同 System Prompt）、工具数量 >10 个、任务步数 >5 步且有并行子任务。'
   },
   {
-    type: "single",
-    question: "上下文工程（Context Engineering）和提示工程（Prompt Engineering）的关系是？",
-    options: ["两者完全相同", "上下文工程是提示工程的一部分", "上下文工程是提示工程的超集", "两者完全无关"],
+    type: 'single',
+    question: '上下文工程（Context Engineering）和提示工程（Prompt Engineering）的关系是？',
+    options: ['两者完全相同', '上下文工程是提示工程的一部分', '上下文工程是提示工程的超集', '两者完全无关'],
     answer: [2],
-    explanation: "提示工程关注'怎么问'（System Prompt 设计、Few-shot 选择），上下文工程关注'给模型看什么'（工具加载策略、历史压缩、记忆检索），是提示工程的超集。"
+    explanation: "提示工程关注'怎么问'，上下文工程关注'给模型看什么'（工具加载、历史压缩、记忆检索），是提示工程的超集。"
   },
   {
-    type: "single",
-    question: "JIT Context 加载策略中，工具描述应该在什么时候加载？",
-    options: ["会话开始时全量加载", "意图识别后只加载相关工具", "每次调用时全量加载", "不需要加载工具描述"],
+    type: 'single',
+    question: 'JIT Context 加载策略中，工具描述应该在什么时候加载？',
+    options: ['会话开始时全量加载', '意图识别后只加载相关工具', '每次调用时全量加载', '不需要加载工具描述'],
     answer: [1],
-    explanation: "JIT Context 策略：System Prompt 在会话开始时全量注入，工具描述在意图识别后通过 Tool RAG 只加载相关工具，长期记忆在需要时检索，工具结果在调用后压缩注入。"
+    explanation: 'JIT Context 策略：工具描述在意图识别后通过 Tool RAG 只加载相关工具，避免全量注入浪费 Token。'
   },
   {
-    type: "single",
-    question: "Agent 决策中枢的七步链路正确顺序是？",
-    options: ["感知→工具路由→意图识别→任务分类→执行调度→任务规划→上下文管理", "感知→意图识别→任务分类→任务规划→工具路由→执行调度→上下文管理", "意图识别→感知→任务规划→任务分类→工具路由→执行调度→上下文管理", "感知→意图识别→任务规划→任务分类→执行调度→工具路由→上下文管理"],
+    type: 'single',
+    question: 'Agent 决策中枢的七步链路正确顺序是？',
+    options: ['感知→工具路由→意图识别→任务分类→执行调度→任务规划→上下文管理', '感知→意图识别→任务分类→任务规划→工具路由→执行调度→上下文管理', '意图识别→感知→任务规划→任务分类→工具路由→执行调度→上下文管理', '感知→意图识别→任务规划→任务分类→执行调度→工具路由→上下文管理'],
     answer: [1],
-    explanation: "正确顺序：感知（接收输入）→ 意图识别（理解目标）→ 任务分类（判断复杂度）→ 任务规划（拆解子任务）→ 工具路由（选工具）→ 执行调度（调模型/工具）→ 上下文管理（压缩/记忆）。"
+    explanation: '正确顺序：感知→意图识别→任务分类→任务规划→工具路由→执行调度→上下文管理。'
   },
   {
-    type: "single",
+    type: 'single',
     question: "工具结果压缩的 'selective' 策略是什么意思？",
-    options: ["让 AI 生成摘要", "直接截断超长结果", "只保留关键字段（status/data/error/summary）", "不压缩，原样返回"],
+    options: ['让 AI 生成摘要', '直接截断超长结果', '只保留关键字段（status/data/error/summary）', '不压缩，原样返回'],
     answer: [2],
-    explanation: "selective 策略是选择性保留：只保留关键字段（如 status、data、error、summary），丢弃冗余字段（如 debug、cache），添加 _meta 元信息标记已压缩。"
+    explanation: 'selective 策略是选择性保留：只保留关键字段（status/data/error/summary），丢弃冗余字段（debug/cache）。'
   },
   {
-    type: "single",
-    question: "Agent 主循环中 Token Budget 管理的目的是什么？",
-    options: ["减少 API 费用", "防止上下文超过模型限制", "提高响应速度", "增加工具调用次数"],
+    type: 'single',
+    question: 'Agent 主循环中 Token Budget 管理的目的是什么？',
+    options: ['减少 API 费用', '防止上下文超过模型限制', '提高响应速度', '增加工具调用次数'],
     answer: [1],
-    explanation: "Token Budget 管理在总 Token 用量达到阈值（如 max_tokens 的 80%）时触发上下文压缩，防止超过模型上下文窗口限制导致截断或报错。"
+    explanation: 'Token Budget 管理在总 Token 用量达到阈值（如 max_tokens 的 80%）时触发上下文压缩，防止超过模型上下文窗口限制。'
   }
 ];
-</script>
 
+setTimeout(() => { Quiz.render('quizArea', ch06Questions); }, 500);
+</script>
