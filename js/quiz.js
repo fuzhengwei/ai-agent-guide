@@ -46,6 +46,10 @@ const Quiz = {
     `;
     
     questions.forEach((q, i) => {
+      // Skip questions without options (open/essay type)
+      if (!q.options || !Array.isArray(q.options) || q.options.length === 0) {
+        return;
+      }
       const typeLabel = q.type === 'multiple' ? '多选题' : '单选题';
       html += `
         <div class="quiz-question" data-q-index="${i}">
