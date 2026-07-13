@@ -164,21 +164,42 @@ setTimeout(() => {
 <button class="agent-demo-btn" onclick="resetAgentDemo()" style="background: var(--color-text-secondary, #6b7280);">↺ 重置</button>
 
 <script>
+// 跟踪演示动画的所有定时器，便于重置时清理，避免重复点击导致动画叠加
+var agentDemoTimers = [];
+var agentDemoRunning = false;
+
+function clearAgentDemoTimers() {
+  agentDemoTimers.forEach(id => clearTimeout(id));
+  agentDemoTimers = [];
+  agentDemoRunning = false;
+}
+
 function startAgentDemo() {
-  const lines = document.querySelectorAll('#agentDemoChat .chat-line');
+  // 若已有动画在跑，先清理，避免多次点击叠加
+  clearAgentDemoTimers();
+  // 重置所有行的可见状态，从头播放
+  resetAgentDemo();
+  agentDemoRunning = true;
+  var lines = document.querySelectorAll('#agentDemoChat .chat-line');
   lines.forEach((line, index) => {
-    setTimeout(() => {
+    var id = setTimeout(() => {
       line.classList.add('visible');
+      if (index === lines.length - 1) agentDemoRunning = false;
     }, (index + 1) * 800);
+    agentDemoTimers.push(id);
   });
 }
+
 function resetAgentDemo() {
-  const lines = document.querySelectorAll('#agentDemoChat .chat-line');
+  // 清理正在等待的定时器，防止重置后旧定时器又把行显示出来
+  clearAgentDemoTimers();
+  var lines = document.querySelectorAll('#agentDemoChat .chat-line');
   lines.forEach(line => {
     line.classList.remove('visible');
   });
 }
-// 自动启动演示
+
+// 自动启动演示（页面加载后）
 setTimeout(startAgentDemo, 2000);
 </script>
 
@@ -243,95 +264,154 @@ setTimeout(startAgentDemo, 2000);
 .agent-panorama {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
   gap: 16px;
   margin: 24px 0;
 }
+
+/* 能力域卡片：用主题变量 + 半透明色系，亮/暗主题都协调 */
 .agent-domain-card {
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 20px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s ease, border-color 0.25s ease;
+  box-shadow: var(--shadow-sm);
+}
+.agent-domain-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  transition: height 0.25s ease;
 }
 .agent-domain-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.10);
 }
-.domain-perceive {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border: 2px solid #f59e0b;
+[data-theme="dark"] .agent-domain-card:hover {
+  box-shadow: 0 12px 28px rgba(0,0,0,0.4);
 }
-.domain-think {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  border: 2px solid #3b82f6;
+.agent-domain-card:hover::before {
+  height: 6px;
 }
-.domain-act {
-  background: linear-gradient(135deg, #fce7f3, #fbcfe8);
-  border: 2px solid #ec4899;
-}
-.domain-observe {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  border: 2px solid #10b981;
-}
+
+/* 四个能力域的主题色（顶部色条 + 图标背景） */
+.domain-perceive::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.domain-think::before    { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.domain-act::before      { background: linear-gradient(90deg, #ec4899, #f43f5e); }
+.domain-observe::before  { background: linear-gradient(90deg, #10b981, #14b8a6); }
+
 .domain-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 26px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  margin-bottom: 12px;
 }
+.domain-perceive .domain-icon { background: rgba(245, 158, 11, 0.12); }
+.domain-think .domain-icon    { background: rgba(59, 130, 246, 0.12); }
+.domain-act .domain-icon      { background: rgba(236, 72, 153, 0.12); }
+.domain-observe .domain-icon  { background: rgba(16, 185, 129, 0.12); }
+[data-theme="dark"] .domain-perceive .domain-icon { background: rgba(245, 158, 11, 0.2); }
+[data-theme="dark"] .domain-think .domain-icon    { background: rgba(59, 130, 246, 0.2); }
+[data-theme="dark"] .domain-act .domain-icon      { background: rgba(236, 72, 153, 0.2); }
+[data-theme="dark"] .domain-observe .domain-icon  { background: rgba(16, 185, 129, 0.2); }
+
 .domain-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  color: var(--color-primary);
 }
-.domain-perceive .domain-title { color: #92400e; }
-.domain-think .domain-title { color: #1e40af; }
-.domain-act .domain-title { color: #9d174d; }
-.domain-observe .domain-title { color: #065f46; }
+.domain-perceive .domain-title { color: #d97706; }
+.domain-think .domain-title    { color: #2563eb; }
+.domain-act .domain-title      { color: #db2777; }
+.domain-observe .domain-title  { color: #059669; }
+[data-theme="dark"] .domain-perceive .domain-title { color: #fbbf24; }
+[data-theme="dark"] .domain-think .domain-title    { color: #60a5fa; }
+[data-theme="dark"] .domain-act .domain-title      { color: #f472b6; }
+[data-theme="dark"] .domain-observe .domain-title  { color: #34d399; }
+
 .domain-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 10px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  margin-bottom: 14px;
+  color: var(--color-text-secondary);
 }
-.domain-perceive .domain-desc { color: #78350f; }
-.domain-think .domain-desc { color: #1e3a8a; }
-.domain-act .domain-desc { color: #831843; }
-.domain-observe .domain-desc { color: #064e3b; }
+
 .domain-chapters {
   font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
   display: inline-block;
   font-weight: 500;
+  line-height: 1.5;
 }
-.domain-perceive .domain-chapters { background: #f59e0b; color: #fff; }
-.domain-think .domain-chapters { background: #3b82f6; color: #fff; }
-.domain-act .domain-chapters { background: #ec4899; color: #fff; }
-.domain-observe .domain-chapters { background: #10b981; color: #fff; }
+.domain-perceive .domain-chapters { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+.domain-think .domain-chapters    { background: rgba(59, 130, 246, 0.12); color: #1d4ed8; }
+.domain-act .domain-chapters      { background: rgba(236, 72, 153, 0.12); color: #be185d; }
+.domain-observe .domain-chapters  { background: rgba(16, 185, 129, 0.12); color: #047857; }
+[data-theme="dark"] .domain-perceive .domain-chapters { background: rgba(245, 158, 11, 0.18); color: #fcd34d; }
+[data-theme="dark"] .domain-think .domain-chapters    { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+[data-theme="dark"] .domain-act .domain-chapters      { background: rgba(236, 72, 153, 0.18); color: #f9a8d4; }
+[data-theme="dark"] .domain-observe .domain-chapters  { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
 
+/* 流程箭头：居中的装饰性连接线 */
+.agent-flow-arrow {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  padding: 10px 16px;
+  background: var(--color-bg-alt);
+  border-radius: 100px;
+  letter-spacing: 0.02em;
+}
+.agent-flow-arrow .flow-step {
+  color: var(--color-text-secondary);
+}
+.agent-flow-arrow .flow-arrow {
+  color: var(--color-accent);
+  margin: 0 6px;
+  font-weight: 700;
+}
+
+/* 中心闭环枢纽 */
 .agent-center-hub {
   grid-column: 1 / -1;
   text-align: center;
-  background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
-  border: 2px solid #8b5cf6;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: -8px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(99, 102, 241, 0.05));
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+[data-theme="dark"] .agent-center-hub {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.08));
+  border-color: rgba(99, 102, 241, 0.3);
 }
 .agent-center-hub .hub-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #6d28d9;
+  color: var(--color-accent);
+  margin-bottom: 6px;
 }
 .agent-center-hub .hub-desc {
   font-size: 13px;
-  color: #5b21b6;
-  line-height: 1.5;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  max-width: 640px;
+  margin: 0 auto;
 }
-.agent-flow-arrow {
-  text-align: center;
-  font-size: 20px;
-  color: var(--color-primary, #4f46e5);
-  margin: 4px 0;
+
+/* 移动端：单列布局 */
+@media (max-width: 640px) {
+  .agent-panorama { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -354,7 +434,13 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-chapters">📖 相关章节：ch04 推理引擎 · ch05 记忆系统 · ch06 意图识别 · ch07 运行时 · ch08 Harness · ch13 多Agent</div>
   </div>
 
-  <div class="agent-flow-arrow">↓ 感知驱动思考 → 思考驱动行动 → 行动产生观察 → 观察反馈思考 ↓</div>
+  <div class="agent-flow-arrow">
+    <span class="flow-step">感知</span><span class="flow-arrow">→</span>
+    <span class="flow-step">思考</span><span class="flow-arrow">→</span>
+    <span class="flow-step">行动</span><span class="flow-arrow">→</span>
+    <span class="flow-step">观察</span><span class="flow-arrow">↻</span>
+    <span class="flow-step">再思考</span>
+  </div>
 
   <div class="agent-domain-card domain-act">
     <div class="domain-icon">⚡</div>

@@ -9,8 +9,8 @@ const App = {
   examAnswers: {},
   examStartTime: null,
   examTimer: null,
-  _pendingTimers: [], // 记录章节内 setTimeout 的 ID，切换章节时统一清除
-
+  _pendingTimers: [],    // 记录章节内 setTimeout 的 ID，切换章节时统一清除
+  _pendingIntervals: [], // 记录章节内 setInterval 的 ID，切换章节时统一清除
   chapters: [
         // 序章
     { id: 'ch00', num: 0, title: 'Agent 能力全景展示', section: '🎬 序章', file: 'chapters/ch00-fundamentals.html' },
@@ -889,7 +889,9 @@ const App = {
         }
         // 后处理：让宽内容（流程图、SVG架构图）突破 max-width 限制
         this.expandWideContent();
-        
+        // 后处理：步骤动画自动播放（等章节脚本执行完毕后绑定）
+        setTimeout(() => this.setupStepAnimationAutoplay(), 600);
+
         // 更新 AI 助手的章节内容上下文（内容加载完成后提取文本）
         AIChat.updateChapterContext({
           id: chapterId,
@@ -950,12 +952,13 @@ const App = {
     // 查找包含宽 SVG 的 div（排除卡片等容器），标记为可横向滚动
     const svgContainers = contentBody.querySelectorAll('div');
     svgContainers.forEach(div => {
-      if (div.querySelector(':scope > svg[width]') && 
-          !div.classList.contains('card') && 
-          !div.classList.contains('qa-item') && 
+      if (div.querySelector(':scope > svg[width]') &&
+          !div.classList.contains('card') &&
+          !div.classList.contains('qa-item') &&
           !div.classList.contains('summary-box') &&
           !div.classList.contains('tab-content') &&
           !div.classList.contains('chapter-tabs-nav') &&
+          !div.classList.contains('flowchart-container') && // 流程图自带 max-width 自适应，无需滚动容器
           !div.dataset.wideMarked) {
         div.dataset.wideMarked = '1';
         div.classList.add('wide-svg-container');
@@ -964,19 +967,100 @@ const App = {
   },
 
   /**
+   * 为章节内的步骤动画（.step-animation）设置自动播放
+   * 页面加载后自动按内容顺序逐步推进；用户手动点击任意控制按钮后停止自动播放
+   */
+  setupStepAnimationAutoplay() {
+    const contentBody = document.getElementById('contentBody');
+    if (!contentBody) return;
+
+    // 先清理上一章残留的自动播放定时器
+    if (this._stepAutoTimers) {
+      this._stepAutoTimers.forEach(id => { clearTimeout(id); clearInterval(id); });
+    }
+    this._stepAutoTimers = [];
+
+    const animations = contentBody.querySelectorAll('.step-animation');
+    animations.forEach(anim => {
+      if (anim.dataset.autoplaySetup) return;
+      anim.dataset.autoplaySetup = '1';
+
+      // 找"下一步"按钮：内容含 → 的 .step-btn
+      const buttons = anim.querySelectorAll('.step-btn');
+      let nextBtn = null;
+      buttons.forEach(b => {
+        if (b.textContent.includes('→') || b.textContent.includes('›')) nextBtn = b;
+      });
+      if (!nextBtn) return;
+
+      // 添加"自动播放中"指示器
+      const controls = anim.querySelector('.step-controls');
+      const indicator = document.createElement('span');
+      indicator.className = 'step-autoplay-badge playing';
+      indicator.textContent = '▶ 自动播放';
+      if (controls) controls.appendChild(indicator);
+
+      let autoTimer = null;
+      let isAutoClick = false;
+
+      const stopAuto = () => {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+        if (indicator) { indicator.classList.remove('playing'); indicator.textContent = '✋ 已暂停'; }
+      };
+
+      const startAuto = () => {
+        stopAuto();
+        autoTimer = setInterval(() => {
+          if (!anim.isConnected || !contentBody.contains(anim)) { stopAuto(); return; }
+          if (nextBtn.disabled) { stopAuto(); return; }
+          isAutoClick = true;
+          nextBtn.click();
+          isAutoClick = false;
+        }, 2800);
+        if (this._stepAutoTimers) this._stepAutoTimers.push(autoTimer);
+        if (indicator) { indicator.classList.add('playing'); indicator.textContent = '▶ 自动播放'; }
+      };
+
+      // 用户手动点击任意控制按钮 → 停止自动播放
+      anim.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', () => {
+          if (!isAutoClick) stopAuto();
+        });
+      });
+
+      // 延迟启动（等首帧渲染后）
+      const startDelay = setTimeout(startAuto, 1800);
+      if (this._stepAutoTimers) this._stepAutoTimers.push(startDelay);
+    });
+  },
+
+  /**
    * 执行章节内的 <script> 标签（innerHTML 不会自动执行脚本）
    * 使用 <script> 元素 append 方式替代 eval()，更安全且支持调试
    */
   executeChapterScripts(container) {
-    // 清除之前章节的 pending setTimeout，避免 "Container not found" 报错
+    // 清除之前章节的 pending 定时器，避免 "Container not found" 报错
     this._pendingTimers.forEach(id => clearTimeout(id));
     this._pendingTimers = [];
+    this._pendingIntervals.forEach(id => clearInterval(id));
+    this._pendingIntervals = [];
 
-    // 暂时替换 setTimeout 为追踪版本，捕获章节脚本中所有定时器 ID
+    // 停止之前章节的流程图动画 interval
+    if (typeof FlowChart !== 'undefined' && FlowChart.stopAllAnimations) {
+      FlowChart.stopAllAnimations();
+    }
+
+    // 暂时替换 setTimeout/setInterval 为追踪版本，捕获章节脚本中所有定时器 ID
     const originalSetTimeout = window.setTimeout;
+    const originalSetInterval = window.setInterval;
     window.setTimeout = (fn, delay, ...args) => {
       const id = originalSetTimeout(fn, delay, ...args);
       this._pendingTimers.push(id);
+      return id;
+    };
+    window.setInterval = (fn, delay, ...args) => {
+      const id = originalSetInterval(fn, delay, ...args);
+      this._pendingIntervals.push(id);
       return id;
     };
 
@@ -990,6 +1074,12 @@ const App = {
       // 移除原始脚本（避免后续干扰）
       oldScript.remove();
     });
+
+    const restoreTimers = () => {
+      window.setTimeout = originalSetTimeout;
+      window.setInterval = originalSetInterval;
+    };
+
     // 等待 DOM 渲染完成后执行所有脚本
     if (scriptTexts.length > 0) {
       requestAnimationFrame(() => {
@@ -1000,9 +1090,9 @@ const App = {
             newScript.src = src;
             document.head.appendChild(newScript);
           } else if (text) {
-            // 内联脚本：将 const/let 替换为 var，避免切换章节时重复声明报错
-            // var 在全局作用域可重复声明不报错，且全局可访问（Quiz.render 需要 chXXQuestions）
-            const safeText = text.replace(/\bconst\b/g, 'var').replace(/\blet\b/g, 'var');
+            // 内联脚本：将顶层 const/let 转为 var，避免切换章节时重复声明报错
+            // 仅替换出现在语句起始位置的声明关键字，避免误伤字符串/注释中的内容
+            const safeText = this._safeVarTransform(text);
             try {
               const newScript = document.createElement('script');
               newScript.textContent = safeText;
@@ -1014,13 +1104,83 @@ const App = {
             }
           }
         });
-        // 脚本执行完毕，恢复原始 setTimeout
-        window.setTimeout = originalSetTimeout;
+        // 脚本执行完毕，恢复原始定时器
+        restoreTimers();
       });
     } else {
-      // 无脚本，立即恢复 setTimeout
-      window.setTimeout = originalSetTimeout;
+      // 无脚本，立即恢复定时器
+      restoreTimers();
     }
+  },
+
+  /**
+   * 将脚本中的 const/let 声明安全地转为 var
+   * 用单遍状态机扫描，正确识别字符串/注释边界，避免误伤其中的 const/let，
+   * 也避免嵌套引号（如 '用户提问\n"内容"'）导致的占位符泄漏问题。
+   */
+  _safeVarTransform(code) {
+    const isWord = (c) => /[A-Za-z0-9_$]/.test(c);
+    let out = '';
+    let i = 0;
+    const n = code.length;
+
+    while (i < n) {
+      const ch = code[i];
+      const next = code[i + 1];
+
+      // 行注释 //...
+      if (ch === '/' && next === '/') {
+        const end = code.indexOf('\n', i);
+        const stop = end === -1 ? n : end;
+        out += code.slice(i, stop);
+        i = stop;
+        continue;
+      }
+      // 块注释 /*...*/
+      if (ch === '/' && next === '*') {
+        const end = code.indexOf('*/', i + 2);
+        const stop = end === -1 ? n : end + 2;
+        out += code.slice(i, stop);
+        i = stop;
+        continue;
+      }
+      // 字符串：单引号 / 双引号 / 模板字符串（原样复制，内部不做替换）
+      if (ch === "'" || ch === '"' || ch === '`') {
+        const quote = ch;
+        out += ch;
+        i++;
+        while (i < n) {
+          if (code[i] === '\\' && i + 1 < n) {
+            // 转义字符，连同后一个字符一起复制
+            out += code[i] + code[i + 1];
+            i += 2;
+            continue;
+          }
+          out += code[i];
+          if (code[i] === quote) { i++; break; }
+          i++;
+        }
+        continue;
+      }
+      // const 关键字（前后需为非单词字符边界）
+      if (ch === 'c' && code.substr(i, 5) === 'const' &&
+          !isWord(code[i - 1]) && !isWord(code[i + 5])) {
+        out += 'var';
+        i += 5;
+        continue;
+      }
+      // let 关键字（前后需为非单词字符边界）
+      if (ch === 'l' && code.substr(i, 3) === 'let' &&
+          !isWord(code[i - 1]) && !isWord(code[i + 3])) {
+        out += 'var';
+        i += 3;
+        continue;
+      }
+
+      out += ch;
+      i++;
+    }
+    return out;
   },
 
   /**

@@ -485,7 +485,7 @@ body {
 }
 
 /* 宽内容容器：限宽100%并允许内部横向滚动 */
-.content-body .flowchart-container,
+/* 宽内容容器：限宽100%，宽表格/宽SVG 允许横向滚动 */
 .content-body .comparison-table,
 .content-body .wide-svg-container {
   max-width: 100%;
@@ -493,11 +493,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* flowchart SVG 优先自适应容器宽度，内容超宽时可横向滚动 */
+/* flowchart SVG：按 viewBox 固有尺寸显示，宽度不超容器即自适应缩小 */
 .content-body .flowchart-svg {
   max-width: 100%;
   height: auto;
-  display: block;
+  display: inline-block;
 }
 
 /* 手写的宽 SVG（带 width 属性的）也允许在容器内滚动 */
@@ -924,6 +924,13 @@ p {
 .tag-green { background: rgba(91, 140, 90, 0.12); color: var(--color-success); }
 .tag-orange { background: rgba(196, 148, 92, 0.12); color: var(--color-warning); }
 .tag-red { background: rgba(184, 84, 80, 0.12); color: var(--color-error); }
+.tag-purple { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.tag-pink { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+.tag-yellow { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+
+[data-theme="dark"] .tag-purple { background: rgba(139, 92, 246, 0.18); color: #a78bfa; }
+[data-theme="dark"] .tag-pink { background: rgba(236, 72, 153, 0.18); color: #f472b6; }
+[data-theme="dark"] .tag-yellow { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
 
 /* 八股总结 */
 .summary-box {
@@ -1031,7 +1038,7 @@ p {
 
 .quiz-question:hover {
   border-color: var(--color-accent);
-  box-shadow: 0 2px 12px rgba(212, 165, 116, 0.1);
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.1);
 }
 
 .quiz-question:last-child {
@@ -1043,7 +1050,7 @@ p {
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-accent);
-  background: rgba(212, 165, 116, 0.1);
+  background: rgba(79, 70, 229, 0.1);
   padding: 2px 10px;
   border-radius: 10px;
   display: inline-block;
@@ -1081,9 +1088,9 @@ p {
 
 .quiz-option.selected {
   border-color: var(--color-accent) !important;
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.12) 0%, rgba(212, 165, 116, 0.06) 100%) !important;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%) !important;
   color: var(--color-text) !important;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15), 0 2px 8px rgba(212, 165, 116, 0.1);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), 0 2px 8px rgba(79, 70, 229, 0.1);
   transform: translateX(4px);
 }
 
@@ -1154,7 +1161,7 @@ p {
   border-color: var(--color-accent) !important;
   background: var(--color-accent) !important;
   color: white !important;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.2);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
   transform: scale(1.1);
 }
 
@@ -1175,8 +1182,8 @@ p {
 .quiz-explanation {
   margin-top: var(--space-md);
   padding: var(--space-md);
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.08) 0%, rgba(212, 165, 116, 0.03) 100%);
-  border: 1px solid rgba(212, 165, 116, 0.2);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(79, 70, 229, 0.03) 100%);
+  border: 1px solid rgba(79, 70, 229, 0.2);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   color: var(--color-text);
@@ -1237,16 +1244,16 @@ p {
 }
 
 .quiz-btn.primary:hover {
-  box-shadow: 0 4px 16px rgba(212, 165, 116, 0.3);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
   transform: translateY(-2px);
 }
 
 .quiz-result {
   text-align: center;
   padding: var(--space-xl);
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.05) 0%, rgba(212, 165, 116, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(79, 70, 229, 0.02) 100%);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(212, 165, 116, 0.15);
+  border: 1px solid rgba(79, 70, 229, 0.15);
   animation: fadeIn 0.5s ease;
 }
 
@@ -1262,8 +1269,8 @@ p {
   font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-accent);
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(212, 165, 116, 0.05) 100%);
-  box-shadow: 0 4px 16px rgba(212, 165, 116, 0.2);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.2);
   position: relative;
 }
 
@@ -1272,7 +1279,7 @@ p {
   position: absolute;
   inset: -8px;
   border-radius: 50%;
-  border: 2px dashed rgba(212, 165, 116, 0.3);
+  border: 2px dashed rgba(79, 70, 229, 0.3);
   animation: spin 20s linear infinite;
 }
 
@@ -3425,7 +3432,7 @@ p {
   padding: 2px 8px;
   border-radius: 100px;
   font-size: var(--text-xs);
-  background: rgba(231, 111, 81, 0.06);
+  background: rgba(79, 70, 229, 0.06);
   color: var(--color-accent);
 }
 .exam-q-type.multi {
@@ -3503,8 +3510,8 @@ p {
 }
 .exam-option.selected {
   border-color: var(--color-accent) !important;
-  background: linear-gradient(135deg, rgba(212, 165, 116, 0.12) 0%, rgba(212, 165, 116, 0.06) 100%) !important;
-  box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.12);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
   transform: translateX(3px);
 }
 .exam-option.selected::before {
@@ -3581,7 +3588,7 @@ p {
   color: var(--color-warning);
 }
 .exam-score-circle.fail {
-  background: rgba(231, 111, 81, 0.1);
+  background: rgba(239, 68, 68, 0.1);
   border: 3px solid var(--color-error);
   color: var(--color-error);
 }
@@ -3716,7 +3723,7 @@ p {
   color: var(--color-success);
 }
 .answer-option.opt-wrong {
-  background: rgba(231, 111, 81, 0.08);
+  background: rgba(239, 68, 68, 0.08);
   color: var(--color-error);
   text-decoration: line-through;
 }
@@ -3736,7 +3743,7 @@ p {
   color: var(--color-success);
 }
 .opt-tag.wrong-tag {
-  background: rgba(231, 111, 81, 0.12);
+  background: rgba(239, 68, 68, 0.12);
   color: var(--color-error);
 }
 .opt-tag.user-correct-tag {
@@ -3780,6 +3787,75 @@ p {
   gap: var(--space-xs);
 }
 
+/* info-box：轻量信息提示框（章节内使用的通用变体） */
+.info-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  margin: var(--space-lg) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.8;
+}
+.info-box h4 { margin-bottom: var(--space-sm); }
+.info-box ul { padding-left: 20px; margin: var(--space-sm) 0; }
+.info-box li { margin: 4px 0; }
+.info-box p { margin-bottom: var(--space-sm); }
+.info-box p:last-child { margin-bottom: 0; }
+
+/* data-table：带边框的数据表格（裸 <table class="data-table">） */
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-lg) 0;
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+table.data-table th,
+table.data-table td {
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+table.data-table th {
+  background: var(--color-bg-alt);
+  font-weight: 600;
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-border);
+}
+table.data-table tbody tr:last-child td { border-bottom: none; }
+table.data-table tbody tr:hover td { background: var(--color-surface-hover); }
+
+/* checklist-box：上线/检查清单容器 */
+.checklist-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+.checklist-box h4 {
+  color: var(--color-primary);
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-md);
+}
+.checklist-box ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.checklist-box li {
+  padding: 4px 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+
 /* ===== Prism.js 主题覆盖 ===== */
 pre[class*="language-"],
 code[class*="language-"] {
@@ -3793,6 +3869,13 @@ code[class*="language-"] {
 [data-theme="dark"] code[class*="language-"] {
   background: #161b22;
 }
+
+/* 手动 JSON 高亮（章节内 pre 里用的 .cmd / .str / .comment span） */
+pre .cmd { color: #79c0ff; }       /* JSON 键 */
+pre .str { color: #a5d6ff; }       /* 字符串值 */
+pre .comment { color: #6e7681; font-style: italic; }
+pre .num { color: #ffa657; }       /* 数字 */
+pre .kw { color: #ff7b72; }        /* 关键字 */
 .token.comment,
 .token.prolog,
 .token.doctype,

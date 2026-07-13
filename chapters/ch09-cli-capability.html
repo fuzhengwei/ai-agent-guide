@@ -440,7 +440,7 @@ setTimeout(() => {
       <span style="color: var(--color-text-tertiary);">→</span>
       <span style="background: var(--color-accent); color: white; padding: 8px 16px; border-radius: 8px;">Skills 组合</span>
       <span style="color: var(--color-text-tertiary);">→</span>
-      <span style="background: #d4a574; color: white; padding: 8px 16px; border-radius: 8px;">CLI 执行</span>
+      <span style="background: var(--color-accent); color: white; padding: 8px 16px; border-radius: 8px;">CLI 执行</span>
     </div>
     <p style="color: var(--color-text-secondary); font-size: 13px; margin-top: 12px;">
       Function Calling 定义调用格式 → MCP 统一通信协议 → Skills 组合多步流程 → CLI 在本地沙箱执行
@@ -1043,7 +1043,7 @@ public class CommandSandbox {
     <ol style="padding-left: 20px; line-height: 2; color: var(--color-text-secondary);">
       <li><strong style="color: var(--color-accent);">Skills 编排</strong>：识别意图 → 加载 "deploy-to-test" Skill → 规划多步流程</li>
       <li><strong style="color: var(--color-accent);">MCP 通信</strong>：Skill 调用 MCP Tool → MCP Client 路由到 CLI MCP Server</li>
-      <li><strong style="color: #d4a574;">CLI 执行</strong>：MCP Server 把 Tool 调用翻译成 Shell 命令 → 沙箱执行 <code>mvn package</code> → <code>docker build</code> → <code>docker compose up</code></li>
+      <li><strong style="color: var(--color-accent);">CLI 执行</strong>：MCP Server 把 Tool 调用翻译成 Shell 命令 → 沙箱执行 <code>mvn package</code> → <code>docker build</code> → <code>docker compose up</code></li>
       <li><strong style="color: var(--color-accent);">结果返回</strong>：CLI 输出 → MCP 响应 → Skills 判断是否成功 → LLM 格式化回复</li>
     </ol>
   </div>
@@ -1079,7 +1079,7 @@ public class CommandSandbox {
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">多工具编排、懒加载、沉淀机制</td>
         </tr>
         <tr>
-          <td style="padding: 10px 8px; font-weight: 600; color: #d4a574;">第12章 CLI 能力</td>
+          <td style="padding: 10px 8px; font-weight: 600; color: var(--color-accent);">第12章 CLI 能力</td>
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 如何操控本地工具？</td>
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">本地命令行执行 + 安全沙箱 + 错误自愈</td>
         </tr>
