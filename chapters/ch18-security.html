@@ -1,9 +1,9 @@
-<!-- 第18章：Agent 安全与防护 -->
-<h1 class="chapter-title">第18章 Agent 安全与防护</h1>
+<!-- 第21章：Agent 安全与防护 -->
+<h1 class="chapter-title">第21章 Agent 安全与防护</h1>
 <p class="chapter-subtitle">当 Agent 拥有了工具调用能力，安全就不再是可选项</p>
 
-<!-- ===== 18.1 Agent 安全威胁全景 ===== -->
-<h2 class="section-heading">18.1 Agent 面临的安全威胁</h2>
+<!-- ===== 21.1 Agent 安全威胁全景 ===== -->
+<h2 class="section-heading">21.1 Agent 面临的安全威胁</h2>
 
 <p>传统 Web 应用的安全关注 SQL 注入、XSS、CSRF。Agent 的安全完全不同——威胁来自<strong>自然语言本身</strong>。当 Agent 能执行代码、读写文件、调用 API 时，一段精心构造的 Prompt 就可能等同于一次攻击。</p>
 
@@ -40,8 +40,8 @@ setTimeout(() => {
 }, 100);
 </script>
 
-<!-- ===== 18.2 Prompt 注入攻击 ===== -->
-<h2 class="section-heading">18.2 Prompt 注入：Agent 的"SQL 注入"</h2>
+<!-- ===== 21.2 Prompt 注入攻击 ===== -->
+<h2 class="section-heading">21.2 Prompt 注入：Agent 的"SQL 注入"</h2>
 
 <p><strong>Prompt 注入</strong>是 Agent 安全的头号威胁。攻击者在数据中嵌入恶意指令，让 Agent "以为"这是用户的命令。</p>
 
@@ -545,8 +545,8 @@ public class ToolPermission {
 }</pre></div>
 </div>
 
-<!-- ===== 18.3 权限控制体系 ===== -->
-<h2 class="section-heading">18.3 Agent 权限控制体系</h2>
+<!-- ===== 21.3 权限控制体系 ===== -->
+<h2 class="section-heading">21.3 Agent 权限控制体系</h2>
 
 <p>借鉴操作系统权限模型，给 Agent 建立<strong>最小权限原则</strong>：只授予完成任务所需的最少权限。</p>
 
@@ -670,10 +670,10 @@ public class AgentPermissions {
 }</pre></div>
 </div>
 
-<!-- ===== 18.4 数据安全 ===== -->
-<h2 class="section-heading">18.4 数据安全与隐私保护</h2>
+<!-- ===== 21.4 数据安全 ===== -->
+<h2 class="section-heading">21.4 数据安全与隐私保护</h2>
 
-<h3 class="sub-heading">18.4.1 敏感信息脱敏</h3>
+<h3 class="sub-heading">21.4.1 敏感信息脱敏</h3>
 
 <p>Agent 在处理用户输入时，应先脱敏再送入 LLM，防止敏感信息进入 API 调用日志。</p>
 
@@ -781,7 +781,7 @@ public class InputSanitizer {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">18.4.2 输出安全过滤</h3>
+<h3 class="sub-heading">21.4.2 输出安全过滤</h3>
 
 <p>Agent 生成的回答也要检查，防止泄露 System Prompt、内部系统信息或其他敏感数据。</p>
 
@@ -873,8 +873,8 @@ public class OutputSanitizer {
 }</pre></div>
 </div>
 
-<!-- ===== 18.5 资源限制 ===== -->
-<h2 class="section-heading">18.5 资源限制与防滥用</h2>
+<!-- ===== 21.5 资源限制 ===== -->
+<h2 class="section-heading">21.5 资源限制与防滥用</h2>
 
 <p>Agent 可能陷入无限循环或被恶意用户滥用，需要设置硬性资源限制。</p>
 
@@ -1136,12 +1136,12 @@ public class AgentGuard {
 </div>
 
 
-<!-- ===== 18.6 红队测试：主动安全评估 ===== -->
-<h2 class="section-heading">18.6 红队测试：主动安全评估</h2>
+<!-- ===== 21.6 红队测试：主动安全评估 ===== -->
+<h2 class="section-heading">21.6 红队测试：主动安全评估</h2>
 
 <p><strong>红队测试（Red Team Testing）</strong>是指模拟攻击者视角，对 Agent 系统进行系统化的安全攻击演练，在黑客发现漏洞之前主动暴露问题。2025 年 OpenAI、Anthropic、Google 等头部厂商已将红队测试作为大模型发布前的标准流程，企业招聘安全岗位时几乎必问。</p>
 
-<h3 class="sub-heading">18.6.1 Agent 红队测试的六个攻击面</h3>
+<h3 class="sub-heading">21.6.1 Agent 红队测试的六个攻击面</h3>
 
 <table class="data-table">
 <thead>
@@ -1157,7 +1157,7 @@ public class AgentGuard {
 </tbody>
 </table>
 
-<h3 class="sub-heading">18.6.2 Prompt 注入攻防实验</h3>
+<h3 class="sub-heading">21.6.2 Prompt 注入攻防实验</h3>
 
 <p>以下是一个完整的 Prompt 注入攻防实验，展示攻击者如何尝试绕过防御，以及防御方如何层层拦截：</p>
 
@@ -1379,7 +1379,7 @@ export function checkPromptInjection(input: string): DefenseResult {
 </div>
 </div>
 
-<h3 class="sub-heading">18.6.3 红队测试方法论</h3>
+<h3 class="sub-heading">21.6.3 红队测试方法论</h3>
 
 <div class="info-box">
 <strong>红队测试四步法</strong>：<br>
@@ -1397,10 +1397,10 @@ export function checkPromptInjection(input: string): DefenseResult {
 <li><strong>Arthur Shield</strong>：商业方案，提供 Agent 运行时安全监控和攻击检测</li>
 </ul>
 
-<!-- ===== 18.7 数据隐私与合规 ===== -->
-<h2 class="section-heading">18.7 数据隐私与合规</h2>
+<!-- ===== 21.7 数据隐私与合规 ===== -->
+<h2 class="section-heading">21.7 数据隐私与合规</h2>
 
-<h3 class="sub-heading">18.7.1 GDPR / 数据隐私合规</h3>
+<h3 class="sub-heading">21.7.1 GDPR / 数据隐私合规</h3>
 
 <p>Agent 处理用户数据时必须考虑<strong>GDPR（欧盟通用数据保护条例）</strong>、<strong>《个人信息保护法》（中国）</strong>等法律要求。违规罚款可达全球年营业额的 4%。</p>
 
@@ -1477,7 +1477,7 @@ export function redactPII(text: string): string {
 </div>
 </div>
 
-<h3 class="sub-heading">18.7.2 SOC 2 审计合规</h3>
+<h3 class="sub-heading">21.7.2 SOC 2 审计合规</h3>
 
 <p>企业客户采购 Agent 服务时，通常要求供应商通过 <strong>SOC 2 Type II</strong> 审计。Agent 系统需要满足以下控制点：</p>
 
@@ -1489,12 +1489,12 @@ export function redactPII(text: string): string {
 <li><strong>数据保留</strong>：审计日志保留 ≥ 12 个月，支持按用户查询和删除</li>
 </ul>
 
-<!-- ===== 18.8 面试高频安全题 ===== -->
-<h2 class="section-heading">18.8 面试高频安全题</h2>
+<!-- ===== 21.8 面试高频安全题 ===== -->
+<h2 class="section-heading">21.8 面试高频安全题</h2>
 
 <div class="qa-list">
   <div class="qa-item">
-    <div class="qa-question">Q1: Agent 的 Prompt 注入和传统 Web 的 SQL 注入有什么区别？</div>
+    <div class="qa-question">Q7: Agent 的 Prompt 注入和传统 Web 的 SQL 注入有什么区别？</div>
     <div class="qa-answer">
       <strong>本质区别</strong>：SQL 注入利用的是结构化查询语言的语法漏洞，可通过参数化查询彻底防御。Prompt 注入利用的是自然语言的语义模糊性——无法用"参数化"隔离，因为 LLM 本身就是要理解自然语言。<br>
       <strong>防御差异</strong>：SQL 注入有 WAF + 参数化查询的成熟方案；Prompt 注入目前没有银弹，需要多层防御（输入过滤 + 指令隔离 + 输出校验 + 权限控制 + 人工审批）。
@@ -1502,7 +1502,7 @@ export function redactPII(text: string): string {
   </div>
   
   <div class="qa-item">
-    <div class="qa-question">Q2: 什么是间接 Prompt 注入？为什么比直接注入更危险？</div>
+    <div class="qa-question">Q8: 什么是间接 Prompt 注入？为什么比直接注入更危险？</div>
     <div class="qa-answer">
       <strong>间接注入</strong>：恶意指令不来自用户输入，而是藏在 Agent 读取的外部数据中（网页内容、邮件、文档、RAG 检索结果）。<br>
       <strong>更危险的原因</strong>：① 攻击者不需要直接接触 Agent，可通过污染网页/文档发起攻击；② 用户完全无感知，以为是 Agent 自主行为；③ 传统输入过滤无效，因为恶意指令混在正常数据中。防御需要：<strong>数据来源标记 + 内容沙箱化 + 输出前校验</strong>。
@@ -1510,7 +1510,7 @@ export function redactPII(text: string): string {
   </div>
   
   <div class="qa-item">
-    <div class="qa-question">Q3: 如何设计 Agent 的权限分级系统？</div>
+    <div class="qa-question">Q9: 如何设计 Agent 的权限分级系统？</div>
     <div class="qa-answer">
       <strong>五层递进权限模型</strong>（以 WaLiCode 为例）：① Layer 1 — Bash AST 分析（静态分析命令安全性）；② Layer 2 — 规则引擎（白名单/黑名单匹配）；③ Layer 3 — AI 安全审判（LLM 判断意图）；④ Layer 4 — 用户审批（高风险操作弹窗确认）；⑤ Layer 5 — 熔断器（连续失败自动停止）。<br>
       <strong>核心原则</strong>：默认拒绝（deny by default）、最小权限（least privilege）、读写分离（只读工具可并发，写操作必须串行+审批）。
@@ -1518,7 +1518,7 @@ export function redactPII(text: string): string {
   </div>
   
   <div class="qa-item">
-    <div class="qa-question">Q4: 红队测试和渗透测试有什么区别？Agent 为什么需要红队测试？</div>
+    <div class="qa-question">Q10: 红队测试和渗透测试有什么区别？Agent 为什么需要红队测试？</div>
     <div class="qa-answer">
       <strong>渗透测试</strong>：针对网络/系统漏洞（端口、服务、配置），使用工具扫描+人工验证。<br>
       <strong>红队测试</strong>：针对 AI 特有攻击面（Prompt 注入、数据泄露、越狱、工具滥用），需要创造性的社交工程式攻击。<br>
@@ -1527,7 +1527,7 @@ export function redactPII(text: string): string {
   </div>
   
   <div class="qa-item">
-    <div class="qa-question">Q5: Agent 如何满足 GDPR 合规要求？</div>
+    <div class="qa-question">Q11: Agent 如何满足 GDPR 合规要求？</div>
     <div class="qa-answer">
       五个关键动作：① <strong>数据最小化</strong>：输入前脱敏 PII（手机/邮箱/身份证）；② <strong>用途限制</strong>：System Prompt 明确禁止用用户数据做其他用途；③ <strong>存储限制</strong>：记忆系统设置 TTL，用户可请求删除所有数据；④ <strong>跨境传输</strong>：国内用户路由到国产模型 API，数据不出境；⑤ <strong>审计日志</strong>：记录所有数据访问行为，保留 12 个月以上。
     </div>

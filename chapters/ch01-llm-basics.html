@@ -855,7 +855,7 @@ public class CacheFriendlyPromptBuilder {
     <strong>① 固定前缀放最前</strong>——System Prompt + 工具Schema + Skill描述放在Prompt开头，保证每轮前缀一致，缓存100%命中。<br>
     <strong>② 动态内容放后面</strong>——对话历史、记忆召回、用户输入放末尾，不影响前缀缓存。<br>
     <strong>③ 合并固定层</strong>——把System Prompt和工具定义合并为一个system消息，减少消息数量，增加前缀连续性。OpenAI缓存最低5个消息才触发，合并后更容易达标。<br><br>
-    关联面试题 → Q12（上下文窗口设计）<br>
+    关联面试题 → Q3（上下文窗口设计）<br>
     关联章节 → 第5章 记忆系统（上下文压缩）、第4章 ReAct模式（Token Budget）
   </p>
 </div>
@@ -1291,32 +1291,32 @@ setTimeout(() => {
   <div class="summary-title">📋 补充八股题 — Transformer 架构与模型训练</div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q10：为什么要用 Attention 机制而不是 RNN？Self-Attention 的计算公式是什么？</strong></div>
+    <div class="qa-q"><strong>Q1：为什么要用 Attention 机制而不是 RNN？Self-Attention 的计算公式是什么？</strong></div>
     <div class="qa-a">RNN 有两个致命缺陷：① <strong>长距离依赖丢失</strong>——信息需要逐步传递，远距离的词之间信息几乎消失；② <strong>无法并行计算</strong>——必须按顺序处理，GPU 并行能力被浪费。Attention 机制解决了这两个问题：每个词可以直接"看到"所有其他词（解决长距离依赖），且所有位置的计算可以同时进行（支持并行）。<br><br>Self-Attention 公式：Attention(Q, K, V) = Softmax(Q × K<sup>T</sup> / √d<sub>k</sub>) × V。其中 Q、K、V 分别是输入经过三个线性变换得到的查询矩阵、键矩阵、值矩阵；除以 √d<sub>k</sub> 是为了防止点积过大导致 Softmax 梯度消失。直觉上：Q × K<sup>T</sup> 计算每对词的相关度，Softmax 归一化为权重，再乘 V 得到加权信息混合。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q11：Multi-Head Attention 为什么要用多个头？头数越多越好吗？</strong></div>
+    <div class="qa-q"><strong>Q2：Multi-Head Attention 为什么要用多个头？头数越多越好吗？</strong></div>
     <div class="qa-a">Multi-Head Attention 用多个头的目的是让模型<strong>从不同维度同时关注不同的关系模式</strong>。不同头可能分别学到语法关系、指代关系、因果关系等，拼接后得到更丰富的表示。<br><br>头数不是越多越好。头数增加时，每个头的维度相应减小（总维度不变），单个头的表达能力下降。如果头数过多，每个头维度太小，反而学不到有意义的模式。实践中的经验值：d_model=4096 时用 32 头（每头 128 维）比较合适。GPT-4 使用 96 头。另外，近年 GQA（Grouped Query Attention）和 MQA（Multi-Query Attention）通过共享 K/V 头来减少推理时的 KV Cache 内存占用，是在头数和效率之间的权衡。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q12：位置编码的作用是什么？RoPE（旋转位置编码）怎么工作？为什么现在主流模型都用 RoPE？</strong></div>
+    <div class="qa-q"><strong>Q3：位置编码的作用是什么？RoPE（旋转位置编码）怎么工作？为什么现在主流模型都用 RoPE？</strong></div>
     <div class="qa-a"><strong>作用</strong>：Self-Attention 本身是位置无关的（打乱词序结果不变），位置编码给每个词注入位置信息，让模型知道"谁在前谁在后"。<br><br><strong>RoPE 原理</strong>：把 Q 和 K 向量看作二维平面上的点，根据词的位置旋转不同角度。两个词距离越远，旋转角度差越大，点积（注意力分数）越小。这巧妙地让 Attention 分数自然包含了<strong>相对位置</strong>信息。<br><br><strong>RoPE 成为主流的原因</strong>：① <strong>外推性强</strong>——训练时只见过 4K 位置，推理时可扩展到 128K+（配合 YaRN 等缩放技术）；② <strong>编码相对位置</strong>——不像绝对位置编码那样需要学习固定向量；③ <strong>不增加参数</strong>——旋转矩阵是计算时施加的，不引入额外可训练参数。GPT-4、Llama、Qwen、DeepSeek 等所有主流模型都使用 RoPE。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q13：为什么现代大模型都用 Decoder-Only 架构而不是 Encoder-Decoder？</strong></div>
+    <div class="qa-q"><strong>Q4：为什么现代大模型都用 Decoder-Only 架构而不是 Encoder-Decoder？</strong></div>
     <div class="qa-a">Decoder-Only 胜出的三个原因：<br>① <strong>任务通用性强</strong>——所有 LLM 任务（问答、对话、代码生成、Agent）本质上都是"给上文、续下文"，Decoder-Only 的自回归生成天然契合；<br>② <strong>Scaling Law 友好</strong>——研究发现 Decoder-Only 在扩大参数量时收益更明显，同样参数量下性能更好；<br>③ <strong>工程简洁</strong>——只有一种模块（Decoder Block），训练和推理管线更简单，KV Cache 管理更容易。<br><br>代价是 Decoder-Only 只能看到上文（单向注意力），但实践证明这不是问题——模型通过预训练学会了从上文提取所需信息。Encoder-Decoder 在翻译等 Seq2Seq 任务上理论上有优势，但实际效果差异不大，而 Decoder-Only 的工程优势更明显。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q14：预训练、SFT、RLHF 三个阶段的区别是什么？SFT 和 RLHF 能互相替代吗？</strong></div>
+    <div class="qa-q"><strong>Q5：预训练、SFT、RLHF 三个阶段的区别是什么？SFT 和 RLHF 能互相替代吗？</strong></div>
     <div class="qa-a"><strong>三阶段对比</strong>：<br>• <strong>预训练</strong>：用万亿级无标注文本做 Next Token Prediction，学语言和世界知识。产出基座模型（会续写但不会对话）。算力消耗 99%。<br>• <strong>SFT</strong>：用几万条指令-回答对微调，学对话格式和指令遵循。产出对话模型（能对话但质量有限）。<br>• <strong>RLHF/DPO</strong>：用人类偏好数据优化，学回答质量和安全对齐。产出最终模型（安全、有用、诚实）。<br><br><strong>不能互相替代</strong>。SFT 和 RLHF 解决不同问题：SFT 教模型"<strong>怎么回答</strong>"（格式、风格），学习信号是<strong>逐 Token 模仿</strong>（交叉熵损失）；RLHF 教模型"<strong>回答得更好</strong>"（质量、安全），学习信号是<strong>整体偏好打分</strong>（奖励信号）。SFT 不能教模型区分好回答和差回答（只能模仿），RLHF 不能教模型新知识（只能优化已有能力的表达）。两者互补，缺一不可。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q15：什么是 DPO？它和 PPO 有什么区别？为什么 2026 年趋势是 DPO 取代 PPO？</strong></div>
+    <div class="qa-q"><strong>Q6：什么是 DPO？它和 PPO 有什么区别？为什么 2026 年趋势是 DPO 取代 PPO？</strong></div>
     <div class="qa-a"><strong>DPO（Direct Preference Optimization，直接偏好优化）</strong>是一种简化版的 RLHF 方法。传统 RLHF 用 PPO 算法，需要先训练一个奖励模型（RM），再用 RM 的打分通过强化学习优化大模型，流程复杂、训练不稳定、超参敏感。<br><br><strong>DPO 的创新</strong>：跳过 RM 训练，直接用偏好数据（回答A比回答B好）通过一个简化的目标函数优化模型。数学上证明了 DPO 和 PPO 在最优解上等价，但工程上简单得多。<br><br><strong>DPO 优势</strong>：① 不需要训练和加载额外的 RM（省一个模型）；② 训练稳定，不需要复杂的 PPO 超参调优；③ 计算成本低，训练速度快。Llama 3、DeepSeek-V3、Qwen 2.5 等主流模型都已转向 DPO 或其变体。PPO 在某些需要在线采样的场景仍有优势，但离线训练场景 DPO 是首选。</div>
   </div>
 </div>
@@ -2126,47 +2126,47 @@ setTimeout(() => {
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q1：Token 和字符的关系是什么？为什么中文比英文贵？</strong></div>
+    <div class="qa-q"><strong>Q7：Token 和字符的关系是什么？为什么中文比英文贵？</strong></div>
     <div class="qa-a">Token 是大模型处理文本的基本单位，由分词器（Tokenizer）按 BPE 算法切分。Token ≠ 字符 ≠ 词，介于两者之间。英文通常 1 Token ≈ 4 字符（约 0.75 词），而中文一个字可能切分为 1~2 个 Token（取决于词表）。因为中文 Token 粒度更细，同样长度的文本中文消耗的 Token 数更多，所以费用更高。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q2：上下文窗口大小意味着什么？窗口越大一定越好吗？</strong></div>
+    <div class="qa-q"><strong>Q8：上下文窗口大小意味着什么？窗口越大一定越好吗？</strong></div>
     <div class="qa-a">上下文窗口是模型一次能处理的最大 Token 数，决定了"记忆容量"。窗口越大能塞的信息越多，但并不意味着越好：① 费用随 Token 数线性增长；② 过长的上下文会导致"中间遗忘"（Lost in the Middle）效应——模型对中间位置的信息注意力下降；③ 推理延迟增加。实际应用中应根据任务需求选择合适窗口大小，配合 RAG 或记忆压缩策略。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q3：System Prompt 和 User Prompt 的区别？为什么 System Prompt 更重要？</strong></div>
+    <div class="qa-q"><strong>Q9：System Prompt 和 User Prompt 的区别？为什么 System Prompt 更重要？</strong></div>
     <div class="qa-a">System Prompt 设定模型的角色、规则和约束，具有最高优先级，模型在整个对话中都会遵循；User Prompt 是用户的具体问题或指令。System Prompt 更重要是因为：① 它定义了模型的行为边界和安全约束；② 它在多轮对话中持续生效，避免用户通过后续提问绕过限制；③ 良好的 System Prompt 能显著提升输出质量和一致性。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q4：Embedding 的作用是什么？为什么 RAG 不直接全文塞进上下文？</strong></div>
+    <div class="qa-q"><strong>Q10：Embedding 的作用是什么？为什么 RAG 不直接全文塞进上下文？</strong></div>
     <div class="qa-a">Embedding 将文本映射为稠密向量，使语义相近的文本在向量空间中距离更近。RAG 不直接全文塞入上下文的原因：① 全文可能超出上下文窗口限制；② 全文塞入会产生大量无关信息，干扰模型注意力导致回答质量下降；③ 全文输入 Token 消耗巨大，费用高昂。通过 Embedding 检索最相关的片段再注入上下文，兼顾了准确性、速度和成本。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q5：Function Calling 的核心作用是什么？</strong></div>
+    <div class="qa-q"><strong>Q11：Function Calling 的核心作用是什么？</strong></div>
     <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第6章「Function Calling 与工具设计」。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q6：CoT、ReAct、ToT 三种思维框架的递进关系是什么？</strong></div>
+    <div class="qa-q"><strong>Q12：CoT、ReAct、ToT 三种思维框架的递进关系是什么？</strong></div>
     <div class="qa-a">递进关系：① <strong>CoT</strong>（纯推理）——学会一步步思考，适合数学、逻辑推理；② <strong>ReAct</strong>（推理+行动）——在 CoT 上加了工具调用，边想边做；③ <strong>ToT</strong>（推理+行动+探索）——在 ReAct 上加了多路径探索和回溯，适合复杂规划。此外还有 <strong>Reflection</strong>（反思）机制——自我审查并修正输出。框架不是越复杂越好，而是越匹配任务越好。详细内容见第4章「ReAct 模式详解」。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q7：开源模型和闭源模型怎么选？</strong></div>
+    <div class="qa-q"><strong>Q13：开源模型和闭源模型怎么选？</strong></div>
     <div class="qa-a">选择维度：① <strong>数据隐私</strong>——金融、医疗等敏感场景必须选开源模型私有化部署；② <strong>成本</strong>——高频调用场景开源模型长期更划算，低频场景闭源模型按量付费更省；③ <strong>能力上限</strong>——闭源模型（GPT-4、Claude）在推理能力和工具调用上通常领先；④ <strong>可控性</strong>——需要微调或定制行为时选开源；⑤ <strong>生态</strong>——闭源模型 API 更稳定，开源模型需要自己维护推理服务。实际项目中常见混合策略：关键场景用闭源，辅助场景用开源。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q8：1000行代码大概消耗多少Token？百万Token计费规则是什么？</strong></div>
+    <div class="qa-q"><strong>Q14：1000行代码大概消耗多少Token？百万Token计费规则是什么？</strong></div>
     <div class="qa-a"><strong>Token消耗估算</strong>：Python 1000行≈15,000 Token（GPT-4o输入约$0.038），Java≈25,000 Token。中文内容Token密度更高，1行≈20 Token。<br><br><strong>百万Token计费规则</strong>：<br>① 输入和输出分别计费，输出通常是输入的3-5倍（GPT-4o: $2.5/M输入, $10/M输出）<br>② 缓存Token半价——Prompt Caching命中时输入价格约50%（GPT-4o缓存输入$1.25/M）<br>③ 按Token计费不按字符，中文比英文更贵<br>④ 工具调用Token也累积，5轮Agent任务≈50K Token<br>⑤ 流式输出不省钱，Token总数与非流式相同<br><br><strong>典型场景锚点</strong>：简单问答≈500 Token≈$0.003，代码修改≈8K Token≈$0.06，复杂Agent≈50K Token≈$0.27。</div>
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q9：上下文窗口的Token怎么分配？如何更有效命中缓存？</strong></div>
+    <div class="qa-q"><strong>Q15：上下文窗口的Token怎么分配？如何更有效命中缓存？</strong></div>
     <div class="qa-a"><strong>Token分配</strong>：128K窗口中，System Prompt+工具Schema+Skill触发词≈2-8%（固定不变），记忆注入≈1-4%（动态），对话历史≈4-39%（逐轮增长），工具结果≈2-16%（每轮新增），模型输出预留≈30-50%。<br><br><strong>缓存命中策略</strong>：<br>① 固定前缀放最前——System Prompt+工具Schema+Skill触发词放在Prompt开头，100%命中缓存<br>② 动态内容放后面——对话历史、记忆召回、用户输入放末尾，不影响前缀缓存<br>③ 合并固定层——把System Prompt和工具定义合并为一个system消息，增加前缀连续性<br>④ OpenAI缓存最低5个消息才触发，合并后更容易达标<br><br>缓存命中的Token价格约为正常的50%，设计好Prompt顺序可节省50%+输入成本。</div>
   </div>
 </div>

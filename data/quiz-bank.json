@@ -594,7 +594,8 @@
       "answer": [
         1
       ],
-      "explanation": "Agent 循环的核心是 AI 自主决定是否继续调工具。当 AI 不再请求 tool_calls 时，说明它已经有足够信息回答用户，循环自然结束。"
+      "explanation": "Agent 循环的核心是 AI 自主决定是否继续调工具。当 AI 不再请求 tool_calls 时，说明它已经有足够信息回答用户，循环自然结束。",
+      "type": "single"
     },
     {
       "id": "ch02_q02",
@@ -608,7 +609,8 @@
       "answer": [
         2
       ],
-      "explanation": "description 是 AI 决定是否调工具的关键依据。写得越具体（如'查询指定城市指定日期的天气'），AI 的判断越准确。"
+      "explanation": "description 是 AI 决定是否调工具的关键依据。写得越具体（如'查询指定城市指定日期的天气'），AI 的判断越准确。",
+      "type": "single"
     },
     {
       "id": "ch02_q03",
@@ -622,7 +624,8 @@
       "answer": [
         1
       ],
-      "explanation": "普通 LLM 是一问一答，没有工具。Agent = AI + 工具 + 循环。三者缺一不可：没有工具的 AI 只能聊天，没有循环只能做一次调用。"
+      "explanation": "普通 LLM 是一问一答，没有工具。Agent = AI + 工具 + 循环。三者缺一不可：没有工具的 AI 只能聊天，没有循环只能做一次调用。",
+      "type": "single"
     },
     {
       "id": "ch02_q04",
@@ -636,7 +639,8 @@
       "answer": [
         1
       ],
-      "explanation": "Agent 的'记忆'就是对话历史。当用户追问'哪个城市更热'时，AI 从历史中已有两次天气查询结果，直接推理比较，无需再次调工具。"
+      "explanation": "Agent 的'记忆'就是对话历史。当用户追问'哪个城市更热'时，AI 从历史中已有两次天气查询结果，直接推理比较，无需再次调工具。",
+      "type": "single"
     },
     {
       "id": "ch02_q05",
@@ -650,7 +654,8 @@
       "answer": [
         0
       ],
-      "explanation": "指数退避避免雪崩效应：第一次重试等1秒，第二次2秒，第三次4秒...给服务端恢复时间，同时避免客户端过度请求。"
+      "explanation": "指数退避避免雪崩效应：第一次重试等1秒，第二次2秒，第三次4秒...给服务端恢复时间，同时避免客户端过度请求。",
+      "type": "single"
     },
     {
       "id": "ch02_q06",
@@ -664,7 +669,8 @@
       "answer": [
         1
       ],
-      "explanation": "固定格式、确定性强的任务用传统程序更可靠、更快、更便宜。Agent 的价值在于处理不确定性——意图不明确、步骤不固定的场景。"
+      "explanation": "固定格式、确定性强的任务用传统程序更可靠、更快、更便宜。Agent 的价值在于处理不确定性——意图不明确、步骤不固定的场景。",
+      "type": "single"
     },
     {
       "id": "ch02_q07",
@@ -678,7 +684,8 @@
       "answer": [
         1
       ],
-      "explanation": "这是 Agent 的核心优势：AI 读 Schema，理解参数格式，从用户自然语言中提取参数值，自动组装成符合 Schema 的 JSON。"
+      "explanation": "这是 Agent 的核心优势：AI 读 Schema，理解参数格式，从用户自然语言中提取参数值，自动组装成符合 Schema 的 JSON。",
+      "type": "single"
     },
     {
       "id": "ch02_q08",
@@ -692,7 +699,8 @@
       "answer": [
         1
       ],
-      "explanation": "工具结果必须以 role='tool' 消息返回，且必须携带对应的 tool_call_id，AI 才能将结果与之前的工具调用请求对应起来。"
+      "explanation": "工具结果必须以 role='tool' 消息返回，且必须携带对应的 tool_call_id，AI 才能将结果与之前的工具调用请求对应起来。",
+      "type": "single"
     },
     {
       "id": "ch02_q09",
@@ -706,7 +714,8 @@
       "answer": [
         1
       ],
-      "explanation": "required 字段告诉 AI 必须组装哪些参数。如果 city 是 required 而 date 不是，AI 知道必须从用户输入中提取城市名，但日期可以省略。"
+      "explanation": "required 字段告诉 AI 必须组装哪些参数。如果 city 是 required 而 date 不是，AI 知道必须从用户输入中提取城市名，但日期可以省略。",
+      "type": "single"
     },
     {
       "id": "ch02_q10",
@@ -720,7 +729,8 @@
       "answer": [
         1
       ],
-      "explanation": "观察步骤将工具结果以 role='tool' 消息加入 messages 数组。AI 在下一轮循环中能看到这些结果，决定是否继续调工具或直接回答。"
+      "explanation": "观察步骤将工具结果以 role='tool' 消息加入 messages 数组。AI 在下一轮循环中能看到这些结果，决定是否继续调工具或直接回答。",
+      "type": "single"
     }
   ],
   "ch03": [
@@ -1762,6 +1772,270 @@
   "ch07": [
     {
       "type": "single",
+      "question": "Agent Loop 的六步执行流程顺序是？",
+      "options": [
+        "Perceive → Act → Reason → Plan → Observe → Evaluate",
+        "Perceive → Reason → Plan → Act → Observe → Evaluate",
+        "Reason → Plan → Act → Observe → Evaluate → Perceive",
+        "Plan → Perceive → Reason → Act → Observe → Evaluate"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "标准 Agent Loop 六步流程为：感知(Perceive) → 推理(Reason) → 规划(Plan) → 执行(Act) → 观察(Observe) → 评估(Evaluate)。这是一个事件驱动的循环，每轮工具调用结果触发下一轮推理。"
+    },
+    {
+      "type": "single",
+      "question": "Loop、Runtime、Sandbox 三者的嵌套关系是？",
+      "options": [
+        "Loop 在最外层，Runtime 在中间层，Sandbox 在最内层",
+        "Runtime 在最外层，Sandbox 在中间层，Loop 在最内层",
+        "Sandbox 在最外层，Runtime 在中间层，Loop 在最内层",
+        "三者并列，无嵌套关系"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Sandbox 在最外层（所有 Agent 行为最终都在某个隔离环境中执行），Runtime 在中间层（为 Loop 提供基础设施），Agent Loop 在最内层（是 Runtime 中的逻辑循环）。"
+    },
+    {
+      "type": "single",
+      "question": "Firecracker 微虚拟机与 Docker 容器的主要区别是？",
+      "options": [
+        "Firecracker 更轻量，启动更快",
+        "Docker 提供内核级隔离，Firecracker 只隔离进程",
+        "Firecracker 每个沙箱运行独立内核，Docker 共享宿主机内核",
+        "两者隔离级别相同，只是实现方式不同"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Docker 容器共享宿主机内核，隔离在进程和文件系统层面。Firecracker 每个微虚拟机运行独立内核，提供内核级隔离，逃逸难度极高。"
+    },
+    {
+      "type": "multiple",
+      "question": "Agent Loop 的常见设计陷阱有哪些？（多选）",
+      "options": [
+        "死循环：工具永远失败但 LLM 一直重试",
+        "Token 爆炸：每轮把全部历史塞入 Context Window",
+        "幻觉工具调用：LLM 调用不存在或参数错误的工具",
+        "并行过多：同时调用太多工具导致超时"
+      ],
+      "answer": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "三大陷阱：① 死循环——工具连续失败但Agent不停重试；② Token 爆炸——每轮重复全部历史；③ 幻觉工具调用——LLM 调用不存在的工具或传错参数。"
+    },
+    {
+      "type": "single",
+      "question": "Runtime 的五层架构从底层到上层依次是？",
+      "options": [
+        "可观测层 → 执行调度层 → 记忆管理层 → 工具注册层 → LLM管理层",
+        "LLM管理层 → 工具注册层 → 记忆管理层 → 执行调度层 → 可观测层",
+        "执行调度层 → LLM管理层 → 记忆管理层 → 工具注册层 → 可观测层",
+        "工具注册层 → LLM管理层 → 可观测层 → 记忆管理层 → 执行调度层"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
+    },
+    {
+      "type": "single",
+      "question": "Runtime 的五层架构从底层到上层依次是？",
+      "options": [
+        "可观测层 → 执行调度层 → 记忆管理层 → 工具注册层 → LLM管理层",
+        "LLM管理层 → 工具注册层 → 记忆管理层 → 执行调度层 → 可观测层",
+        "执行调度层 → LLM管理层 → 记忆管理层 → 工具注册层 → 可观测层",
+        "工具注册层 → LLM管理层 → 可观测层 → 记忆管理层 → 执行调度层"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
+    },
+    {
+      "type": "single",
+      "question": "Agent Loop 中 max_turns 参数的主要作用是？",
+      "options": [
+        "限制每轮工具调用的最大次数",
+        "限制 Agent 循环的最大迭代轮数",
+        "限制 LLM 的最大 Token 输出",
+        "限制 Agent 的最大运行时间"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "max_turns 限制 Agent 循环的最大迭代轮数（如设为 20，则 Agent 最多循环 20 轮后强制停止）。这是防止死循环和成本失控的硬性兜底措施，与超时限制（timeout）配合使用。"
+    },
+    {
+      "type": "single",
+      "question": "Runtime 层的核心职责不包括以下哪项？",
+      "options": [
+        "管理 Agent 生命周期（启动、暂停、恢复、终止）",
+        "提供工具执行环境（文件系统、进程、网络）",
+        "执行 LLM 推理计算（前向传播）",
+        "资源配额管理（CPU、内存、时间限制）"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Runtime 层负责 Agent 生命周期管理、工具执行环境和资源配额，但不执行 LLM 推理计算。LLM 推理由模型服务端完成，Runtime 只负责调用 API 并处理响应。"
+    },
+    {
+      "type": "single",
+      "question": "WaLiCode 的五层权限递进系统中，第一层是？",
+      "options": [
+        "规则引擎匹配（正则 + 关键词）",
+        "Bash AST 分析（解析命令结构）",
+        "AI 安全审判（LLM 判断风险）",
+        "用户审批（Human-in-the-Loop）"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "五层权限递进为：① Bash AST 分析 → ② 规则引擎匹配 → ③ AI 安全审判 → ④ 用户审批 → ⑤ 熔断器。从自动到人工，从快速到审慎，分层递进。"
+    },
+    {
+      "type": "multiple",
+      "question": "沙箱隔离的常见实现方式有哪些？（多选）",
+      "options": [
+        "Docker 容器隔离（进程+文件系统级）",
+        "Firecracker 微虚拟机（内核级隔离）",
+        "WASM 沙箱（内存安全+快速启动）",
+        "gVisor 系统调用拦截（内核接口级）"
+      ],
+      "answer": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "四种主流沙箱方案：Docker（进程级）、Firecracker（微VM，独立内核）、WASM（内存安全，毫秒级启动）、gVisor（拦截系统调用）。隔离级别从低到高：Docker < gVisor < WASM < Firecracker。"
+    },
+    {
+      "type": "single",
+      "question": "Agent Loop 中'滑动窗口压缩'策略的核心思想是？",
+      "options": [
+        "只保留最近 N 轮对话历史，更早的丢弃",
+        "只保留最近 N 轮对话，更早的用摘要替代",
+        "只保留工具调用结果，丢弃对话内容",
+        "把所有历史压缩成单个摘要"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "滑动窗口压缩：保留最近 N 轮完整对话（保证近期上下文不丢失），更早的历史用摘要替代（保留关键信息但大幅减少 Token）。这是 Token 爆炸问题的标准解决方案。"
+    },
+    {
+      "type": "single",
+      "question": "以下哪个不是 Loop Engineering 的核心原则？",
+      "options": [
+        "事件驱动：工具结果触发下一轮推理，而非固定间隔",
+        "可中断：用户随时可以暂停或终止 Agent 循环",
+        "无状态：每轮循环独立，不依赖前轮结果",
+        "可观测：每一步都有日志和 trace，可回放调试"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Loop Engineering 的核心原则包括事件驱动、可中断、可观测，但不包括'无状态'。Agent Loop 是有状态的——每轮循环依赖前轮结果，状态在轮次间传递。无状态设计会破坏 Agent 的连贯推理能力。"
+    }
+  ],
+  "ch08": [
+    {
+      "type": "single",
+      "question": "绑定约束论的核心观点是什么？",
+      "options": [
+        "模型代际升级是提升Agent性能的唯一路径",
+        "Benchmark方差由Harness主导，而非模型本身",
+        "Prompt Engineering已经完全被Context Engineering取代",
+        "训练微调比AGENTS.md更高效"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "绑定约束论指出：对于长程任务，跨可比的前沿模型，Benchmark方差由Harness主导，而非模型本身。模型代际通常只+2-4pp，而Harness优化可以+10pp以上。"
+    },
+    {
+      "type": "single",
+      "question": "Harness三大范式的迁移顺序是？",
+      "options": [
+        "Harness → Context → Prompt",
+        "Context → Prompt → Harness",
+        "Prompt → Context → Harness",
+        "Prompt → Harness → Context"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "范式迁移顺序是 Prompt Engineering → Context Engineering → Harness Engineering。三者是嵌套关系，不是替代关系。"
+    },
+    {
+      "type": "single",
+      "question": "Claude Code中用于限制Agent最大循环轮次的参数是？",
+      "options": [
+        "--allowedTools",
+        "--max-turns",
+        "--model",
+        "--verbose"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "--max-turns限制最大循环轮次，防止Agent无限循环消耗Token。--allowedTools限制工具白名单，--model指定模型，--verbose输出详细日志。"
+    },
+    {
+      "type": "multiple",
+      "question": "Harness六大组件中，哪些直接解决Agent'无法获取实时信息'的问题？（多选）",
+      "options": [
+        "AGENTS.md / System Prompt",
+        "Web Search + MCP",
+        "沙箱执行",
+        "文件系统"
+      ],
+      "answer": [
+        0,
+        1
+      ],
+      "explanation": "AGENTS.md解决知识过时（注入项目规则），Web Search+MCP解决知识截止日期（搜索最新信息+调用实时API）。"
+    },
+    {
+      "type": "single",
+      "question": "Bölük (2026a) 实验的核心发现是什么？",
+      "options": [
+        "微调模型比裸模型好10倍",
+        "模型不动，只调整edit-tool格式与外围脚手架，最高10倍提升",
+        "Prompt优化比Harness优化更有效",
+        "更大的模型一定比小模型好"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Bölük实验：模型完全不动，只调整edit-tool格式与外围工具脚手架，在15个模型上最高获得10倍提升。"
+    },
+    {
+      "type": "multiple",
+      "question": "上下文工程的三大策略包括哪些？（多选）",
+      "options": [
+        "滑动窗口（保留最近N条消息）",
+        "摘要压缩（把早期对话压缩成摘要）",
+        "关键信息保留（显式标记重要信息永不丢弃）",
+        "全量存储（保存所有历史消息不做压缩）"
+      ],
+      "answer": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。"
+    }
+  ],
+  "ch09": [
+    {
+      "type": "single",
       "question": "MCP（Model Context Protocol）的核心目标是？",
       "options": [
         "替代 HTTP 协议",
@@ -1919,7 +2193,7 @@
       "explanation": "文件系统、Git 仓库、数据库都可以作为 MCP Server 提供工具能力。LLM 本身不是 MCP Server（它是 LLM，不是工具服务端）。操作系统内核也不直接作为 MCP Server（但可以包装系统调用为 MCP 工具）。"
     }
   ],
-  "ch08": [
+  "ch10": [
     {
       "id": "ch07_q01",
       "question": "Skill 和 Tool 的本质区别是什么？",
@@ -1932,7 +2206,8 @@
       "answer": [
         1
       ],
-      "explanation": "Tool 是单一操作（函数级），Skill 是复合能力（模块级）。Skill 不只是工具集合，还包含使用策略、调用顺序、参数约束等知识。"
+      "explanation": "Tool 是单一操作（函数级），Skill 是复合能力（模块级）。Skill 不只是工具集合，还包含使用策略、调用顺序、参数约束等知识。",
+      "type": "single"
     },
     {
       "id": "ch07_q02",
@@ -1946,7 +2221,8 @@
       "answer": [
         1
       ],
-      "explanation": "三层懒加载控制 Prompt 长度：第一层始终列出 Skill 名称和描述（几行）；第二层当用户消息匹配触发词时激活完整定义；第三层罕见 Skill 需 AI 用 ToolSearch 主动查找。"
+      "explanation": "三层懒加载控制 Prompt 长度：第一层始终列出 Skill 名称和描述（几行）；第二层当用户消息匹配触发词时激活完整定义；第三层罕见 Skill 需 AI 用 ToolSearch 主动查找。",
+      "type": "single"
     },
     {
       "id": "ch07_q03",
@@ -1960,7 +2236,8 @@
       "answer": [
         1
       ],
-      "explanation": "元数据层定义 Skill 的身份和触发条件；工具层列出包含的工具及 Schema；知识层提供使用策略、调用顺序、参数约束。"
+      "explanation": "元数据层定义 Skill 的身份和触发条件；工具层列出包含的工具及 Schema；知识层提供使用策略、调用顺序、参数约束。",
+      "type": "single"
     },
     {
       "id": "ch07_q04",
@@ -1974,7 +2251,8 @@
       "answer": [
         1
       ],
-      "explanation": "触发词是懒加载第二层的核心机制。用户说'天气'时，weather-advisor Skill 被激活，完整 Schema 和使用策略注入 Prompt。"
+      "explanation": "触发词是懒加载第二层的核心机制。用户说'天气'时，weather-advisor Skill 被激活，完整 Schema 和使用策略注入 Prompt。",
+      "type": "single"
     },
     {
       "id": "ch07_q05",
@@ -1988,7 +2266,8 @@
       "answer": [
         1
       ],
-      "explanation": "三者层次不同：Function Calling 是 AI 调用函数的底层机制；MCP 是工具发现和调用的标准化协议；Skills 是把多个工具打包成可复用能力单元的上层组织。一个 Skill 可以包含 MCP 工具。"
+      "explanation": "三者层次不同：Function Calling 是 AI 调用函数的底层机制；MCP 是工具发现和调用的标准化协议；Skills 是把多个工具打包成可复用能力单元的上层组织。一个 Skill 可以包含 MCP 工具。",
+      "type": "single"
     },
     {
       "id": "ch07_q06",
@@ -2002,7 +2281,8 @@
       "answer": [
         1
       ],
-      "explanation": "热重载通过 watchdog 监控 skills/ 目录文件变更，检测到修改后自动重新扫描和加载，生产环境中无需停机更新 Skill。"
+      "explanation": "热重载通过 watchdog 监控 skills/ 目录文件变更，检测到修改后自动重新扫描和加载，生产环境中无需停机更新 Skill。",
+      "type": "single"
     },
     {
       "id": "ch07_q07",
@@ -2016,7 +2296,8 @@
       "answer": [
         1
       ],
-      "explanation": "基础 Skill 如 get_weather（单工具调用）；复合 Skill 如 weather-advisor（多工具+策略）；领域 Skill 如 medical-diagnosis（行业知识+全套工具+专业术语）。"
+      "explanation": "基础 Skill 如 get_weather（单工具调用）；复合 Skill 如 weather-advisor（多工具+策略）；领域 Skill 如 medical-diagnosis（行业知识+全套工具+专业术语）。",
+      "type": "single"
     },
     {
       "id": "ch07_q08",
@@ -2030,7 +2311,8 @@
       "answer": [
         1
       ],
-      "explanation": "企业级 Skill 需要多层安全：YAML 中声明 permissions（network/location/file_access），危险操作需审批，执行在沙箱中，所有操作留审计日志。"
+      "explanation": "企业级 Skill 需要多层安全：YAML 中声明 permissions（network/location/file_access），危险操作需审批，执行在沙箱中，所有操作留审计日志。",
+      "type": "single"
     },
     {
       "id": "ch07_q09",
@@ -2044,7 +2326,8 @@
       "answer": [
         1
       ],
-      "explanation": "沉淀是从具体项目中抽象出通用能力（如从3个项目中提炼出1个通用的数据库查询 Skill），演进是版本迭代（v1.0单表查询→v2.0多表关联→v3.0智能优化）。"
+      "explanation": "沉淀是从具体项目中抽象出通用能力（如从3个项目中提炼出1个通用的数据库查询 Skill），演进是版本迭代（v1.0单表查询→v2.0多表关联→v3.0智能优化）。",
+      "type": "single"
     },
     {
       "id": "ch07_q10",
@@ -2058,10 +2341,11 @@
       "answer": [
         1
       ],
-      "explanation": "OpenClaw 的 Skill 是文件系统组织的：每个 Skill 一个目录，SKILL.md 定义元数据和流程，scripts/ 存执行脚本，templates/ 存模板。Agent 启动时扫描目录自动发现。"
+      "explanation": "OpenClaw 的 Skill 是文件系统组织的：每个 Skill 一个目录，SKILL.md 定义元数据和流程，scripts/ 存执行脚本，templates/ 存模板。Agent 启动时扫描目录自动发现。",
+      "type": "single"
     }
   ],
-  "ch09": [
+  "ch11": [
     {
       "type": "single",
       "question": "多智能体协作的典型模式不包括？",
@@ -2222,7 +2506,7 @@
       "explanation": "失败模式：无限辩论、分配不当、级联失败、通信开销过大。使用相同模型不一定导致失败，关键看 Agent 的角色和 Prompt 设计是否区分。"
     }
   ],
-  "ch10": [
+  "ch12": [
     {
       "type": "single",
       "question": "LangGraph 中 StateGraph 和 MessageGraph 的核心区别是？",
@@ -2383,7 +2667,7 @@
       "explanation": "LangGraph 适合复杂流程控制、可恢复长流程、多 Agent 协作、人工审批场景。简单问答不需要图结构控制，用 LangChain 基础 Agent 即可。"
     }
   ],
-  "ch11": [
+  "ch13": [
     {
       "type": "single",
       "question": "AutoGen 的核心对话模式是？",
@@ -2862,7 +3146,7 @@
       "explanation": "Spring AI 企业特性：检查点恢复、A2A 支持、MCP 集成、Spring Security 集成。不提供自动模型微调——Spring AI 使用外部 LLM 而非训练模型。"
     }
   ],
-  "ch12": [
+  "ch14": [
     {
       "type": "single",
       "question": "低代码 Agent 平台的核心优势是？",
@@ -3024,7 +3308,7 @@
       "explanation": "局限性：灵活性受限、复杂逻辑难表达、性能优化有限、调试困难。低代码平台通常支持接入外部 API，这不是局限性。"
     }
   ],
-  "ch13": [
+  "ch15": [
     {
       "type": "single",
       "question": "Agent 评估中，任务完成率的定义是？",
@@ -3185,7 +3469,7 @@
       "explanation": "Agent 评估挑战：标准难统一、随机性导致不稳定、环境搭建复杂、成本高。指标选择虽多但有成熟框架可参考，不是核心挑战。"
     }
   ],
-  "ch14": [
+  "ch16": [
     {
       "type": "single",
       "question": "CLI Agent 的安全沙箱最核心的目标是？",
@@ -3728,7 +4012,7 @@
       "explanation": "Agentic RAG 评估：检索精度、推理链质量、答案准确率、检索效率。GPU 利用率是基础设施指标不是 RAG 质量指标。"
     }
   ],
-  "ch15": [
+  "ch17": [
     {
       "type": "single",
       "question": "GUI Agent 的核心工作原理是？",
@@ -3889,7 +4173,7 @@
       "explanation": "GUI Agent 代表产品：Claude Computer Use、OpenAI Operator、Google Project Mariner。AutoGPT 是通用 Agent 框架但不是专门的 GUI Agent。Stable Diffusion 是图像生成模型不是 GUI Agent。"
     }
   ],
-  "ch16": [
+  "ch18": [
     {
       "type": "single",
       "question": "AI Agent 的发展趋势中最被期待的方向是？",
@@ -4111,7 +4395,7 @@
       "explanation": "核心竞争力三维度：技术深度（理解底层原理而非只会用框架）、工程能力（从Demo到生产级）、业务理解（解决真实业务痛点而非追热点）。"
     }
   ],
-  "ch17": [
+  "ch19": [
     {
       "type": "single",
       "question": "RAG 的核心思想是什么？",
@@ -4235,7 +4519,7 @@
       "explanation": "RAG 擅长事实性知识（实时更新、可追溯），微调擅长行为模式定制（风格、格式、推理）。最佳实践是 RAG + 微调结合：微调改善风格，RAG 提供知识。RAG 不能完全替代微调，微调的知识更新远比 RAG 慢（需重新训练）。"
     }
   ],
-  "ch18": [
+  "ch20": [
     {
       "type": "single",
       "question": "Agent 评估与传统软件评估的核心区别是什么？",
@@ -4361,7 +4645,7 @@
       "explanation": "不同评估方法各有优劣：人工评估精度高但成本高；LLM-as-Judge 可规模化但有偏差；Benchmark 适合横向对比但覆盖面有限。最佳实践是多种方法组合，在开发/测试/生产全生命周期持续评估。"
     }
   ],
-  "ch19": [
+  "ch21": [
     {
       "type": "single",
       "question": "Agent 安全的头号威胁是什么？",
@@ -4487,7 +4771,7 @@
       "explanation": "OWASP LLM Top 10 是专为 LLM 应用设计的安全风险清单，包括 Prompt 注入、不安全输出、训练数据投毒、供应链漏洞等。它与传统 Web Top 10 不同，聚焦于 LLM 特有的安全挑战。"
     }
   ],
-  "ch20": [
+  "ch22": [
     {
       "type": "single",
       "question": "Demo 级 Agent 和生产级 Agent 的核心区别是什么？",
@@ -4613,7 +4897,7 @@
       "explanation": "生产监控指标：延迟（P50/P95/P99）、错误率、Token 成本、工具调用成功率/步数。模型训练损失值是模型训练阶段的指标，部署后不涉及。"
     }
   ],
-  "ch21": [
+  "ch23": [
     {
       "type": "single",
       "question": "推理框架（Inference Framework）的核心作用是什么？",
@@ -4737,270 +5021,6 @@
         4
       ],
       "explanation": "量化：INT4 显存减 75%、精度损失 1-3%、GGUF 是 Ollama 常用格式、高精度场景需谨慎。量化后推理速度通常变快（显存带宽减少），不是变慢。"
-    }
-  ],
-  "ch22": [
-    {
-      "type": "single",
-      "question": "Agent Loop 的六步执行流程顺序是？",
-      "options": [
-        "Perceive → Act → Reason → Plan → Observe → Evaluate",
-        "Perceive → Reason → Plan → Act → Observe → Evaluate",
-        "Reason → Plan → Act → Observe → Evaluate → Perceive",
-        "Plan → Perceive → Reason → Act → Observe → Evaluate"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "标准 Agent Loop 六步流程为：感知(Perceive) → 推理(Reason) → 规划(Plan) → 执行(Act) → 观察(Observe) → 评估(Evaluate)。这是一个事件驱动的循环，每轮工具调用结果触发下一轮推理。"
-    },
-    {
-      "type": "single",
-      "question": "Loop、Runtime、Sandbox 三者的嵌套关系是？",
-      "options": [
-        "Loop 在最外层，Runtime 在中间层，Sandbox 在最内层",
-        "Runtime 在最外层，Sandbox 在中间层，Loop 在最内层",
-        "Sandbox 在最外层，Runtime 在中间层，Loop 在最内层",
-        "三者并列，无嵌套关系"
-      ],
-      "answer": [
-        2
-      ],
-      "explanation": "Sandbox 在最外层（所有 Agent 行为最终都在某个隔离环境中执行），Runtime 在中间层（为 Loop 提供基础设施），Agent Loop 在最内层（是 Runtime 中的逻辑循环）。"
-    },
-    {
-      "type": "single",
-      "question": "Firecracker 微虚拟机与 Docker 容器的主要区别是？",
-      "options": [
-        "Firecracker 更轻量，启动更快",
-        "Docker 提供内核级隔离，Firecracker 只隔离进程",
-        "Firecracker 每个沙箱运行独立内核，Docker 共享宿主机内核",
-        "两者隔离级别相同，只是实现方式不同"
-      ],
-      "answer": [
-        2
-      ],
-      "explanation": "Docker 容器共享宿主机内核，隔离在进程和文件系统层面。Firecracker 每个微虚拟机运行独立内核，提供内核级隔离，逃逸难度极高。"
-    },
-    {
-      "type": "multiple",
-      "question": "Agent Loop 的常见设计陷阱有哪些？（多选）",
-      "options": [
-        "死循环：工具永远失败但 LLM 一直重试",
-        "Token 爆炸：每轮把全部历史塞入 Context Window",
-        "幻觉工具调用：LLM 调用不存在或参数错误的工具",
-        "并行过多：同时调用太多工具导致超时"
-      ],
-      "answer": [
-        0,
-        1,
-        2
-      ],
-      "explanation": "三大陷阱：① 死循环——工具连续失败但Agent不停重试；② Token 爆炸——每轮重复全部历史；③ 幻觉工具调用——LLM 调用不存在的工具或传错参数。"
-    },
-    {
-      "type": "single",
-      "question": "Runtime 的五层架构从底层到上层依次是？",
-      "options": [
-        "可观测层 → 执行调度层 → 记忆管理层 → 工具注册层 → LLM管理层",
-        "LLM管理层 → 工具注册层 → 记忆管理层 → 执行调度层 → 可观测层",
-        "执行调度层 → LLM管理层 → 记忆管理层 → 工具注册层 → 可观测层",
-        "工具注册层 → LLM管理层 → 可观测层 → 记忆管理层 → 执行调度层"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
-    },
-    {
-      "type": "single",
-      "question": "Runtime 的五层架构从底层到上层依次是？",
-      "options": [
-        "可观测层 → 执行调度层 → 记忆管理层 → 工具注册层 → LLM管理层",
-        "LLM管理层 → 工具注册层 → 记忆管理层 → 执行调度层 → 可观测层",
-        "执行调度层 → LLM管理层 → 记忆管理层 → 工具注册层 → 可观测层",
-        "工具注册层 → LLM管理层 → 可观测层 → 记忆管理层 → 执行调度层"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "Runtime 五层架构：① LLM管理层（模型路由、Token管理、重试降级）；② 工具注册层（定义、校验、权限）；③ 记忆管理层（短期/长期/工作记忆）；④ 执行调度层（Loop引擎、并发、超时熔断）；⑤ 可观测层（Tracing、Metrics、Logging）。"
-    },
-    {
-      "type": "single",
-      "question": "Agent Loop 中 max_turns 参数的主要作用是？",
-      "options": [
-        "限制每轮工具调用的最大次数",
-        "限制 Agent 循环的最大迭代轮数",
-        "限制 LLM 的最大 Token 输出",
-        "限制 Agent 的最大运行时间"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "max_turns 限制 Agent 循环的最大迭代轮数（如设为 20，则 Agent 最多循环 20 轮后强制停止）。这是防止死循环和成本失控的硬性兜底措施，与超时限制（timeout）配合使用。"
-    },
-    {
-      "type": "single",
-      "question": "Runtime 层的核心职责不包括以下哪项？",
-      "options": [
-        "管理 Agent 生命周期（启动、暂停、恢复、终止）",
-        "提供工具执行环境（文件系统、进程、网络）",
-        "执行 LLM 推理计算（前向传播）",
-        "资源配额管理（CPU、内存、时间限制）"
-      ],
-      "answer": [
-        2
-      ],
-      "explanation": "Runtime 层负责 Agent 生命周期管理、工具执行环境和资源配额，但不执行 LLM 推理计算。LLM 推理由模型服务端完成，Runtime 只负责调用 API 并处理响应。"
-    },
-    {
-      "type": "single",
-      "question": "WaLiCode 的五层权限递进系统中，第一层是？",
-      "options": [
-        "规则引擎匹配（正则 + 关键词）",
-        "Bash AST 分析（解析命令结构）",
-        "AI 安全审判（LLM 判断风险）",
-        "用户审批（Human-in-the-Loop）"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "五层权限递进为：① Bash AST 分析 → ② 规则引擎匹配 → ③ AI 安全审判 → ④ 用户审批 → ⑤ 熔断器。从自动到人工，从快速到审慎，分层递进。"
-    },
-    {
-      "type": "multiple",
-      "question": "沙箱隔离的常见实现方式有哪些？（多选）",
-      "options": [
-        "Docker 容器隔离（进程+文件系统级）",
-        "Firecracker 微虚拟机（内核级隔离）",
-        "WASM 沙箱（内存安全+快速启动）",
-        "gVisor 系统调用拦截（内核接口级）"
-      ],
-      "answer": [
-        0,
-        1,
-        2,
-        3
-      ],
-      "explanation": "四种主流沙箱方案：Docker（进程级）、Firecracker（微VM，独立内核）、WASM（内存安全，毫秒级启动）、gVisor（拦截系统调用）。隔离级别从低到高：Docker < gVisor < WASM < Firecracker。"
-    },
-    {
-      "type": "single",
-      "question": "Agent Loop 中'滑动窗口压缩'策略的核心思想是？",
-      "options": [
-        "只保留最近 N 轮对话历史，更早的丢弃",
-        "只保留最近 N 轮对话，更早的用摘要替代",
-        "只保留工具调用结果，丢弃对话内容",
-        "把所有历史压缩成单个摘要"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "滑动窗口压缩：保留最近 N 轮完整对话（保证近期上下文不丢失），更早的历史用摘要替代（保留关键信息但大幅减少 Token）。这是 Token 爆炸问题的标准解决方案。"
-    },
-    {
-      "type": "single",
-      "question": "以下哪个不是 Loop Engineering 的核心原则？",
-      "options": [
-        "事件驱动：工具结果触发下一轮推理，而非固定间隔",
-        "可中断：用户随时可以暂停或终止 Agent 循环",
-        "无状态：每轮循环独立，不依赖前轮结果",
-        "可观测：每一步都有日志和 trace，可回放调试"
-      ],
-      "answer": [
-        2
-      ],
-      "explanation": "Loop Engineering 的核心原则包括事件驱动、可中断、可观测，但不包括'无状态'。Agent Loop 是有状态的——每轮循环依赖前轮结果，状态在轮次间传递。无状态设计会破坏 Agent 的连贯推理能力。"
-    }
-  ],
-  "ch23": [
-    {
-      "type": "single",
-      "question": "绑定约束论的核心观点是什么？",
-      "options": [
-        "模型代际升级是提升Agent性能的唯一路径",
-        "Benchmark方差由Harness主导，而非模型本身",
-        "Prompt Engineering已经完全被Context Engineering取代",
-        "训练微调比AGENTS.md更高效"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "绑定约束论指出：对于长程任务，跨可比的前沿模型，Benchmark方差由Harness主导，而非模型本身。模型代际通常只+2-4pp，而Harness优化可以+10pp以上。"
-    },
-    {
-      "type": "single",
-      "question": "Harness三大范式的迁移顺序是？",
-      "options": [
-        "Harness → Context → Prompt",
-        "Context → Prompt → Harness",
-        "Prompt → Context → Harness",
-        "Prompt → Harness → Context"
-      ],
-      "answer": [
-        2
-      ],
-      "explanation": "范式迁移顺序是 Prompt Engineering → Context Engineering → Harness Engineering。三者是嵌套关系，不是替代关系。"
-    },
-    {
-      "type": "single",
-      "question": "Claude Code中用于限制Agent最大循环轮次的参数是？",
-      "options": [
-        "--allowedTools",
-        "--max-turns",
-        "--model",
-        "--verbose"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "--max-turns限制最大循环轮次，防止Agent无限循环消耗Token。--allowedTools限制工具白名单，--model指定模型，--verbose输出详细日志。"
-    },
-    {
-      "type": "multiple",
-      "question": "Harness六大组件中，哪些直接解决Agent'无法获取实时信息'的问题？（多选）",
-      "options": [
-        "AGENTS.md / System Prompt",
-        "Web Search + MCP",
-        "沙箱执行",
-        "文件系统"
-      ],
-      "answer": [
-        0,
-        1
-      ],
-      "explanation": "AGENTS.md解决知识过时（注入项目规则），Web Search+MCP解决知识截止日期（搜索最新信息+调用实时API）。"
-    },
-    {
-      "type": "single",
-      "question": "Bölük (2026a) 实验的核心发现是什么？",
-      "options": [
-        "微调模型比裸模型好10倍",
-        "模型不动，只调整edit-tool格式与外围脚手架，最高10倍提升",
-        "Prompt优化比Harness优化更有效",
-        "更大的模型一定比小模型好"
-      ],
-      "answer": [
-        1
-      ],
-      "explanation": "Bölük实验：模型完全不动，只调整edit-tool格式与外围工具脚手架，在15个模型上最高获得10倍提升。"
-    },
-    {
-      "type": "multiple",
-      "question": "上下文工程的三大策略包括哪些？（多选）",
-      "options": [
-        "滑动窗口（保留最近N条消息）",
-        "摘要压缩（把早期对话压缩成摘要）",
-        "关键信息保留（显式标记重要信息永不丢弃）",
-        "全量存储（保存所有历史消息不做压缩）"
-      ],
-      "answer": [
-        0,
-        1,
-        2
-      ],
-      "explanation": "三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。"
     }
   ],
   "ch24": [

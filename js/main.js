@@ -12,45 +12,45 @@ const App = {
   _pendingTimers: [], // 记录章节内 setTimeout 的 ID，切换章节时统一清除
 
   chapters: [
-    // 序章
+        // 序章
     { id: 'ch00', num: 0, title: 'Agent 能力全景展示', section: '🎬 序章', file: 'chapters/ch00-fundamentals.html' },
 
     // 第一篇：Agent 基础
     { id: 'ch01', num: 1, title: '大模型与 Agent 基础概念', section: '📖 第一篇：Agent 基础', file: 'chapters/ch01-llm-basics.html' },
     { id: 'ch02', num: 2, title: '什么是 AI Agent？', section: '📖 第一篇：Agent 基础', file: 'chapters/ch02-what-is-agent.html' },
-    { id: 'ch03', num: 3, title: '你的第一个 Agent：天气查询', section: '📖 第一篇：Agent 基础', file: 'chapters/ch03-weather-agent.html' },
+    { id: 'ch03', num: 3, title: '你的第一个 Agent：天气查询助手', section: '📖 第一篇：Agent 基础', file: 'chapters/ch03-weather-agent.html' },
 
     // 第二篇：Agent 的大脑
     { id: 'ch04', num: 4, title: 'ReAct：让 Agent 学会思考', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch04-react-pattern.html' },
     { id: 'ch05', num: 5, title: 'Agent 的记忆系统', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch05-memory.html' },
     { id: 'ch06', num: 6, title: '意图识别与决策中枢', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch06-brain-intent-router.html' },
+    { id: 'ch07', num: 7, title: 'Agent 运行时：Loop 引擎与沙箱', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch21-loop-runtime-sandbox.html' },
+    { id: 'ch08', num: 8, title: 'Harness 工程：大脑的工程化外壳', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch22-harness.html' },
 
     // 第三篇：Agent 的手脚
-    { id: 'ch07', num: 7, title: 'Function Calling 与工具设计', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch06-tools.html' },
-    { id: 'ch08', num: 8, title: 'MCP：工具的标准化接口', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch07-mcp.html' },
-    { id: 'ch09', num: 9, title: 'Skills：工具的组合与复用', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch08-skills.html' },
-    { id: 'ch10', num: 10, title: 'CLI 能力：Agent 操作本地工具', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch09-cli-capability.html' },
+    { id: 'ch09', num: 9, title: 'Function Calling 与工具设计', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch06-tools.html' },
+    { id: 'ch10', num: 10, title: 'MCP：工具的标准化接口', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch07-mcp.html' },
+    { id: 'ch11', num: 11, title: 'Skills：工具的组合与复用', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch08-skills.html' },
+    { id: 'ch12', num: 12, title: 'CLI 能力：Agent 操作本地工具', section: '🛠️ 第三篇：Agent 的手脚', file: 'chapters/ch09-cli-capability.html' },
 
     // 第四篇：协作与编排
-    { id: 'ch11', num: 11, title: '多 Agent 系统架构', section: '🤝 第四篇：协作与编排', file: 'chapters/ch10-multi-agent.html' },
-    { id: 'ch12', num: 12, title: 'LangGraph 与状态机', section: '🤝 第四篇：协作与编排', file: 'chapters/ch11-langgraph.html' },
+    { id: 'ch13', num: 13, title: '多 Agent 系统架构', section: '🧬 第四篇：神经系统（协作与编排）', file: 'chapters/ch10-multi-agent.html' },
+    { id: 'ch14', num: 14, title: 'LangGraph 与状态机', section: '🧬 第四篇：神经系统（协作与编排）', file: 'chapters/ch11-langgraph.html' },
 
     // 第五篇：框架与平台
-    { id: 'ch13', num: 13, title: '主流 Agent 框架对比', section: '🏗️ 第五篇：框架与平台', file: 'chapters/ch12-framework-comparison.html' },
-    { id: 'ch14', num: 14, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第五篇：框架与平台', file: 'chapters/ch13-dify-coze.html' },
+    { id: 'ch15', num: 15, title: '主流 Agent 框架对比', section: '🏗️ 第五篇：框架与平台', file: 'chapters/ch12-framework-comparison.html' },
+    { id: 'ch16', num: 16, title: 'Dify、Coze 与可视化编排', section: '🏗️ 第五篇：框架与平台', file: 'chapters/ch13-dify-coze.html' },
 
     // 第六篇：综合实战
-    { id: 'ch15', num: 15, title: 'CLI Agent：命令行智能助手', section: '🚀 第六篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
-    { id: 'ch16', num: 16, title: 'GUI Agent：浏览器自动化', section: '🚀 第六篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
-    { id: 'ch17', num: 17, title: 'RAG：检索增强生成', section: '🚀 第六篇：综合实战', file: 'chapters/ch16-rag.html' },
+    { id: 'ch17', num: 17, title: 'CLI Agent：命令行智能助手', section: '🚀 第六篇：综合实战', file: 'chapters/ch14-cli-agent.html' },
+    { id: 'ch18', num: 18, title: 'GUI Agent：浏览器自动化', section: '🚀 第六篇：综合实战', file: 'chapters/ch15-gui-agent.html' },
+    { id: 'ch19', num: 19, title: 'RAG：检索增强生成', section: '🚀 第六篇：综合实战', file: 'chapters/ch16-rag.html' },
 
     // 第七篇：工程化
-    { id: 'ch18', num: 18, title: 'Agent 评估与可观测性', section: '⚙️ 第七篇：工程化', file: 'chapters/ch17-evaluation.html' },
-    { id: 'ch19', num: 19, title: 'Agent 安全与防护', section: '⚙️ 第七篇：工程化', file: 'chapters/ch18-security.html' },
-    { id: 'ch20', num: 20, title: 'Agent 部署与运维', section: '⚙️ 第七篇：工程化', file: 'chapters/ch19-deployment.html' },
-    { id: 'ch21', num: 21, title: '推理框架与模型服务化', section: '⚙️ 第七篇：工程化', file: 'chapters/ch20-inference-framework.html' },
-    { id: 'ch22', num: 22, title: '运行时架构：Loop、Runtime 与 Sandbox', section: '⚙️ 第七篇：工程化', file: 'chapters/ch21-loop-runtime-sandbox.html' },
-    { id: 'ch23', num: 23, title: 'Harness Engineering：从 Prompt 到 Context 到 Harness', section: '⚙️ 第七篇：工程化', file: 'chapters/ch22-harness.html' },
+    { id: 'ch20', num: 20, title: 'Agent 评估与可观测性', section: '⚙️ 第七篇：工程化', file: 'chapters/ch17-evaluation.html' },
+    { id: 'ch21', num: 21, title: 'Agent 安全与防护', section: '⚙️ 第七篇：工程化', file: 'chapters/ch18-security.html' },
+    { id: 'ch22', num: 22, title: 'Agent 部署与运维', section: '⚙️ 第七篇：工程化', file: 'chapters/ch19-deployment.html' },
+    { id: 'ch23', num: 23, title: '推理框架与模型服务化', section: '⚙️ 第七篇：工程化', file: 'chapters/ch20-inference-framework.html' },
 
     // 终章
     { id: 'ch24', num: 24, title: '2026 Agent 技术展望', section: '🌟 终章', file: 'chapters/ch23-future-summary.html' }

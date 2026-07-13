@@ -1,9 +1,9 @@
-<!-- 第19章：Agent 部署与运维 -->
-<h1 class="chapter-title">第19章 Agent 部署与运维</h1>
+<!-- 第22章：Agent 部署与运维 -->
+<h1 class="chapter-title">第22章 Agent 部署与运维</h1>
 <p class="chapter-subtitle">从 Demo 到生产——部署、监控、灰度、CI/CD 全流程</p>
 
-<!-- ===== 19.1 Demo vs 生产 ===== -->
-<h2 class="section-heading">19.1 Demo 能跑 ≠ 生产能用</h2>
+<!-- ===== 22.1 Demo vs 生产 ===== -->
+<h2 class="section-heading">22.1 Demo 能跑 ≠ 生产能用</h2>
 
 <p>在 Jupyter Notebook 里跑通一个 Agent Demo 只需要 30 分钟。但把它放到生产环境，面对真实用户、真实流量、真实故障，需要解决完全不同的问题。</p>
 
@@ -32,8 +32,8 @@
   </div>
 </div>
 
-<!-- ===== 19.2 部署架构 ===== -->
-<h2 class="section-heading">19.2 生产级 Agent 部署架构</h2>
+<!-- ===== 22.2 部署架构 ===== -->
+<h2 class="section-heading">22.2 生产级 Agent 部署架构</h2>
 
 <div class="card">
   <div class="card-title">🏗️ 推荐架构：API Gateway + Agent Service + LLM Proxy</div>
@@ -153,8 +153,8 @@ services:
       test: ["CMD", "pg_isready"]</pre>
 </div>
 
-<!-- ===== 19.3 CI/CD ===== -->
-<h2 class="section-heading">19.3 CI/CD：持续集成与持续部署</h2>
+<!-- ===== 22.3 CI/CD ===== -->
+<h2 class="section-heading">22.3 CI/CD：持续集成与持续部署</h2>
 
 <p>Agent 的 CI/CD 与传统软件不同，需要额外关注<strong>Prompt 版本管理</strong>和<strong>评估回归</strong>。</p>
 
@@ -263,8 +263,8 @@ jobs:
           fi</pre>
 </div>
 
-<!-- ===== 19.4 灰度发布 ===== -->
-<h2 class="section-heading">19.4 灰度发布策略</h2>
+<!-- ===== 22.4 灰度发布 ===== -->
+<h2 class="section-heading">22.4 灰度发布策略</h2>
 
 <p>Agent 的输出有随机性，新版本可能有未知问题。灰度发布让你<strong>先给一小部分用户用新版本</strong>，观察指标正常后再全量。</p>
 
@@ -318,8 +318,8 @@ server {
 }</pre>
 </div>
 
-<!-- ===== 19.5 监控告警 ===== -->
-<h2 class="section-heading">19.5 监控与告警体系</h2>
+<!-- ===== 22.5 监控告警 ===== -->
+<h2 class="section-heading">22.5 监控与告警体系</h2>
 
 <p>生产环境必须做到<strong>5 分钟发现、5 分钟定位、5 分钟恢复</strong>。没有监控的 Agent 就像闭眼开车。</p>
 
@@ -521,8 +521,8 @@ public class AgentMetrics {
 }</pre></div>
 </div>
 
-<!-- ===== 19.6 成本优化 ===== -->
-<h2 class="section-heading">19.6 成本优化策略</h2>
+<!-- ===== 22.6 成本优化 ===== -->
+<h2 class="section-heading">22.6 成本优化策略</h2>
 
 <p>Agent 的最大成本是 <strong>LLM API 调用费用</strong>。一个不加优化的 Agent，月账单可能从 $100 飙到 $10,000。</p>
 
@@ -893,12 +893,12 @@ public class SemanticCache {
 </div>
 
 
-<!-- ===== 19.7 Kubernetes 部署：企业级容器编排 ===== -->
-<h2 class="section-heading">19.7 Kubernetes 部署：企业级容器编排</h2>
+<!-- ===== 22.7 Kubernetes 部署：企业级容器编排 ===== -->
+<h2 class="section-heading">22.7 Kubernetes 部署：企业级容器编排</h2>
 
 <p>当 Agent 服务从单机 Docker 走向多实例、多环境时，Kubernetes（K8s）成为企业级部署的标配。K8s 提供了<strong>自动扩缩容、自愈、滚动更新、服务发现</strong>等生产级能力，是 Agent 从"能跑"到"能扛流量"的关键基础设施。</p>
 
-<h3 class="sub-heading">19.7.1 Agent 的 K8s 部署模板</h3>
+<h3 class="sub-heading">22.7.1 Agent 的 K8s 部署模板</h3>
 
 <div class="multi-lang">
 <div class="lang-tabs">
@@ -1037,7 +1037,7 @@ deploy_agent_cluster()
 </div>
 </div>
 
-<h3 class="sub-heading">19.7.2 Agent 专属 K8s 配置要点</h3>
+<h3 class="sub-heading">22.7.2 Agent 专属 K8s 配置要点</h3>
 
 <div class="compare-panel">
 <div class="compare-left">
@@ -1062,7 +1062,7 @@ deploy_agent_cluster()
 <strong>Agent 优雅关闭（Graceful Shutdown）</strong>：K8s 删除 Pod 时默认给 30 秒宽限期。但 Agent 可能正在执行一个 5 分钟的工具调用。解决方案：① 设置 <code>terminationGracePeriodSeconds: 300</code>（5分钟）；② 在 <code>preStop</code> 钩子中通知 Agent "正在关闭，请完成当前任务"；③ 配合就绪探针摘除流量，新请求不再进来。
 </div>
 
-<h3 class="sub-heading">19.7.3 Prometheus + Grafana 监控体系</h3>
+<h3 class="sub-heading">22.7.3 Prometheus + Grafana 监控体系</h3>
 
 <p>Prometheus 负责指标采集，Grafana 负责可视化，二者组合是云原生监控的事实标准。Agent 服务需要暴露以下自定义指标：</p>
 
@@ -1235,7 +1235,7 @@ groups:
     annotations:
       summary: "Token 消耗速率异常，可能存在 Agent 死循环"</code></pre>
 
-<h3 class="sub-heading">19.7.4 SLA 保障体系</h3>
+<h3 class="sub-heading">22.7.4 SLA 保障体系</h3>
 
 <p>企业级 Agent 服务需要明确的 SLA（Service Level Agreement）承诺。Agent 的 SLA 与传统 Web 服务不同，需要同时保证<strong>可用性</strong>和<strong>质量</strong>两个维度。</p>
 
@@ -1258,8 +1258,8 @@ groups:
 99.9% = 每月最多停机 <strong>43.2 分钟</strong>。Agent 服务因 LLM API 依赖第三方，建议在 SLA 中明确"LLM API 不可用不计入停机时间"。
 </div>
 
-<!-- ===== 19.8 企业级部署 Checklist ===== -->
-<h2 class="section-heading">19.8 企业级部署 Checklist</h2>
+<!-- ===== 22.8 企业级部署 Checklist ===== -->
+<h2 class="section-heading">22.8 企业级部署 Checklist</h2>
 
 <p>以下是从 Demo 到生产环境的完整检查清单，每一条都必须打勾才能上线：</p>
 

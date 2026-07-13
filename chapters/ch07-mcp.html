@@ -1,9 +1,9 @@
-<!-- 第7章：MCP 协议 -->
-<h1 class="chapter-title">第7章 MCP：工具的标准化接口</h1>
+<!-- 第10章：MCP 协议 -->
+<h1 class="chapter-title">第10章 MCP：工具的标准化接口</h1>
 <p class="chapter-subtitle">Model Context Protocol — Agent 的 USB-C 接口</p>
 
-<!-- ===== 7.1 MCP 是什么 ===== -->
-<h2 class="section-heading">7.1 为什么需要 MCP？</h2>
+<!-- ===== 10.1 MCP 是什么 ===== -->
+<h2 class="section-heading">10.1 为什么需要 MCP？</h2>
 
 <p>在 MCP 出现前，每个 Agent 框架有自己的工具定义方式。LangChain 用 @tool 装饰器，AutoGen 用 register_function，CrewAI 用 BaseTool 类……工具开发者要为每个框架写一遍适配代码。</p>
 
@@ -21,8 +21,8 @@
   <strong>解决：</strong>工具开发者只需实现一次 MCP Server，所有支持 MCP 的 Agent 框架都能用。N×M 变成 N+M。
 </div>
 
-<!-- ===== 7.2 MCP 架构 ===== -->
-<h2 class="section-heading">7.2 MCP 架构</h2>
+<!-- ===== 10.2 MCP 架构 ===== -->
+<h2 class="section-heading">10.2 MCP 架构</h2>
 
 <div class="flowchart-container" id="mcpArch"></div>
 
@@ -73,8 +73,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 7.3 通信协议 ===== -->
-<h2 class="section-heading">7.3 MCP 的通信机制</h2>
+<!-- ===== 10.3 通信协议 ===== -->
+<h2 class="section-heading">10.3 MCP 的通信机制</h2>
 
 <p>MCP 基于 <strong>JSON-RPC 2.0</strong> 协议，支持三种传输方式：</p>
 
@@ -271,8 +271,8 @@ data: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"分析
 <p>官方态度：<em>如果将来实践中发现 SSE 确实不够理想，会重新评估 WebSocket</em>。但目前 Streamable HTTP 已经足够好用。</p>
 </div>
 
-<!-- ===== 7.4 MCP Server 实现 ===== -->
-<h2 class="section-heading">7.4 编写一个 MCP Server</h2>
+<!-- ===== 10.4 MCP Server 实现 ===== -->
+<h2 class="section-heading">10.4 编写一个 MCP Server</h2>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from mcp import Server, Tool
@@ -443,8 +443,8 @@ public class MyToolsServer {
   <strong>关键点</strong>：这个 MCP Server 可以被任何支持 MCP 的 Agent 使用——Claude Desktop、Cursor、LangChain、OpenClaw 等。写一次，到处用。
 </div>
 
-<!-- ===== 7.5 MCP 生态 ===== -->
-<h2 class="section-heading">7.5 MCP 生态现状</h2>
+<!-- ===== 10.5 MCP 生态 ===== -->
+<h2 class="section-heading">10.5 MCP 生态现状</h2>
 
 <div class="card">
   <div class="card-title">🌐 谁在支持 MCP？</div>
@@ -481,8 +481,8 @@ public class MyToolsServer {
   </table>
 </div>
 
-<!-- ===== 7.6 MCP 客户端完整实现 ===== -->
-<h2 class="section-heading">7.6 MCP 客户端完整实现</h2>
+<!-- ===== 10.6 MCP 客户端完整实现 ===== -->
+<h2 class="section-heading">10.6 MCP 客户端完整实现</h2>
 
 <p>上一节我们写了一个最简版的 MCP Server，但要让 Agent 真正使用 MCP Server 的能力，还需要一个完整的 MCP 客户端来发起连接、发现能力、调用工具。本节展示如何使用官方 <code>mcp</code> Python 库编写一个功能完整的 MCP 客户端，覆盖工具调用、资源读取和提示词获取三大场景。</p>
 
@@ -714,8 +714,8 @@ public class McpClientExample {
   <strong>注意</strong>：<code>session.initialize()</code> 是必须的第一步，它会完成 JSON-RPC 握手和能力协商。跳过这一步直接调用工具会报错。客户端和服务器端必须使用相同的传输方式（stdio、SSE 或 Streamable HTTP）。
 </div>
 
-<!-- ===== 7.7 MCP Server 完整实现 ===== -->
-<h2 class="section-heading">7.7 MCP Server 完整实现</h2>
+<!-- ===== 10.7 MCP Server 完整实现 ===== -->
+<h2 class="section-heading">10.7 MCP Server 完整实现</h2>
 
 <p>6.4 节展示了一个最简版的 Server，但生产级的 MCP Server 需要同时实现资源（Resources）、工具（Tools）和提示词（Prompts）三类能力，并正确处理生命周期。本节展示一个完整的天气数据 MCP Server，包含资源定义、工具注册和错误处理。</p>
 
@@ -998,8 +998,8 @@ public class WeatherDataServer {
   <strong>架构要点</strong>：Server 使用装饰器模式注册处理器，每个处理器对应一个 JSON-RPC 方法。<code>app.run()</code> 启动事件循环后，所有通信通过 stdio 流自动完成。Client 不需要知道 Server 内部实现，只需通过标准协议调用即可。
 </div>
 
-<!-- ===== 7.8 MCP 协议深度解析 ===== -->
-<h2 class="section-heading">7.8 MCP 协议深度解析</h2>
+<!-- ===== 10.8 MCP 协议深度解析 ===== -->
+<h2 class="section-heading">10.8 MCP 协议深度解析</h2>
 
 <p>理解 MCP 不能只停留在 API 使用层面，还需要深入协议底层。本节从 JSON-RPC 2.0 报文格式、能力协商流程、协议栈分层架构三个维度，带你彻底理解 MCP 的通信本质。</p>
 
@@ -1257,8 +1257,8 @@ public class WeatherDataServer {
   <strong>握手三阶段</strong>：<strong>初始化阶段</strong>（① ②）—— Client 发送 <code>initialize</code> 请求，携带自己支持的协议版本和能力；Server 返回自己支持的能力集合。<strong>确认阶段</strong>（③）—— Client 发送 <code>notifications/initialized</code> 通知，表示握手完成。<strong>调用阶段</strong>（④ ⑤）—— 双方开始正常的方法调用，如 <code>tools/list</code>、<code>tools/call</code>、<code>resources/read</code> 等。
 </div>
 
-<!-- ===== 7.9 MCP Gateway与路由 ===== -->
-<h2 class="section-heading">7.9 MCP Gateway 与路由</h2>
+<!-- ===== 10.9 MCP Gateway与路由 ===== -->
+<h2 class="section-heading">10.9 MCP Gateway 与路由</h2>
 
 <p>当 Agent 需要同时连接多个 MCP Server 时，直接管理每个连接会变得复杂：不同 Server 的健康状态、版本兼容、负载分布都需要逐一处理。<strong>MCP Gateway</strong> 正是为了解决这个问题而诞生的——它作为统一入口，代理所有 MCP Server 的连接和调度。</p>
 
@@ -1422,8 +1422,8 @@ gateway:
   <strong>关键设计</strong>：Gateway 配置支持三种路由策略可组合使用——先按工具类型分流到对应 Server 组，再在组内按优先级或负载均衡选择具体实例。健康检查确保自动剔除不可用 Server，重试机制保障请求成功率。
 </div>
 
-<!-- ===== 7.10 MCP市场与Skills生态 ===== -->
-<h2 class="section-heading">7.10 MCP 市场与 Skills 生态</h2>
+<!-- ===== 10.10 MCP市场与Skills生态 ===== -->
+<h2 class="section-heading">10.10 MCP 市场与 Skills 生态</h2>
 
 <p>MCP 不仅仅是技术协议，它催生了一个完整的<strong>工具生态系统</strong>。截至 2025-2026 年，MCP Server 的月下载量已突破 <strong>9700 万至 1.1 亿</strong>次，Skills（技能包）生态超过 <strong>8.5 万个</strong>。这意味着 MCP 正在从技术标准走向产业生态——就像 USB-C 不只是接口规格，更催生了整个配件市场。</p>
 
@@ -1586,8 +1586,8 @@ setTimeout(() => {
   <strong>本质区别</strong>：App Store 卖的是<strong>产品</strong>——用户直接使用的完整应用；Skills 市场卖的是<strong>能力</strong>——Agent 组合使用的专业技能包。前者面向终端用户，后者面向 Agent（代理用户）。这意味着 Skills 市场更注重<strong>可组合性</strong>和<strong>标准化接口</strong>，而非独立的用户体验。
 </div>
 
-<!-- ===== 7.11 MCP安全与权限管理 ===== -->
-<h2 class="section-heading">7.11 MCP 安全与权限管理</h2>
+<!-- ===== 10.11 MCP安全与权限管理 ===== -->
+<h2 class="section-heading">10.11 MCP 安全与权限管理</h2>
 
 <p>MCP Server 拥有强大的能力——读取文件、访问数据库、调用 API、发送邮件。这些能力如果不受管控，可能成为安全漏洞的入口。<strong>MCP 安全与权限管理</strong>的核心目标是：在赋予 Agent 能力的同时，划定明确的安全边界，确保每一次工具调用都在可控范围内。</p>
 

@@ -1,4 +1,4 @@
 {
-  "version": "20260713.1",
-  "changelog": "修复ch06代码高亮不渲染：删除7个手动lang-tabs块，统一为main.js自动生成模式"
+  "version": "20260713.6",
+  "changelog": "移除Prism JS/CSS的integrity属性(jsdelivr CDN多节点hash不一致)"
 }

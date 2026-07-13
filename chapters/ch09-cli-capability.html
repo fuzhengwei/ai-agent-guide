@@ -1,9 +1,9 @@
-<!-- 第9章：CLI 能力 — Agent 操作本地工具的手 -->
-<h1 class="chapter-title">第9章 CLI 能力：Agent 操作本地工具的手</h1>
+<!-- 第12章：CLI 能力 — Agent 操作本地工具的手 -->
+<h1 class="chapter-title">第12章 CLI 能力：Agent 操作本地工具</h1>
 <p class="chapter-subtitle">让 Agent 操控 Git、Docker、Maven……一切 CLI 工具皆为 Agent 的手脚</p>
 
-<!-- ===== 9.1 为什么 CLI 能力是 Agent 的关键突破 ===== -->
-<h2 class="section-heading">9.1 为什么 CLI 能力是 Agent 的关键突破</h2>
+<!-- ===== 12.1 为什么 CLI 能力是 Agent 的关键突破 ===== -->
+<h2 class="section-heading">12.1 为什么 CLI 能力是 Agent 的关键突破</h2>
 
 <p>前两章我们讲了 MCP 和 Skills——它们让 Agent 能调用远程 API、搜索文档、操作数据库。但程序员日常工作中最频繁使用的工具是什么？是<strong>命令行</strong>。<code>git commit</code>、<code>mvn clean package</code>、<code>docker compose up</code>、<code>kubectl apply</code>……这些 CLI 工具构成了开发者的核心操作链路。</p>
 
@@ -74,8 +74,8 @@
   </table>
 </div>
 
-<!-- ===== 9.2 CLI 能力的三层架构 ===== -->
-<h2 class="section-heading">9.2 CLI 能力的三层架构</h2>
+<!-- ===== 12.2 CLI 能力的三层架构 ===== -->
+<h2 class="section-heading">12.2 CLI 能力的三层架构</h2>
 
 <p>Agent 操作 CLI 工具，不是简单地把用户的话翻译成命令然后执行。它需要一个完整的<strong>三层架构</strong>：意图理解层、命令生成层、安全执行层。每一层都有独特的技术挑战。</p>
 
@@ -238,8 +238,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 9.3 CLI 工具的 Schema 注册 ===== -->
-<h2 class="section-heading">9.3 CLI 工具的 Schema 注册</h2>
+<!-- ===== 12.3 CLI 工具的 Schema 注册 ===== -->
+<h2 class="section-heading">12.3 CLI 工具的 Schema 注册</h2>
 
 <p>要让 Agent 精准操控 CLI 工具，每个工具需要定义<strong>Schema</strong>——告诉 LLM 这个工具能做什么、有哪些参数、参数的类型和约束。这是连接"第6章 Function Calling"和"第7章 MCP"的桥梁。</p>
 
@@ -347,8 +347,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 9.4 CLI 工具的统一调度器 ===== -->
-<h2 class="section-heading">9.4 CLI 工具的统一调度器</h2>
+<!-- ===== 12.4 CLI 工具的统一调度器 ===== -->
+<h2 class="section-heading">12.4 CLI 工具的统一调度器</h2>
 
 <p>Agent 同时掌握 git、maven、docker、kubectl 等多个 CLI 工具，需要一个<strong>统一调度器</strong>来：</p>
 
@@ -448,8 +448,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 9.5 实战：构建一个 CLI Agent ===== -->
-<h2 class="section-heading">9.5 实战：构建一个 CLI Agent</h2>
+<!-- ===== 12.5 实战：构建一个 CLI Agent ===== -->
+<h2 class="section-heading">12.5 实战：构建一个 CLI Agent</h2>
 
 <p>我们将构建一个最小但完整的 CLI Agent，它能理解自然语言、生成命令、安全执行并返回结果。</p>
 
@@ -975,8 +975,8 @@ public class CommandSandbox {
 }</pre></div>
 </div>
 
-<!-- ===== 9.6 CLI Agent 的错误自愈 ===== -->
-<h2 class="section-heading">9.6 CLI Agent 的错误自愈</h2>
+<!-- ===== 12.6 CLI Agent 的错误自愈 ===== -->
+<h2 class="section-heading">12.6 CLI Agent 的错误自愈</h2>
 
 <p>命令执行失败是常态——参数错误、环境缺失、权限不足。好的 CLI Agent 不是简单报错，而是<strong>自动诊断并修复</strong>。</p>
 
@@ -1031,8 +1031,8 @@ public class CommandSandbox {
     <span class="cmd">return</span> {<span class="cmd">"error"</span>: <span class="str">"重试3次仍然失败，请人工介入"</span>}
 </div>
 
-<!-- ===== 9.7 CLI Agent 与 MCP + Skills 的组合 ===== -->
-<h2 class="section-heading">9.7 CLI Agent 与 MCP + Skills 的组合</h2>
+<!-- ===== 12.7 CLI Agent 与 MCP + Skills 的组合 ===== -->
+<h2 class="section-heading">12.7 CLI Agent 与 MCP + Skills 的组合</h2>
 
 <p>单独的 CLI 能力只是"一双手"。但配合 MCP（通信协议）和 Skills（组合复用），CLI Agent 就成了一个<strong>完整的智能体</strong>。</p>
 
@@ -1079,7 +1079,7 @@ public class CommandSandbox {
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">多工具编排、懒加载、沉淀机制</td>
         </tr>
         <tr>
-          <td style="padding: 10px 8px; font-weight: 600; color: #d4a574;">第9章 CLI 能力</td>
+          <td style="padding: 10px 8px; font-weight: 600; color: #d4a574;">第12章 CLI 能力</td>
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 如何操控本地工具？</td>
           <td style="padding: 10px 8px; color: var(--color-text-secondary);">本地命令行执行 + 安全沙箱 + 错误自愈</td>
         </tr>
@@ -1155,8 +1155,8 @@ public class CommandSandbox {
 </div>
 
 
-<!-- ===== 9.8 NL2Shell 实战：Few-Shot 提升准确率 ===== -->
-<h2 class="section-heading">9.8 NL2Shell 实战：Few-Shot 提升准确率</h2>
+<!-- ===== 12.8 NL2Shell 实战：Few-Shot 提升准确率 ===== -->
+<h2 class="section-heading">12.8 NL2Shell 实战：Few-Shot 提升准确率</h2>
 
 <p>NL2Shell（自然语言转 Shell 命令）是 CLI Agent 的核心能力。纯零样本（zero-shot）生成的命令准确率约 60-70%，通过 Few-Shot 示例 + 工具 Schema 可提升至 90%+。</p>
 
@@ -1321,12 +1321,12 @@ export function generateCommand(userInput: string): NL2ShellResult {
 </div>
 </div>
 
-<!-- ===== 9.9 SSH Agent：远程运维场景 ===== -->
-<h2 class="section-heading">9.9 SSH Agent：远程运维场景</h2>
+<!-- ===== 12.9 SSH Agent：远程运维场景 ===== -->
+<h2 class="section-heading">12.9 SSH Agent：远程运维场景</h2>
 
 <p>企业级 Agent 不仅要操控本地环境，还需要通过 <strong>SSH 远程操控服务器</strong>。这是 DevOps 场景的核心能力，也是企业招聘面试的高频话题。以 <a href="https://walicode.xiaofuge.cn" target="_blank">WaLiCode</a> 为例，其 SSH DevOps 模式允许 Agent 通过 SSH 连接到远程服务器执行命令、管理文件、部署应用。</p>
 
-<h3 class="sub-heading">9.9.1 SSH Agent 架构</h3>
+<h3 class="sub-heading">12.9.1 SSH Agent 架构</h3>
 
 <div class="info-box">
 <strong>SSH Agent 三层架构</strong>：<br>
@@ -1548,7 +1548,7 @@ agent.close();</code></pre>
 </div>
 </div>
 
-<h3 class="sub-heading">9.9.2 SSH Agent 安全要点</h3>
+<h3 class="sub-heading">12.9.2 SSH Agent 安全要点</h3>
 
 <table class="data-table">
 <thead>

@@ -1,5 +1,5 @@
-<!-- 第6章：工具调用与 Skills -->
-<h1 class="chapter-title">第6章 Function Calling 与工具设计</h1>
+<!-- 第9章：工具调用与 Skills -->
+<h1 class="chapter-title">第9章 Function Calling 与工具设计</h1>
 <p class="chapter-subtitle">从单次调用到智能路由——工具系统的工程实践</p>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
@@ -8,8 +8,8 @@
   <p style="margin-top: 12px;">只要你把这个闭环理解透了，后面的工具路由、Skill 分层、并发控制都只是工程强化。反过来，如果这个闭环都没跑顺，就不该继续往系统设计上堆复杂度。</p>
 </div>
 
-<!-- ===== 6.1 为什么需要工具 ===== -->
-<h2 class="section-heading">6.1 LLM 的能力边界</h2>
+<!-- ===== 9.1 为什么需要工具 ===== -->
+<h2 class="section-heading">9.1 LLM 的能力边界</h2>
 
 <p>LLM 再强大，也有硬伤：</p>
 
@@ -42,8 +42,8 @@
   LLM 是大脑，工具是手脚。没有工具的 Agent 就像一个瘫痪的天才——什么都懂，但什么都做不了。
 </div>
 
-<!-- ===== 6.2 工具调用的演进 ===== -->
-<h2 class="section-heading">6.2 工具调用的三代演进</h2>
+<!-- ===== 9.2 工具调用的演进 ===== -->
+<h2 class="section-heading">9.2 工具调用的三代演进</h2>
 
 <div class="step-animation" id="toolEvoSteps">
   <div class="step-canvas">
@@ -87,8 +87,8 @@ document.getElementById('toolEvoPrev').addEventListener('click', () => ToolEvo.p
 window.ToolEvo = ToolEvo;
 </script>
 
-<!-- ===== 6.3 Function Calling 详解 ===== -->
-<h2 class="section-heading">6.3 Function Calling 详解</h2>
+<!-- ===== 9.3 Function Calling 详解 ===== -->
+<h2 class="section-heading">9.3 Function Calling 详解</h2>
 
 <p>Function Calling 是目前工具调用的主流方式。来看完整的调用流程：</p>
 
@@ -400,8 +400,8 @@ import java.io.*;
 }</pre></div>
 </div>
 
-<!-- ===== 6.4 工具分类体系 ===== -->
-<h2 class="section-heading">6.4 工具分类体系</h2>
+<!-- ===== 9.4 工具分类体系 ===== -->
+<h2 class="section-heading">9.4 工具分类体系</h2>
 
 <div class="card">
   <div class="card-title">🔧 Agent 工具全景</div>
@@ -454,16 +454,16 @@ import java.io.*;
   </div>
 </div>
 
-<!-- ===== 6.5 Skills 概念 ===== -->
+<!-- ===== 9.5 Skills 概念 ===== -->
 
 <!-- ===== Skill 相关内容已移至第8章「Skills」===== -->
 <div class="info-box">
 <h4 style="color: var(--color-primary); margin-top: 0;">🔗 关于 Skills（工具的组合与复用）</h4>
 <p>Function Calling 是单次工具调用的基础。但当 Agent 需要<strong>组合多个工具、形成可复用的能力包</strong>时，就进入了 Skills 的领域——Skill 的定义、三层结构、匹配与路由、分层体系、沉淀机制等完整内容，请参见<strong>第8章「Skills：工具的组合与复用」</strong>。</p>
-<p style="margin-top: 8px;">本章接下来的内容聚焦于<strong>工具调用的工程实践</strong>：意图识别与工具路由（6.10）、上下文工程与工具管理（6.11）、消息压缩（6.12）、Structured Output（6.13）、实战路由系统（6.14）、并发控制与弱模型兼容（6.15）。</p>
+<p style="margin-top: 8px;">本章接下来的内容聚焦于<strong>工具调用的工程实践</strong>：意图识别与工具路由（9.10）、上下文工程与工具管理（9.11）、消息压缩（9.12）、Structured Output（9.13）、实战路由系统（9.14）、并发控制与弱模型兼容（9.15）。</p>
 </div>
 
-<h2 class="section-heading">6.10 意图识别与工具路由</h2>
+<h2 class="section-heading">9.10 意图识别与工具路由</h2>
 
 <p>用户说"帮我查下北京天气"，Agent 需要先理解<strong>用户到底想做什么</strong>，才能选到正确的工具。这就是意图识别——工具路由的"大脑"。</p>
 
@@ -1050,8 +1050,8 @@ public class IntentRouter {
 }</pre></div>
 </div>
 
-<!-- ===== 6.11 上下文工程与工具管理 ===== -->
-<h2 class="section-heading">6.11 上下文工程与工具管理</h2>
+<!-- ===== 9.11 上下文工程与工具管理 ===== -->
+<h2 class="section-heading">9.11 上下文工程与工具管理</h2>
 
 <p>一个 Agent 可能注册了 50 个工具。如果把所有工具描述一次性塞给 LLM，每次请求都要消耗数千 token 在工具描述上——而 LLM 实际只会用到 1~3 个。这就是<strong>上下文工程</strong>要解决的问题。</p>
 
@@ -1437,8 +1437,8 @@ public class ToolRAG {
   </div>
 </div>
 
-<!-- ===== 6.12 消息压缩与工具调用链 ===== -->
-<h2 class="section-heading">6.12 消息压缩与工具调用链</h2>
+<!-- ===== 9.12 消息压缩与工具调用链 ===== -->
+<h2 class="section-heading">9.12 消息压缩与工具调用链</h2>
 
 <p>多轮工具调用会产生<strong>Context 膨胀</strong>问题。一次搜索返回 2000 token，执行代码又返回 1500 token，3轮调用后 Context 就膨胀了上万 token——而 LLM 的有效注意力在超长 Context 中会显著衰减。</p>
 
@@ -1882,8 +1882,8 @@ public class ToolResultCompressor {
   好的 Agent 不是把所有信息都塞进 Context，而是像人类一样——<strong>记要点，存细节</strong>。要点放 Context（短期记忆），细节放向量库（长期记忆）。
 </div>
 
-<!-- ===== 6.13 Structured Output与工具调用 ===== -->
-<h2 class="section-heading">6.13 Structured Output 与工具调用</h2>
+<!-- ===== 9.13 Structured Output与工具调用 ===== -->
+<h2 class="section-heading">9.13 Structured Output 与工具调用</h2>
 
 <p>Function Calling 天然就是 Structured Output——LLM 输出 JSON 格式的函数调用。但实际场景中，我们还需要对输出做<strong>更严格的约束</strong>：参数类型校验、必填检查、格式验证。</p>
 
@@ -2352,10 +2352,10 @@ public class StructuredToolCaller {
   </div>
 </div>
 
-<!-- ===== 6.14 实战：构建智能工具路由系统 ===== -->
-<h2 class="section-heading">6.14 实战：构建智能工具路由系统</h2>
+<!-- ===== 9.14 实战：构建智能工具路由系统 ===== -->
+<h2 class="section-heading">9.14 实战：构建智能工具路由系统</h2>
 
-<p>把 6.10~6.13 的概念串起来，构建一个完整的<strong>意图识别 → 工具检索 → 工具调用 → 结果压缩 → 结构化验证</strong>全链路 Agent。</p>
+<p>把 9.10~9.13 的概念串起来，构建一个完整的<strong>意图识别 → 工具检索 → 工具调用 → 结果压缩 → 结构化验证</strong>全链路 Agent。</p>
 
 <div class="flowchart-container" id="smartRouterFlow"></div>
 
@@ -2401,7 +2401,7 @@ from typing import List, Dict, Any, Optional
 from enum import Enum
 from pydantic import BaseModel, ValidationError
 
-# ===== 6.10 意图识别 =====
+# ===== 9.10 意图识别 =====
 
 class IntentType(Enum):
     INFO_QUERY = "信息获取"
@@ -2437,7 +2437,7 @@ class IntentClassifier:
         intents = [Intent(**i) for i in parsed["intents"]]
         return intents
 
-# ===== 6.11 Tool RAG =====
+# ===== 9.11 Tool RAG =====
 
 class ToolRAG:
     """向量检索工具描述"""
@@ -2463,7 +2463,7 @@ class ToolRAG:
         tool_names = [r["id"] for r in results]
         return [t for t in self.all_tools if t["function"]["name"] in tool_names]
 
-# ===== 6.13 结构化验证 =====
+# ===== 9.13 结构化验证 =====
 
 # 定义参数模型（按工具）
 class WeatherParams(BaseModel):
@@ -2484,7 +2484,7 @@ PARAM_MODELS = {
     "run_python": PythonParams,
 }
 
-# ===== 6.12 结果压缩 =====
+# ===== 9.12 结果压缩 =====
 
 class ResultCompressor:
     """工具结果压缩"""
@@ -2644,7 +2644,7 @@ import * as uuid from 'uuid';
 import {Enum} from 'enum';
 import {BaseModel, ValidationError} from 'pydantic';
 
-// ===== 6.10 意图识别 =====
+// ===== 9.10 意图识别 =====
 
 class IntentType {
   static readonly INFO_QUERY = "信息获取";
@@ -2680,7 +2680,7 @@ class IntentClassifier {
   // intents = [Intent(**i) for i in parsed["intents"]]
   return intents;
 
-// ===== 6.11 Tool RAG =====
+// ===== 9.11 Tool RAG =====
 
 class ToolRAG {
   /** docstring */
@@ -2706,7 +2706,7 @@ class ToolRAG {
   // tool_names = [r["id"] for r in results]
   return [t for t in self.all_tools if t["function"]["name"] in tool_names];
 
-// ===== 6.13 结构化验证 =====
+// ===== 9.13 结构化验证 =====
 
 // 定义参数模型（按工具）
 class WeatherParams {
@@ -2727,7 +2727,7 @@ class PythonParams {
   // "run_python": PythonParams,
   // }
 
-// ===== 6.12 结果压缩 =====
+// ===== 9.12 结果压缩 =====
 
 class ResultCompressor {
   /** docstring */
@@ -2895,7 +2895,7 @@ import (
 // from enum import Enum
 // from pydantic import BaseModel, ValidationError
 
-// ===== 6.10 意图识别 =====
+// ===== 9.10 意图识别 =====
 
 // IntentType - CLI Agent class
 type IntentType struct {
@@ -2933,7 +2933,7 @@ type IntentClassifier struct {
 	// Python: intents = [Intent(**i) for i in parsed["intents"]]
 	return intents
 
-// ===== 6.11 Tool RAG =====
+// ===== 9.11 Tool RAG =====
 
 // ToolRAG - CLI Agent class
 type ToolRAG struct {
@@ -2960,7 +2960,7 @@ func New__init__() *__init__ {
 	// Python: tool_names = [r["id"] for r in results]
 	return [t for t in self.all_tools if t["function"]["name"] in tool_names]
 
-// ===== 6.13 结构化验证 =====
+// ===== 9.13 结构化验证 =====
 
 // 定义参数模型（按工具）
 // WeatherParams - CLI Agent class
@@ -2984,7 +2984,7 @@ type PythonParams struct {
 	// Python: "run_python": PythonParams,
 	// Python: }
 
-// ===== 6.12 结果压缩 =====
+// ===== 9.12 结果压缩 =====
 
 // ResultCompressor - CLI Agent class
 type ResultCompressor struct {
@@ -3148,7 +3148,7 @@ import java.io.*;
     // from enum import Enum
     // from pydantic import BaseModel, ValidationError
 
-    // ===== 6.10 意图识别 =====
+    // ===== 9.10 意图识别 =====
 
 public class IntentType {
         // Python: INFO_QUERY = "信息获取"
@@ -3183,7 +3183,7 @@ public class IntentClassifier {
         // Python: intents = [Intent(**i) for i in parsed["intents"]]
         return intents;
 
-    // ===== 6.11 Tool RAG =====
+    // ===== 9.11 Tool RAG =====
 
 public class ToolRAG {
 
@@ -3207,7 +3207,7 @@ public class ToolRAG {
         // Python: tool_names = [r["id"] for r in results]
         return [t for t in self.all_tools if t["function"]["name"] in tool_names];
 
-    // ===== 6.13 结构化验证 =====
+    // ===== 9.13 结构化验证 =====
 
     // 定义参数模型（按工具）
 public class WeatherParams {
@@ -3228,7 +3228,7 @@ public class PythonParams {
         // Python: "run_python": PythonParams,
         // Python: }
 
-    // ===== 6.12 结果压缩 =====
+    // ===== 9.12 结果压缩 =====
 
 public class ResultCompressor {
 
@@ -3380,12 +3380,12 @@ public class SmartToolRouter {
 </div>
 
 
-<!-- ===== 6.16 多协议适配层 ===== -->
-<h2 class="section-heading">6.16 多协议适配层：一套代码兼容所有模型</h2>
+<!-- ===== 9.16 多协议适配层 ===== -->
+<h2 class="section-heading">9.16 多协议适配层：一套代码兼容所有模型</h2>
 
 <p>不同 LLM 厂商的 API 协议各不相同——OpenAI 用 <code>messages</code> 数组，Anthropic 用 <code>system + messages</code> 分离，Ollama 用 <code>prompt</code> 字段，OpenAI Responses API 用 <code>input</code> 字段。如果 Agent 代码直接绑定某一协议，切换模型意味着大规模重写。</p>
 
-<h3 class="sub-heading">6.16.1 协议差异全景</h3>
+<h3 class="sub-heading">9.16.1 协议差异全景</h3>
 
 <div class="card">
   <div class="card-title">🔌 四大主流 API 协议对比</div>
@@ -3432,7 +3432,7 @@ public class SmartToolRouter {
   </table>
 </div>
 
-<h3 class="sub-heading">6.16.2 ProtocolStrategy 适配模式</h3>
+<h3 class="sub-heading">9.16.2 ProtocolStrategy 适配模式</h3>
 
 <p>WaLiCode 采用<strong>策略模式（Strategy Pattern）</strong>实现多协议适配——定义统一接口，每个协议一个实现类，运行时动态切换：</p>
 
@@ -4081,12 +4081,12 @@ public class Main {
 <strong>设计要点</strong>：多协议适配层的核心价值是<strong>解耦</strong>——Agent 核心逻辑只对接统一接口，不关心底层协议差异。切换模型只需改一行 <code>get_protocol("anthropic")</code> → <code>get_protocol("openai")</code>。新增协议只需实现 <code>ProtocolStrategy</code> 接口，符合开闭原则。
 </div>
 
-<!-- ===== 6.17 信号提取（Signal Extraction） ===== -->
-<h2 class="section-heading">6.17 信号提取：从对话中识别用户真实意图</h2>
+<!-- ===== 9.17 信号提取（Signal Extraction） ===== -->
+<h2 class="section-heading">9.17 信号提取：从对话中识别用户真实意图</h2>
 
 <p>用户说"帮我看看这段代码"——他想要的是代码审查？Bug 修复？还是性能优化？<strong>信号提取</strong>就是从用户输入中识别出隐含的意图、约束、偏好等关键信息，是工具路由的前置条件。</p>
 
-<h3 class="sub-heading">6.17.1 信号的五大类型</h3>
+<h3 class="sub-heading">9.17.1 信号的五大类型</h3>
 
 <div class="card">
   <div class="card-title">📡 用户对话中的五类信号</div>
@@ -4134,7 +4134,7 @@ public class Main {
   </table>
 </div>
 
-<h3 class="sub-heading">6.17.2 信号提取实现</h3>
+<h3 class="sub-heading">9.17.2 信号提取实现</h3>
 
 <div class="multi-lang">
 <div class="lang-tabs">
@@ -4652,16 +4652,16 @@ public class Main {
 
 
 <div class="summary-box">
-  <div class="summary-title">🔗 6.10~6.14 小结：工具调用的进阶体系</div>
+  <div class="summary-title">🔗 9.10~9.14 小结：工具调用的进阶体系</div>
   <div style="margin-top: 12px; font-size: 14px; line-height: 1.8;">
-    <strong>Skill匹配与路由</strong>（6.10）是精准——混合策略让 Agent 从众多Skill中精准定位最合适的一个。<br>
-    <strong>Skill分层体系</strong>（6.11）是架构——L0原子操作、L1流程编排、L2业务专家，职责清晰不混乱。<br>
-    <strong>Skill沉淀机制</strong>（6.12）是成长——自动/半自动/手动三种方式，让系统越用越聪明。<br>
-    <strong>意图识别</strong>（6.10）是入口——理解用户想做什么，才能选到对的工具。<br>
-    <strong>上下文工程</strong>（6.11）是效率——JIT加载和 Tool RAG 让 LLM 只看相关的工具描述，减少 token 浪费。<br>
-    <strong>消息压缩</strong>（6.12）是控制——多轮工具调用会 Context 膨胀，压缩策略保持 Context 精瘦。<br>
-    <strong>结构化输出</strong>（6.13）是安全——Pydantic 验证 + 重提示循环，杜绝参数格式错误。<br>
-    <strong>实战系统</strong>（6.14）是闭环——从意图到回答的全链路，每个环节都有策略保障。<br><br>
+    <strong>Skill匹配与路由</strong>（9.10）是精准——混合策略让 Agent 从众多Skill中精准定位最合适的一个。<br>
+    <strong>Skill分层体系</strong>（9.11）是架构——L0原子操作、L1流程编排、L2业务专家，职责清晰不混乱。<br>
+    <strong>Skill沉淀机制</strong>（9.12）是成长——自动/半自动/手动三种方式，让系统越用越聪明。<br>
+    <strong>意图识别</strong>（9.10）是入口——理解用户想做什么，才能选到对的工具。<br>
+    <strong>上下文工程</strong>（9.11）是效率——JIT加载和 Tool RAG 让 LLM 只看相关的工具描述，减少 token 浪费。<br>
+    <strong>消息压缩</strong>（9.12）是控制——多轮工具调用会 Context 膨胀，压缩策略保持 Context 精瘦。<br>
+    <strong>结构化输出</strong>（9.13）是安全——Pydantic 验证 + 重提示循环，杜绝参数格式错误。<br>
+    <strong>实战系统</strong>（9.14）是闭环——从意图到回答的全链路，每个环节都有策略保障。<br><br>
     <div style="padding: 10px; background: var(--color-bg-tertiary); border-radius: 6px;">
       💡 一句话总结：<strong>好的工具调用不是"把所有工具丢给 LLM 让它选"，而是精心设计匹配→分层→沉淀→意图→检索→验证→压缩的每一步</strong>。
     </div>
@@ -4669,12 +4669,12 @@ public class Main {
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<!-- ===== 6.15 工程深度：工具并发控制与弱模型兼容 ===== -->
-<h2 class="section-heading">6.15 工程深度：工具并发控制与弱模型兼容</h2>
+<!-- ===== 9.15 工程深度：工具并发控制与弱模型兼容 ===== -->
+<h2 class="section-heading">9.15 工程深度：工具并发控制与弱模型兼容</h2>
 
 <p>前面的章节介绍了工具调用的原理和 Skill 体系，但在生产环境中，Agent 的工具系统还面临三个工程挑战：<strong>并发控制</strong>（多个工具能不能同时执行）、<strong>权限安全</strong>（危险命令怎么拦截）、<strong>弱模型兼容</strong>（不是所有模型都输出标准的 tool_calls）。本节基于 WaLiCode 项目的真实实现，讲解这三个关键设计。</p>
 
-<h3 class="sub-heading">6.15.1 工具并发安全分类</h3>
+<h3 class="sub-heading">9.15.1 工具并发安全分类</h3>
 
 <p>简单 Agent 串行调用工具就够了——一次只调一个，等结果回来再调下一个。但生产级 Agent 面临的场景是：AI 一次可能输出 3-5 个工具调用（比如同时读取 3 个文件），如果串行执行，用户要等 3 倍的时间。</p>
 
@@ -4720,7 +4720,7 @@ function isBashCommandConcurrentSafe(command: string): boolean {
   return false;
 }</pre></div>
 
-<h3 class="sub-heading">6.15.2 流式并发执行机制</h3>
+<h3 class="sub-heading">9.15.2 流式并发执行机制</h3>
 
 <p>传统做法是等 AI 输出完所有内容后，再统一执行工具调用。但 WaLiCode 采用<strong>流式并发</strong>——AI 流式输出时，工具调用一到就立即开始执行，不等 AI 输出完。</p>
 
@@ -4926,7 +4926,7 @@ public class ToolConcurrencyController {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">6.15.3 五层权限递进系统</h3>
+<h3 class="sub-heading">9.15.3 五层权限递进系统</h3>
 
 <p>Agent 能执行 Shell 命令是好事，但也意味着它能执行 <code>rm -rf /</code>。生产级 Agent 必须有权限控制。WaLiCode 设计了<strong>五层递进</strong>的权限系统：</p>
 
@@ -4982,7 +4982,7 @@ public class ToolConcurrencyController {
 
 <p><strong>核心原则：fail-closed</strong>——不理解的命令归类为 <code>too-complex</code>，必须交互确认。宁可多问一次，不可放行危险操作。</p>
 
-<h3 class="sub-heading">6.15.4 弱模型兼容层</h3>
+<h3 class="sub-heading">9.15.4 弱模型兼容层</h3>
 
 <p>不是所有模型都像 Claude/GPT-4 那样输出干净的结构化 tool_calls。弱模型（如 DeepSeek、Qwen、Llama）经常出问题。WaLiCode 设计了两道防线：</p>
 
@@ -5048,7 +5048,7 @@ function parseToolCallsFromText(text: string): ToolCall[] {
 
 <p>这两道防线确保 Agent 能兼容从 Claude 到 Llama 的各种模型——不是所有用户都用顶级模型。</p>
 
-<h3 class="sub-heading">6.15.5 指数退避重试</h3>
+<h3 class="sub-heading">9.15.5 指数退避重试</h3>
 
 <p>工具执行可能遇到临时性错误（429 限流、503 服务不可用、网络超时）。WaLiCode 使用指数退避重试：</p>
 
@@ -5177,7 +5177,7 @@ public class ToolRetryExecutor {
 </ul>
 
 <div class="summary-box">
-<div class="summary-title">🔗 6.15 核心要点</div>
+<div class="summary-title">🔗 9.15 核心要点</div>
 <p><strong>工具并发控制</strong>：只读并发、写串行、Bash 动态判断——在安全的前提下最大化并行度。</p>
 <p><strong>五层权限递进</strong>：AST → 规则 → AI → 拒绝回退 → 熔断器，分层递进，每层可独立放行或拒绝，fail-closed 原则。</p>
 <p><strong>弱模型兼容</strong>：畸形修复 + 文本解析，让 Agent 不依赖顶级模型也能工作。</p>

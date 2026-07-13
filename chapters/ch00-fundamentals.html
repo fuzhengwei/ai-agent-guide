@@ -342,7 +342,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"眼睛和耳朵"——接收用户输入、环境信号、工具返回结果。感知能力决定了 Agent 能"看到"多少信息，包括多模态输入（文字、图片、语音）、上下文理解、意图识别。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch01 大模型基础 · ch04 推理引擎 · ch17 RAG 检索增强</div>
+    <div class="domain-chapters">📖 相关章节：ch01 大模型基础 · ch04 推理引擎 · ch19 RAG 检索增强</div>
   </div>
 
   <div class="agent-domain-card domain-think">
@@ -351,7 +351,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"大脑"——推理、规划、记忆检索。思考能力包括思维链推理（CoT）、任务拆解与规划（Plan & Execute）、记忆检索与整合、多路径探索（ToT）。这是 Agent 最重要的能力域。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch04 推理引擎 · ch05 记忆系统 · ch06 意图识别与决策中枢 · ch11 多Agent系统</div>
+    <div class="domain-chapters">📖 相关章节：ch04 推理引擎 · ch05 记忆系统 · ch06 意图识别 · ch07 运行时 · ch08 Harness · ch13 多Agent</div>
   </div>
 
   <div class="agent-flow-arrow">↓ 感知驱动思考 → 思考驱动行动 → 行动产生观察 → 观察反馈思考 ↓</div>
@@ -362,7 +362,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"手脚"——工具调用、代码执行、多Agent协作。行动能力让 Agent 从"只会想"进化到"能做事"，包括 Function Calling 调用外部 API、代码生成与执行、浏览器自动化、多 Agent 协同工作。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch07 工具设计 · ch08 MCP 协议 · ch09 Skills · ch15 CLI Agent</div>
+    <div class="domain-chapters">📖 相关章节：ch09 工具设计 · ch10 MCP 协议 · ch11 Skills · ch17 CLI Agent</div>
   </div>
 
   <div class="agent-domain-card domain-observe">
@@ -371,7 +371,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"反馈回路"——结果评估、循环决策、自我纠错。观察能力让 Agent 判断"做得对不对"，包括工具返回结果解析、执行效果评估、反思与纠错（Reflection）、循环决策直到满意。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch05 记忆系统 · ch18 评估与可观测性 · ch19 安全防护 · ch22 运行时架构</div>
+    <div class="domain-chapters">📖 相关章节：ch05 记忆系统 · ch20 评估与可观测性 · ch21 安全防护 · ch07 运行时架构</div>
   </div>
 
   <div class="agent-center-hub">
@@ -396,10 +396,10 @@ setTimeout(() => {
       { id: 'act', label: '⚡ 行动\n工具调用/代码执行\n多Agent协作', type: 'tool' },
       { id: 'observe', label: '👀 观察\n结果评估/循环决策\n反思纠错', type: 'process' },
       { id: 'done', label: '✅ 任务完成', type: 'end' },
-      { id: 'ch_input', label: 'ch01/ch02/ch17', type: 'tool' },
-      { id: 'ch_think', label: 'ch04/ch05/ch06', type: 'tool' },
-      { id: 'ch_act', label: 'ch07/ch08/ch15', type: 'tool' },
-      { id: 'ch_observe', label: 'ch18/ch19/ch22', type: 'tool' }
+      { id: 'ch_input', label: 'ch01/ch02/ch19', type: 'tool' },
+      { id: 'ch_think', label: 'ch04/ch05/ch06/ch07/ch08', type: 'tool' },
+      { id: 'ch_act', label: 'ch09/ch10/ch17', type: 'tool' },
+      { id: 'ch_observe', label: 'ch20/ch21/ch22', type: 'tool' }
     ],
     edges: [
       { from: 'perceive', to: 'think', label: '驱动' },
@@ -433,26 +433,26 @@ setTimeout(() => {
       <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch01</td><td style="padding: 10px 8px;">大模型与 Agent 基础概念</td><td style="padding: 10px 8px;"><span class="tag tag-yellow">第一篇 基础</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">LLM 原理、Transformer、模型家族、Token 与上下文窗口</td></tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch02</td><td style="padding: 10px 8px;">什么是 AI Agent？</td><td style="padding: 10px 8px;"><span class="tag tag-yellow">第一篇 基础</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent 定义、架构组件、与 ChatBot 的区别、能力闭环</td></tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch03</td><td style="padding: 10px 8px;">你的第一个 Agent：天气查询</td><td style="padding: 10px 8px;"><span class="tag tag-yellow">第一篇 基础</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">从零搭建天气 Agent，Function Calling 实战</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch04</td><td style="padding: 10px 8px;">推理引擎：从 ReAct 到反思</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">ReAct 模式、ReWOO、LLM Compiler、Reflexion 反思、CoT/ToT</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch04</td><td style="padding: 10px 8px;">ReAct：让 Agent 学会思考</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">ReAct 模式、ReWOO、LLM Compiler、Reflexion 反思、CoT/ToT</td></tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch05</td><td style="padding: 10px 8px;">Agent 的记忆系统</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">短期/长期/工作记忆、上下文压缩、Context Engineering</td></tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch06</td><td style="padding: 10px 8px;">意图识别与决策中枢</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">意图识别、工具路由、任务规划、Agent Loop 执行循环</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch07</td><td style="padding: 10px 8px;">Function Calling 与工具设计</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">工具调用原理、Schema 设计、信号提取、多协议适配</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch08</td><td style="padding: 10px 8px;">MCP：工具的标准化接口</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">MCP 协议、Stdio/SSE/Streamable HTTP、Server 开发实战</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch09</td><td style="padding: 10px 8px;">Skills：工具的组合与复用</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Skill 体系、L0/L1/L2 分层、沉淀机制、匹配与路由</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch10</td><td style="padding: 10px 8px;">CLI 能力：Agent 操作本地工具</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">CLI 工具注册、NL2Shell、SSH Agent、错误自愈</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch11</td><td style="padding: 10px 8px;">多 Agent 系统架构</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第四篇 协作与编排</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">多Agent协作模式、A2A 协议、任务分解与编排</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch12</td><td style="padding: 10px 8px;">LangGraph 与状态机</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第四篇 协作与编排</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">LangGraph 状态机、Graph 编排、Checkpoint 与中断恢复</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch13</td><td style="padding: 10px 8px;">主流 Agent 框架对比</td><td style="padding: 10px 8px;"><span class="tag tag-green">第五篇 框架</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">LangChain vs LangGraph vs AutoGen vs CrewAI vs OpenAI Agents SDK</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch14</td><td style="padding: 10px 8px;">Dify、Coze 与可视化编排</td><td style="padding: 10px 8px;"><span class="tag tag-green">第五篇 框架</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Dify/Coze/n8n 低代码平台、可视化工作流编排</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch15</td><td style="padding: 10px 8px;">CLI Agent：命令行智能助手</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">CLI Agent 完整实现、工具链集成、交互式对话</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch16</td><td style="padding: 10px 8px;">GUI Agent：浏览器自动化</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Computer Use、浏览器操控、代码索引与 AST 检索</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch17</td><td style="padding: 10px 8px;">RAG：检索增强生成</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Chunk→Embed→Retrieve→Rerank→Generate 全流程、GraphRAG</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch18</td><td style="padding: 10px 8px;">Agent 评估与可观测性</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">SWE-bench/HumanEval/AgentBench 评测、Trace 分析、EDD</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch19</td><td style="padding: 10px 8px;">Agent 安全与防护</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Prompt 注入攻防、红队测试、GDPR 合规、权限分级</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch20</td><td style="padding: 10px 8px;">Agent 部署与运维</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">K8s 部署、Prometheus 监控、灰度发布、SLA 保障</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch21</td><td style="padding: 10px 8px;">推理框架与模型服务化</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM/TensorRT-LLM/SGLang、推理优化、模型服务化</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch22</td><td style="padding: 10px 8px;">运行时架构：Loop、Runtime 与 Sandbox</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent Loop 主循环、运行时隔离、沙箱设计、三层架构</td></tr>
-      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch23</td><td style="padding: 10px 8px;">Harness Engineering</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Harness 工程范式、Claude Code/Codex/Cursor/Trae/WaLiCode 对比</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch07</td><td style="padding: 10px 8px;">Agent 运行时：Loop 引擎与沙箱</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Agent Loop 主循环、Runtime 五层架构、沙箱隔离、稳定性保障</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch08</td><td style="padding: 10px 8px;">Harness 工程：大脑的工程化外壳</td><td style="padding: 10px 8px;"><span class="tag tag-blue">第二篇 大脑</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Prompt→Context→Harness 三范式、六大组件、Claude Code/Cursor/Trae 对比</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch09</td><td style="padding: 10px 8px;">Function Calling 与工具设计</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">工具调用原理、Schema 设计、信号提取、多协议适配</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch10</td><td style="padding: 10px 8px;">MCP：工具的标准化接口</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">MCP 协议、Stdio/SSE/Streamable HTTP、Server 开发实战</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch11</td><td style="padding: 10px 8px;">Skills：工具的组合与复用</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Skill 体系、L0/L1/L2 分层、沉淀机制、匹配与路由</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch12</td><td style="padding: 10px 8px;">CLI 能力：Agent 操作本地工具</td><td style="padding: 10px 8px;"><span class="tag tag-pink">第三篇 手脚</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">CLI 工具注册、NL2Shell、SSH Agent、错误自愈</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch13</td><td style="padding: 10px 8px;">多 Agent 系统架构</td><td style="padding: 10px 8px;"><span class="tag tag-blue">🧬 第四篇 神经系统</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">多Agent协作模式、A2A 协议、任务分解与编排</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch14</td><td style="padding: 10px 8px;">LangGraph 与状态机</td><td style="padding: 10px 8px;"><span class="tag tag-blue">🧬 第四篇 神经系统</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">LangGraph 状态机、Graph 编排、Checkpoint 与中断恢复</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch15</td><td style="padding: 10px 8px;">主流 Agent 框架对比</td><td style="padding: 10px 8px;"><span class="tag tag-green">第五篇 框架</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">LangChain vs LangGraph vs AutoGen vs CrewAI vs OpenAI Agents SDK</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch16</td><td style="padding: 10px 8px;">Dify、Coze 与可视化编排</td><td style="padding: 10px 8px;"><span class="tag tag-green">第五篇 框架</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Dify/Coze/n8n 低代码平台、可视化工作流编排</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch17</td><td style="padding: 10px 8px;">CLI Agent：命令行智能助手</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">CLI Agent 完整实现、工具链集成、交互式对话</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch18</td><td style="padding: 10px 8px;">GUI Agent：浏览器自动化</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Computer Use、浏览器操控、代码索引与 AST 检索</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch19</td><td style="padding: 10px 8px;">RAG：检索增强生成</td><td style="padding: 10px 8px;"><span class="tag tag-orange">第六篇 实战</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Chunk→Embed→Retrieve→Rerank→Generate 全流程、GraphRAG</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch20</td><td style="padding: 10px 8px;">Agent 评估与可观测性</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">SWE-bench/HumanEval/AgentBench 评测、Trace 分析、EDD</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch21</td><td style="padding: 10px 8px;">Agent 安全与防护</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">Prompt 注入攻防、红队测试、GDPR 合规、权限分级</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch22</td><td style="padding: 10px 8px;">Agent 部署与运维</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">K8s 部署、Prometheus 监控、灰度发布、SLA 保障</td></tr>
+      <tr style="border-bottom: 1px solid var(--color-border-light);"><td style="padding: 10px 8px; font-weight: 500;">ch23</td><td style="padding: 10px 8px;">推理框架与模型服务化</td><td style="padding: 10px 8px;"><span class="tag tag-purple">第七篇 工程化</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM/TensorRT-LLM/SGLang、推理优化、模型服务化</td></tr>
       <tr><td style="padding: 10px 8px; font-weight: 500;">ch24</td><td style="padding: 10px 8px;">2026 Agent 技术展望</td><td style="padding: 10px 8px;"><span class="tag tag-purple">终章</span></td><td style="padding: 10px 8px; color: var(--color-text-secondary);">技术趋势、Context Engineering、OpenAI Responses API、未来方向</td></tr>
     </tbody>
   </table>
@@ -834,13 +834,13 @@ setTimeout(() => {
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 6px;"><strong>平台工程师</strong></td>
-        <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch05 记忆系统、ch07 工具调用、ch20 部署、ch21 推理框架</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch05 记忆系统、ch09 工具调用、ch22 部署、ch23 推理框架</td>
         <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch07 MCP、ch18 安全、ch22 Harness</td>
         <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch21 运行时沙箱、ch14 CLI Agent</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 6px;"><strong>架构师</strong></td>
-        <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch04 推理引擎、ch06 决策中枢、ch11 多Agent、ch13 框架对比、ch23 Harness</td>
+        <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch04 推理引擎、ch06 决策中枢、ch07 运行时、ch08 Harness、ch13 多Agent、ch15 框架对比</td>
         <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch17 评估、ch18 安全、ch19 部署</td>
         <td style="padding: 10px 6px; color: var(--color-text-secondary);">ch11 LangGraph、ch21 运行时</td>
       </tr>
