@@ -1,5 +1,5 @@
-<!-- 第21章：Agent 运行时架构 -->
-<h1 class="chapter-title">第7章 Agent 运行时：Loop 引擎与沙箱</h1>
+<!-- 第22章：Agent 运行时架构 -->
+<h1 class="chapter-title">第8章 Agent 运行时：Loop 引擎与沙箱</h1>
 <p class="chapter-subtitle">从执行循环到安全沙箱——大脑的工程化基础设施</p>
 
 <!-- ===== 7.1 概述 ===== -->
@@ -547,7 +547,7 @@ func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interfa
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">✅ 选型建议</div>
-  <p style="font-size: 13px; color: var(--color-text-secondary);">80%的场景用 LangChain 就够了（生态最丰富、文档最完善）。需要多 Agent 协作？AutoGen 或 CrewAI。追求轻量？OpenAI Agents SDK。深度集成 Google 生态？ADK。不要为了"最先进"而选最复杂的——能解决问题的才是最好的。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">构建企业级 Agent 或多智能体协作应用，推荐使用 Google ADK（Agent Development Kit）。它提供原生的多智能体编排能力、内置丰富的 Google 工具生态（Search、Maps、Vertex AI 等）以及清晰的异步工作流，更适合工程化落地。需要多 Agent 协作也可考虑 AutoGen 或 CrewAI；追求轻量可选 OpenAI Agents SDK；常规场景 LangChain 生态也能覆盖。</p>
 </div>
 
 <!-- ===== 7.4 Sandbox ===== -->
@@ -986,7 +986,7 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
 
 <h3 class="sub-heading">7.6.1 上下文溢出熔断</h3>
 
-<p>当上下文压缩系统（参见第5章 5.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
+<p>当上下文压缩系统（参见第6章 5.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class LoopCircuitBreaker:

@@ -856,7 +856,7 @@ public class CacheFriendlyPromptBuilder {
     <strong>② 动态内容放后面</strong>——对话历史、记忆召回、用户输入放末尾，不影响前缀缓存。<br>
     <strong>③ 合并固定层</strong>——把System Prompt和工具定义合并为一个system消息，减少消息数量，增加前缀连续性。OpenAI缓存最低5个消息才触发，合并后更容易达标。<br><br>
     关联面试题 → Q3（上下文窗口设计）<br>
-    关联章节 → 第5章 记忆系统（上下文压缩）、第4章 ReAct模式（Token Budget）
+    关联章节 → 第6章 记忆系统（上下文压缩）、第5章 ReAct模式（Token Budget）
   </p>
 </div>
 
@@ -1807,7 +1807,7 @@ setTimeout(() => {
 <p>本章只介绍了 Function Calling 的核心概念。关于工具定义规范、五步闭环流程、常见错误与解决方案、JSON Schema 设计等<strong>工程细节</strong>，请参见：</p>
 <ul>
 <li><strong>第3章</strong>「你的第一个 Agent」—— 手写第一个 Function Calling 工具，亲身体验调用流程</li>
-<li><strong>第6章</strong>「Function Calling 与工具设计」—— 深入工具定义、意图识别与路由、上下文工程、并发控制等工程实践</li>
+<li><strong>第7章</strong>「Function Calling 与工具设计」—— 深入工具定义、意图识别与路由、上下文工程、并发控制等工程实践</li>
 </ul>
 <p>如果你是第一次接触 Function Calling，现在只需记住一句话：<strong>它让 LLM 从"只会说话"变成"能办事情"</strong>。具体怎么办，后面会手把手教你。</p>
 </div>
@@ -2115,8 +2115,8 @@ setTimeout(() => {
 <h4 style="color: var(--color-primary); margin-top: 0;">🔗 思维框架的深入讲解在后续章节</h4>
 <p>本章只介绍了四种框架的核心思想和递进关系。关于每种框架的详细 Prompt 模板、实战代码、优缺点分析、生产级主循环设计等<strong>工程细节</strong>，请参见：</p>
 <ul>
-<li><strong>第4章</strong>「ReAct：让 Agent 学会思考」—— ReAct 模式详解、Prompt 模板、ReWOO / LLM Compiler / Reflexion 等进阶变体、生产级主循环设计</li>
-<li><strong>第5章</strong>「Agent 的记忆系统」—— 记忆如何与思维框架配合，上下文压缩与反思机制</li>
+<li><strong>第5章</strong>「ReAct：让 Agent 学会思考」—— ReAct 模式详解、Prompt 模板、ReWOO / LLM Compiler / Reflexion 等进阶变体、生产级主循环设计</li>
+<li><strong>第6章</strong>「Agent 的记忆系统」—— 记忆如何与思维框架配合，上下文压缩与反思机制</li>
 </ul>
 <p>如果你是第一次接触这些概念，现在只需记住：<strong>CoT 学推理，ReAct 加行动，ToT 加探索，Reflection 加审查</strong>。具体怎么用，后面会一步步带你实践。</p>
 </div>
@@ -2147,12 +2147,12 @@ setTimeout(() => {
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q11：Function Calling 的核心作用是什么？</strong></div>
-    <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第6章「Function Calling 与工具设计」。</div>
+    <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第7章「Function Calling 与工具设计」。</div>
   </div>
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q12：CoT、ReAct、ToT 三种思维框架的递进关系是什么？</strong></div>
-    <div class="qa-a">递进关系：① <strong>CoT</strong>（纯推理）——学会一步步思考，适合数学、逻辑推理；② <strong>ReAct</strong>（推理+行动）——在 CoT 上加了工具调用，边想边做；③ <strong>ToT</strong>（推理+行动+探索）——在 ReAct 上加了多路径探索和回溯，适合复杂规划。此外还有 <strong>Reflection</strong>（反思）机制——自我审查并修正输出。框架不是越复杂越好，而是越匹配任务越好。详细内容见第4章「ReAct 模式详解」。</div>
+    <div class="qa-a">递进关系：① <strong>CoT</strong>（纯推理）——学会一步步思考，适合数学、逻辑推理；② <strong>ReAct</strong>（推理+行动）——在 CoT 上加了工具调用，边想边做；③ <strong>ToT</strong>（推理+行动+探索）——在 ReAct 上加了多路径探索和回溯，适合复杂规划。此外还有 <strong>Reflection</strong>（反思）机制——自我审查并修正输出。框架不是越复杂越好，而是越匹配任务越好。详细内容见第5章「ReAct 模式详解」。</div>
   </div>
 
   <div class="qa-item">
@@ -2246,7 +2246,7 @@ var ch01Questions = [
       '让 LLM 的推理能力变得更强'
     ],
     answer: [1],
-    explanation: 'Function Calling 让 LLM 能生成结构化的函数调用（函数名+参数 JSON），而非输出自然语言。LLM 本身不执行函数，只决定"调用哪个、传什么参数"——执行由开发者代码完成。详细内容见第6章。'
+    explanation: 'Function Calling 让 LLM 能生成结构化的函数调用（函数名+参数 JSON），而非输出自然语言。LLM 本身不执行函数，只决定"调用哪个、传什么参数"——执行由开发者代码完成。详细内容见第7章。'
   },
   {
     type: 'single',
@@ -2258,7 +2258,7 @@ var ch01Questions = [
       'ReAct → CoT → ToT，先行动再推理再探索'
     ],
     answer: [1],
-    explanation: '递进关系：CoT 学推理（逐步思考），ReAct 加行动（推理+工具调用），ToT 加探索（多路径推理+回溯取最优）。详细内容见第4章。'
+    explanation: '递进关系：CoT 学推理（逐步思考），ReAct 加行动（推理+工具调用），ToT 加探索（多路径推理+回溯取最优）。详细内容见第5章。'
   },
   {
     type: 'multiple',

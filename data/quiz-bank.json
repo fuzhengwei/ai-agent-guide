@@ -896,6 +896,152 @@
   "ch04": [
     {
       "type": "single",
+      "question": "提示词工程的三层结构中，\"Answer Engineering\"层关注什么？",
+      "options": [
+        "如何设计 Role 和 Directive",
+        "如何引导 LLM 的推理过程",
+        "如何让 LLM 的输出可被程序可靠解析",
+        "如何管理提示词版本"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "Answer Engineering（输出工程）关注输出的结构化、解析和验证——确保 LLM 输出可以被下游代码直接消费。"
+    },
+    {
+      "type": "single",
+      "question": "Agent 系统中进行 Function Calling（工具选择）时，推荐的 Temperature 设置是？",
+      "options": [
+        "0.7-1.0（高随机性，鼓励探索）",
+        "0.5-0.7（平衡）",
+        "0.1-0.2（高确定性，选错工具=任务失败）",
+        "0.0（必须完全确定）"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "工具选择需要最高确定性，选错工具直接导致任务失败。推荐 Temperature=0.1-0.2，配合 Top-P=0.1-0.3。"
+    },
+    {
+      "type": "single",
+      "question": "C.L.E.A.R 原则中的 \"E\" 代表什么？",
+      "options": [
+        "Efficient（高效）",
+        "Explicit（明确）",
+        "Elegant（优雅）",
+        "Extensible（可扩展）"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "E = Explicit（明确），指任务描述不留歧义，明确输出格式、风格和约束。"
+    },
+    {
+      "type": "multi",
+      "question": "以下哪些是 Few-shot 提示的适用场景？（多选）",
+      "options": [
+        "情感分类任务",
+        "开放式创意写作",
+        "JSON 格式提取",
+        "风格模仿"
+      ],
+      "answer": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Few-shot 适合分类、格式转换、风格模仿等模式明确的任务。开放式创意写作更适合 Zero-shot + 高 Temperature。"
+    },
+    {
+      "type": "single",
+      "question": "PromptOps 中\"提示词即接口\"的含义是什么？",
+      "options": [
+        "提示词就是 API 端点",
+        "提示词有输入契约、输出约定、错误处理和版本控制，像 API 一样管理",
+        "提示词必须用 HTTP 调用",
+        "提示词和代码没有区别"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "\"提示词即接口\"指将提示词视为有输入契约（变量+类型）、输出约定（Schema）、错误处理和版本控制的工程接口。"
+    },
+    {
+      "type": "single",
+      "question": "Jinja2 模板相比字符串拼接（f-string）的最大优势是？",
+      "options": [
+        "运行速度更快",
+        "支持条件逻辑、循环和模板继承",
+        "可以生成更长的文本",
+        "不需要安装依赖"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Jinja2 的核心优势是条件渲染、循环和模板继承，让复杂 Prompt 可以模块化管理，与业务逻辑解耦。"
+    },
+    {
+      "type": "multi",
+      "question": "以下哪些是 Agent 提示词工程中常见的陷阱？（多选）",
+      "options": [
+        "任务描述模糊导致输出跑题",
+        "缺少上下文导致回答不准确",
+        "使用 Temperature=0.7 进行 JSON 输出",
+        "一次性给太复杂的指令导致 LLM 遗忘前半部分"
+      ],
+      "answer": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "常见陷阱：任务模糊、缺少上下文、一次性复杂请求。Temperature=0.7 用于 JSON 输出不推荐但不是\"陷阱\"选项。"
+    },
+    {
+      "type": "single",
+      "question": "在 Agent 系统中，为什么 LLM 输出需要结构化（JSON Schema）？",
+      "options": [
+        "因为 JSON 比 Markdown 更小",
+        "因为下游代码需要可靠解析输出，JSON.parse + 类型验证一步到位",
+        "因为 LLM 更擅长生成 JSON",
+        "因为用户更喜欢看 JSON 格式"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Agent 下游是代码执行，需要可靠解析 LLM 输出。结构化 JSON + Schema 验证让\"解析+验证一步到位\"。"
+    },
+    {
+      "type": "single",
+      "question": "质量评估五维度中，\"一致性\"怎么测试？",
+      "options": [
+        "与权威数据比对",
+        "让用户打分",
+        "同输入多次运行对比输出相似度",
+        "检查字段是否完整"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "一致性是指同输入多次运行的输出是否稳定，通过多次运行并对比输出相似度来评估（目标 > 85%）。"
+    },
+    {
+      "type": "single",
+      "question": "Prompt Injection（提示词注入）的最佳防御策略是？",
+      "options": [
+        "只用 Temperature=0",
+        "System Prompt 明确约束 + 输入过滤 + 输出校验三层防御",
+        "不使用 System Prompt",
+        "限制用户输入长度"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Prompt Injection 需要三层防御：System Prompt 约束 + 输入过滤 + 输出校验。详见第22章 Agent 安全与防护。"
+    }
+  ],
+  "ch05": [
+    {
+      "type": "single",
       "question": "Agent 的短期记忆和长期记忆分别存储在哪里？",
       "options": [
         "都存储在 LLM 的参数中",
@@ -1406,7 +1552,7 @@
       "explanation": "指数退避通常最多3次重试。过多重试会浪费资源且延迟过长。每次间隔递增（1s→2s→4s），避免雪崩。"
     }
   ],
-  "ch05": [
+  "ch06": [
     {
       "type": "single",
       "question": "Function Calling 的底层原理是？",
@@ -1627,7 +1773,7 @@
       "explanation": "Tools是单一功能函数，Skills是可组合、有上下文、能编排的能力单元。演进方向是从碎片化到系统化。"
     }
   ],
-  "ch06": [
+  "ch07": [
     {
       "type": "single",
       "question": "Agent 意图识别的分层策略中，第一层通常使用什么方法？",
@@ -1769,7 +1915,7 @@
       "explanation": "Token Budget 管理在总 Token 用量达到阈值时触发上下文压缩，防止超过模型上下文窗口限制。"
     }
   ],
-  "ch07": [
+  "ch08": [
     {
       "type": "single",
       "question": "Agent Loop 的六步执行流程顺序是？",
@@ -1944,7 +2090,7 @@
       "explanation": "Loop Engineering 的核心原则包括事件驱动、可中断、可观测，但不包括'无状态'。Agent Loop 是有状态的——每轮循环依赖前轮结果，状态在轮次间传递。无状态设计会破坏 Agent 的连贯推理能力。"
     }
   ],
-  "ch08": [
+  "ch09": [
     {
       "type": "single",
       "question": "绑定约束论的核心观点是什么？",
@@ -2033,7 +2179,7 @@
       "explanation": "三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。"
     }
   ],
-  "ch09": [
+  "ch10": [
     {
       "type": "single",
       "question": "MCP（Model Context Protocol）的核心目标是？",
@@ -2193,7 +2339,7 @@
       "explanation": "文件系统、Git 仓库、数据库都可以作为 MCP Server 提供工具能力。LLM 本身不是 MCP Server（它是 LLM，不是工具服务端）。操作系统内核也不直接作为 MCP Server（但可以包装系统调用为 MCP 工具）。"
     }
   ],
-  "ch10": [
+  "ch11": [
     {
       "id": "ch07_q01",
       "question": "Skill 和 Tool 的本质区别是什么？",
@@ -2345,7 +2491,7 @@
       "type": "single"
     }
   ],
-  "ch11": [
+  "ch12": [
     {
       "type": "single",
       "question": "多智能体协作的典型模式不包括？",
@@ -2506,7 +2652,7 @@
       "explanation": "失败模式：无限辩论、分配不当、级联失败、通信开销过大。使用相同模型不一定导致失败，关键看 Agent 的角色和 Prompt 设计是否区分。"
     }
   ],
-  "ch12": [
+  "ch13": [
     {
       "type": "single",
       "question": "LangGraph 中 StateGraph 和 MessageGraph 的核心区别是？",
@@ -2667,7 +2813,7 @@
       "explanation": "LangGraph 适合复杂流程控制、可恢复长流程、多 Agent 协作、人工审批场景。简单问答不需要图结构控制，用 LangChain 基础 Agent 即可。"
     }
   ],
-  "ch13": [
+  "ch14": [
     {
       "type": "single",
       "question": "AutoGen 的核心对话模式是？",
@@ -3146,7 +3292,7 @@
       "explanation": "Spring AI 企业特性：检查点恢复、A2A 支持、MCP 集成、Spring Security 集成。不提供自动模型微调——Spring AI 使用外部 LLM 而非训练模型。"
     }
   ],
-  "ch14": [
+  "ch15": [
     {
       "type": "single",
       "question": "低代码 Agent 平台的核心优势是？",
@@ -3308,7 +3454,7 @@
       "explanation": "局限性：灵活性受限、复杂逻辑难表达、性能优化有限、调试困难。低代码平台通常支持接入外部 API，这不是局限性。"
     }
   ],
-  "ch15": [
+  "ch16": [
     {
       "type": "single",
       "question": "Agent 评估中，任务完成率的定义是？",
@@ -3469,7 +3615,7 @@
       "explanation": "Agent 评估挑战：标准难统一、随机性导致不稳定、环境搭建复杂、成本高。指标选择虽多但有成熟框架可参考，不是核心挑战。"
     }
   ],
-  "ch16": [
+  "ch17": [
     {
       "type": "single",
       "question": "CLI Agent 的安全沙箱最核心的目标是？",
@@ -4012,7 +4158,7 @@
       "explanation": "Agentic RAG 评估：检索精度、推理链质量、答案准确率、检索效率。GPU 利用率是基础设施指标不是 RAG 质量指标。"
     }
   ],
-  "ch17": [
+  "ch18": [
     {
       "type": "single",
       "question": "GUI Agent 的核心工作原理是？",
@@ -4173,7 +4319,7 @@
       "explanation": "GUI Agent 代表产品：Claude Computer Use、OpenAI Operator、Google Project Mariner。AutoGPT 是通用 Agent 框架但不是专门的 GUI Agent。Stable Diffusion 是图像生成模型不是 GUI Agent。"
     }
   ],
-  "ch18": [
+  "ch19": [
     {
       "type": "single",
       "question": "AI Agent 的发展趋势中最被期待的方向是？",
@@ -4395,7 +4541,7 @@
       "explanation": "核心竞争力三维度：技术深度（理解底层原理而非只会用框架）、工程能力（从Demo到生产级）、业务理解（解决真实业务痛点而非追热点）。"
     }
   ],
-  "ch19": [
+  "ch20": [
     {
       "type": "single",
       "question": "RAG 的核心思想是什么？",
@@ -4519,7 +4665,7 @@
       "explanation": "RAG 擅长事实性知识（实时更新、可追溯），微调擅长行为模式定制（风格、格式、推理）。最佳实践是 RAG + 微调结合：微调改善风格，RAG 提供知识。RAG 不能完全替代微调，微调的知识更新远比 RAG 慢（需重新训练）。"
     }
   ],
-  "ch20": [
+  "ch21": [
     {
       "type": "single",
       "question": "Agent 评估与传统软件评估的核心区别是什么？",
@@ -4645,7 +4791,7 @@
       "explanation": "不同评估方法各有优劣：人工评估精度高但成本高；LLM-as-Judge 可规模化但有偏差；Benchmark 适合横向对比但覆盖面有限。最佳实践是多种方法组合，在开发/测试/生产全生命周期持续评估。"
     }
   ],
-  "ch21": [
+  "ch22": [
     {
       "type": "single",
       "question": "Agent 安全的头号威胁是什么？",
@@ -4771,7 +4917,7 @@
       "explanation": "OWASP LLM Top 10 是专为 LLM 应用设计的安全风险清单，包括 Prompt 注入、不安全输出、训练数据投毒、供应链漏洞等。它与传统 Web Top 10 不同，聚焦于 LLM 特有的安全挑战。"
     }
   ],
-  "ch22": [
+  "ch23": [
     {
       "type": "single",
       "question": "Demo 级 Agent 和生产级 Agent 的核心区别是什么？",
@@ -4897,7 +5043,7 @@
       "explanation": "生产监控指标：延迟（P50/P95/P99）、错误率、Token 成本、工具调用成功率/步数。模型训练损失值是模型训练阶段的指标，部署后不涉及。"
     }
   ],
-  "ch23": [
+  "ch24": [
     {
       "type": "single",
       "question": "推理框架（Inference Framework）的核心作用是什么？",
@@ -5023,7 +5169,7 @@
       "explanation": "量化：INT4 显存减 75%、精度损失 1-3%、GGUF 是 Ollama 常用格式、高精度场景需谨慎。量化后推理速度通常变快（显存带宽减少），不是变慢。"
     }
   ],
-  "ch24": [
+  "ch25": [
     {
       "type": "single",
       "question": "2026 年 AI Agent 发展的五大趋势中，'Agent 成为操作系统的一部分'是指什么？",

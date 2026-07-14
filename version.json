@@ -1,4 +1,4 @@
 {
-  "version": "20260713.6",
-  "changelog": "移除Prism JS/CSS的integrity属性(jsdelivr CDN多节点hash不一致)"
+  "version": "20260714.6",
+  "changelog": "修复quiz.js类型判断：multi和multiple统一识别为多选题，影响122道题的正确标签显示"
 }
