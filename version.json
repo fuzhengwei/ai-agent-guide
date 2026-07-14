@@ -1,4 +1,4 @@
 {
-  "version": "20260713.6",
-  "changelog": "移除Prism JS/CSS的integrity属性(jsdelivr CDN多节点hash不一致)"
+  "version": "20260715.1",
+  "changelog": "修复 AI 对话栏拖拽方向反了：往左拉=放大、往右拉=缩小（把手在panel左边缘，应减去deltaX）"
 }

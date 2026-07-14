@@ -1,9 +1,9 @@
-<!-- 第10章：MCP 协议 -->
-<h1 class="chapter-title">第10章 MCP：工具的标准化接口</h1>
+<!-- 第11章：MCP 协议 -->
+<h1 class="chapter-title">第11章 MCP：工具的标准化接口</h1>
 <p class="chapter-subtitle">Model Context Protocol — Agent 的 USB-C 接口</p>
 
 <!-- ===== 10.1 MCP 是什么 ===== -->
-<h2 class="section-heading">10.1 为什么需要 MCP？</h2>
+<h2 class="section-heading">11.1 为什么需要 MCP？</h2>
 
 <p>在 MCP 出现前，每个 Agent 框架有自己的工具定义方式。LangChain 用 @tool 装饰器，AutoGen 用 register_function，CrewAI 用 BaseTool 类……工具开发者要为每个框架写一遍适配代码。</p>
 
@@ -22,7 +22,7 @@
 </div>
 
 <!-- ===== 10.2 MCP 架构 ===== -->
-<h2 class="section-heading">10.2 MCP 架构</h2>
+<h2 class="section-heading">11.2 MCP 架构</h2>
 
 <div class="flowchart-container" id="mcpArch"></div>
 
@@ -74,7 +74,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 10.3 通信协议 ===== -->
-<h2 class="section-heading">10.3 MCP 的通信机制</h2>
+<h2 class="section-heading">11.3 MCP 的通信机制</h2>
 
 <p>MCP 基于 <strong>JSON-RPC 2.0</strong> 协议，支持三种传输方式：</p>
 
@@ -272,7 +272,7 @@ data: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"分析
 </div>
 
 <!-- ===== 10.4 MCP Server 实现 ===== -->
-<h2 class="section-heading">10.4 编写一个 MCP Server</h2>
+<h2 class="section-heading">11.4 编写一个 MCP Server</h2>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from mcp import Server, Tool
@@ -444,7 +444,7 @@ public class MyToolsServer {
 </div>
 
 <!-- ===== 10.5 MCP 生态 ===== -->
-<h2 class="section-heading">10.5 MCP 生态现状</h2>
+<h2 class="section-heading">11.5 MCP 生态现状</h2>
 
 <div class="card">
   <div class="card-title">🌐 谁在支持 MCP？</div>
@@ -482,7 +482,7 @@ public class MyToolsServer {
 </div>
 
 <!-- ===== 10.6 MCP 客户端完整实现 ===== -->
-<h2 class="section-heading">10.6 MCP 客户端完整实现</h2>
+<h2 class="section-heading">11.6 MCP 客户端完整实现</h2>
 
 <p>上一节我们写了一个最简版的 MCP Server，但要让 Agent 真正使用 MCP Server 的能力，还需要一个完整的 MCP 客户端来发起连接、发现能力、调用工具。本节展示如何使用官方 <code>mcp</code> Python 库编写一个功能完整的 MCP 客户端，覆盖工具调用、资源读取和提示词获取三大场景。</p>
 
@@ -715,7 +715,7 @@ public class McpClientExample {
 </div>
 
 <!-- ===== 10.7 MCP Server 完整实现 ===== -->
-<h2 class="section-heading">10.7 MCP Server 完整实现</h2>
+<h2 class="section-heading">11.7 MCP Server 完整实现</h2>
 
 <p>6.4 节展示了一个最简版的 Server，但生产级的 MCP Server 需要同时实现资源（Resources）、工具（Tools）和提示词（Prompts）三类能力，并正确处理生命周期。本节展示一个完整的天气数据 MCP Server，包含资源定义、工具注册和错误处理。</p>
 
@@ -999,7 +999,7 @@ public class WeatherDataServer {
 </div>
 
 <!-- ===== 10.8 MCP 协议深度解析 ===== -->
-<h2 class="section-heading">10.8 MCP 协议深度解析</h2>
+<h2 class="section-heading">11.8 MCP 协议深度解析</h2>
 
 <p>理解 MCP 不能只停留在 API 使用层面，还需要深入协议底层。本节从 JSON-RPC 2.0 报文格式、能力协商流程、协议栈分层架构三个维度，带你彻底理解 MCP 的通信本质。</p>
 
@@ -1258,7 +1258,7 @@ public class WeatherDataServer {
 </div>
 
 <!-- ===== 10.9 MCP Gateway与路由 ===== -->
-<h2 class="section-heading">10.9 MCP Gateway 与路由</h2>
+<h2 class="section-heading">11.9 MCP Gateway 与路由</h2>
 
 <p>当 Agent 需要同时连接多个 MCP Server 时，直接管理每个连接会变得复杂：不同 Server 的健康状态、版本兼容、负载分布都需要逐一处理。<strong>MCP Gateway</strong> 正是为了解决这个问题而诞生的——它作为统一入口，代理所有 MCP Server 的连接和调度。</p>
 
@@ -1423,7 +1423,7 @@ gateway:
 </div>
 
 <!-- ===== 10.10 MCP市场与Skills生态 ===== -->
-<h2 class="section-heading">10.10 MCP 市场与 Skills 生态</h2>
+<h2 class="section-heading">11.10 MCP 市场与 Skills 生态</h2>
 
 <p>MCP 不仅仅是技术协议，它催生了一个完整的<strong>工具生态系统</strong>。截至 2025-2026 年，MCP Server 的月下载量已突破 <strong>9700 万至 1.1 亿</strong>次，Skills（技能包）生态超过 <strong>8.5 万个</strong>。这意味着 MCP 正在从技术标准走向产业生态——就像 USB-C 不只是接口规格，更催生了整个配件市场。</p>
 
@@ -1587,7 +1587,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 10.11 MCP安全与权限管理 ===== -->
-<h2 class="section-heading">10.11 MCP 安全与权限管理</h2>
+<h2 class="section-heading">11.11 MCP 安全与权限管理</h2>
 
 <p>MCP Server 拥有强大的能力——读取文件、访问数据库、调用 API、发送邮件。这些能力如果不受管控，可能成为安全漏洞的入口。<strong>MCP 安全与权限管理</strong>的核心目标是：在赋予 Agent 能力的同时，划定明确的安全边界，确保每一次工具调用都在可控范围内。</p>
 
@@ -1841,10 +1841,10 @@ confirmation:
 </div>
 
 <!-- ===== 八股总结 ===== -->
-<!-- ===== CLI 工具内容已移至第9章「CLI 能力」===== -->
+<!-- ===== CLI 工具内容已移至第10章「CLI 能力」===== -->
 <div class="info-box">
 <h4 style="color: var(--color-primary); margin-top: 0;">🔗 关于 CLI 工具与 MCP 的关系</h4>
-<p>除了 Function Calling 和 MCP，Agent 还有第三种手脚——<strong>CLI 工具</strong>（git、docker、kubectl 等）。CLI vs MCP vs Function Calling 的对比、注册系统、懒加载策略等详细内容，请参见<strong>第9章「CLI 能力：Agent 操作本地工具」</strong>，那里有更完整的讲解。</p>
+<p>除了 Function Calling 和 MCP，Agent 还有第三种手脚——<strong>CLI 工具</strong>（git、docker、kubectl 等）。CLI vs MCP vs Function Calling 的对比、注册系统、懒加载策略等详细内容，请参见<strong>第10章「CLI 能力：Agent 操作本地工具」</strong>，那里有更完整的讲解。</p>
 </div>
 
 <!-- ===== 八股总结 ===== -->

@@ -1,9 +1,9 @@
-<!-- 第16章：Dify与Coze平台 -->
-<h1 class="chapter-title">第16章 Dify、Coze 与可视化编排</h1>
+<!-- 第17章：Dify与Coze平台 -->
+<h1 class="chapter-title">第17章 Dify、Coze 与可视化编排</h1>
 <p class="chapter-subtitle">低代码 Agent 构建平台的两种路线</p>
 
 <!-- ===== 16.1 为什么需要平台 ===== -->
-<h2 class="section-heading">16.1 代码框架 vs 低代码平台</h2>
+<h2 class="section-heading">17.1 代码框架 vs 低代码平台</h2>
 
 <p>前面几章学的 LangGraph、AutoGen、CrewAI 都是<strong>代码框架</strong>——灵活但门槛高。不是所有团队都有工程师来写代码。低代码平台让非技术人员也能搭建 Agent：</p>
 
@@ -33,7 +33,7 @@
 </div>
 
 <!-- ===== 16.2 Dify ===== -->
-<h2 class="section-heading">16.2 Dify：开源 LLMOps 平台</h2>
+<h2 class="section-heading">17.2 Dify：开源 LLMOps 平台</h2>
 
 <p><strong>Dify</strong> 是国内最火的开源 LLMOps 平台。它不仅是一个 Agent 构建工具，更是一个完整的 LLM 应用生命周期管理平台。</p>
 
@@ -116,7 +116,7 @@
 </div>
 
 <!-- ===== 16.3 Coze ===== -->
-<h2 class="section-heading">16.3 Coze：字节跳动的 Bot 工厂</h2>
+<h2 class="section-heading">17.3 Coze：字节跳动的 Bot 工厂</h2>
 
 <p><strong>Coze（扣子）</strong> 是字节跳动推出的 AI Bot 构建平台。与 Dify 的"开发者工具"定位不同，Coze 更偏向"人人可用"：</p>
 
@@ -181,7 +181,7 @@
 </div>
 
 <!-- ===== 16.4 对比 ===== -->
-<h2 class="section-heading">16.4 Dify vs Coze vs 代码框架</h2>
+<h2 class="section-heading">17.4 Dify vs Coze vs 代码框架</h2>
 
 <div class="card">
   <div class="card-title">📊 三种路线全面对比</div>
@@ -249,7 +249,7 @@
 </div>
 
 <!-- ===== 16.5 Dify 实战：工作流编排 ===== -->
-<h2 class="section-heading">16.5 Dify 实战：工作流编排全流程</h2>
+<h2 class="section-heading">17.5 Dify 实战：工作流编排全流程</h2>
 
 <p>前面几节介绍了 Dify 和 Coze 的核心概念与对比，但真正上手搭建一个完整的 Agent 应用时，需要理解具体的操作步骤和配置细节。本节将以一个<strong>智能客服 Bot</strong> 为例，从知识库创建到 Chatflow 编排，再到 API 集成，完整走通 Dify 的开发全流程。</p>
 
@@ -665,7 +665,7 @@ public class DifyClient {
 </div>
 
 <!-- ===== 16.6 Coze 实战：Bot 开发 ===== -->
-<h2 class="section-heading">16.6 Coze 实战：Bot 开发与多 Agent 编排</h2>
+<h2 class="section-heading">17.6 Coze 实战：Bot 开发与多 Agent 编排</h2>
 
 <p>Coze 作为字节跳动的 Bot 工厂，在多端发布和插件生态方面有独特优势。本节将详细介绍如何在 Coze 上创建一个功能完整的 Bot，包括插件配置、工作流编排，以及使用 Coze 的多 Agent 模式实现复杂的协作场景。</p>
 
@@ -839,7 +839,7 @@ multi_agent:
 </div>
 
 
-<h3 class="sub-heading">16.6.5 n8n：开源自动化工作流平台</h3>
+<h3 class="sub-heading">17.6.5 n8n：开源自动化工作流平台</h3>
 
 <div class="card" style="border-left: 3px solid #FF6D5A;">
   <div class="card-title">🟠 n8n — 开源的自动化工作流引擎</div>
@@ -864,7 +864,7 @@ multi_agent:
 如果你需要"用户提交表单 → AI 分析内容 → 存入数据库 → 发送 Slack 通知"这种混合流程，n8n 是最佳选择；如果只需要纯 AI 对话 Agent，Dify 更合适。
 </div>
 
-<h3 class="sub-heading">16.6.6 Dify DSL 配置示例</h3>
+<h3 class="sub-heading">17.6.6 Dify DSL 配置示例</h3>
 
 <p>Dify 的工作流可以通过 DSL（Domain Specific Language）文件定义，实现版本控制和 CI/CD：</p>
 
@@ -916,7 +916,7 @@ edges:
     target: "end"</code></pre>
 
 <!-- ===== 16.7 Dify vs Coze vs n8n 三方对比 ===== -->
-<h2 class="section-heading">16.7 Dify vs Coze vs n8n 三方对比</h2>
+<h2 class="section-heading">17.7 Dify vs Coze vs n8n 三方对比</h2>
 
 <p>在低代码自动化平台领域，除了 Dify 和 Coze 之外，<strong>n8n</strong> 也是一个经常被提及的工具。n8n 是一个开源的工作流自动化平台，虽然不是专门为 AI Agent 设计，但通过集成 LLM 节点也可以实现 Agent 工作流。三者各有定位和优势，理解它们的差异对于技术选型至关重要。</p>
 

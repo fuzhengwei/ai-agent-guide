@@ -4061,10 +4061,10 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   .content-area {
     width: 100% !important;
     max-width: 100% !important;
-    padding-bottom: 56px;
+    padding-bottom: 200px;
   }
   .content-body {
-    padding: var(--space-md) var(--space-md) calc(var(--space-xl) + 56px) !important;
+    padding: var(--space-md) var(--space-md) calc(var(--space-xl) + 200px) !important;
   }
 
   /* 8. 回到顶部按钮调整位置 */
@@ -4494,6 +4494,10 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   
   .footer-motto {
     display: none;
+  }
+  
+  .footer-social {
+    display: none !important;
   }
   
   .beian-info {

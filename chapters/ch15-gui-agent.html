@@ -1,9 +1,9 @@
-<!-- 第18章：GUI Agent -->
-<h1 class="chapter-title">第18章 GUI Agent：浏览器自动化</h1>
+<!-- 第19章：GUI Agent -->
+<h1 class="chapter-title">第19章 GUI Agent：浏览器自动化</h1>
 <p class="chapter-subtitle">第五篇：综合实战 — 能操作图形界面的 AI Agent</p>
 
 <!-- ===== 18.1 什么是GUI Agent ===== -->
-<h2 class="section-heading">18.1 从 API Agent 到 GUI Agent</h2>
+<h2 class="section-heading">19.1 从 API Agent 到 GUI Agent</h2>
 
 <p>前面学的 Agent 都通过 API/命令行操作工具。但人类大部分工作在图形界面（GUI）上——浏览器、Office、设计软件。<strong>GUI Agent</strong> 能像人一样操作图形界面：</p>
 
@@ -36,7 +36,7 @@
 </div>
 
 <!-- ===== 18.2 工作原理 ===== -->
-<h2 class="section-heading">18.2 GUI Agent 的工作原理</h2>
+<h2 class="section-heading">19.2 GUI Agent 的工作原理</h2>
 
 <div class="flowchart-container" id="guiAgentFlow"></div>
 
@@ -102,7 +102,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 18.3 代表产品 ===== -->
-<h2 class="section-heading">18.3 GUI Agent 代表产品</h2>
+<h2 class="section-heading">19.3 GUI Agent 代表产品</h2>
 
 <div class="card">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -134,7 +134,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 18.4 挑战与局限 ===== -->
-<h2 class="section-heading">18.4 GUI Agent 的挑战与局限</h2>
+<h2 class="section-heading">19.4 GUI Agent 的挑战与局限</h2>
 
 <div class="card">
   <div class="card-title">⚠️ 当前面临的主要挑战</div>
@@ -171,7 +171,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 18.5 GUI Agent 技术栈详解 ===== -->
-<h2 class="section-heading">18.5 GUI Agent 技术栈详解</h2>
+<h2 class="section-heading">19.5 GUI Agent 技术栈详解</h2>
 
 <p>GUI Agent 的技术栈可以按功能层级分为三大模块：视觉理解层、操作执行层和决策推理层。每一层都有多种技术选型，不同选型组合出不同的 Agent 架构。理解各层技术的优缺点，是设计和选型 GUI Agent 系统的前提条件。</p>
 
@@ -308,7 +308,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 18.6 Playwright + LLM 实战代码 ===== -->
-<h2 class="section-heading">18.6 Playwright + LLM 实战代码</h2>
+<h2 class="section-heading">19.6 Playwright + LLM 实战代码</h2>
 
 <p>下面展示一个完整的 Playwright + OpenAI Vision 浏览器自动化 Agent。它实现了截图→识别→操作的循环：先用 Playwright 截取网页画面，将截图发送给 GPT-4o Vision 模型分析界面，模型返回要执行的操作指令，Agent 解析指令并用 Playwright 执行，循环直到任务完成或达到最大步数限制。</p>
 
@@ -638,7 +638,7 @@ public class GuiAgent {
 </div>
 
 <!-- ===== 18.7 Claude Computer Use API 实战 ===== -->
-<h2 class="section-heading">18.7 Claude Computer Use API 实战</h2>
+<h2 class="section-heading">19.7 Claude Computer Use API 实战</h2>
 
 <p>Anthropic 在 Claude 3.5 Sonnet 中引入了 Computer Use 能力——模型可以直接返回 computer_use 类型的工具调用，包括 screenshot、mouse_move、click、type、scroll 等操作。下面展示如何调用 Anthropic API 实现 Claude Computer Use 的完整工具调用循环，包括多模态消息构造和工具执行逻辑。</p>
 
@@ -968,7 +968,7 @@ public class ClaudeComputerUse {
 </div>
 
 <!-- ===== 18.8 GUI Agent 工程化挑战 ===== -->
-<h2 class="section-heading">18.8 GUI Agent 工程化挑战</h2>
+<h2 class="section-heading">19.8 GUI Agent 工程化挑战</h2>
 
 <p>从 demo 到生产环境，GUI Agent 面临大量工程化挑战。一个能在演示中成功订机票的 Agent，放到生产环境可能因为网络波动、页面改版、弹窗广告等原因频繁失败。下面从错误恢复、成本控制、安全沙箱和评测方法四个维度，深入分析 GUI Agent 工程化的关键问题。</p>
 
@@ -1117,7 +1117,7 @@ public class ClaudeComputerUse {
 </div>
 
 <!-- ===== 18.9 Coding Agent的代码上下文检索系统 ===== -->
-<h2 class="section-heading">18.9 Coding Agent 的代码上下文检索系统</h2>
+<h2 class="section-heading">19.9 Coding Agent 的代码上下文检索系统</h2>
 
 <p>前面讨论的是 GUI Agent——能操作图形界面的 AI。但在开发场景中，还有一类更专业的 Agent：<strong>Coding Agent</strong>（编码助手 Agent）。它的核心挑战之一是——企业项目可能有几十万行代码，当用户说"帮我修复这个 Bug"或"重构这个模块"时，Coding Agent 如何快速定位和理解相关代码上下文？</p>
 
@@ -1706,7 +1706,7 @@ class MergedResult {
 </div>
 
 
-<h3 class="sub-heading">18.9.5 AST 级代码检索：超越文本的精准定位</h3>
+<h3 class="sub-heading">19.9.5 AST 级代码检索：超越文本的精准定位</h3>
 
 <p>向量检索虽然能找到语义相关的代码，但它有一个致命弱点——<strong>它不理解代码结构</strong>。"找到所有调用了 <code>getUserById</code> 的地方"这样的查询，向量检索可能返回包含类似方法名的代码，但无法精确匹配函数调用关系。<strong>AST（抽象语法树）级检索</strong>填补了这一空白。</p>
 
@@ -1750,7 +1750,7 @@ class MergedResult {
   </table>
 </div>
 
-<h3 class="sub-heading">18.9.6 AST 检索实现：Python 示例</h3>
+<h3 class="sub-heading">19.9.6 AST 检索实现：Python 示例</h3>
 
 <div class="multi-lang">
 <div class="lang-tabs">
@@ -1962,7 +1962,7 @@ class ASTIndexer {
 </div>
 
 <!-- ===== 18.10 Coding Agent的权限设计 ===== -->
-<h2 class="section-heading">18.10 Coding Agent 的权限设计</h2>
+<h2 class="section-heading">19.10 Coding Agent 的权限设计</h2>
 
 <p>Coding Agent 能读文件、改代码、执行命令、提交代码、甚至部署发布——这些操作的风险等级天差地别。读一行日志几乎零风险，但一条 <code>rm -rf /</code> 或一次误部署可能让整个系统崩溃。<strong>权限设计</strong>是 Coding Agent 安全运行的基础，也是面试中的高频考点。</p>
 
@@ -2879,7 +2879,7 @@ public class PermissionEngine {
 </div>
 
 <!-- ===== 18.11 2026 GUI Agent 新范式：Computer Use ===== -->
-<h2 class="section-heading">18.11 2026 GUI Agent 新范式：Computer Use</h2>
+<h2 class="section-heading">19.11 2026 GUI Agent 新范式：Computer Use</h2>
 
 <p>前面几节讲的传统 GUI Agent 方案——Selenium/Playwright + LLM 截图识别——虽然能工作，但本质上还是"脚本驱动 + 视觉辅助"的思路。2024 年底到 2026 年，GUI Agent 领域发生了范式跃迁：<strong>模型原生操作能力</strong>（Model-Native Computer Use）出现。Claude Computer Use、OpenAI Operator、Google Project Mariner 不再依赖外部脚本框架，而是由模型本身直接输出坐标操作指令，Agent 只需执行和反馈结果。</p>
 
@@ -3020,7 +3020,7 @@ public class PermissionEngine {
 
 <div class="card" style="margin-top: 16px;">
   <div class="card-title">🔒 安全沙箱为什么重要？</div>
-  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">18.8 节介绍了安全沙箱的基本概念，这里从 Computer Use 新范式的角度深入分析为什么安全沙箱不可或缺。</p>
+  <p style="color: var(--color-text-secondary); margin: 8px 0 12px;">19.8 节介绍了安全沙箱的基本概念，这里从 Computer Use 新范式的角度深入分析为什么安全沙箱不可或缺。</p>
   <p>传统 Playwright 方案中，Agent 只能操作浏览器内的网页，天然有"沙箱"边界——最坏情况不过是关闭浏览器。但 Computer Use 能操作<strong>整个桌面</strong>：文件管理器、系统设置、终端、邮件客户端……误操作的影响范围从"一个浏览器窗口"扩大到"整台电脑"。</p>
   <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
     <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-error);">

@@ -50,7 +50,8 @@ const Quiz = {
       if (!q.options || !Array.isArray(q.options) || q.options.length === 0) {
         return;
       }
-      const typeLabel = q.type === 'multiple' ? '多选题' : '单选题';
+      const isMulti = q.type === 'multiple' || q.type === 'multi';
+      const typeLabel = isMulti ? '多选题' : '单选题';
       html += `
         <div class="quiz-question" data-q-index="${i}">
           <div class="q-type">${typeLabel}</div>

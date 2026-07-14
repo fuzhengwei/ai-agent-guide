@@ -897,7 +897,7 @@ public class WeatherAgentLoop {
 👤 这两个城市哪个更热？
 🤖 上海明天更热一些，气温27°C，而北京是23°C，差了4度。</pre></div>
 
-<p>注意第三次对话——AI 没有调用工具，而是<strong>从对话历史中推理</strong>出了答案。这就是 Agent 的"记忆"——第4章会详细讲。</p>
+<p>注意第三次对话——AI 没有调用工具，而是<strong>从对话历史中推理</strong>出了答案。这就是 Agent 的"记忆"——第5章会详细讲。</p>
 
 <!-- ===== 3.8 工具异常处理 ===== -->
 <h2 class="section-heading">3.8 工具异常处理</h2>
@@ -3354,7 +3354,7 @@ import java.io.*;
 <!-- ===== 3.12 本章小结 ===== -->
 <h2 class="section-heading">3.12 本章小结</h2>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ch1","label":"3.1-3.4\n基础概念\n从问题到工具","type":"start"},{"id":"ch2","label":"3.5-3.7\nAgent 核心\n循环 + 多轮对话","type":"process"},{"id":"ch3","label":"3.8\n异常处理\n重试 + 降级","type":"process"},{"id":"ch4","label":"3.9-3.10\n多工具协作\n调用链分析","type":"process"},{"id":"ch5","label":"3.11\nAgent 边界\n什么时候用/不用","type":"process"},{"id":"next","label":"第4章\nReAct 模式\n加入推理环节","type":"end"}],"edges":[{"from":"ch1","to":"ch2"},{"from":"ch2","to":"ch3"},{"from":"ch3","to":"ch4"},{"from":"ch4","to":"ch5"},{"from":"ch5","to":"next"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ch1","label":"3.1-3.4\n基础概念\n从问题到工具","type":"start"},{"id":"ch2","label":"3.5-3.7\nAgent 核心\n循环 + 多轮对话","type":"process"},{"id":"ch3","label":"3.8\n异常处理\n重试 + 降级","type":"process"},{"id":"ch4","label":"3.9-3.10\n多工具协作\n调用链分析","type":"process"},{"id":"ch5","label":"3.11\nAgent 边界\n什么时候用/不用","type":"process"},{"id":"next","label":"第5章\nReAct 模式\n加入推理环节","type":"end"}],"edges":[{"from":"ch1","to":"ch2"},{"from":"ch2","to":"ch3"},{"from":"ch3","to":"ch4"},{"from":"ch4","to":"ch5"},{"from":"ch5","to":"next"}]}'></div>
 
 <div class="summary-box">
 <div class="summary-title">🔗 本章核心</div>
@@ -3366,7 +3366,7 @@ import java.io.*;
 <p><strong>调用链分析</strong>：每次循环都消耗 token，历史递增导致成本递增。量化分析是优化 Agent 的前提。</p>
 <p><strong>Agent 的边界</strong>：确定性任务用传统程序，不确定性任务用 Agent，混合架构是最佳实践。</p>
 <p><strong>本章局限性</strong>：我们的天气 Agent 用的是简单的"用户问→调用工具→回答"模式。它没有在调用工具前<strong>思考为什么要调用</strong>，也没有在观察结果后<strong>反思是否需要进一步行动</strong>。比如用户问"北京明天适合户外运动吗？"，简单 Agent 只查天气就回答了，但更聪明的 Agent 应该先推理（"适合户外需要看天气+空气质量+温度"），再分别调用工具，最后综合判断——这就是<strong>ReAct 模式</strong>的价值。</p>
-<p><strong>下一步</strong>：第4章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
+<p><strong>下一步</strong>：第5章 ReAct 模式会在这个循环基础上加入"推理"环节，让 Agent 在行动前先思考，减少不必要的工具调用。</p>
 </div>
 
 <div class="summary-box">

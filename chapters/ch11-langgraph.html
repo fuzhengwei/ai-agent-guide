@@ -1,9 +1,9 @@
-<!-- 第14章：LangGraph与状态机 -->
-<h1 class="chapter-title">第14章 LangGraph 与状态机</h1>
+<!-- 第15章：LangGraph与状态机 -->
+<h1 class="chapter-title">第15章 LangGraph 与状态机</h1>
 <p class="chapter-subtitle">用图结构构建可控的 Agent 工作流</p>
 
 <!-- ===== 14.1 LangGraph 是什么 ===== -->
-<h2 class="section-heading">14.1 LangGraph：把 Agent 流程变成图</h2>
+<h2 class="section-heading">15.1 LangGraph：把 Agent 流程变成图</h2>
 
 <p>LangChain 团队推出的 <strong>LangGraph</strong> 是 2024 年最火的 Agent 框架之一。核心思想：<strong>把 Agent 工作流建模为有向图</strong>。</p>
 
@@ -39,7 +39,7 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 14.2 核心概念 ===== -->
-<h2 class="section-heading">14.2 LangGraph 的核心概念</h2>
+<h2 class="section-heading">15.2 LangGraph 的核心概念</h2>
 
 <div class="card">
   <div class="card-title">📐 五个核心概念</div>
@@ -84,7 +84,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 14.3 代码实战 ===== -->
-<h2 class="section-heading">14.3 用 LangGraph 构建 ReAct Agent</h2>
+<h2 class="section-heading">15.3 用 LangGraph 构建 ReAct Agent</h2>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langgraph.graph import StateGraph, END
@@ -536,7 +536,7 @@ public class ReActAgent {
 </div>
 
 <!-- ===== 14.4 人工干预 ===== -->
-<h2 class="section-heading">14.4 Human-in-the-Loop：人工干预</h2>
+<h2 class="section-heading">15.4 Human-in-the-Loop：人工干预</h2>
 
 <p>LangGraph 的 Checkpoint 机制让"人工干预"变得自然：</p>
 
@@ -597,7 +597,7 @@ result = app.invoke(None, config={"configurable": {"thread_id": "1"}})</pre>
 </div>
 
 <!-- ===== 14.5 LangGraph vs LangChain ===== -->
-<h2 class="section-heading">14.5 LangGraph vs LangChain Agent</h2>
+<h2 class="section-heading">15.5 LangGraph vs LangChain Agent</h2>
 
 <div class="card">
   <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -639,7 +639,7 @@ result = app.invoke(None, config={"configurable": {"thread_id": "1"}})</pre>
 </div>
 
 <!-- ===== 14.6 LangGraph 完整实战代码 ===== -->
-<h2 class="section-heading">14.6 LangGraph 完整实战代码</h2>
+<h2 class="section-heading">15.6 LangGraph 完整实战代码</h2>
 
 <p>前面几节我们分别学习了 State、Node、Edge 和 Checkpoint 的概念，现在把它们组合起来，写一个完整可运行的 LangGraph 项目。这个示例模拟一个<strong>智能客服 Agent</strong>：接收用户问题，判断是否需要查数据库、调用外部 API 或直接回答，执行后在审查节点检查结果质量，不达标则重试，达标则返回最终回复。</p>
 
@@ -986,7 +986,7 @@ public class AgentState {
 <p>在实际项目中，你只需要把 <code>agent_node</code> 中的伪逻辑替换为真实的 LLM 调用，把 <code>search_db_node</code> 替换为你的数据库查询逻辑，就可以直接部署使用了。整个图结构的定义不需要改动，这就是 LangGraph 「一次建模、反复使用」的优势所在。</p>
 
 <!-- ===== 14.7 LangGraph vs 其他框架对比 ===== -->
-<h2 class="section-heading">14.7 LangGraph vs 其他框架对比</h2>
+<h2 class="section-heading">15.7 LangGraph vs 其他框架对比</h2>
 
 <p>除了 LangGraph，市面上还有多个流行的 Agent 框架，它们各有侧重。理解差异有助于在项目中做出正确的技术选型。下面从五个关键维度对比四大主流框架。</p>
 
@@ -1068,7 +1068,7 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 14.8 高级特性：子图与人机协同 ===== -->
-<h2 class="section-heading">14.8 高级特性：子图与人机协同</h2>
+<h2 class="section-heading">15.8 高级特性：子图与人机协同</h2>
 
 <h3 class="sub-heading">子图（Subgraph）：模块化管理复杂流程</h3>
 

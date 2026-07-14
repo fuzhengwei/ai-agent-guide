@@ -1,9 +1,9 @@
-<!-- 第19章：RAG 检索增强生成 -->
-<h1 class="chapter-title">第19章 RAG：检索增强生成</h1>
+<!-- 第20章：RAG 检索增强生成 -->
+<h1 class="chapter-title">第20章 RAG：检索增强生成</h1>
 <p class="chapter-subtitle">第五篇：综合实战 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
 
 <!-- ===== 19.1 为什么 Agent 需要 RAG？ ===== -->
-<h2 class="section-heading">19.1 为什么 Agent 需要 RAG？</h2>
+<h2 class="section-heading">20.1 为什么 Agent 需要 RAG？</h2>
 
 <p>大模型有两个硬伤：<strong>知识截止日期</strong>（训练数据有时效性）和<strong>领域知识不足</strong>（通用模型不懂你的业务）。微调可以解决一部分，但成本高、周期长、更新慢。<strong>RAG（Retrieval-Augmented Generation，检索增强生成）</strong>提供了更灵活的方案：<strong>先检索，再生成</strong>。</p>
 
@@ -58,7 +58,7 @@
 </div>
 
 <!-- ===== 19.2 RAG 完整流程 ===== -->
-<h2 class="section-heading">19.2 RAG 的完整流程</h2>
+<h2 class="section-heading">20.2 RAG 的完整流程</h2>
 
 <p>RAG 不是简单的"搜索 + 拼接"，一个生产级 RAG 系统包含<strong>五个阶段</strong>：</p>
 
@@ -510,11 +510,11 @@ public class VectorStoreExample {
 </div>
 
 <!-- ===== 19.3 检索策略 ===== -->
-<h2 class="section-heading">19.3 检索策略：不只是相似度搜索</h2>
+<h2 class="section-heading">20.3 检索策略：不只是相似度搜索</h2>
 
 <p>最简单的 RAG 只做<strong>向量相似度搜索</strong>，但生产级 RAG 需要更复杂的检索策略。</p>
 
-<h3 class="sub-heading">19.3.1 基础：向量相似度搜索</h3>
+<h3 class="sub-heading">20.3.1 基础：向量相似度搜索</h3>
 
 <div class="code-block">
 <span class="code-label">Python</span>
@@ -552,7 +552,7 @@ results = collection.query(
   </table>
 </div>
 
-<h3 class="sub-heading">19.3.2 进阶：混合检索（BM25 + 向量）</h3>
+<h3 class="sub-heading">20.3.2 进阶：混合检索（BM25 + 向量）</h3>
 
 <p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
 
@@ -753,7 +753,7 @@ public class HybridRetriever {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">19.3.3 进阶：重排序（Reranker）</h3>
+<h3 class="sub-heading">20.3.3 进阶：重排序（Reranker）</h3>
 
 <p>向量检索速度快但精度有限，返回 Top-20 中可能有噪声。<strong>重排序模型</strong>对这 20 条结果做精细打分，选出最相关的 Top-5。</p>
 
@@ -916,9 +916,9 @@ public class RerankExample {
 </div>
 
 <!-- ===== 19.4 RAG 高级优化 ===== -->
-<h2 class="section-heading">19.4 RAG 高级优化技巧</h2>
+<h2 class="section-heading">20.4 RAG 高级优化技巧</h2>
 
-<h3 class="sub-heading">19.4.1 Query 改写</h3>
+<h3 class="sub-heading">20.4.1 Query 改写</h3>
 
 <p>用户提问往往模糊或口语化，直接检索效果差。先用 LLM <strong>改写 Query</strong>，提升检索质量。</p>
 
@@ -1022,7 +1022,7 @@ import java.io.*;
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">19.4.2 HyDE（假设性文档嵌入）</h3>
+<h3 class="sub-heading">20.4.2 HyDE（假设性文档嵌入）</h3>
 
 <p>有时候用户的问题太短，向量化后语义信息不足。<strong>HyDE</strong> 的思路是：先让 LLM 生成一个"假回答"，用假回答去检索，再用检索结果生成真回答。</p>
 
@@ -1036,7 +1036,7 @@ import java.io.*;
   </p>
 </div>
 
-<h3 class="sub-heading">19.4.3 父子分块（Parent-Child Chunking）</h3>
+<h3 class="sub-heading">20.4.3 父子分块（Parent-Child Chunking）</h3>
 
 <p>检索时用<strong>小块</strong>（精确匹配），生成时用<strong>大块</strong>（上下文完整）。</p>
 
@@ -1055,7 +1055,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 19.5 Agent + RAG 架构 ===== -->
-<h2 class="section-heading">19.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
+<h2 class="section-heading">20.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
 
 <p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
 
@@ -1234,7 +1234,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 19.6 生产级 RAG 架构 ===== -->
-<h2 class="section-heading">19.6 生产级 RAG 架构</h2>
+<h2 class="section-heading">20.6 生产级 RAG 架构</h2>
 
 <div class="card">
   <div class="card-title">🏭 企业级 RAG 系统架构</div>
@@ -1263,7 +1263,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 19.7 GraphRAG ===== -->
-<h2 class="section-heading">19.7 GraphRAG：知识图谱增强检索</h2>
+<h2 class="section-heading">20.7 GraphRAG：知识图谱增强检索</h2>
 
 <p>传统向量 RAG 有一个致命弱点：<strong>只能检索局部相似片段，无法回答全局性问题</strong>。比如"整个系统架构包含哪些模块？"这样的问题需要跨文档、跨段落的全局视角。<strong>GraphRAG</strong> 通过构建知识图谱，让 RAG 具备"关联推理"的能力。</p>
 
@@ -1272,7 +1272,7 @@ import java.io.*;
   <p>不只是把文档切成块存向量库，而是先从文档中<strong>抽取实体和关系</strong>，构建一张知识图谱。检索时不是做向量相似度搜索，而是在图上进行<strong>子图检索和图遍历</strong>，找到与问题相关的实体及其关联信息。</p>
 </div>
 
-<h3 class="sub-heading">19.7.1 GraphRAG 的四步流程</h3>
+<h3 class="sub-heading">20.7.1 GraphRAG 的四步流程</h3>
 
 <div class="flowchart-container" id="graphRagFlow"></div>
 
@@ -1452,7 +1452,7 @@ import java.io.*;
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">19.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
+<h3 class="sub-heading">20.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
 
 <div class="comparison-table">
   <table>
@@ -1497,7 +1497,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 19.8 Agentic RAG ===== -->
-<h2 class="section-heading">19.8 Agentic RAG：Agent 驱动的自适应检索</h2>
+<h2 class="section-heading">20.8 Agentic RAG：Agent 驱动的自适应检索</h2>
 
 <p>传统 RAG 是一个<strong>固定流水线</strong>：用户提问 → 检索 → 拼接上下文 → LLM 生成。无论问题难易，流程都一样。但这不合理——有些问题不需要检索，有些需要检索多次，有些需要先检索再反思再检索。<strong>Agentic RAG</strong> 把 Agent 引入检索循环，让 Agent 动态决策<strong>是否检索、检索几次、何时停止</strong>。</p>
 
@@ -1506,7 +1506,7 @@ import java.io.*;
   <p>不再是一条固定的"检索→生成"流水线，而是让 Agent 作为<strong>检索编排者</strong>，根据问题难度动态决定检索策略：简单问题直接回答，复杂问题多轮检索+反思，检索不充分则换角度重搜，直到信息充分才生成最终回答。</p>
 </div>
 
-<h3 class="sub-heading">19.8.1 传统 RAG vs Agentic RAG</h3>
+<h3 class="sub-heading">20.8.1 传统 RAG vs Agentic RAG</h3>
 
 <div class="compare-grid">
   <div class="card">
@@ -1531,7 +1531,7 @@ import java.io.*;
   </div>
 </div>
 
-<h3 class="sub-heading">19.8.2 Agentic RAG 的核心循环</h3>
+<h3 class="sub-heading">20.8.2 Agentic RAG 的核心循环</h3>
 
 <div class="flowchart-container" id="agenticRagLoop"></div>
 
@@ -1907,7 +1907,7 @@ public class RAGState {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">19.8.3 Agentic RAG 什么时候触发检索？</h3>
+<h3 class="sub-heading">20.8.3 Agentic RAG 什么时候触发检索？</h3>
 
 <p>这是面试高频追问点。Agent 通过以下信号判断是否触发检索：</p>
 
