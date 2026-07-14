@@ -7,7 +7,7 @@
   "Agent 的大脑不只是推理，还包括：理解意图 → 规划任务 → 调度工具 → 管理上下文 → 控制循环。这五件事合在一起，才是完整的'决策中枢'。"
 </div>
 
-<h2 class="section-heading">6.1 为什么需要意图识别</h2>
+<h2 class="section-heading">7.1 为什么需要意图识别</h2>
 
 <p>用户说"帮我查下北京天气"，Agent 需要先理解<strong>用户到底想做什么</strong>，才能选到正确的工具、走正确的执行路径。意图识别是 Agent 决策链的第一步，也是最重要的一步——意图错了，后面全错。</p>
 
@@ -229,7 +229,7 @@ public class IntentIdentifier {
 <p>复合意图拆解需要 LLM 先理解整句话的语义，再拆分出子意图，最后生成执行计划。这个过程就是<strong>任务规划</strong>——我们在 §6.4 会详细讲。</p>
 
 
-<h2 class="section-heading">6.2 工具路由：从意图到工具</h2>
+<h2 class="section-heading">7.2 工具路由：从意图到工具</h2>
 
 <p>意图识别完成后，Agent 需要把意图<strong>路由到正确的工具</strong>。这就是工具路由——决策中枢的"分发器"。</p>
 
@@ -481,7 +481,7 @@ public class ToolRAG {
   </div>
 </div>
 
-<h2 class="section-heading">6.3 任务分类与复杂度判断</h2>
+<h2 class="section-heading">7.3 任务分类与复杂度判断</h2>
 
 <p>意图识别之后，Agent 需要对任务进行<strong>分类</strong>，决定<strong>执行策略</strong>。不同复杂度的任务对应不同的处理路径。这是决策中枢的"调度器"。</p>
 
@@ -633,7 +633,7 @@ public class TaskClassifier {
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"input","label":"用户输入","type":"start"},{"id":"intent","label":"意图识别","type":"process"},{"id":"keyword","label":"关键词匹配\n命中？","type":"process"},{"id":"llm","label":"LLM 语义理解\n判断复杂度","type":"process"},{"id":"simple","label":"Low → 直接回答","type":"end"},{"id":"medium","label":"Medium → 读取+分析","type":"end"},{"id":"complex","label":"High → 拆解+多步执行","type":"end"},{"id":"decompose","label":"任务拆解\n生成执行计划","type":"process"}],"edges":[{"from":"input","to":"intent"},{"from":"intent","to":"keyword"},{"from":"keyword","to":"simple","label":"简单问答"},{"from":"keyword","to":"medium","label":"代码解释"},{"from":"keyword","to":"complex","label":"复杂开发"},{"from":"keyword","to":"llm","label":"未命中"},{"from":"llm","to":"simple","label":"Low"},{"from":"llm","to":"medium","label":"Medium"},{"from":"llm","to":"decompose","label":"High"},{"from":"decompose","to":"complex"}]}'></div>
 
 
-<h2 class="section-heading">6.4 任务规划与分解</h2>
+<h2 class="section-heading">7.4 任务规划与分解</h2>
 
 <p>当任务复杂度被判定为"High"时，Agent 需要将大任务<strong>拆解为子任务</strong>，生成执行计划。这就是任务规划——决策中枢的"项目管理器"。</p>
 
@@ -894,7 +894,7 @@ public class Scheduler {
 }</pre></div>
 </div>
 
-<h2 class="section-heading">6.5 上下文工程：大脑的工作记忆管理</h2>
+<h2 class="section-heading">7.5 上下文工程：大脑的工作记忆管理</h2>
 
 <p>Agent 在执行过程中会产生大量上下文——对话历史、工具返回结果、中间推理。如果全部塞进 Prompt，Token 会爆炸；如果裁剪太多，Agent 会"失忆"。这就是<strong>上下文工程</strong>要解决的问题。</p>
 
@@ -1131,7 +1131,7 @@ public class ToolResultCompressor {
 </div>
 
 
-<h2 class="section-heading">6.6 Agent 执行循环引擎</h2>
+<h2 class="section-heading">7.6 Agent 执行循环引擎</h2>
 
 <p>意图识别、任务规划、工具路由——这些大脑组件需要一个<strong>执行引擎</strong>把它们串起来循环运行。这就是 Agent Loop。第5章讲了 ReAct 循环的原理（Thought → Action → Observation），本节聚焦<strong>生产级执行循环的工程实现</strong>。</p>
 
@@ -1396,7 +1396,7 @@ public class AgentLoop {
   </table>
 </div>
 
-<h2 class="section-heading">6.7 单一 Agent vs 多 Agent：执行方式选型</h2>
+<h2 class="section-heading">7.7 单一 Agent vs 多 Agent：执行方式选型</h2>
 
 <p>Agent 的执行方式不只是"一个 Agent 干到底"。当任务足够复杂时，需要<strong>多个 Agent 协作</strong>。决策中枢需要判断：这个任务应该一个 Agent 做，还是拆给多个 Agent？</p>
 

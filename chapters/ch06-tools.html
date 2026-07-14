@@ -9,7 +9,7 @@
 </div>
 
 <!-- ===== 9.1 为什么需要工具 ===== -->
-<h2 class="section-heading">9.1 LLM 的能力边界</h2>
+<h2 class="section-heading">10.1 LLM 的能力边界</h2>
 
 <p>LLM 再强大，也有硬伤：</p>
 
@@ -43,7 +43,7 @@
 </div>
 
 <!-- ===== 9.2 工具调用的演进 ===== -->
-<h2 class="section-heading">9.2 工具调用的三代演进</h2>
+<h2 class="section-heading">10.2 工具调用的三代演进</h2>
 
 <div class="step-animation" id="toolEvoSteps">
   <div class="step-canvas">
@@ -88,7 +88,7 @@ window.ToolEvo = ToolEvo;
 </script>
 
 <!-- ===== 9.3 Function Calling 详解 ===== -->
-<h2 class="section-heading">9.3 Function Calling 详解</h2>
+<h2 class="section-heading">10.3 Function Calling 详解</h2>
 
 <p>Function Calling 是目前工具调用的主流方式。来看完整的调用流程：</p>
 
@@ -401,7 +401,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 9.4 工具分类体系 ===== -->
-<h2 class="section-heading">9.4 工具分类体系</h2>
+<h2 class="section-heading">10.4 工具分类体系</h2>
 
 <div class="card">
   <div class="card-title">🔧 Agent 工具全景</div>
@@ -463,7 +463,7 @@ import java.io.*;
 <p style="margin-top: 8px;">本章接下来的内容聚焦于<strong>工具调用的工程实践</strong>：意图识别与工具路由（9.10）、上下文工程与工具管理（9.11）、消息压缩（9.12）、Structured Output（9.13）、实战路由系统（9.14）、并发控制与弱模型兼容（9.15）。</p>
 </div>
 
-<h2 class="section-heading">9.10 意图识别与工具路由</h2>
+<h2 class="section-heading">10.10 意图识别与工具路由</h2>
 
 <p>用户说"帮我查下北京天气"，Agent 需要先理解<strong>用户到底想做什么</strong>，才能选到正确的工具。这就是意图识别——工具路由的"大脑"。</p>
 
@@ -1051,7 +1051,7 @@ public class IntentRouter {
 </div>
 
 <!-- ===== 9.11 上下文工程与工具管理 ===== -->
-<h2 class="section-heading">9.11 上下文工程与工具管理</h2>
+<h2 class="section-heading">10.11 上下文工程与工具管理</h2>
 
 <p>一个 Agent 可能注册了 50 个工具。如果把所有工具描述一次性塞给 LLM，每次请求都要消耗数千 token 在工具描述上——而 LLM 实际只会用到 1~3 个。这就是<strong>上下文工程</strong>要解决的问题。</p>
 
@@ -1438,7 +1438,7 @@ public class ToolRAG {
 </div>
 
 <!-- ===== 9.12 消息压缩与工具调用链 ===== -->
-<h2 class="section-heading">9.12 消息压缩与工具调用链</h2>
+<h2 class="section-heading">10.12 消息压缩与工具调用链</h2>
 
 <p>多轮工具调用会产生<strong>Context 膨胀</strong>问题。一次搜索返回 2000 token，执行代码又返回 1500 token，3轮调用后 Context 就膨胀了上万 token——而 LLM 的有效注意力在超长 Context 中会显著衰减。</p>
 
@@ -1883,7 +1883,7 @@ public class ToolResultCompressor {
 </div>
 
 <!-- ===== 9.13 Structured Output与工具调用 ===== -->
-<h2 class="section-heading">9.13 Structured Output 与工具调用</h2>
+<h2 class="section-heading">10.13 Structured Output 与工具调用</h2>
 
 <p>Function Calling 天然就是 Structured Output——LLM 输出 JSON 格式的函数调用。但实际场景中，我们还需要对输出做<strong>更严格的约束</strong>：参数类型校验、必填检查、格式验证。</p>
 
@@ -2353,7 +2353,7 @@ public class StructuredToolCaller {
 </div>
 
 <!-- ===== 9.14 实战：构建智能工具路由系统 ===== -->
-<h2 class="section-heading">9.14 实战：构建智能工具路由系统</h2>
+<h2 class="section-heading">10.14 实战：构建智能工具路由系统</h2>
 
 <p>把 9.10~9.13 的概念串起来，构建一个完整的<strong>意图识别 → 工具检索 → 工具调用 → 结果压缩 → 结构化验证</strong>全链路 Agent。</p>
 
@@ -3381,11 +3381,11 @@ public class SmartToolRouter {
 
 
 <!-- ===== 9.16 多协议适配层 ===== -->
-<h2 class="section-heading">9.16 多协议适配层：一套代码兼容所有模型</h2>
+<h2 class="section-heading">10.16 多协议适配层：一套代码兼容所有模型</h2>
 
 <p>不同 LLM 厂商的 API 协议各不相同——OpenAI 用 <code>messages</code> 数组，Anthropic 用 <code>system + messages</code> 分离，Ollama 用 <code>prompt</code> 字段，OpenAI Responses API 用 <code>input</code> 字段。如果 Agent 代码直接绑定某一协议，切换模型意味着大规模重写。</p>
 
-<h3 class="sub-heading">9.16.1 协议差异全景</h3>
+<h3 class="sub-heading">10.16.1 协议差异全景</h3>
 
 <div class="card">
   <div class="card-title">🔌 四大主流 API 协议对比</div>
@@ -3432,7 +3432,7 @@ public class SmartToolRouter {
   </table>
 </div>
 
-<h3 class="sub-heading">9.16.2 ProtocolStrategy 适配模式</h3>
+<h3 class="sub-heading">10.16.2 ProtocolStrategy 适配模式</h3>
 
 <p>WaLiCode 采用<strong>策略模式（Strategy Pattern）</strong>实现多协议适配——定义统一接口，每个协议一个实现类，运行时动态切换：</p>
 
@@ -4082,11 +4082,11 @@ public class Main {
 </div>
 
 <!-- ===== 9.17 信号提取（Signal Extraction） ===== -->
-<h2 class="section-heading">9.17 信号提取：从对话中识别用户真实意图</h2>
+<h2 class="section-heading">10.17 信号提取：从对话中识别用户真实意图</h2>
 
 <p>用户说"帮我看看这段代码"——他想要的是代码审查？Bug 修复？还是性能优化？<strong>信号提取</strong>就是从用户输入中识别出隐含的意图、约束、偏好等关键信息，是工具路由的前置条件。</p>
 
-<h3 class="sub-heading">9.17.1 信号的五大类型</h3>
+<h3 class="sub-heading">10.17.1 信号的五大类型</h3>
 
 <div class="card">
   <div class="card-title">📡 用户对话中的五类信号</div>
@@ -4134,7 +4134,7 @@ public class Main {
   </table>
 </div>
 
-<h3 class="sub-heading">9.17.2 信号提取实现</h3>
+<h3 class="sub-heading">10.17.2 信号提取实现</h3>
 
 <div class="multi-lang">
 <div class="lang-tabs">
@@ -4670,11 +4670,11 @@ public class Main {
 
 <!-- ===== 八股总结 ===== -->
 <!-- ===== 9.15 工程深度：工具并发控制与弱模型兼容 ===== -->
-<h2 class="section-heading">9.15 工程深度：工具并发控制与弱模型兼容</h2>
+<h2 class="section-heading">10.15 工程深度：工具并发控制与弱模型兼容</h2>
 
 <p>前面的章节介绍了工具调用的原理和 Skill 体系，但在生产环境中，Agent 的工具系统还面临三个工程挑战：<strong>并发控制</strong>（多个工具能不能同时执行）、<strong>权限安全</strong>（危险命令怎么拦截）、<strong>弱模型兼容</strong>（不是所有模型都输出标准的 tool_calls）。本节基于 WaLiCode 项目的真实实现，讲解这三个关键设计。</p>
 
-<h3 class="sub-heading">9.15.1 工具并发安全分类</h3>
+<h3 class="sub-heading">10.15.1 工具并发安全分类</h3>
 
 <p>简单 Agent 串行调用工具就够了——一次只调一个，等结果回来再调下一个。但生产级 Agent 面临的场景是：AI 一次可能输出 3-5 个工具调用（比如同时读取 3 个文件），如果串行执行，用户要等 3 倍的时间。</p>
 
@@ -4720,7 +4720,7 @@ function isBashCommandConcurrentSafe(command: string): boolean {
   return false;
 }</pre></div>
 
-<h3 class="sub-heading">9.15.2 流式并发执行机制</h3>
+<h3 class="sub-heading">10.15.2 流式并发执行机制</h3>
 
 <p>传统做法是等 AI 输出完所有内容后，再统一执行工具调用。但 WaLiCode 采用<strong>流式并发</strong>——AI 流式输出时，工具调用一到就立即开始执行，不等 AI 输出完。</p>
 
@@ -4926,7 +4926,7 @@ public class ToolConcurrencyController {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">9.15.3 五层权限递进系统</h3>
+<h3 class="sub-heading">10.15.3 五层权限递进系统</h3>
 
 <p>Agent 能执行 Shell 命令是好事，但也意味着它能执行 <code>rm -rf /</code>。生产级 Agent 必须有权限控制。WaLiCode 设计了<strong>五层递进</strong>的权限系统：</p>
 
@@ -4982,7 +4982,7 @@ public class ToolConcurrencyController {
 
 <p><strong>核心原则：fail-closed</strong>——不理解的命令归类为 <code>too-complex</code>，必须交互确认。宁可多问一次，不可放行危险操作。</p>
 
-<h3 class="sub-heading">9.15.4 弱模型兼容层</h3>
+<h3 class="sub-heading">10.15.4 弱模型兼容层</h3>
 
 <p>不是所有模型都像 Claude/GPT-4 那样输出干净的结构化 tool_calls。弱模型（如 DeepSeek、Qwen、Llama）经常出问题。WaLiCode 设计了两道防线：</p>
 
@@ -5048,7 +5048,7 @@ function parseToolCallsFromText(text: string): ToolCall[] {
 
 <p>这两道防线确保 Agent 能兼容从 Claude 到 Llama 的各种模型——不是所有用户都用顶级模型。</p>
 
-<h3 class="sub-heading">9.15.5 指数退避重试</h3>
+<h3 class="sub-heading">10.15.5 指数退避重试</h3>
 
 <p>工具执行可能遇到临时性错误（429 限流、503 服务不可用、网络超时）。WaLiCode 使用指数退避重试：</p>
 

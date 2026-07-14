@@ -21,7 +21,7 @@
 </div>
 
 <!-- ===== 23.1 为什么需要推理框架 ===== -->
-<h2 class="section-heading">23.1 为什么需要推理框架？</h2>
+<h2 class="section-heading">24.1 为什么需要推理框架？</h2>
 
 <p>很多小白的误区是：以为下载了一个模型文件（.bin / .safetensors），就可以直接用了。事实是——<strong>模型文件只是一个权重矩阵，你还需要推理框架把它变成一个可调用的服务</strong>。</p>
 
@@ -78,7 +78,7 @@
 <p>推理框架把这些工程问题全部解决了，让你<strong>专注在 Agent 逻辑上</strong>，而不是推理基础设施上。</p>
 
 <!-- ===== 23.2 Ollama ===== -->
-<h2 class="section-heading">23.2 Ollama：轻量易用的本地推理</h2>
+<h2 class="section-heading">24.2 Ollama：轻量易用的本地推理</h2>
 
 <p>Ollama 是最简单的本地 LLM 运行方案。一条命令下载模型，一条命令启动服务，API 接口兼容 OpenAI 格式。适合<strong>个人开发、快速验证、学习实验</strong>。</p>
 
@@ -390,7 +390,7 @@ PARAMETER repeat_penalty 1.1  # 防止重复输出
 </div>
 
 <!-- ===== 23.3 vLLM ===== -->
-<h2 class="section-heading">23.3 vLLM：企业级高吞吐推理引擎</h2>
+<h2 class="section-heading">24.3 vLLM：企业级高吞吐推理引擎</h2>
 
 <p>vLLM 是工业级推理引擎，核心优势是<strong>PagedAttention</strong>技术——像操作系统管理虚拟内存一样管理 GPU 显存，极大提升并发吞吐量。适合<strong>高并发生产环境、企业级部署</strong>。</p>
 
@@ -482,7 +482,7 @@ curl http://localhost:8000/v1/chat/completions \
 </div>
 
 <!-- ===== 23.4 SGLang 与其他推理框架 ===== -->
-<h2 class="section-heading">23.4 SGLang 与其他推理框架</h2>
+<h2 class="section-heading">24.4 SGLang 与其他推理框架</h2>
 
 <p>除了 Ollama 和 vLLM，推理框架生态还有几个重要成员：</p>
 
@@ -593,7 +593,7 @@ curl http://localhost:8000/v1/chat/completions \
 </div>
 
 <!-- ===== 23.5 量化：让大模型跑在小机器上 ===== -->
-<h2 class="section-heading">23.5 量化：让大模型跑在小机器上</h2>
+<h2 class="section-heading">24.5 量化：让大模型跑在小机器上</h2>
 
 <p>7B 参数的模型 FP16 精度需要 14GB 显存，70B 需要 140GB——大部分企业没有这么多 GPU。量化（Quantization）是让大模型跑在小机器上的核心技术：<strong>降低参数精度（FP16 → INT8 → INT4），用更少的显存装更大的模型</strong>。</p>
 
@@ -696,7 +696,7 @@ curl http://localhost:8000/v1/chat/completions \
 </div>
 
 <!-- ===== 23.6 选型决策 ===== -->
-<h2 class="section-heading">23.6 推理框架选型决策</h2>
+<h2 class="section-heading">24.6 推理框架选型决策</h2>
 
 <p>选推理框架不是"Ollama vs vLLM"的二元选择，而是根据你的场景匹配最合适的方案：</p>
 
@@ -743,7 +743,7 @@ curl http://localhost:8000/v1/chat/completions \
 </div>
 
 <!-- ===== 23.7 多 GPU 分布式推理 ===== -->
-<h2 class="section-heading">23.7 多 GPU 分布式推理</h2>
+<h2 class="section-heading">24.7 多 GPU 分布式推理</h2>
 
 <p>70B+ 参数模型单卡跑不了，需要多 GPU 分布式推理。核心挑战：<strong>模型怎么切分？GPU 之间怎么通信？通信开销怎么优化？</strong></p>
 
@@ -789,7 +789,7 @@ python -m vllm.entrypoints.openai.api_server \
 </div>
 
 <!-- ===== 23.8 模型服务化与 Agent 接入 ===== -->
-<h2 class="section-heading">23.8 模型服务化与 Agent 接入</h2>
+<h2 class="section-heading">24.8 模型服务化与 Agent 接入</h2>
 
 <p>推理框架把模型跑起来了，但 Agent 怎么接入？核心原则：<strong>所有主流推理框架都兼容 OpenAI API 格式</strong>，Agent 代码只需改 base_url 和 model 名。</p>
 
@@ -1084,7 +1084,7 @@ public class AgentModelRouter {
 </div>
 
 <!-- ===== 23.9 生产级部署 ===== -->
-<h2 class="section-heading">23.9 生产级推理服务部署</h2>
+<h2 class="section-heading">24.9 生产级推理服务部署</h2>
 
 <p>推理框架跑起来只是第一步，生产级部署还需要：高可用、自动扩缩容、监控告警、安全加固。</p>
 
@@ -1204,7 +1204,7 @@ services:
 </div>
 
 <!-- ===== 23.10 2026 推理优化前沿技术 ===== -->
-<h2 class="section-heading">23.10 2026 推理优化前沿技术</h2>
+<h2 class="section-heading">24.10 2026 推理优化前沿技术</h2>
 
 <p>前面的章节覆盖了推理框架的基础选型与部署。但 2025-2026 年，随着 DeepSeek-V3、Qwen3-MoE 等模型的爆发，<strong>推理优化技术本身成了面试高频考点</strong>。这一节聚焦三个前沿方向：MoE 推理优化、投机解码、以及 KV Cache 量化等工程加速技术。</p>
 
@@ -1218,7 +1218,7 @@ services:
   </ul>
 </div>
 
-<h3 class="sub-heading">23.10.1 MoE（Mixture of Experts）推理优化</h3>
+<h3 class="sub-heading">24.10.1 MoE（Mixture of Experts）推理优化</h3>
 
 <p>MoE（混合专家模型）是 2025-2026 年大模型的主流架构趋势。DeepSeek-V3（671B 参数）、Qwen3-MoE、Mixtral 8x22B 都采用 MoE 架构。核心思想：<strong>不是所有参数都参与每次推理，而是动态激活一部分"专家"子网络</strong>。</p>
 
@@ -1297,7 +1297,7 @@ services:
   <p style="margin-top: 12px; font-size: 14px;">实际推理成本：DeepSeek-V3 的每百万 Token 价格约为 GPT-4o 的 1/10，这就是 MoE 架构的威力。</p>
 </div>
 
-<h3 class="sub-heading">23.10.2 Speculative Decoding（投机解码）</h3>
+<h3 class="sub-heading">24.10.2 Speculative Decoding（投机解码）</h3>
 
 <p>投机解码是 2025-2026 年推理加速的明星技术。核心思想：<strong>用小模型快速生成草稿，大模型验证修正，实现超越大模型自身的推理速度</strong>。</p>
 
@@ -1389,7 +1389,7 @@ python -m vllm.entrypoints.openai.api_server \
   <p style="margin-top: 12px; font-size: 14px;">优势：无需维护两个模型，显存占用更低，部署更简单。</p>
 </div>
 
-<h3 class="sub-heading">23.10.3 其他推理优化技术</h3>
+<h3 class="sub-heading">24.10.3 其他推理优化技术</h3>
 
 <p>除了 MoE 和投机解码，2026 年生产环境还有三个高频使用的优化技术：</p>
 

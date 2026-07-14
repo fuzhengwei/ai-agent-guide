@@ -3,7 +3,7 @@
 <p class="chapter-subtitle">从一个 Agent 到一个 Agent 团队</p>
 
 <!-- ===== 13.1 为什么需要多 Agent ===== -->
-<h2 class="section-heading">13.1 单 Agent 的瓶颈</h2>
+<h2 class="section-heading">14.1 单 Agent 的瓶颈</h2>
 
 <p>单个 Agent 就像一个"全栈工程师"——什么都干。但随着任务复杂度提升，瓶颈出现：</p>
 
@@ -37,7 +37,7 @@
 </div>
 
 <!-- ===== 13.2 多 Agent 协作模式 ===== -->
-<h2 class="section-heading">13.2 四种经典协作模式</h2>
+<h2 class="section-heading">14.2 四种经典协作模式</h2>
 
 <div class="flowchart-container" id="multiAgentPatterns"></div>
 
@@ -106,7 +106,7 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 13.3 编排者-执行者详解 ===== -->
-<h2 class="section-heading">13.3 编排者-执行者模式详解</h2>
+<h2 class="section-heading">14.3 编排者-执行者模式详解</h2>
 
 <p>这是最常用的多 Agent 模式。编排者（Orchestrator）像项目经理，执行者（Worker）像各专业工程师。</p>
 
@@ -162,7 +162,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 13.4 通信机制 ===== -->
-<h2 class="section-heading">13.4 Agent 之间的通信机制</h2>
+<h2 class="section-heading">14.4 Agent 之间的通信机制</h2>
 
 <p>多 Agent 要协作，必须有通信机制。三种主流方案：</p>
 
@@ -200,7 +200,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 13.5 主流框架对比 ===== -->
-<h2 class="section-heading">13.5 主流多 Agent 框架对比</h2>
+<h2 class="section-heading">14.5 主流多 Agent 框架对比</h2>
 
 <div class="card">
   <div class="card-title">🏗️ 四大框架横向对比</div>
@@ -243,7 +243,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 13.6 A2A协议（Agent-to-Agent） ===== -->
-<h2 class="section-heading">13.6 A2A协议（Agent-to-Agent）</h2>
+<h2 class="section-heading">14.6 A2A协议（Agent-to-Agent）</h2>
 
 <p>2025年4月9日，Google 发布了 <strong>A2A（Agent-to-Agent）协议</strong>——一个专门解决 Agent 与 Agent 之间协作的开放标准。如果说 MCP 解决的是 Agent 与工具的连接，那么 A2A 解决的是 Agent 与 Agent 的连接。</p>
 
@@ -623,7 +623,7 @@ public class A2AClient {
 </div>
 
 <!-- ===== 13.7 沙箱隔离与安全 ===== -->
-<h2 class="section-heading">13.7 沙箱隔离与安全</h2>
+<h2 class="section-heading">14.7 沙箱隔离与安全</h2>
 
 <p>Agent 的强大之处在于它能<strong>执行代码、访问文件、调用API</strong>。但这也带来了巨大的安全风险——如果 Agent 执行了恶意代码，后果可能是删除文件、泄露数据、甚至攻击系统。</p>
 
@@ -785,11 +785,11 @@ bwrap \
 </div>
 
 <!-- ===== 13.8 多Agent系统的生产实践 ===== -->
-<h2 class="section-heading">13.8 多Agent系统的生产实践</h2>
+<h2 class="section-heading">14.8 多Agent系统的生产实践</h2>
 
 <p>从实验室到生产环境，多 Agent 系统需要面对<strong>数据格式、错误处理、监控追踪、成本控制</strong>四大工程挑战。</p>
 
-<h3 class="sub-heading">13.8.1 通信数据格式标准化</h3>
+<h3 class="sub-heading">14.8.1 通信数据格式标准化</h3>
 
 <p>Agent 之间传递的数据必须有统一的格式约定，否则"鸡同鸭讲"：</p>
 
@@ -861,7 +861,7 @@ bwrap \
 }</pre>
 </div>
 
-<h3 class="sub-heading">13.8.2 错误处理与重试策略</h3>
+<h3 class="sub-heading">14.8.2 错误处理与重试策略</h3>
 
 <p>多 Agent 系统中，任何一个 Agent 都可能出错。关键是要有<strong>容错机制</strong>，不让一个 Agent 的失败拖垮整个系统：</p>
 
@@ -1110,7 +1110,7 @@ public class AgentRetryPolicy {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">13.8.3 监控与可观测性</h3>
+<h3 class="sub-heading">14.8.3 监控与可观测性</h3>
 
 <p>生产环境中，你需要知道每个 Agent <strong>做了什么、花了多少、是否异常</strong>。这需要完整的可观测性体系：</p>
 
@@ -1279,7 +1279,7 @@ public class AgentLogger {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">13.8.4 成本控制：Token 消耗管理</h3>
+<h3 class="sub-heading">14.8.4 成本控制：Token 消耗管理</h3>
 
 <p>多 Agent 系统的 Token 消耗是<strong>倍增</strong>的——3 个 Agent 各独立调用 LLM，总消耗是 3 倍。不加控制，一个小任务可能烧掉几美元的 Token：</p>
 
@@ -1327,7 +1327,7 @@ public class AgentLogger {
   </table>
 </div>
 
-<h3 class="sub-heading">13.8.5 实战案例：调研+分析+写作多Agent工作流</h3>
+<h3 class="sub-heading">14.8.5 实战案例：调研+分析+写作多Agent工作流</h3>
 
 <p>以一个完整的"行业调研报告生成"场景为例，展示多 Agent 编排的全流程：</p>
 
@@ -1748,7 +1748,7 @@ public class ProductionOrchestrator {
 </div>
 
 <!-- ===== 13.9 Handoffs机制详解 ===== -->
-<h2 class="section-heading">13.9 Handoffs机制详解</h2>
+<h2 class="section-heading">14.9 Handoffs机制详解</h2>
 
 <p><strong>Handoffs（任务移交）</strong>是 OpenAI Agents SDK 中引入的核心机制，用于实现 Agent 之间的任务转移。它与编排者-执行者模式密切相关，但更轻量、更灵活。</p>
 

@@ -7,7 +7,7 @@
 </div>
 
 <!-- ===== 11.1 从工具到技能 ===== -->
-<h2 class="section-heading">11.1 从工具到技能</h2>
+<h2 class="section-heading">12.1 从工具到技能</h2>
 
 <p>打个比方：工具是一把锤子，技能是"钉钉子"——锤子只是一个工具，但"钉钉子"需要锤子 + 钉子 + 判断角度 + 控制力度。技能是工具的<strong>组合 + 使用知识</strong>。</p>
 
@@ -27,7 +27,7 @@
 </div>
 
 <!-- ===== 11.2 Skills 的三层结构 ===== -->
-<h2 class="section-heading">11.2 Skills 的三层结构</h2>
+<h2 class="section-heading">12.2 Skills 的三层结构</h2>
 
 <p>一个完整的 Skill 包含三层：</p>
 
@@ -71,11 +71,11 @@ knowledge: |
   - date 支持 today/tomorrow/YYYY-MM-DD</pre></div>
 
 <!-- ===== 11.3 Skills 的发现与加载 ===== -->
-<h2 class="section-heading">11.3 Skills 的发现与加载</h2>
+<h2 class="section-heading">12.3 Skills 的发现与加载</h2>
 
 <p>Agent 怎么知道有哪些 Skills 可用？和 CLI 工具类似，Skills 也需要<strong>自动发现</strong>机制：</p>
 
-<h3 class="sub-heading">11.3.1 文件系统发现</h3>
+<h3 class="sub-heading">12.3.1 文件系统发现</h3>
 
 <p>Skill 以文件形式存储在 <code>skills/</code> 目录下，Agent 启动时扫描目录：</p>
 
@@ -300,7 +300,7 @@ public class SkillLoader {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.3.2 热重载</h3>
+<h3 class="sub-heading">12.3.2 热重载</h3>
 
 <p>生产环境需要<strong>热重载</strong>——修改 Skill 文件后无需重启 Agent：</p>
 
@@ -441,7 +441,7 @@ reloader.start();
 </div>
 
 <!-- ===== 11.4 Skills 的懒加载 ===== -->
-<h2 class="section-heading">11.4 Skills 的懒加载</h2>
+<h2 class="section-heading">12.4 Skills 的懒加载</h2>
 
 <p>和 CLI 工具一样，Skills 太多会导致 Prompt 过长。解决方案是<strong>三层懒加载</strong>：</p>
 
@@ -661,7 +661,7 @@ public class LazySkillManager {
 </div>
 
 <!-- ===== 11.5 Skill 匹配与调度 ===== -->
-<h2 class="section-heading">11.5 Skill 匹配与调度</h2>
+<h2 class="section-heading">12.5 Skill 匹配与调度</h2>
 
 <p>当用户说"北京明天天气怎么样，穿什么合适？"，Agent 需要：</p>
 <ol>
@@ -674,7 +674,7 @@ public class LazySkillManager {
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气\n穿什么合适?","type":"start"},{"id":"match","label":"Skill 匹配\n触发词「天气」→ weather-advisor","type":"process"},{"id":"activate","label":"激活 Skill\n加载完整 Schema + 知识","type":"process"},{"id":"plan","label":"AI 规划\n1. 调 get_weather\n2. 调 get_clothing_advice","type":"process"},{"id":"exec1","label":"执行 get_weather\n→ 晴 25°C","type":"process"},{"id":"exec2","label":"执行 get_clothing_advice\n→ 薄外套+长裤","type":"process"},{"id":"respond","label":"综合回答\n北京明天晴 25°C\n建议穿薄外套+长裤","type":"end"}],"edges":[{"from":"user","to":"match"},{"from":"match","to":"activate"},{"from":"activate","to":"plan"},{"from":"plan","to":"exec1"},{"from":"exec1","to":"exec2"},{"from":"exec2","to":"respond"}]}'></div>
 
 <!-- ===== 11.6 Skills vs MCP vs Function Calling ===== -->
-<h2 class="section-heading">11.6 Skills vs MCP vs Function Calling</h2>
+<h2 class="section-heading">12.6 Skills vs MCP vs Function Calling</h2>
 
 <div class="comparison-table">
 <table>
@@ -704,7 +704,7 @@ public class LazySkillManager {
 </div>
 
 <!-- ===== 11.7 实战：构建一个 Skill ===== -->
-<h2 class="section-heading">11.7 实战：构建一个 Skill</h2>
+<h2 class="section-heading">12.7 实战：构建一个 Skill</h2>
 
 <p>把第2章的天气查询升级为一个完整的 Skill：</p>
 
@@ -860,7 +860,7 @@ public class WeatherAdvisor {
 </div>
 
 <!-- ===== 11.8 Skill 市场：未来的应用商店 ===== -->
-<h2 class="section-heading">11.8 Skill 市场：未来的应用商店</h2>
+<h2 class="section-heading">12.8 Skill 市场：未来的应用商店</h2>
 
 <p>Skills 的终极目标是形成<strong>市场</strong>——开发者像发布 App 一样发布 Skill 包，用户像装 App 一样安装 Skill：</p>
 
@@ -881,7 +881,7 @@ skill remove weather-advisor</pre></div>
 <p>这和 MCP 的愿景类似，但层次不同：MCP 是工具级的市场，Skills 是能力级的市场。未来可能两者融合——MCP Server 提供工具，Skill 包提供组合策略。</p>
 
 <!-- ===== 11.9 Skill 的分层体系 ===== -->
-<h2 class="section-heading">11.9 Skill 的分层体系</h2>
+<h2 class="section-heading">12.9 Skill 的分层体系</h2>
 
 <p>就像企业架构有基础设施层、业务逻辑层、应用层一样，Skill 也存在<strong>三层金字塔</strong>——从底层的基础 Skill 到顶层的领域 Skill，每一层封装不同复杂度的能力：</p>
 
@@ -903,7 +903,7 @@ skill remove weather-advisor</pre></div>
 </table>
 </div>
 
-<h3 class="sub-heading">11.9.1 基础 Skill：单工具的标准化封装</h3>
+<h3 class="sub-heading">12.9.1 基础 Skill：单工具的标准化封装</h3>
 
 <p>基础 Skill 就是把一个原始工具加上元数据、Schema 校验、异常处理，变成一个<strong>标准化</strong>的工具单元。它不包含调用策略，但包含<strong>防御性编程</strong>：</p>
 
@@ -1136,7 +1136,7 @@ public class ReadFileSkill {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.9.2 复合 Skill：多工具组合 + 调用策略</h3>
+<h3 class="sub-heading">12.9.2 复合 Skill：多工具组合 + 调用策略</h3>
 
 <p>复合 Skill 是基础 Skill 的组合，核心价值是<strong>调用策略</strong>——告诉 AI "先做什么、后做什么、什么条件下做什么"：</p>
 
@@ -1180,7 +1180,7 @@ knowledge: |
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"start","label":"用户：审查这个 PR","type":"start"},{"id":"read","label":"read_file\n读取代码文件","type":"process"},{"id":"parallel","label":"并行执行（ParallelGateway）","type":"decision"},{"id":"lint","label":"lint_check\n代码风格检查","type":"process"},{"id":"security","label":"security_scan\n安全漏洞扫描","type":"process"},{"id":"merge","label":"汇总结果\n合并 findings","type":"process"},{"id":"report","label":"generate_report\n生成审查报告","type":"end"}],"edges":[{"from":"start","to":"read"},{"from":"read","to":"parallel"},{"from":"parallel","to":"lint"},{"from":"parallel","to":"security"},{"from":"lint","to":"merge"},{"from":"security","to":"merge"},{"from":"merge","to":"report"}]}'></div>
 
-<h3 class="sub-heading">11.9.3 领域 Skill：行业知识包</h3>
+<h3 class="sub-heading">12.9.3 领域 Skill：行业知识包</h3>
 
 <p>领域 Skill 是金字塔顶端——它不是几个工具的组合，而是<strong>一个行业的完整知识框架</strong>。一个金融领域 Skill 可能包含合规检查、风控计算、报表生成等 10+ 个复合 Skill，以及金融法规的领域知识：</p>
 
@@ -1224,13 +1224,13 @@ permissions:
 </div>
 
 <!-- ===== 11.10 Skill 的沉淀与演进 ===== -->
-<h2 class="section-heading">11.10 Skill 的沉淀与演进</h2>
+<h2 class="section-heading">12.10 Skill 的沉淀与演进</h2>
 
 <p>Skill 不是一次设计就完成的，它像代码一样有<strong>版本迭代</strong>的生命周期。好的 Skill 来自项目实践的<strong>反复提炼</strong>——从临时脚本 → 内部最佳实践 → 可复用 Skill 包。</p>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"project","label":"项目实践\n发现重复模式","type":"start"},{"id":"extract","label":"提取模式\n抽象共性逻辑","type":"process"},{"id":"v1","label":"Skill v0.1\n内部验证版","type":"process"},{"id":"feedback","label":"项目反馈\nBug / 缺失功能 / 新需求","type":"decision"},{"id":"iterate","label":"版本迭代\nv0.2 → v1.0 → v2.0","type":"process"},{"id":"stable","label":"稳定版 Skill\n跨项目复用","type":"end"}],"edges":[{"from":"project","to":"extract"},{"from":"extract","to":"v1"},{"from":"v1","to":"feedback"},{"from":"feedback","to":"iterate"},{"from":"iterate","to":"feedback"},{"from":"feedback","to":"stable"}]}'></div>
 
-<h3 class="sub-heading">11.10.1 从项目中提炼 Skill 的四步流程</h3>
+<h3 class="sub-heading">12.10.1 从项目中提炼 Skill 的四步流程</h3>
 
 <div class="comparison-table">
 <table>
@@ -1610,7 +1610,7 @@ public class PatternToYaml {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.10.2 Skill 的版本迭代策略</h3>
+<h3 class="sub-heading">12.10.2 Skill 的版本迭代策略</h3>
 
 <p>Skill 版本号遵循<strong>语义化版本</strong>（SemVer）：<code>MAJOR.MINOR.PATCH</code></p>
 
@@ -1906,7 +1906,7 @@ public class SkillVersionManager {
 </div>
 
 <!-- ===== 11.11 Skill 的权限与安全 ===== -->
-<h2 class="section-heading">11.11 Skill 的权限与安全</h2>
+<h2 class="section-heading">12.11 Skill 的权限与安全</h2>
 
 <p>Skill 越强大，潜在风险越大。一个可以删除文件的 Skill 如果不加限制，Agent 可能误删关键数据。本章引入<strong>五层安全架构</strong>——参考 WaLiCode 的 permissionGuard 设计模式，给每一层加上护栏：</p>
 
@@ -1927,7 +1927,7 @@ public class SkillVersionManager {
 </table>
 </div>
 
-<h3 class="sub-heading">11.11.1 Layer 1：声明式权限</h3>
+<h3 class="sub-heading">12.11.1 Layer 1：声明式权限</h3>
 
 <p>每个 Skill 在 YAML 中声明自己需要哪些权限——这是<strong>最小权限原则</strong>的起点：</p>
 
@@ -1949,7 +1949,7 @@ requires_approval:    # 哪些操作需要审批
   - filesystem.write  # 写文件需审批
   # filesystem.delete 不在列表中——因为权限已禁止</pre></div>
 
-<h3 class="sub-heading">11.11.2 Layer 2：运行时拦截（permissionGuard）</h3>
+<h3 class="sub-heading">12.11.2 Layer 2：运行时拦截（permissionGuard）</h3>
 
 <p>声明只是声明，<strong>运行时拦截</strong>才是真正的防线。permissionGuard 是一个中间件，在每次工具调用前检查权限：</p>
 
@@ -2233,7 +2233,7 @@ public class PermissionGuard {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.11.3 Layer 3：审批机制（ApprovalGate）</h3>
+<h3 class="sub-heading">12.11.3 Layer 3：审批机制（ApprovalGate）</h3>
 
 <p>对于高危操作（删除文件、发送邮件、支付），Agent 必须<strong>暂停并等待用户确认</strong>：</p>
 
@@ -2436,7 +2436,7 @@ public class ApprovalGate {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.11.4 Layer 4：审计日志</h3>
+<h3 class="sub-heading">12.11.4 Layer 4：审计日志</h3>
 
 <p>所有 Skill 调用必须<strong>可追溯</strong>——谁在什么时候调用了什么、参数是什么、结果是什么：</p>
 
@@ -2754,7 +2754,7 @@ public class SkillAuditLog {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.11.5 Layer 5：沙箱隔离</h3>
+<h3 class="sub-heading">12.11.5 Layer 5：沙箱隔离</h3>
 
 <p>最危险的操作（如支付、访问生产数据库）应该在<strong>沙箱</strong>中执行——限制网络和文件系统访问：</p>
 
@@ -3067,13 +3067,13 @@ public class SandboxExecutor {
 </div>
 
 <!-- ===== 11.12 实战：构建企业级 Skill 包 ===== -->
-<h2 class="section-heading">11.12 实战：构建企业级 Skill 包</h2>
+<h2 class="section-heading">12.12 实战：构建企业级 Skill 包</h2>
 
 <p>前面讲了 Skill 的分层体系和安全架构，现在把它们<strong>串起来</strong>——从零构建一个完整的企业级 Skill 包，包括 YAML 定义、Python 实现、测试和发布流程：</p>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"define","label":"Step 1：YAML 定义\n元数据 + 工具 + 知识 + 权限","type":"start"},{"id":"implement","label":"Step 2：Python 实现\n工具函数 + permissionGuard","type":"process"},{"id":"test","label":"Step 3：测试\n单元测试 + Prompt 测试 + 安全测试","type":"process"},{"id":"publish","label":"Step 4：发布\n版本号 + Changelog + 注册","type":"end"}],"edges":[{"from":"define","to":"implement"},{"from":"implement","to":"test"},{"from":"test","to":"publish"}]}'></div>
 
-<h3 class="sub-heading">11.12.1 Step 1：YAML 定义</h3>
+<h3 class="sub-heading">12.12.1 Step 1：YAML 定义</h3>
 
 <p>以 <code>report-generator</code>（报表生成器）为例——这是一个复合 Skill，需要读取数据、分析数据、生成报表三个工具：</p>
 
@@ -3137,7 +3137,7 @@ knowledge: |
   - analyze_data 数据为空 → 返回"数据不足，无法生成报表"
   - render_report 模板缺失 → 使用默认模板</pre></div>
 
-<h3 class="sub-heading">11.12.2 Step 2：Python 实现</h3>
+<h3 class="sub-heading">12.12.2 Step 2：Python 实现</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/compound/report-generator/main.py
@@ -3757,7 +3757,7 @@ public class ReportGeneratorSkill {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.12.3 Step 3：测试</h3>
+<h3 class="sub-heading">12.12.3 Step 3：测试</h3>
 
 <p>企业级 Skill 需要<strong>三层测试</strong>：单元测试（工具函数）、Prompt 测试（AI 调用策略）、安全测试（权限拦截）：</p>
 
@@ -4131,7 +4131,7 @@ public class TestReportGenerator {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">11.12.4 Step 4：发布流程</h3>
+<h3 class="sub-heading">12.12.4 Step 4：发布流程</h3>
 
 <div class="code-block"><pre># 发布流程脚本 — publish_skill.sh
 #!/bin/bash
@@ -4197,11 +4197,11 @@ skill list | grep ${SKILL_NAME}</pre></div>
 </div>
 
 <!-- ===== 11.13 Skill 与 OpenClaw 的关系 ===== -->
-<h2 class="section-heading">11.13 Skill 与 OpenClaw 的关系</h2>
+<h2 class="section-heading">12.13 Skill 与 OpenClaw 的关系</h2>
 
 <p>OpenClaw 是一个<strong>实际落地</strong>的 Agent 平台，它的 Skill 生态是本章理论的最佳实践。让我们从 OpenClaw 的 <code>~/.qclaw/skills/</code> 目录出发，看看 Skill 是如何在真实系统中运作的：</p>
 
-<h3 class="sub-heading">11.13.1 OpenClaw Skill 目录结构</h3>
+<h3 class="sub-heading">12.13.1 OpenClaw Skill 目录结构</h3>
 
 <div class="code-block"><pre># OpenClaw 的 Skill 目录扫描
 $ ls ~/.qclaw/skills/
@@ -4226,7 +4226,7 @@ Triggers: .pdf, PDF, 合并PDF, 拆分PDF, OCR...</pre></div>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"dir","label":"~/.qclaw/skills/\n13 个 Skill 目录\n每个目录含 SKILL.md","type":"start"},{"id":"scan","label":"OpenClaw 启动时扫描\n读取每个 SKILL.md\n提取 name + description + triggers","type":"process"},{"id":"inject","label":"注入到 Agent Prompt\n<available_skills> XML 块\n只列 name + description","type":"process"},{"id":"match","label":"用户消息匹配触发词\n→ read SKILL.md\n→ 加载完整指令","type":"decision"},{"id":"execute","label":"按 Skill 指令执行\n调用 Agent 工具\n完成用户任务","type":"end"}],"edges":[{"from":"dir","to":"scan"},{"from":"scan","to":"inject"},{"from":"inject","to":"match"},{"from":"match","to":"execute"}]}'></div>
 
-<h3 class="sub-heading">11.13.2 SKILL.md：OpenClaw 的 Skill 定义格式</h3>
+<h3 class="sub-heading">12.13.2 SKILL.md：OpenClaw 的 Skill 定义格式</h3>
 
 <p>OpenClaw 不用 YAML，而是用<strong>Markdown</strong>（SKILL.md）定义 Skill。这是因为它直接被注入到 Agent 的 Prompt 中——Markdown 比 YAML 对 AI 更友好：</p>
 
@@ -4406,7 +4406,7 @@ public class AgentCode {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">11.13.3 OpenClaw 的 Skill 懒加载机制</h3>
+<h3 class="sub-heading">12.13.3 OpenClaw 的 Skill 懒加载机制</h3>
 
 <p>OpenClaw 实现了本章 7.4 节描述的<strong>三层懒加载</strong>：</p>
 
@@ -4447,7 +4447,7 @@ public class AgentCode {
 # 3. AI 执行: read ~/.qclaw/skills/pdf/SKILL.md（第二层加载）
 # 4. 按照 SKILL.md 中的指令调用 pdf 工具</pre></div>
 
-<h3 class="sub-heading">11.13.4 OpenClaw Skill 的分层映射</h3>
+<h3 class="sub-heading">12.13.4 OpenClaw Skill 的分层映射</h3>
 
 <p>将 OpenClaw 的 13 个 Skill 映射到本章的三层金字塔：</p>
 
@@ -4464,7 +4464,7 @@ public class AgentCode {
 </table>
 </div>
 
-<h3 class="sub-heading">11.13.5 OpenClaw Skill 的安全实践</h3>
+<h3 class="sub-heading">12.13.5 OpenClaw Skill 的安全实践</h3>
 
 <p>OpenClaw 的 Skill 安全设计直接体现了本章 7.11 节的五层架构：</p>
 

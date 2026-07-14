@@ -3,7 +3,7 @@
 <p class="chapter-subtitle">从执行循环到安全沙箱——大脑的工程化基础设施</p>
 
 <!-- ===== 7.1 概述 ===== -->
-<h2 class="section-heading">7.1 概述：三层嵌套架构</h2>
+<h2 class="section-heading">8.1 概述：三层嵌套架构</h2>
 
 <p>现代 AI Agent 系统从用户意图到最终结果的完整生命周期，由三个相互嵌套的核心概念共同承载：</p>
 
@@ -22,7 +22,7 @@
   </div>
 </div>
 
-<h3 class="sub-heading">7.1.1 三层嵌套关系</h3>
+<h3 class="sub-heading">8.1.1 三层嵌套关系</h3>
 
 <p>三者呈现严格的嵌套关系——Sandbox 在最外层（所有 Agent 行为最终都在某个隔离环境中执行），Runtime 在中间层（为 Loop 提供运行所需的一切基础设施），Agent Loop 在最内层（是 Runtime 中的一个逻辑循环，调用工具和 LLM）。</p>
 
@@ -34,11 +34,11 @@
 </div>
 
 <!-- ===== 7.2 Agent Loop ===== -->
-<h2 class="section-heading">7.2 Agent Loop——智能体执行循环</h2>
+<h2 class="section-heading">8.2 Agent Loop——智能体执行循环</h2>
 
 <p>Agent Loop 是整个系统的"大脑"。传统软件是"输入一次、输出一次"，Agent 则通过不断循环，逐步逼近目标。每一次工具调用的结果都会触发下一轮推理——这就是<strong>事件驱动</strong>的本质。</p>
 
-<h3 class="sub-heading">7.2.1 六步执行流程</h3>
+<h3 class="sub-heading">8.2.1 六步执行流程</h3>
 
 <p>标准 Agent Loop 包含以下6个步骤：</p>
 
@@ -65,7 +65,7 @@
   </table>
 </div>
 
-<h3 class="sub-heading">7.2.2 Loop 模式对比</h3>
+<h3 class="sub-heading">8.2.2 Loop 模式对比</h3>
 
 <p>不同的 Agent 框架采用了不同的循环策略：</p>
 
@@ -89,7 +89,7 @@
   </table>
 </div>
 
-<h3 class="sub-heading">7.2.3 Agent Loop 实现</h3>
+<h3 class="sub-heading">8.2.3 Agent Loop 实现</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class AgentLoop:
@@ -263,7 +263,7 @@ func (al *AgentLoop) Run(userInput string) (string, error) {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">7.2.4 设计陷阱与工程对策</h3>
+<h3 class="sub-heading">8.2.4 设计陷阱与工程对策</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">⚠️ 陷阱1：死循环</div>
@@ -293,7 +293,7 @@ func (al *AgentLoop) Run(userInput string) (string, error) {
 </div>
 
 <!-- ===== 7.3 Runtime ===== -->
-<h2 class="section-heading">7.3 Runtime——智能体运行时</h2>
+<h2 class="section-heading">8.3 Runtime——智能体运行时</h2>
 
 <p>Agent Runtime 是将 Agent Loop 的<strong>逻辑语义</strong>转化为<strong>可执行计算</strong>的基础设施层。类比编程语言的运行时（JVM 为 Java 提供、V8 为 Node.js 提供），Agent Runtime 为 Loop 提供：</p>
 
@@ -318,7 +318,7 @@ func (al *AgentLoop) Run(userInput string) (string, error) {
   </div>
 </div>
 
-<h3 class="sub-heading">7.3.1 五层架构</h3>
+<h3 class="sub-heading">8.3.1 五层架构</h3>
 
 <p>现代 Agent Runtime 通常包含以下五层，从底层到上层依次为：</p>
 
@@ -342,7 +342,7 @@ func (al *AgentLoop) Run(userInput string) (string, error) {
   </table>
 </div>
 
-<h3 class="sub-heading">7.3.2 工具注册层实现</h3>
+<h3 class="sub-heading">8.3.2 工具注册层实现</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class ToolRegistry:
@@ -522,7 +522,7 @@ func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interfa
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">7.3.3 主流框架对比</h3>
+<h3 class="sub-heading">8.3.3 主流框架对比</h3>
 
 <div class="comparison-table">
   <table>
@@ -551,11 +551,11 @@ func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interfa
 </div>
 
 <!-- ===== 7.4 Sandbox ===== -->
-<h2 class="section-heading">7.4 Sandbox——安全执行沙箱</h2>
+<h2 class="section-heading">8.4 Sandbox——安全执行沙箱</h2>
 
 <p>AI Agent 的核心能力之一是<strong>执行代码</strong>——这带来了巨大的安全风险。LLM 有时会生成恶意代码、无限循环、文件删除命令或网络扫描脚本。如果没有 Sandbox，这些代码将直接在主机环境执行，可能造成不可逆破坏。</p>
 
-<h3 class="sub-heading">7.4.1 为何需要 Sandbox</h3>
+<h3 class="sub-heading">8.4.1 为何需要 Sandbox</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">⚠️ 没有 Sandbox 的真实案例</div>
@@ -566,7 +566,7 @@ func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interfa
   </div>
 </div>
 
-<h3 class="sub-heading">7.4.2 隔离技术全景</h3>
+<h3 class="sub-heading">8.4.2 隔离技术全景</h3>
 
 <div class="comparison-table">
   <table>
@@ -589,7 +589,7 @@ func (tr *ToolRegistry) ValidateAndCall(toolName string, args map[string]interfa
   </table>
 </div>
 
-<h3 class="sub-heading">7.4.3 Sandbox 执行器实现</h3>
+<h3 class="sub-heading">8.4.3 Sandbox 执行器实现</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import subprocess
@@ -793,7 +793,7 @@ public class SandboxExecutor {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">7.4.4 Sandbox Escape 风险与防御</h3>
+<h3 class="sub-heading">8.4.4 Sandbox Escape 风险与防御</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">⚠️ 常见 Sandbox 逃逸路径</div>
@@ -812,13 +812,13 @@ public class SandboxExecutor {
 </div>
 
 <!-- ===== 7.5 三者协同 ===== -->
-<h2 class="section-heading">7.5 三者协同：完整协作流程</h2>
+<h2 class="section-heading">8.5 三者协同：完整协作流程</h2>
 
 <p>在真实的 Agent 系统中，Loop、Runtime 和 Sandbox 是紧密耦合的：Loop 调度 Runtime，Runtime 委托 Sandbox 执行不可信代码。以下是一次典型的"写代码→运行→修复"任务的完整执行路径：</p>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：帮我写个排序算法","type":"start"},{"id":"loop1","label":"Agent Loop 第1轮\nPerceive→Reason→Plan\n决策：调用 code_gen 工具","type":"process"},{"id":"runtime1","label":"Runtime\n工具注册层：校验参数\n执行调度层：提交到 Sandbox","type":"process"},{"id":"sandbox1","label":"Sandbox\n创建隔离容器\n执行 python3 sort.py\n结果：SyntaxError","type":"process"},{"id":"loop2","label":"Agent Loop 第2轮\nObserve→Evaluate\n检测到语法错误\n决策：调用 code_fix 工具","type":"process"},{"id":"runtime2","label":"Runtime\n工具注册层：校验修复参数\n记忆管理层：更新上下文","type":"process"},{"id":"sandbox2","label":"Sandbox\n执行修复后的代码\n结果：排序正确","type":"process"},{"id":"loop3","label":"Agent Loop 第3轮\nEvaluate：任务完成\n返回 Final Answer","type":"end"}],"edges":[{"from":"user","to":"loop1"},{"from":"loop1","to":"runtime1"},{"from":"runtime1","to":"sandbox1"},{"from":"sandbox1","to":"loop2"},{"from":"loop2","to":"runtime2"},{"from":"runtime2","to":"sandbox2"},{"from":"sandbox2","to":"loop3"}]}'></div>
 
-<h3 class="sub-heading">7.5.1 Loop + Runtime + Sandbox 集成实现</h3>
+<h3 class="sub-heading">8.5.1 Loop + Runtime + Sandbox 集成实现</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class SecureAgent:
@@ -955,7 +955,7 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">7.5.2 职责边界</h3>
+<h3 class="sub-heading">8.5.2 职责边界</h3>
 
 <div class="comparison-table">
   <table>
@@ -980,11 +980,11 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
 </div>
 
 <!-- ===== 7.6 Agent Loop 稳定性设计 ===== -->
-<h2 class="section-heading">7.6 Agent Loop 稳定性设计</h2>
+<h2 class="section-heading">8.6 Agent Loop 稳定性设计</h2>
 
 <p>7.2.4 介绍了 Loop 的设计陷阱,但生产环境中 Agent Loop 面临的稳定性挑战远不止死循环和 Token 爆炸。本节基于 WaLiCode 项目的真实生产经验,讲解 Agent Loop 稳定性的<strong>五大保障机制</strong>。</p>
 
-<h3 class="sub-heading">7.6.1 上下文溢出熔断</h3>
+<h3 class="sub-heading">8.6.1 上下文溢出熔断</h3>
 
 <p>当上下文压缩系统（参见第6章 5.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
 
@@ -1177,7 +1177,7 @@ class CheckResult {
 </pre></div>
 </div>
 
-<h3 class="sub-heading">7.6.2 对话状态恢复</h3>
+<h3 class="sub-heading">8.6.2 对话状态恢复</h3>
 
 <p>熔断或异常中断后,用户可能想继续任务。WaLiCode 实现了<strong>Checkpoint 恢复机制</strong>——将 Loop 状态序列化存储,下次启动时反序列化恢复:</p>
 
@@ -1200,7 +1200,7 @@ class CheckResult {
   </table>
 </div>
 
-<h3 class="sub-heading">7.6.3 心跳检测与空闲超时</h3>
+<h3 class="sub-heading">8.6.3 心跳检测与空闲超时</h3>
 
 <p>Agent 在执行长任务时,用户可能已经离开。为避免浪费 Token 和算力,Loop 应实现<strong>心跳检测</strong>:</p>
 
@@ -1227,7 +1227,7 @@ function onUserActivity() {
   lastActivityTime = Date.now();
 }</pre></div>
 
-<h3 class="sub-heading">7.6.4 五大稳定性保障总结</h3>
+<h3 class="sub-heading">8.6.4 五大稳定性保障总结</h3>
 
 <div class="comparison-table">
   <table>

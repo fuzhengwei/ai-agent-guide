@@ -212,16 +212,17 @@ const App = {
     
     const onMouseMove = (e) => {
       if (!isResizing) return;
-      
+
       const deltaX = e.clientX - startX;
+      // 把手在 chat-panel 左边缘：往左拉 = 放大（panel 变宽），往右拉 = 缩小
       const newWidth = Math.max(
         getMinWidth(),
         Math.min(
-          startWidth + deltaX,
+          startWidth - deltaX,
           getMaxWidth()
         )
       );
-      
+
       // 修改 CSS 变量，让 grid-template-columns 响应式变化
       root.style.setProperty('--chat-width', newWidth + 'px');
     };

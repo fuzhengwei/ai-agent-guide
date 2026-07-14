@@ -9,7 +9,7 @@
 </div>
 
 <!-- ===== 5.1 为什么 Agent 需要记忆 ===== -->
-<h2 class="section-heading">5.1 没有记忆的 Agent 会怎样?</h2>
+<h2 class="section-heading">6.1 没有记忆的 Agent 会怎样?</h2>
 
 <p>想象一个失忆的助手:你上午告诉他你喜欢简洁的报告,下午他又问你"你需要什么风格?";你刚给了他一份资料,下一秒他就忘了。</p>
 
@@ -21,7 +21,7 @@
 </div>
 
 <!-- ===== 5.2 三层记忆架构 ===== -->
-<h2 class="section-heading">5.2 三层记忆架构</h2>
+<h2 class="section-heading">6.2 三层记忆架构</h2>
 
 <p>人类有感觉记忆、短期记忆、长期记忆三层结构。Agent 也有类似的设计:</p>
 
@@ -87,7 +87,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 5.3 短期记忆管理 ===== -->
-<h2 class="section-heading">5.3 短期记忆的管理策略</h2>
+<h2 class="section-heading">6.3 短期记忆的管理策略</h2>
 
 <p>短期记忆 = LLM 上下文窗口。对话越长,上下文越大。但窗口有上限,必须管理:</p>
 
@@ -137,7 +137,7 @@ window.MemAnim = MemAnim;
 </script>
 
 <!-- ===== 5.4 长期记忆与向量检索 ===== -->
-<h2 class="section-heading">5.4 长期记忆:向量数据库</h2>
+<h2 class="section-heading">6.4 长期记忆:向量数据库</h2>
 
 <p>长期记忆让 Agent 能回忆起几天前甚至几个月前的交互。核心技术是<strong>向量数据库 + 语义检索</strong>。</p>
 
@@ -216,7 +216,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 5.5 上下文压缩实战 ===== -->
-<h2 class="section-heading">5.5 上下文压缩实战</h2>
+<h2 class="section-heading">6.5 上下文压缩实战</h2>
 
 <p>在长任务中,Agent 的上下文窗口会不断膨胀--每次工具调用返回结果、每次推理步骤、每次对话轮次都在累积 token。这种现象称为<strong>上下文膨胀</strong>(Context Bloat),也叫<strong>上下文腐烂</strong>(Context Rot)。</p>
 
@@ -683,7 +683,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 5.6 记忆架构实战 ===== -->
-<h2 class="section-heading">5.6 记忆架构实战</h2>
+<h2 class="section-heading">6.6 记忆架构实战</h2>
 
 <p>选择合适的向量数据库和 Embedding 模型是构建记忆系统的关键决策。本节提供完整的选型对比和架构实现。</p>
 
@@ -1508,7 +1508,7 @@ public class MemorySystem {
 </div>
 
 <!-- ===== 5.7 反思记忆与情景记忆 ===== -->
-<h2 class="section-heading">5.7 反思记忆与情景记忆</h2>
+<h2 class="section-heading">6.7 反思记忆与情景记忆</h2>
 
 <p>前面介绍的三层记忆架构解决了<strong>存储和检索</strong>问题,但记忆系统还有更高阶的能力:<strong>从经验中学习</strong>(反思记忆)和<strong>记录完整事件</strong>(情景记忆)。</p>
 
@@ -1983,7 +1983,7 @@ public class ReflexionAgent {
 </div>
 
 <!-- ===== 5.8 记忆治理与上下文工程 ===== -->
-<h2 class="section-heading">5.8 记忆治理与上下文工程</h2>
+<h2 class="section-heading">6.8 记忆治理与上下文工程</h2>
 
 <p>记忆系统的终极问题不是"怎么存",而是<strong>怎么管</strong>。本节从工程视角讨论记忆的完整生命周期治理,以及从 Prompt Engineering 到 Context Engineering 的范式转变。</p>
 
@@ -2610,7 +2610,7 @@ public class MemoryGovernor {
 </div>
 
 <!-- ===== 5.9 长期记忆的静态与动态分类 ===== -->
-<h2 class="section-heading">5.9 长期记忆的静态与动态分类</h2>
+<h2 class="section-heading">6.9 长期记忆的静态与动态分类</h2>
 
 <p>长期记忆不是铁板一块。仔细观察就会发现,有些记忆<strong>几乎不变</strong>,有些记忆<strong>持续更新</strong>。把长期记忆分为<strong>静态长期记忆</strong>和<strong>动态长期记忆</strong>,是面试中的高频考点,也是工程落地时的关键设计决策。</p>
 
@@ -2751,7 +2751,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 5.10 记忆存储触发链路 ===== -->
-<h2 class="section-heading">5.10 记忆存储触发链路</h2>
+<h2 class="section-heading">6.10 记忆存储触发链路</h2>
 
 <p>一个常见误解是:<strong>"每轮对话都触发长期记忆写入"</strong>。如果真的每轮都写,长期记忆库会变成完整对话日志的备份--噪音爆炸,检索失效。</p>
 
@@ -3110,7 +3110,7 @@ public class MemoryWriteTrigger {
 </div>
 
 <!-- ===== 5.11 记忆召回决策与上下文污染防控 ===== -->
-<h2 class="section-heading">5.11 记忆召回决策与上下文污染防控</h2>
+<h2 class="section-heading">6.11 记忆召回决策与上下文污染防控</h2>
 
 <p>记忆召回的核心问题不是"能不能找到",而是<strong>"该不该注入"</strong>。召回太多无关记忆,比没有记忆更危险--这就是<strong>上下文污染</strong>。</p>
 
@@ -3581,7 +3581,7 @@ public class SmartRecallEngine {
 </div>
 
 <!-- ===== 5.11.5 Prompt工程:静态框架与动态组装 ===== -->
-<h2 class="section-heading">5.11a Prompt 工程:静态框架与动态组装</h2>
+<h2 class="section-heading">6.11a Prompt 工程:静态框架与动态组装</h2>
 
 <p>面试追问:<strong>"动态 Prompt 和静态 Prompt 有什么区别?Agent 每轮对话开始时,上下文是如何动态组装的?"</strong>上一节讲了记忆的召回决策,这一节讲召回的结果怎么<strong>组装进 Prompt</strong>--以及哪些部分永远不动(静态),哪些每轮都变(动态)。</p>
 
@@ -3907,7 +3907,7 @@ public class PromptAssembler {
 </div>
 
 <!-- ===== 5.11b 多轮对话状态爆炸与完整解决方案 ===== -->
-<h2 class="section-heading">5.11b 多轮对话状态爆炸与完整解决方案</h2>
+<h2 class="section-heading">6.11b 多轮对话状态爆炸与完整解决方案</h2>
 
 <p>面试追问:<strong>"多轮对话Agent,怎么解决状态爆炸、上下文溢出?"</strong>前面5.3~5.11分别讲了压缩、治理、召回防控,但面试需要的是<strong>一个完整的系统级解决方案</strong>--怎么把这些策略串起来?这一节给你一个全景框架。</p>
 
@@ -3969,7 +3969,7 @@ setTimeout(() => {
     <div class="card-title">🛡️ Layer 1: 预防--不让压力累积</div>
     <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
       <li><strong>Token Budget</strong>:设定全局上限(如20万Token),实时累加,超预算立即停止(详见4.13节)</li>
-      <li><strong>JIT召回原则</strong>:只检索当前步骤需要的记忆,不提前加载全量(详见5.8节)</li>
+      <li><strong>JIT召回原则</strong>:只检索当前步骤需要的记忆,不提前加载全量(详见6.8节)</li>
       <li><strong>输出长度约束</strong>:要求模型"只输出关键结论"而非长篇大论,减少输出Token</li>
       <li><strong>工具结果精简</strong>:工具返回后先做格式化过滤(只保留关键行),不原样塞入上下文</li>
     </ul>
@@ -3977,9 +3977,9 @@ setTimeout(() => {
   <div class="card" style="border-left: 3px solid var(--color-info);">
     <div class="card-title">📦 Layer 2: 压缩--在信息完整的前提下缩减体积</div>
     <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-      <li><strong>语义保护型压缩</strong>:锁定System Prompt+原始问题,保护行动-结果对完整性,只压缩中间推理(详见5.5节)</li>
+      <li><strong>语义保护型压缩</strong>:锁定System Prompt+原始问题,保护行动-结果对完整性,只压缩中间推理(详见6.5节)</li>
       <li><strong>三层压缩触发</strong>:主动压缩(80%阈值)→后台压缩(60%)→反应式压缩(413状态码触发紧急压缩)</li>
-      <li><strong>增量压缩</strong>:只压缩"上次压缩后新增"的部分,避免全量重复压缩(详见5.12节)</li>
+      <li><strong>增量压缩</strong>:只压缩"上次压缩后新增"的部分,避免全量重复压缩(详见6.12节)</li>
       <li><strong>对话历史摘要</strong>:旧对话压缩为摘要存入长期记忆,上下文中只保留摘要和最近3轮原文</li>
     </ul>
   </div>
@@ -3989,7 +3989,7 @@ setTimeout(() => {
   <div class="card" style="border-left: 3px solid var(--color-warning);">
     <div class="card-title">🗑️ Layer 3: 淘汰--扔掉不再需要的</div>
     <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-      <li><strong>记忆淘汰策略</strong>:时效淘汰(过期记忆清理)+容量淘汰(超上限淘汰最低价值)+质量淘汰(从未被召回的记忆降优先级)(详见5.8节)</li>
+      <li><strong>记忆淘汰策略</strong>:时效淘汰(过期记忆清理)+容量淘汰(超上限淘汰最低价值)+质量淘汰(从未被召回的记忆降优先级)(详见6.8节)</li>
       <li><strong>召回数量硬限制</strong>:每次召回≤5条,简单问题≤3条,宁可少召回也不多注入噪音</li>
       <li><strong>工具结果裁剪</strong>:长输出只保留Top-K关键行,命令输出只保留最后20行</li>
       <li><strong>淘汰前归档</strong>:淘汰的记忆做最终摘要存入"归档层",彻底删除前保留摘要</li>
@@ -4352,11 +4352,11 @@ public class StateOverflowGuard {
 
 <!-- ===== 八股总结 ===== -->
 <!-- ===== 5.12 工程深度:生产级上下文压缩系统 ===== -->
-<h2 class="section-heading">5.12 工程深度:生产级上下文压缩系统</h2>
+<h2 class="section-heading">6.12 工程深度:生产级上下文压缩系统</h2>
 
 <p>4.5 节介绍了上下文压缩的概念,但生产级系统远比概念复杂:什么时候压缩?用什么策略压缩?压缩后如何避免频繁重复压缩?压缩失败怎么办?本节基于 WaLiCode 项目的 contextCompressor.ts 和 ChatContextManager.ts 真实实现,讲解生产级上下文压缩系统的六大设计。</p>
 
-<h3 class="sub-heading">5.12.1 轮次分割算法</h3>
+<h3 class="sub-heading">6.12.1 轮次分割算法</h3>
 
 <p>压缩的第一步是理解对话的结构。对话不是扁平的消息列表,而是由多个"轮次"组成--每个轮次以 user message 开始,包含后续的所有 assistant/tool 消息。WaLiCode 的 splitIntoRounds 算法实现了这个分割:</p>
 
@@ -4417,7 +4417,7 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <p>关键细节:<strong>inline tool_result 不开新轮次</strong>。Anthropic 格式中,工具结果以 <code>{ role: 'user', content: [{ type: 'tool_result', ... }] }</code> 形式出现。如果把它当新轮次,会把一个完整的"AI 调工具→获取结果→继续推理"轮次错误地拆成两半。</p>
 
-<h3 class="sub-heading">5.12.2 三种压缩触发模式</h3>
+<h3 class="sub-heading">6.12.2 三种压缩触发模式</h3>
 
 <p>什么时候该压缩?WaLiCode 设计了三种触发模式,形成三层防线:</p>
 
@@ -4436,7 +4436,7 @@ function splitIntoRounds(messages: ClaudeMessage[]): ConversationRound[] {
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"check","label":"每轮结束检查","type":"start"},{"id":"80","label":"token &gt; 80%?","type":"decision"},{"id":"60","label":"token &gt; 60%?","type":"decision"},{"id":"413","label":"收到 413 错误?","type":"decision"},{"id":"active","label":"主动压缩\n(同步, 保留3-5轮)","type":"process"},{"id":"bg","label":"后台压缩\n(异步, 不阻塞)","type":"process"},{"id":"reactive","label":"反应式压缩\n(紧急, 保留1-2轮)","type":"process"},{"id":"continue","label":"继续对话","type":"end"}],"edges":[{"from":"check","to":"80"},{"from":"80","to":"active","label":"是"},{"from":"80","to":"60","label":"否"},{"from":"60","to":"bg","label":"是"},{"from":"60","to":"continue","label":"否"},{"from":"active","to":"continue"},{"from":"bg","to":"continue"},{"from":"413","to":"reactive","label":"是"}]}'></div>
 
-<h3 class="sub-heading">5.12.3 AI 摘要 vs 规则摘要</h3>
+<h3 class="sub-heading">6.12.3 AI 摘要 vs 规则摘要</h3>
 
 <p>压缩的核心是生成摘要。WaLiCode 支持两种摘要方式:</p>
 
@@ -4624,7 +4624,7 @@ import java.io.*;
 
 <p><strong>降级策略</strong>:AI 摘要失败(API 错误、超时、返回空)时自动降级为规则摘要。为什么不直接报错?因为压缩是基础设施--如果压缩本身都能失败,那对话就没法继续了。规则摘要虽然质量低,但至少保留了基本信息,让对话能继续。</p>
 
-<h3 class="sub-heading">5.12.4 增量压缩</h3>
+<h3 class="sub-heading">6.12.4 增量压缩</h3>
 
 <p>问题:如果每次 token 超过 80% 就压缩,压缩后降到 50%,用户继续对话又涨到 80%,又要压缩......这会导致频繁压缩,每次压缩都消耗 token(AI 摘要本身也要花 token)。</p>
 
@@ -4747,7 +4747,7 @@ public class ContextCompressor {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">5.12.5 Provider/Reducer 可插拔架构</h3>
+<h3 class="sub-heading">6.12.5 Provider/Reducer 可插拔架构</h3>
 
 <p>WaLiCode 的上下文管理采用<strong>Provider/Reducer 可插拔架构</strong>,这是生产级系统与 Demo 级系统的核心区别:</p>
 
@@ -5123,7 +5123,7 @@ public class PriorityReducer {
 
 <p>为什么用可插拔设计?因为不同场景需要不同的 Provider 和 Reducer 组合。编码场景需要 FileProvider + TaskProvider + PriorityReducer;聊天场景可能只需要 MemoryProvider + SlidingWindowReducer。写死在代码里意味着每次改需求都要改核心代码,可插拔意味着只需注册新组件。</p>
 
-<h3 class="sub-heading">5.12.6 双作用域记忆系统</h3>
+<h3 class="sub-heading">6.12.6 双作用域记忆系统</h3>
 
 <p>WaLiCode 的记忆系统分为两个作用域:</p>
 
@@ -5311,7 +5311,7 @@ public class MemoryService {
 </div>
 
 <!-- ===== 5.12.6 压缩可靠性保障 ===== -->
-<h3 class="sub-heading">5.12.6 压缩可靠性保障</h3>
+<h3 class="sub-heading">6.12.6 压缩可靠性保障</h3>
 
 <p>上下文压缩是 Agent 对话稳定性的最后一道防线,但如果压缩本身不可靠,反而会成为新的问题源。生产环境中必须解决三个可靠性挑战:<strong>压缩失败回退</strong>、<strong>语义丢失检测</strong>、<strong>压缩对对话连贯性的影响</strong>。</p>
 
@@ -5738,7 +5738,7 @@ if (lost.length &gt; 0) {
 </div>
 
 <!-- ===== 5.13 主流记忆框架对比（2026更新） ===== -->
-<h2 class="section-heading">5.13 主流记忆框架对比（2026更新）</h2>
+<h2 class="section-heading">6.13 主流记忆框架对比（2026更新）</h2>
 
 <p>前面几节讲了记忆系统的原理和工程实践。2024-2025 年,一批专门的<strong>记忆框架</strong>崛起,它们把记忆管理从 Agent 主逻辑中解耦出来,提供开箱即用的记忆层。面试中经常被问到:"你了解哪些记忆框架?它们有什么区别?"</p>
 

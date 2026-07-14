@@ -3,7 +3,7 @@
 <p class="chapter-subtitle">第六篇：工程化 — 怎么知道你的 Agent 好不好？</p>
 
 <!-- ===== 20.1 为什么需要评估 ===== -->
-<h2 class="section-heading">20.1 Agent 评估的挑战</h2>
+<h2 class="section-heading">21.1 Agent 评估的挑战</h2>
 
 <p>传统软件有明确的对错——单元测试通过就行。但 Agent 的输出是自然语言，"好不好"变得模糊：</p>
 
@@ -31,7 +31,7 @@
 </div>
 
 <!-- ===== 20.2 评估维度 ===== -->
-<h2 class="section-heading">20.2 Agent 评估的六个维度</h2>
+<h2 class="section-heading">21.2 Agent 评估的六个维度</h2>
 
 <div class="flowchart-container" id="evalDimensions"></div>
 
@@ -82,7 +82,7 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 20.3 评估方法 ===== -->
-<h2 class="section-heading">20.3 四种评估方法</h2>
+<h2 class="section-heading">21.3 四种评估方法</h2>
 
 <div class="card">
   <div class="card-title">🔬 怎么评估 Agent？</div>
@@ -294,7 +294,7 @@ public class AgentEvaluator {
 </div>
 
 <!-- ===== 20.4 可观测性 ===== -->
-<h2 class="section-heading">20.4 Agent 可观测性</h2>
+<h2 class="section-heading">21.4 Agent 可观测性</h2>
 
 <p>评估是离线的——测试集跑完看分数。可观测性是<strong>在线的</strong>——生产环境中实时监控 Agent 行为。</p>
 
@@ -359,7 +359,7 @@ public class AgentEvaluator {
 </div>
 
 <!-- ===== 20.5 黄金指标 ===== -->
-<h2 class="section-heading">20.5 Agent 监控的黄金指标</h2>
+<h2 class="section-heading">21.5 Agent 监控的黄金指标</h2>
 
 <div class="card">
   <div class="card-title">📈 生产环境必须监控的指标</div>
@@ -404,7 +404,7 @@ public class AgentEvaluator {
 </div>
 
 <!-- ===== 20.6 Agent 评估指标体系 ===== -->
-<h2 class="section-heading">20.6 Agent 评估指标体系</h2>
+<h2 class="section-heading">21.6 Agent 评估指标体系</h2>
 
 <p>评估 Agent 不能只靠直觉和感觉，需要建立一套量化指标体系。下面从任务完成率、步数效率、Token 成本、准确率、鲁棒性五个核心维度展开，每个指标都有明确的计算公式和适用场景，帮助你建立可度量、可对比、可追踪的评估体系。</p>
 
@@ -534,7 +534,7 @@ public class AgentEvaluator {
 </div>
 
 <!-- ===== 20.7 LangSmith 完整实战 ===== -->
-<h2 class="section-heading">20.7 LangSmith 完整实战</h2>
+<h2 class="section-heading">21.7 LangSmith 完整实战</h2>
 
 <p>LangSmith 是 LangChain 官方推出的 Agent 评估与可观测性平台，提供了从 Trace 收集、数据分析到评估数据集管理的完整工具链。下面通过一个完整的实战案例，演示如何将 LangSmith 集成到 Agent 项目中，实现全链路追踪和自动化评估。</p>
 
@@ -1029,7 +1029,7 @@ public class TraceAnalyzer {
 </div>
 
 <!-- ===== 20.8 评估驱动开发（EDD）方法论 ===== -->
-<h2 class="section-heading">20.8 评估驱动开发（EDD）方法论</h2>
+<h2 class="section-heading">21.8 评估驱动开发（EDD）方法论</h2>
 
 <p>评估驱动开发（Evaluation-Driven Development，简称 EDD）是一种以评估为核心的 Agent 开发方法论。它的核心理念是：先定义评估标准和数据集，再开发 Agent 逻辑。这类似于测试驱动开发（TDD），但评估集替代了单元测试，LLM 评估器替代了断言。</p>
 
@@ -1632,11 +1632,11 @@ public class RegressionTestSuite {
 <p>回归测试是 EDD 方法论的安全网。每次修改 Agent 的 prompt、工具或模型后，都跑一遍回归测试集，确保改动不会引入退化。建议将回归测试集成到 CI/CD 流水线中，在每次 PR 合并前自动运行，退化用例数必须为 0 才允许合并。</p>
 
 <!-- ===== 20.9 评估框架：Ragas / DeepEval ===== -->
-<h2 class="section-heading">20.9 评估框架：Ragas 与 DeepEval</h2>
+<h2 class="section-heading">21.9 评估框架：Ragas 与 DeepEval</h2>
 
 <p>手动评估效率低、不可重复。专业评估框架可以<strong>自动化</strong>评估流程，提供量化指标，让你像跑单元测试一样跑 Agent 评估。</p>
 
-<h3 class="sub-heading">20.9.1 Ragas：RAG 评估的事实标准</h3>
+<h3 class="sub-heading">21.9.1 Ragas：RAG 评估的事实标准</h3>
 
 <p><strong>Ragas</strong>（Retrieval Augmented Generation Assessment）是专为 RAG 系统设计的评估框架，提供 4 个核心指标：</p>
 
@@ -1851,7 +1851,7 @@ public class RagasEvaluation {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.9.2 DeepEval：通用 Agent 评估框架</h3>
+<h3 class="sub-heading">21.9.2 DeepEval：通用 Agent 评估框架</h3>
 
 <p><strong>DeepEval</strong> 不局限于 RAG，提供更通用的 Agent 评估指标，支持单元测试风格的断言。</p>
 
@@ -2046,7 +2046,7 @@ public class AgentEvalTest {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.9.3 Ragas vs DeepEval 选型</h3>
+<h3 class="sub-heading">21.9.3 Ragas vs DeepEval 选型</h3>
 
 <div class="comparison-table">
   <table>
@@ -2201,11 +2201,11 @@ public class AgentEvalTest {
 
 
 <!-- ===== 20.10 代码与 Agent 评测基准 ===== -->
-<h2 class="section-heading">20.10 代码与 Agent 评测基准</h2>
+<h2 class="section-heading">21.10 代码与 Agent 评测基准</h2>
 
 <p>评估一个 Agent "到底有多强"，不能只靠主观感受，需要标准化的评测基准。2025-2026 年，业界形成了几大权威评测榜单，是企业招聘和技术选型的核心参考。</p>
 
-<h3 class="sub-heading">20.10.1 SWE-bench：Coding Agent 的黄金标准</h3>
+<h3 class="sub-heading">21.10.1 SWE-bench：Coding Agent 的黄金标准</h3>
 
 <p><strong>SWE-bench</strong> 是普林斯顿大学提出的软件工程评测基准，被 OpenAI、Anthropic、Google、字节跳动等头部厂商公认为 Coding Agent 的权威排行榜。</p>
 
@@ -2229,7 +2229,7 @@ public class AgentEvalTest {
 
 <p>从基线 8.4% 到 72.7% 的飞跃，证明的不是模型变强了多少，而是 <strong>Harness Engineering</strong>（测试沙箱 + 工具调用 + 自验证钩子）的价值。同一个模型加不加 Harness，成绩差 5-8 倍。</p>
 
-<h3 class="sub-heading">20.10.2 HumanEval / MBPP：代码生成评测</h3>
+<h3 class="sub-heading">21.10.2 HumanEval / MBPP：代码生成评测</h3>
 
 <p><strong>HumanEval</strong> 是 OpenAI 提出的经典代码生成评测，包含 164 个 Python 编程题，评估指标为 <strong>pass@k</strong>（生成 k 个方案中至少一个通过测试的概率）。</p>
 
@@ -2250,7 +2250,7 @@ public class AgentEvalTest {
 <strong>面试要点</strong>：HumanEval 评测的是"单次代码生成能力"（给定函数签名和文档，生成正确实现），不涉及 Agent 的工具调用、多轮交互、代码调试能力。<strong>SWE-bench 评测的才是"Coding Agent 综合能力"</strong>（理解 Issue → 搜索代码 → 编写修复 → 运行测试 → 修复错误）。面试时如果被问"怎么评测 Coding Agent"，回答 SWE-bench 比 HumanEval 更专业。
 </div>
 
-<h3 class="sub-heading">20.10.3 AgentBench：多维度 Agent 评测</h3>
+<h3 class="sub-heading">21.10.3 AgentBench：多维度 Agent 评测</h3>
 
 <p><strong>AgentBench</strong> 是清华大学的提出的多维度 Agent 评测框架，覆盖 8 个不同场景，全面评估 Agent 的综合能力：</p>
 
@@ -2270,7 +2270,7 @@ public class AgentEvalTest {
 </tbody>
 </table>
 
-<h3 class="sub-heading">20.10.4 评测基准选型决策</h3>
+<h3 class="sub-heading">21.10.4 评测基准选型决策</h3>
 
 <div class="compare-panel">
 <div class="compare-left">
@@ -2292,7 +2292,7 @@ public class AgentEvalTest {
 </div>
 </div>
 
-<h3 class="sub-heading">20.10.5 构建私有 Agent 评测集</h3>
+<h3 class="sub-heading">21.10.5 构建私有 Agent 评测集</h3>
 
 <div class="multi-lang">
 <div class="lang-tabs">

@@ -3,7 +3,7 @@
 <p class="chapter-subtitle">当 Agent 拥有了工具调用能力，安全就不再是可选项</p>
 
 <!-- ===== 21.1 Agent 安全威胁全景 ===== -->
-<h2 class="section-heading">21.1 Agent 面临的安全威胁</h2>
+<h2 class="section-heading">22.1 Agent 面临的安全威胁</h2>
 
 <p>传统 Web 应用的安全关注 SQL 注入、XSS、CSRF。Agent 的安全完全不同——威胁来自<strong>自然语言本身</strong>。当 Agent 能执行代码、读写文件、调用 API 时，一段精心构造的 Prompt 就可能等同于一次攻击。</p>
 
@@ -41,7 +41,7 @@ setTimeout(() => {
 </script>
 
 <!-- ===== 21.2 Prompt 注入攻击 ===== -->
-<h2 class="section-heading">21.2 Prompt 注入：Agent 的"SQL 注入"</h2>
+<h2 class="section-heading">22.2 Prompt 注入：Agent 的"SQL 注入"</h2>
 
 <p><strong>Prompt 注入</strong>是 Agent 安全的头号威胁。攻击者在数据中嵌入恶意指令，让 Agent "以为"这是用户的命令。</p>
 
@@ -546,7 +546,7 @@ public class ToolPermission {
 </div>
 
 <!-- ===== 21.3 权限控制体系 ===== -->
-<h2 class="section-heading">21.3 Agent 权限控制体系</h2>
+<h2 class="section-heading">22.3 Agent 权限控制体系</h2>
 
 <p>借鉴操作系统权限模型，给 Agent 建立<strong>最小权限原则</strong>：只授予完成任务所需的最少权限。</p>
 
@@ -671,9 +671,9 @@ public class AgentPermissions {
 </div>
 
 <!-- ===== 21.4 数据安全 ===== -->
-<h2 class="section-heading">21.4 数据安全与隐私保护</h2>
+<h2 class="section-heading">22.4 数据安全与隐私保护</h2>
 
-<h3 class="sub-heading">21.4.1 敏感信息脱敏</h3>
+<h3 class="sub-heading">22.4.1 敏感信息脱敏</h3>
 
 <p>Agent 在处理用户输入时，应先脱敏再送入 LLM，防止敏感信息进入 API 调用日志。</p>
 
@@ -781,7 +781,7 @@ public class InputSanitizer {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">21.4.2 输出安全过滤</h3>
+<h3 class="sub-heading">22.4.2 输出安全过滤</h3>
 
 <p>Agent 生成的回答也要检查，防止泄露 System Prompt、内部系统信息或其他敏感数据。</p>
 
@@ -874,7 +874,7 @@ public class OutputSanitizer {
 </div>
 
 <!-- ===== 21.5 资源限制 ===== -->
-<h2 class="section-heading">21.5 资源限制与防滥用</h2>
+<h2 class="section-heading">22.5 资源限制与防滥用</h2>
 
 <p>Agent 可能陷入无限循环或被恶意用户滥用，需要设置硬性资源限制。</p>
 
@@ -1137,11 +1137,11 @@ public class AgentGuard {
 
 
 <!-- ===== 21.6 红队测试：主动安全评估 ===== -->
-<h2 class="section-heading">21.6 红队测试：主动安全评估</h2>
+<h2 class="section-heading">22.6 红队测试：主动安全评估</h2>
 
 <p><strong>红队测试（Red Team Testing）</strong>是指模拟攻击者视角，对 Agent 系统进行系统化的安全攻击演练，在黑客发现漏洞之前主动暴露问题。2025 年 OpenAI、Anthropic、Google 等头部厂商已将红队测试作为大模型发布前的标准流程，企业招聘安全岗位时几乎必问。</p>
 
-<h3 class="sub-heading">21.6.1 Agent 红队测试的六个攻击面</h3>
+<h3 class="sub-heading">22.6.1 Agent 红队测试的六个攻击面</h3>
 
 <table class="data-table">
 <thead>
@@ -1157,7 +1157,7 @@ public class AgentGuard {
 </tbody>
 </table>
 
-<h3 class="sub-heading">21.6.2 Prompt 注入攻防实验</h3>
+<h3 class="sub-heading">22.6.2 Prompt 注入攻防实验</h3>
 
 <p>以下是一个完整的 Prompt 注入攻防实验，展示攻击者如何尝试绕过防御，以及防御方如何层层拦截：</p>
 
@@ -1379,7 +1379,7 @@ export function checkPromptInjection(input: string): DefenseResult {
 </div>
 </div>
 
-<h3 class="sub-heading">21.6.3 红队测试方法论</h3>
+<h3 class="sub-heading">22.6.3 红队测试方法论</h3>
 
 <div class="info-box">
 <strong>红队测试四步法</strong>：<br>
@@ -1398,9 +1398,9 @@ export function checkPromptInjection(input: string): DefenseResult {
 </ul>
 
 <!-- ===== 21.7 数据隐私与合规 ===== -->
-<h2 class="section-heading">21.7 数据隐私与合规</h2>
+<h2 class="section-heading">22.7 数据隐私与合规</h2>
 
-<h3 class="sub-heading">21.7.1 GDPR / 数据隐私合规</h3>
+<h3 class="sub-heading">22.7.1 GDPR / 数据隐私合规</h3>
 
 <p>Agent 处理用户数据时必须考虑<strong>GDPR（欧盟通用数据保护条例）</strong>、<strong>《个人信息保护法》（中国）</strong>等法律要求。违规罚款可达全球年营业额的 4%。</p>
 
@@ -1477,7 +1477,7 @@ export function redactPII(text: string): string {
 </div>
 </div>
 
-<h3 class="sub-heading">21.7.2 SOC 2 审计合规</h3>
+<h3 class="sub-heading">22.7.2 SOC 2 审计合规</h3>
 
 <p>企业客户采购 Agent 服务时，通常要求供应商通过 <strong>SOC 2 Type II</strong> 审计。Agent 系统需要满足以下控制点：</p>
 
@@ -1490,7 +1490,7 @@ export function redactPII(text: string): string {
 </ul>
 
 <!-- ===== 21.8 面试高频安全题 ===== -->
-<h2 class="section-heading">21.8 面试高频安全题</h2>
+<h2 class="section-heading">22.8 面试高频安全题</h2>
 
 <div class="qa-list">
   <div class="qa-item">
