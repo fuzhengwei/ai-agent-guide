@@ -422,7 +422,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"眼睛和耳朵"——接收用户输入、环境信号、工具返回结果。感知能力决定了 Agent 能"看到"多少信息，包括多模态输入（文字、图片、语音）、上下文理解、意图识别。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch01 大模型基础 · ch04 推理引擎 · ch19 RAG 检索增强</div>
+    <div class="domain-chapters">📖 相关章节：ch01 大模型基础 · ch04 提示词工程 · ch20 RAG 检索增强</div>
   </div>
 
   <div class="agent-domain-card domain-think">
@@ -431,7 +431,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"大脑"——推理、规划、记忆检索。思考能力包括思维链推理（CoT）、任务拆解与规划（Plan & Execute）、记忆检索与整合、多路径探索（ToT）。这是 Agent 最重要的能力域。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch04 推理引擎 · ch05 记忆系统 · ch06 意图识别 · ch07 运行时 · ch08 Harness · ch13 多Agent</div>
+    <div class="domain-chapters">📖 相关章节：ch04 提示词工程 · ch06 记忆系统 · ch07 意图识别 · ch08 运行时 · ch09 Harness · ch14 多Agent</div>
   </div>
 
   <div class="agent-flow-arrow">
@@ -448,7 +448,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"手脚"——工具调用、代码执行、多Agent协作。行动能力让 Agent 从"只会想"进化到"能做事"，包括 Function Calling 调用外部 API、代码生成与执行、浏览器自动化、多 Agent 协同工作。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch09 工具设计 · ch10 MCP 协议 · ch11 Skills · ch17 CLI Agent</div>
+    <div class="domain-chapters">📖 相关章节：ch10 工具设计 · ch11 MCP 协议 · ch12 Skills · ch18 CLI Agent</div>
   </div>
 
   <div class="agent-domain-card domain-observe">
@@ -457,7 +457,7 @@ setTimeout(startAgentDemo, 2000);
     <div class="domain-desc">
       Agent 的"反馈回路"——结果评估、循环决策、自我纠错。观察能力让 Agent 判断"做得对不对"，包括工具返回结果解析、执行效果评估、反思与纠错（Reflection）、循环决策直到满意。
     </div>
-    <div class="domain-chapters">📖 相关章节：ch05 记忆系统 · ch20 评估与可观测性 · ch21 安全防护 · ch07 运行时架构</div>
+    <div class="domain-chapters">📖 相关章节：ch06 记忆系统 · ch21 评估与可观测性 · ch22 安全防护 · ch08 运行时架构</div>
   </div>
 
   <div class="agent-center-hub">
@@ -482,10 +482,10 @@ setTimeout(() => {
       { id: 'act', label: '⚡ 行动\n工具调用/代码执行\n多Agent协作', type: 'tool' },
       { id: 'observe', label: '👀 观察\n结果评估/循环决策\n反思纠错', type: 'process' },
       { id: 'done', label: '✅ 任务完成', type: 'end' },
-      { id: 'ch_input', label: 'ch01/ch02/ch19', type: 'tool' },
-      { id: 'ch_think', label: 'ch04/ch05/ch06/ch07/ch08', type: 'tool' },
-      { id: 'ch_act', label: 'ch09/ch10/ch17', type: 'tool' },
-      { id: 'ch_observe', label: 'ch20/ch21/ch22', type: 'tool' }
+      { id: 'ch_input', label: 'ch01/ch02/ch20', type: 'tool' },
+      { id: 'ch_think', label: 'ch04/ch06/ch07/ch08/ch09', type: 'tool' },
+      { id: 'ch_act', label: 'ch10/ch11/ch12/ch18', type: 'tool' },
+      { id: 'ch_observe', label: 'ch06/ch21/ch22/ch08', type: 'tool' }
     ],
     edges: [
       { from: 'perceive', to: 'think', label: '驱动' },

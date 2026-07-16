@@ -1807,7 +1807,7 @@ setTimeout(() => {
 <p>本章只介绍了 Function Calling 的核心概念。关于工具定义规范、五步闭环流程、常见错误与解决方案、JSON Schema 设计等<strong>工程细节</strong>，请参见：</p>
 <ul>
 <li><strong>第3章</strong>「你的第一个 Agent」—— 手写第一个 Function Calling 工具，亲身体验调用流程</li>
-<li><strong>第7章</strong>「Function Calling 与工具设计」—— 深入工具定义、意图识别与路由、上下文工程、并发控制等工程实践</li>
+<li><strong>第10章</strong>「Function Calling 与工具设计」—— 深入工具定义、意图识别与路由、上下文工程、并发控制等工程实践</li>
 </ul>
 <p>如果你是第一次接触 Function Calling，现在只需记住一句话：<strong>它让 LLM 从"只会说话"变成"能办事情"</strong>。具体怎么办，后面会手把手教你。</p>
 </div>
@@ -2147,7 +2147,7 @@ setTimeout(() => {
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q11：Function Calling 的核心作用是什么？</strong></div>
-    <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第7章「Function Calling 与工具设计」。</div>
+    <div class="qa-a">Function Calling 让 LLM 从"只会说话"变成"能办事情"。模型不再输出自然语言让你解析，而是直接输出符合 JSON Schema 的结构化函数调用（函数名+参数），实现了从"聊天"到"执行"的跨越。注意：LLM 本身不执行函数，它只决定调用哪个函数、传什么参数，真正的执行由开发者代码完成。详细内容见第10章「Function Calling 与工具设计」。</div>
   </div>
 
   <div class="qa-item">
@@ -2246,7 +2246,7 @@ var ch01Questions = [
       '让 LLM 的推理能力变得更强'
     ],
     answer: [1],
-    explanation: 'Function Calling 让 LLM 能生成结构化的函数调用（函数名+参数 JSON），而非输出自然语言。LLM 本身不执行函数，只决定"调用哪个、传什么参数"——执行由开发者代码完成。详细内容见第7章。'
+    explanation: 'Function Calling 让 LLM 能生成结构化的函数调用（函数名+参数 JSON），而非输出自然语言。LLM 本身不执行函数，只决定"调用哪个、传什么参数"——执行由开发者代码完成。详细内容见第10章。'
   },
   {
     type: 'single',

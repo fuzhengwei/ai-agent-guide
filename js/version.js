@@ -10,7 +10,7 @@
  */
 (function() {
   const VERSION_KEY = 'ai-agent-guide-version';
-  const CHECK_INTERVAL = 30 * 60 * 1000; // 30分钟检查一次
+  const CHECK_INTERVAL = 5 * 60 * 1000; // 5分钟检查一次
 
   async function checkVersion() {
     try {
@@ -68,4 +68,11 @@
 
   // 定期检查（用户长时间停留在页面时）
   setInterval(checkVersion, CHECK_INTERVAL);
+
+  // 用户切回标签页时立即检查
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      checkVersion();
+    }
+  });
 })();

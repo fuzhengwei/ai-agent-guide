@@ -1,6 +1,6 @@
 /* ========================================
    AI Agent 通识教程 - 主控制器
-   25章 · 翻页导航 · 主题切换 · 随机考试
+   26章 · 翻页导航 · 主题切换 · 随机考试
    ======================================== */
 
 const App = {
@@ -621,9 +621,9 @@ const App = {
             </div>
           </div>
 
-          <div class="cover-badge">2026 · 25章渐进式可视化教程</div>
+          <div class="cover-badge">2026 · 26章渐进式可视化教程</div>
           <h1 class="hero-title">AI Agent Guide - 通识教程</h1>
-          <p class="hero-subtitle">从基础认知到面试通关 · 25章渐进式可视化教程</p>
+          <p class="hero-subtitle">从基础认知到面试通关 · 26章渐进式可视化教程</p>
           
           <div class="hero-btn-group">
             <button class="hero-btn primary" onclick="App.loadChapter('ch00')">
@@ -636,19 +636,19 @@ const App = {
           
           <div class="hero-stats">
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="24">0</span>
+              <span class="stat-num" data-target="26">0</span>
               <span class="stat-label">章节</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="74">0</span>
+              <span class="stat-num" data-target="111">0</span>
               <span class="stat-label">交互动画</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="233">0</span>
+              <span class="stat-num" data-target="267">0</span>
               <span class="stat-label">面试八股</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="164">0</span>
+              <span class="stat-num" data-target="285">0</span>
               <span class="stat-label">模拟考题</span>
             </div>
           </div>
@@ -2003,7 +2003,7 @@ const App = {
             <div class="exam-logo">📝</div>
             <div class="exam-header-text">
               <h2>AI Agent 综合考试</h2>
-              <p class="exam-subtitle">25章知识覆盖 · 随机抽题 · 限时30分钟</p>
+              <p class="exam-subtitle">26章知识覆盖 · 随机抽题 · 限时30分钟</p>
             </div>
           </div>
           <div class="exam-header-right">
@@ -2216,22 +2216,89 @@ const App = {
 
     const total = this.examQuestions.length;
     const score = Math.round((correct / total) * 100);
+    const wrong = total - correct;
 
-    // 评级
+    // 根据答题结果选择文案（随机）
     let grade, advice;
-    if (score >= 90) {
+    let resultType;
+
+    if (correct === total) {
+      // 全对
+      resultType = 'perfect';
+      grade = '🏆 满分通关';
+      const perfectAdvice = [
+        '你不是来学AI的，你是来教AI的吧？完美通关，恐怖如斯！',
+        '满分！面试官看到你这个成绩，连夜复习自己的简历。',
+        '全部答对！你怕不是已经上线过好几个Agent了？',
+        '100分！这不是考试，这是你的个人秀场。',
+        '满分玩家已就位，建议直接去给大模型上课。'
+      ];
+      advice = perfectAdvice[Math.floor(Math.random() * perfectAdvice.length)];
+    } else if (wrong === total) {
+      // 全错
+      resultType = 'allwrong';
+      grade = '🤔 全军覆没';
+      const allWrongAdvice = [
+        '别慌！每个Agent大师都从零开始，这恰好说明你的成长空间无限大。',
+        '全错的概率比全对还低呢！从第0章开始，我们一起逆袭。',
+        '没关系，GPT刚出来的时候也啥都不会，现在不照样当红炸子鸡？',
+        '这是好事——你即将体验从0到100的完整爽感。开启第0章吧！',
+        '全错也是一种天赋：说明你完全没有错误知识需要卸载。'
+      ];
+      advice = allWrongAdvice[Math.floor(Math.random() * allWrongAdvice.length)];
+    } else if (score >= 90) {
+      // 对多，接近满分
+      resultType = 'excellent';
       grade = '🏆 优秀';
-      advice = '你可以直接去面试了！你的 AI Agent 知识储备非常扎实。';
+      const excellentAdvice = [
+        '差一点点就满分了！你的AI知识已经超过90%的开发者。',
+        '高分选手！面试官已经开始翻你的简历了。',
+        '这水平，可以直接去给团队做AI Agent培训了。',
+        '优秀！你已经掌握了Agent的核心密码，只剩一点细节打磨。'
+      ];
+      advice = excellentAdvice[Math.floor(Math.random() * excellentAdvice.length)];
     } else if (score >= 75) {
+      // 对多错少
+      resultType = 'good';
       grade = '🥈 良好';
-      advice = '基础不错！建议针对性复习薄弱章节，查漏补缺。';
-    } else if (score >= 60) {
-      grade = '🥉 及格';
-      advice = '基本概念已掌握，建议系统化学习各章节内容。';
-    } else {
+      const goodAdvice = [
+        '基础不错！再刷几章就能去面试了。',
+        '大部分都答对了，说明你的AI直觉很好。薄弱章节再巩固一下就稳了。',
+        '良好！你已经在AI Agent的路上走得很远了，再冲刺一把就到终点。',
+        '不错的成绩！建议针对性复习错题涉及的章节。'
+      ];
+      advice = goodAdvice[Math.floor(Math.random() * goodAdvice.length)];
+    } else if (score >= 50) {
+      // 对错各半
+      resultType = 'fifty';
+      grade = '🥊 五五开';
+      const fiftyAdvice = [
+        '半开半合，正是进步的最佳起点！',
+        '你的AI知识已经入门，但从入门到精通只差“系统学习”四个字。',
+        '一半对了说明有基础，一半错了说明有空间——完美的学习起点。',
+        '五五开不错了！至少你运气稳定。来，我们从第0章认真走一遍。'
+      ];
+      advice = fiftyAdvice[Math.floor(Math.random() * fiftyAdvice.length)];
+    } else if (score > 0) {
+      // 错多对少
+      resultType = 'low';
       grade = '📚 需加油';
-      advice = '从第1章开始系统学习吧，循序渐进效果更好。';
+      const lowAdvice = [
+        '虽然分数不高，但你能坚持考完20题，说明你有学习的耐心。',
+        '别灰心！Agent的世界很大，从这里出发，每章都在变强。',
+        '分数低不代表学不会，只是还没遇到对的教程。从第0章开始吧！',
+        '现在的每一道错题，都是未来面试时的得分点。开启学习之旅吧！'
+      ];
+      advice = lowAdvice[Math.floor(Math.random() * lowAdvice.length)];
+    } else {
+      // 0分但不是全错（理论上不会出现，但防御性处理）
+      resultType = 'zero';
+      grade = '📚 需加油';
+      advice = '从第0章开始系统学习吧，循序渐进效果更好。';
     }
+
+    // 存储结果供海报使用
+    this._lastExamResult = { score, correct, wrong, total, grade, advice, resultType, wrongQuestions };
 
     // 统计错题来源
     const wrongChapters = {};
@@ -2347,6 +2414,7 @@ const App = {
       </div>
       <div class="exam-result-actions">
         <button class="hero-btn secondary" onclick="App.closeExam()">关闭</button>
+        <button class="hero-btn primary" onclick="App.showExamPoster()">📅 分享成绩</button>
         <button class="hero-btn primary" onclick="App.closeExam(); App.loadChapter('${wrongQuestions.length > 0 ? wrongQuestions[0].q.chapterId : 'ch00'}')">开始学习</button>
       </div>
     `;
@@ -2355,6 +2423,386 @@ const App = {
 
     // 保存成绩
     Progress.saveExamScore(score, correct, total);
+  },
+
+  /**
+   * 生成考试成绩海报
+   */
+  async showExamPoster() {
+    const r = this._lastExamResult;
+    if (!r) return;
+
+    // 预加载二维码图片
+    let qrImg = null;
+    try {
+      qrImg = await this._loadImage('https://ai-agent-guide.xiaofuge.cn/assets/QR-code.png');
+    } catch (e) {
+      console.warn('二维码图片加载失败，海报将不含二维码', e);
+    }
+
+    const canvas = document.createElement('canvas');
+    const W = 750, H = 1334;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // === 配色方案 ===
+    const theme = {
+      perfect:   { main: '#34d399', glow: 'rgba(52,211,153,0.35)',  bg1: '#0a2e26', bg2: '#064e3b' },
+      excellent: { main: '#34d399', glow: 'rgba(52,211,153,0.35)',  bg1: '#0a2e26', bg2: '#064e3b' },
+      good:      { main: '#60a5fa', glow: 'rgba(96,165,250,0.35)', bg1: '#0c1e3a', bg2: '#1e3a5f' },
+      fifty:     { main: '#fbbf24', glow: 'rgba(251,191,36,0.35)', bg1: '#2a2006', bg2: '#422006' },
+      low:       { main: '#f87171', glow: 'rgba(248,113,113,0.35)', bg1: '#2e0a0a', bg2: '#5f1212' },
+      allwrong:  { main: '#f87171', glow: 'rgba(248,113,113,0.35)', bg1: '#2e0a0a', bg2: '#5f1212' },
+      zero:      { main: '#f87171', glow: 'rgba(248,113,113,0.35)', bg1: '#2e0a0a', bg2: '#5f1212' }
+    };
+    const t = theme[r.resultType] || theme.low;
+
+    // === 背景：深色渐变 ===
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0, t.bg1);
+    bgGrad.addColorStop(0.6, t.bg2);
+    bgGrad.addColorStop(1, '#0a0a0f');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 顶部光晕
+    const topGlow = ctx.createRadialGradient(W / 2, 200, 50, W / 2, 200, 400);
+    topGlow.addColorStop(0, t.glow);
+    topGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = topGlow;
+    ctx.fillRect(0, 0, W, 500);
+
+    // === 顶部品牌区 ===
+    ctx.textAlign = 'center';
+
+    // LOGO圆角方块
+    const logoX = W / 2 - 32, logoY = 70, logoS = 64;
+    ctx.save();
+    const logoGrad = ctx.createLinearGradient(logoX, logoY, logoX + logoS, logoY + logoS);
+    logoGrad.addColorStop(0, t.main);
+    logoGrad.addColorStop(1, '#a78bfa');
+    ctx.fillStyle = logoGrad;
+    this._roundRect(ctx, logoX, logoY, logoS, logoS, 16);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('AI', W / 2, logoY + logoS / 2 + 2);
+    ctx.restore();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('AI Agent 通识教程', W / 2, 168);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '15px sans-serif';
+    ctx.fillText('考试成绩报告', W / 2, 195);
+
+    // === 分数展示区 ===
+    const circleX = W / 2;
+    const circleY = 340;
+    const circleR = 95;
+
+    // 分数环背景
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 分数环进度
+    ctx.strokeStyle = t.main;
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleR, -Math.PI / 2, -Math.PI / 2 + (r.score / 100) * Math.PI * 2);
+    ctx.stroke();
+
+    // 分数数字
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 60px sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(r.score, circleX, circleY + 12);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('/ 100 分', circleX, circleY + 40);
+
+    // === 等级标签 ===
+    const gradeText = r.grade.replace(/^[^\s]+\s*/, '');
+    ctx.font = 'bold 18px sans-serif';
+    const gM = ctx.measureText(gradeText);
+    const gW = gM.width + 36;
+    const gH = 36;
+    const gX = (W - gW) / 2;
+    const gY = 465;
+
+    ctx.fillStyle = t.main + '22';
+    this._roundRect(ctx, gX, gY, gW, gH, 18);
+    ctx.fill();
+    ctx.strokeStyle = t.main + '88';
+    ctx.lineWidth = 1;
+    this._roundRect(ctx, gX, gY, gW, gH, 18);
+    ctx.stroke();
+
+    ctx.fillStyle = t.main;
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(gradeText, W / 2, gY + 24);
+
+    // === 文案区 ===
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = '16px sans-serif';
+    const adviceLines = this._wrapText(ctx, r.advice, W - 200);
+    let adviceY = 535;
+    adviceLines.forEach(line => {
+      ctx.fillText(line, W / 2, adviceY);
+      adviceY += 24;
+    });
+
+    // === 统计数据 ===
+    const statY = adviceY + 35;
+    const statData = [
+      { val: r.correct, label: '答对', color: t.main },
+      { val: r.wrong, label: '答错', color: '#f87171' },
+      { val: r.total, label: '总题数', color: '#a78bfa' }
+    ];
+    const statW = (W - 120) / 3;
+
+    statData.forEach((s, i) => {
+      const sx = 60 + i * statW;
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      this._roundRect(ctx, sx + 6, statY, statW - 12, 85, 14);
+      ctx.fill();
+
+      ctx.fillStyle = s.color;
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillText(s.val, sx + statW / 2, statY + 42);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(s.label, sx + statW / 2, statY + 65);
+    });
+
+    // === 分隔线 ===
+    const divY = statY + 85 + 40;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(100, divY);
+    ctx.lineTo(W - 100, divY);
+    ctx.stroke();
+
+    // === 课程亮点 ===
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('— 课程亮点 —', W / 2, divY + 32);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = '17px sans-serif';
+    const features = [
+      '📚 26章渐进式可视化教程',
+      '🎬 111个交互动画拆解',
+      '💬 267道面试八股精选',
+      '📝 285道模拟考题通关',
+      '🔥 覆盖 MCP / ReAct / RAG / LangGraph'
+    ];
+    let featY = divY + 62;
+    features.forEach(f => {
+      ctx.fillText(f, W / 2, featY);
+      featY += 30;
+    });
+
+    // === 底部区域 ===
+    const footerY = H - 240;
+
+    // 底部卡片背景
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    this._roundRect(ctx, 100, footerY, W - 200, 160, 16);
+    ctx.fill();
+
+    // 二维码区域
+    const qrSize = 110;
+    const qrX = 130;
+    const qrY = footerY + 25;
+    if (qrImg) {
+      // 白底圆角
+      ctx.fillStyle = '#fff';
+      this._roundRect(ctx, qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 10);
+      ctx.fill();
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+    } else {
+      // 占位：白色圆角 + 文字
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      this._roundRect(ctx, qrX, qrY, qrSize, qrSize, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('扫码学习', qrX + qrSize / 2, qrY + qrSize / 2 + 4);
+      ctx.textAlign = 'left';
+    }
+
+    // 右侧文字
+    ctx.textAlign = 'left';
+    const textX = qrX + qrSize + 30;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('扫码开始学习', textX, qrY + 18);
+
+    ctx.fillStyle = t.main;
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('ai-agent-guide', textX, qrY + 44);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('.xiaofuge.cn', textX, qrY + 64);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('AI Agent Guide · 小傅哥出品', textX, qrY + 88);
+
+    // 底部 slogan
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('从基础认知到面试通关 · 2026', W / 2, H - 40);
+
+    // === 显示海报 ===
+    let dataUrl;
+    try {
+      dataUrl = canvas.toDataURL('image/png');
+    } catch (e) {
+      // 跨域图片导致 canvas 污染，用无二维码版本
+      console.warn('Canvas tainted, generating without QR', e);
+      dataUrl = this._generatePosterNoQR(r);
+    }
+    this._showPosterModal(dataUrl, r);
+  },
+
+  /**
+   * 无二维码版海报（跨域降级）
+   */
+  _generatePosterNoQR(r) {
+    const canvas = document.createElement('canvas');
+    const W = 750, H = 1334;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    // 简化版：只画背景+分数+文案
+    const t = { main: '#a78bfa', bg1: '#1a1a2e', bg2: '#16213e' };
+    ctx.fillStyle = t.bg1;
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 40px sans-serif';
+    ctx.fillText(r.score + '分', W/2, 300);
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = '#ccc';
+    ctx.fillText(r.grade, W/2, 350);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#999';
+    this._wrapText(ctx, r.advice, W - 100).forEach((line, i) => {
+      ctx.fillText(line, W/2, 400 + i * 24);
+    });
+    ctx.fillStyle = '#666';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('ai-agent-guide.xiaofuge.cn', W/2, H - 100);
+    return canvas.toDataURL('image/png');
+  },
+
+  /**
+   * 加载图片（Promise）
+   */
+  _loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('img load failed'));
+      img.src = src;
+      // 超时保护
+      setTimeout(() => reject(new Error('img load timeout')), 5000);
+    });
+  },
+
+  /**
+   * 海报弹窗
+   */
+  _showPosterModal(dataUrl, result) {
+    // 移除已有弹窗
+    const existing = document.getElementById('posterModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'posterModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.9);
+      display:flex;align-items:center;justify-content:center;
+      z-index:10000;padding:20px;
+    `;
+
+    modal.innerHTML = `
+      <div style="max-width:400px;width:100%;text-align:center;">
+        <div style="position:relative;border-radius:20px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.08);">
+          <img src="${dataUrl}" style="width:100%;display:block;" alt="考试成绩海报" />
+        </div>
+        <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;">
+          <button onclick="document.getElementById('posterModal').remove()" style="
+            padding:12px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:12px;
+            background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.8);cursor:pointer;
+            font-size:15px;backdrop-filter:blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">关闭</button>
+          <a href="${dataUrl}" download="ai-agent-exam-score.png" style="
+            padding:12px 28px;border:none;border-radius:12px;
+            background:linear-gradient(135deg,#667eea,#764ba2);
+            color:#fff;text-decoration:none;font-size:15px;display:inline-block;
+            line-height:1.5;box-shadow:0 4px 20px rgba(102,126,234,0.4);"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 25px rgba(102,126,234,0.5)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(102,126,234,0.4)'">下载海报</a>
+        </div>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:16px;">长按图片或点击下载保存，分享给朋友吧</p>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  },
+
+  /**
+   * 圆角矩形辅助函数
+   */
+  _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  },
+
+  /**
+   * 文字换行辅助函数
+   */
+  _wrapText(ctx, text, maxWidth) {
+    const chars = text.split('');
+    const lines = [];
+    let current = '';
+    for (const ch of chars) {
+      const test = current + ch;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = ch;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
   },
 
   /**

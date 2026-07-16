@@ -3763,8 +3763,13 @@ p {
 .exam-result-actions {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-md);
   margin-top: var(--space-xl);
+}
+.exam-result-actions .hero-btn.primary:nth-child(2) {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
 }
 
 /* 信息/提示 banner */
