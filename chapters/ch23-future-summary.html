@@ -1539,6 +1539,65 @@ setTimeout(() => {
   </div>
 </div>
 
+<!-- ===== 25.14 新兴热点 ===== -->
+<h2 class="section-heading">25.14 新兴热点：Deep Research、Vibe Coding 与生成式 UI</h2>
+
+<p>2025-2026 年，Agent 领域涌现出几个标志性新范式。它们不是对现有技术的改良，而是开辟了全新的应用形态。掌握这些热点，是面试和架构选型时的差异化竞争力。</p>
+
+<h3 class="sub-heading">25.14.1 Deep Research：长链路研究型 Agent</h3>
+
+<p><strong>Deep Research（深度研究）</strong>是 OpenAI、Gemini、字节等厂商 2025 年主推的 Agent 形态。它面向"写一份行业研究报告""调研某个技术选型"这类<strong>开放性、长链路</strong>任务，自主完成"搜索→阅读→综合→再搜索→成稿"的多轮循环，最终产出带引用的结构化研究报告。与单次问答的本质区别在于：Deep Research 会进行<strong>几十次</strong>检索和阅读，中途不断根据已获取的信息调整研究方向，类似人类研究员的工作方式。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔬 Deep Research 的核心架构</div>
+  <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.9;">
+    <strong>规划器（Planner）</strong>：把研究主题拆解成若干子问题<br>
+    <strong>检索循环（Search Loop）</strong>：对每个子问题执行"搜索→阅读网页→提取要点→判断是否需要追问"<br>
+    <strong>综合器（Synthesizer）</strong>:把所有要点去重、消除矛盾、组织成连贯报告<br>
+    <strong>引用追踪（Citation）</strong>：每个结论标注来源 URL，保证可核查<br>
+    关键技术：长上下文管理、来源可信度评估、多跳推理、防"主题漂移"。代表产品：OpenAI Deep Research、Gemini Deep Research、字节"深入研究"。
+  </div>
+</div>
+
+<h3 class="sub-heading">25.14.2 Vibe Coding：自然语言驱动的编程范式</h3>
+
+<p><strong>Vibe Coding（氛围编程）</strong>由 Andrej Karpathy 在 2025 年提出，指开发者<strong>完全用自然语言描述需求</strong>，让 AI 生成并迭代代码，人只负责"描述想要什么 + 验收结果"，几乎不直接读写代码。它把编程从"写语法"变成"描述意图"，催生了 Cursor、Claude Code、Windsurf、Devin 等一批 AI 编程工具的爆发。</p>
+
+<div class="compare-grid">
+  <div class="card">
+    <div class="card-title">⚠️ Vibe Coding 的适用边界</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.9;">
+      <li><strong>适合</strong>：原型、Demo、个人工具、一次性脚本、学习性项目</li>
+      <li><strong>慎用</strong>：核心交易系统、强一致要求、安全关键代码</li>
+      <li><strong>关键</strong>：人必须能读懂并审查 AI 产出的代码，不能完全"甩手"</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">✅ 高效实践</div>
+    <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.9;">
+      <li>小步迭代：每次让 AI 改一小步，而非一次生成整个系统</li>
+      <li>及时测试：每个改动后立即运行验证，防止错误累积</li>
+      <li>保留判断力：AI 生成≠正确，关键逻辑必须人工把关</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="sub-heading">25.14.3 AG-UI 与生成式 UI：Agent 的前端新标准</h3>
+
+<p>传统 Agent 只能输出文本，但复杂任务往往需要<strong>结构化、可交互</strong>的界面。<strong>AG-UI(Agent-User Interaction Protocol)</strong>和生成式 UI(Generative UI）应运而生——Agent 不再只返回文字，而是动态生成表单、图表、卡片等 UI 组件，让用户直接在界面上操作。CopilotKit 主推的 AG-UI 协议定义了 Agent 与前端之间的标准通信（状态同步、工具调用回传、人机协同中断），解决了"Agent 如何与 GUI 实时双向交互"的问题。这使得 Agent 从"聊天框里的助手"进化为"嵌入应用的智能界面"。</p>
+
+<h3 class="sub-heading">25.14.4 端侧与语音 Agent：新的交互入口</h3>
+
+<p><strong>端侧 Agent</strong>把模型部署到手机、车机、IoT 设备本地（如 AppAgent 操控手机 UI)，无需联网即可响应，兼顾隐私与低延迟。<strong>语音 Agent</strong>依托 GPT-4o Realtime、ElevenLabs 等实时语音技术，实现"听说"一体的自然对话，延迟从秒级降到毫秒级，正在重塑客服、车载、陪伴等场景。这两个方向的共同点，是让 Agent 突破"网页聊天框"的物理限制，走向真实物理世界的入口。</p>
+
+<h3 class="sub-heading">25.14.5 Agent 支付与商业化协议（AP2 / x402)</h3>
+
+<p>当 Agent 能自主订机票、买东西时，就需要<strong>机器间的支付协议</strong>。Google 的 <strong>AP2(Agent Payments Protocol)</strong>和 Coinbase 的 <strong>x402</strong> 在 2025 年末相继推出，目标是为 Agent 提供可审计、可授权、可撤销的支付能力——用户预先设定预算和权限，Agent 在授权额度内自主完成交易，每笔支出可追溯。这是"Agentic Commerce(Agent 电商）"的基础设施，被视为 Agent 大规模商业化的关键一环。</p>
+
+<div class="info-box">
+<strong>本章小结</strong>：Deep Research 拓展了 Agent 的<strong>任务深度</strong>（长链路研究）,Vibe Coding 改变了<strong>开发方式</strong>（意图驱动）,AG-UI/生成式 UI 重构了<strong>交互界面</strong>（动态 UI)，端侧/语音 Agent 开辟了<strong>新入口</strong>（物理世界）,Agent 支付协议则打通了<strong>商业闭环</strong>（自主交易）。这五条线索共同勾勒出 Agent 从"工具"走向"数字劳动力"的演进路径。
+</div>
+
 <!-- ===== 课后考试 ===== -->
 <div id="quizArea"></div>
 

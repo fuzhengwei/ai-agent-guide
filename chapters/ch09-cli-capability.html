@@ -453,6 +453,8 @@ setTimeout(() => {
 
 <p>我们将构建一个最小但完整的 CLI Agent，它能理解自然语言、生成命令、安全执行并返回结果。</p>
 
+<p>这个实战把前面所有概念串成一条可运行的链路：<strong>意图理解层</strong>解析用户想做什么，<strong>命令生成层</strong>（NL2Shell）把意图翻译成具体命令，<strong>安全执行层</strong>在沙箱中运行并捕获结果。三层各司其职又环环相扣——理解错了会生成错误的命令，生成对了但执行环境不安全则可能危及系统。我们刻意保持架构最小，让你看清 CLI Agent 的骨架，而不是被框架细节淹没。</p>
+
 <h3 class="sub-heading">架构代码</h3>
 
 <div class="code-block" data-multi-lang>
@@ -980,6 +982,8 @@ public class CommandSandbox {
 
 <p>命令执行失败是常态——参数错误、环境缺失、权限不足。好的 CLI Agent 不是简单报错，而是<strong>自动诊断并修复</strong>。</p>
 
+<p>错误自愈是 CLI Agent 区别于"一次性命令生成器"的关键能力。真实环境中，命令失败的概率远高于理想情况：目标路径不存在、依赖工具未安装、权限被拒、网络超时……如果每次失败都要人工介入，Agent 就失去了"自主"的意义。自愈的核心思路是把<strong>错误信息本身作为新的上下文</strong>反馈给 LL让它像人类运维一样"看报错→想原因→换方案重试"。这个"执行→观察错误→修正→再执行"的小循环，正是第 5 章 ReAct 模式在 CLI 场景的具体落地。</p>
+
 <div class="card">
   <div class="card-title">🔄 错误自愈：四种典型场景</div>
   <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px;">
@@ -1159,6 +1163,8 @@ public class CommandSandbox {
 <h2 class="section-heading">13.8 NL2Shell 实战：Few-Shot 提升准确率</h2>
 
 <p>NL2Shell（自然语言转 Shell 命令）是 CLI Agent 的核心能力。纯零样本（zero-shot）生成的命令准确率约 60-70%，通过 Few-Shot 示例 + 工具 Schema 可提升至 90%+。</p>
+
+<p>零样本之所以不准，是因为自然语言存在大量歧义："找出大文件"是找 >100MB 还是 >1GB？"最近修改"是 24 小时内还是一周内？LLM 在没有任何参照时会自行猜测，猜错就生成错误命令。Few-Shot 的作用是给模型提供<strong>带标准答案的范例</strong>，把模糊的意图锚定到具体的命令模式上。实验表明，精心设计的 3-5 个示例就能覆盖 80% 的常见运维场景，让准确率产生质的飞跃。这也是"提示词工程"在 CLI 领域最直接的收益点。</p>
 
 <div class="multi-lang">
 <div class="lang-tabs">

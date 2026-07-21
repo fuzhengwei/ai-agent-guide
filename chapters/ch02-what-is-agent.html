@@ -11,6 +11,8 @@
 
 <p>而 AI Agent 可以。</p>
 
+<p>这个区别看似微小，实则是 AI 应用的一次<strong>范式跃迁</strong>。ChatBot 时代的 AI 是一个"顾问"——你问它答，答案再好也需要你自己去执行。Agent 时代的 AI 是一个"员工"——你交代目标，它自己规划步骤、调用工具、交付结果。从"给你建议"到"替你完成"，中间隔着的是<strong>与真实世界交互的能力</strong>。理解这条分界线，是理解整本书的钥匙。</p>
+
 <div class="quote">
   "ChatBot 回答问题，Agent 解决问题。"
 </div>
@@ -19,6 +21,8 @@
 <h2 class="section-heading">2.2 ChatBot vs Agent：核心区别</h2>
 
 <p>我们先通过一个动画来看两者的区别。同样的任务：<strong>"帮我查一下明天北京的天气"</strong></p>
+
+<p>注意两者的本质差异不在"回答得好不好"，而在<strong>闭环是否完整</strong>。ChatBot 的闭环止步于"生成文本"——它能告诉你该去查天气，但查的动作要你来做。Agent 的闭环延伸到了"改变外部状态"——它真的调用了天气 API、拿到了数据、甚至可以进一步帮你设提醒。这个"感知→决策→行动→观察"的循环，就是 Agent 区别于一切对话式 AI 的根本特征。</p>
 
 <div class="compare-animation" id="compareAnimation1">
   <div class="compare-side left">
@@ -179,6 +183,8 @@ window.StepAnim = StepAnim;
 
 <p>上面的五个步骤可以抽象为一个经典闭环：<strong>感知 → 决策 → 行动 → 反馈</strong>。这个闭环是所有 Agent 的基础运行模式。</p>
 
+<p>这个闭环并非凭空而来，它源自控制论中的 OODA 循环（Observe-Orient-Decide-Act）。关键在于<strong>"反馈回到感知"这条虚线</strong>——它让 Agent 从"一次性执行"变成"持续修正"。没有这条回边，Agent 就是一个单向流水线，遇到意外就会卡死；有了它，Agent 能在每次行动后观察结果、调整下一步，从而具备容错和自适应能力。这正是 Agent 能处理开放性任务的原因。</p>
+
 <div class="flowchart-container" id="loopDiagram"></div>
 
 <script>
@@ -207,6 +213,8 @@ setTimeout(() => {
 <h2 class="section-heading">2.6 Agent vs ChatBot vs Copilot</h2>
 
 <p>面试中经常被问到这三者的区别，我们用一张表总结：</p>
+
+<p>三者代表了 AI 应用自主性的三个层级。ChatBot 是<strong>被动应答</strong>，Copilot 是<strong>人机协作</strong>（AI 给建议、人来执行），Agent 是<strong>自主执行</strong>（AI 定计划、AI 去落地）。越往后，AI 的自主性越强、人的参与度越低，但对系统的可靠性和安全性要求也越高。理解这个光谱，能帮你在面试中精准定位产品形态。</p>
 
 <div class="card">
   <table style="width: 100%; border-collapse: collapse; font-size: 14px;">

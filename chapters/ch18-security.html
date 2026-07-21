@@ -550,6 +550,8 @@ public class ToolPermission {
 
 <p>借鉴操作系统权限模型，给 Agent 建立<strong>最小权限原则</strong>：只授予完成任务所需的最少权限。</p>
 
+<p>Agent 的权限失控是放大所有安全威胁的根源。一个只读文档总结 Agent，如果被授予了文件写入和网络外发权限，那么一次成功的 Prompt 注入就能从"信息泄露"升级为"数据篡改 + 外传"。权限控制的作用，是把攻击的<strong>爆炸半径</strong>压缩到最小——即使 Agent 被劫持，它能造成的破坏也被严格限制在授权范围内。这就是为什么"最小权限"在 Agent 时代比在传统软件时代更重要：传统软件的权限是开发者写死的，而 Agent 的行为是 LLM 动态决策的，天然更难约束。</p>
+
 <div class="card">
   <div class="card-title">🔐 三层权限模型</div>
   <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
@@ -672,6 +674,8 @@ public class AgentPermissions {
 
 <!-- ===== 21.4 数据安全 ===== -->
 <h2 class="section-heading">22.4 数据安全与隐私保护</h2>
+
+<p>Agent 处理的数据往往包含用户的敏感信息（PII）：姓名、电话、身份证、病历、财务记录。一旦这些数据被不加处理地送入第三方 LLM API，就可能违反《个人信息保护法》《GDPR》等法规，甚至因模型日志留存而造成永久性泄露。数据安全的核心目标，是在<strong>利用 LLM 能力</strong>和<strong>保护用户隐私</strong>之间找到平衡——既不因噎废食地放弃 Agent 能力，也不毫无防备地把数据交出去。主要手段有三层：传输前脱敏、存储时加密、访问时审计。</p>
 
 <h3 class="sub-heading">22.4.1 敏感信息脱敏</h3>
 
@@ -877,6 +881,54 @@ public class OutputSanitizer {
 <h2 class="section-heading">22.5 资源限制与防滥用</h2>
 
 <p>Agent 可能陷入无限循环或被恶意用户滥用，需要设置硬性资源限制。</p>
+
+<p>单点防御挡不住所有攻击，生产级 Agent 需要<strong>纵深防御（Defense in Depth)</strong>——在数据流入到工具执行的每一环都设卡，任何一层失守还有下一层兜底。下面这张防御体系图展示了从输入到执行的五道防线：</p>
+
+<div class="card">
+  <div class="card-title">🛡️ Agent 纵深防御体系（五道防线）</div>
+  <svg width="100%" viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg" style="margin-top:12px;">
+    <defs>
+      <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/>
+      </marker>
+    </defs>
+    <!-- 防线1 -->
+    <rect x="10" y="90" width="120" height="80" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+    <text x="70" y="118" text-anchor="middle" font-size="13" fill="#4338ca" font-weight="bold">① 输入过滤</text>
+    <text x="70" y="138" text-anchor="middle" font-size="11" fill="#64748b">注入检测</text>
+    <text x="70" y="154" text-anchor="middle" font-size="11" fill="#64748b">PII 脱敏</text>
+    <!-- 防线2 -->
+    <rect x="150" y="90" width="120" height="80" rx="10" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
+    <text x="210" y="118" text-anchor="middle" font-size="13" fill="#0e7490" font-weight="bold">② 指令隔离</text>
+    <text x="210" y="138" text-anchor="middle" font-size="11" fill="#64748b">指令区/数据区</text>
+    <text x="210" y="154" text-anchor="middle" font-size="11" fill="#64748b">分隔符约束</text>
+    <!-- 防线3 -->
+    <rect x="290" y="90" width="120" height="80" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="350" y="118" text-anchor="middle" font-size="13" fill="#15803d" font-weight="bold">③ 权限控制</text>
+    <text x="350" y="138" text-anchor="middle" font-size="11" fill="#64748b">最小权限</text>
+    <text x="350" y="154" text-anchor="middle" font-size="11" fill="#64748b">工具白名单</text>
+    <!-- 防线4 -->
+    <rect x="430" y="90" width="120" height="80" rx="10" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="490" y="118" text-anchor="middle" font-size="13" fill="#b45309" font-weight="bold">④ 沙箱执行</text>
+    <text x="490" y="138" text-anchor="middle" font-size="11" fill="#64748b">隔离运行</text>
+    <text x="490" y="154" text-anchor="middle" font-size="11" fill="#64748b">资源限额</text>
+    <!-- 防线5 -->
+    <rect x="570" y="90" width="140" height="80" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="640" y="118" text-anchor="middle" font-size="13" fill="#b91c1c" font-weight="bold">⑤ 输出审查</text>
+    <text x="640" y="138" text-anchor="middle" font-size="11" fill="#64748b">敏感信息拦截</text>
+    <text x="640" y="154" text-anchor="middle" font-size="11" fill="#64748b">审计日志</text>
+    <!-- 连接箭头 -->
+    <line x1="130" y1="130" x2="150" y2="130" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah)"/>
+    <line x1="270" y1="130" x2="290" y2="130" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah)"/>
+    <line x1="410" y1="130" x2="430" y2="130" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah)"/>
+    <line x1="550" y1="130" x2="570" y2="130" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah)"/>
+    <!-- 顶部标签 -->
+    <text x="360" y="40" text-anchor="middle" font-size="12" fill="#475569">用户输入 → LLM 决策 → 工具调用 → 执行 → 返回结果</text>
+    <text x="360" y="60" text-anchor="middle" font-size="11" fill="#94a3b8">数据流向每一环都设防，单层失守仍有下层兜底</text>
+    <!-- 底部说明 -->
+    <text x="360" y="210" text-anchor="middle" font-size="12" fill="#475569" font-weight="bold">纵深防御（Defense in Depth）：任何单一防线被突破，攻击都无法直达核心</text>
+  </svg>
+</div>
 
 <div class="comparison-table">
   <table>

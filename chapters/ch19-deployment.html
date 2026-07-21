@@ -7,6 +7,10 @@
 
 <p>在 Jupyter Notebook 里跑通一个 Agent Demo 只需要 30 分钟。但把它放到生产环境，面对真实用户、真实流量、真实故障，需要解决完全不同的问题。</p>
 
+<p>这个鸿沟比想象中大得多。Demo 阶段的 Agent 跑在开发者的笔记本上：一个用户、一次请求、出错就重来。生产环境的 Agent 则要同时面对几百个并发会话，每个会话可能持续几十轮工具调用，任何一轮 LLM API 抖动、超时或限流都会传导到用户体验。更棘手的是，Agent 的"故障"往往是<strong>软性</strong>的——服务没挂，但回答质量下降了、步数失控了、Token 费用暴涨了。传统 Web 服务的"进程存活 = 健康"判断在 Agent 上完全不成立。</p>
+
+<p>从 Demo 到生产，本质上是补上六块短板：<strong>并发能力</strong>（从单进程到多实例负载均衡）、<strong>故障韧性</strong>（从崩溃重启到重试/降级/熔断）、<strong>可观测性</strong>（从 print 调试到全链路 Trace）、<strong>发布安全</strong>（从停机更新到灰度发布）、<strong>成本控制</strong>（从不管不顾到预算告警）、<strong>安全合规</strong>（从 Key 硬编码到密钥托管）。下面这张对照表概括了两者的差距：</p>
+
 <div class="compare-grid">
   <div class="card">
     <div class="card-title">🧪 Demo 级 Agent</div>
@@ -34,6 +38,10 @@
 
 <!-- ===== 22.2 部署架构 ===== -->
 <h2 class="section-heading">23.2 生产级 Agent 部署架构</h2>
+
+<p>生产级 Agent 不是"一个会调 LLM 的 Web 服务"那么简单。它需要把<strong>不稳定的 LLM 调用</strong>和<strong>稳定的业务服务</strong>解耦，用一层代理（Proxy）来吸收 LLM 侧的抖动。这样无论底层模型是 OpenAI、Anthropic 还是国产模型，业务层都不需要感知。</p>
+
+<p>下面这套五层架构经过大量生产验证，核心设计原则是：<strong>无状态、可替换、可观测</strong>。无状态意味着 Agent Service 不保存会话，会话上下文放在 Redis，这样任何实例都能处理任何请求，配合负载均衡实现水平扩展。可替换意味着 LLM Proxy 屏蔽了具体模型，换模型只需改 Proxy 配置。可观测意味着每一层都埋点，Trace ID 贯穿全链路。</p>
 
 <div class="card">
   <div class="card-title">🏗️ 推荐架构：API Gateway + Agent Service + LLM Proxy</div>
@@ -158,6 +166,10 @@ services:
 
 <p>Agent 的 CI/CD 与传统软件不同，需要额外关注<strong>Prompt 版本管理</strong>和<strong>评估回归</strong>。</p>
 
+<p>传统软件的变更主要体现在代码上，代码变了行为才变，所以单元测试 + 集成测试就能守住质量底线。但 Agent 的行为由<strong>代码 + Prompt + 模型版本</strong>三者共同决定——你可能一行代码没改，只是优化了一句 System Prompt，或者上游模型悄悄升级了小版本，Agent 的回答质量就可能退化。而单元测试断言的是确定性输出，对 Agent 的非确定性文本输出几乎无能为力。</p>
+
+<p>因此 Agent 的 CI/CD 流水线必须在"单元测试"和"部署"之间插入一个关键环节：<strong>评估回归（Evaluation-Driven Deployment, EDD）</strong>。做法是维护一个覆盖核心场景的评估数据集（几十到几百条带标准答案的用例），每次提交都跑一遍，用 LLM-as-Judge 或规则打分。分数低于阈值（如 0.85）就阻断发布。这把"Prompt 改动"提升到了和"代码改动"同等的严肃级别。同时，Prompt 应该像代码一样进版本库、做 Diff 审查，而不是散落在工程师的本地文件里。</p>
+
 <div class="flowchart-container" id="cicdPipeline"></div>
 
 <script>
@@ -268,6 +280,10 @@ jobs:
 
 <p>Agent 的输出有随机性，新版本可能有未知问题。灰度发布让你<strong>先给一小部分用户用新版本</strong>，观察指标正常后再全量。</p>
 
+<p>为什么 Agent 尤其需要灰度？因为它的缺陷很难在测试环境穷尽。一个修改过的 Prompt 在 100 条测试用例上表现完美，但面对线上千奇百怪的真实输入，可能会触发意想不到的失败模式：步数失控、工具调用参数错误、或是陷入某个推理死胡同。如果直接全量发布，所有用户同时受影响；而灰度发布把"爆炸半径"控制在 5-10% 的用户内，配合快速回滚，把损失降到最低。</p>
+
+<p>对 Agent 来说，灰度观察的指标除了常规的错误率和延迟，还必须包括 <strong>Agent 特有指标</strong>：任务成功率、平均步数、Token 消耗均值、以及抽样的回答质量评分。只有这些指标都不劣于旧版本，才值得放量。下面四种策略覆盖了从轻量到严格的灰度需求：</p>
+
 <div class="comparison-table">
   <table>
     <thead>
@@ -322,6 +338,10 @@ server {
 <h2 class="section-heading">23.5 监控与告警体系</h2>
 
 <p>生产环境必须做到<strong>5 分钟发现、5 分钟定位、5 分钟恢复</strong>。没有监控的 Agent 就像闭眼开车。</p>
+
+<p>Agent 监控比传统服务复杂，因为故障是多层次的：进程可能活着但回答全错（质量故障）、延迟正常但 Token 消耗暴涨（成本故障）、成功率 100% 但用户疯狂点踩（体验故障）。所以监控不能只盯着 CPU 和 HTTP 状态码，必须下沉到 Agent 的业务语义层。</p>
+
+<p>实践中要回答三个问题：<strong>服务是否可用</strong>（系统层/应用层）、<strong>Agent 是否聪明</strong>（Agent 层成功率与质量）、<strong>账单是否失控</strong>（LLM 层成本）。每一层都要设定明确的告警阈值并配好通知渠道，阈值太松会漏报、太紧会告警疲劳，通常按历史数据的 P95 上浮 20% 来定。下面这张表给出五层监控的具体指标和工具选型：</p>
 
 <div class="comparison-table">
   <table>
@@ -1064,7 +1084,53 @@ deploy_agent_cluster()
 
 <h3 class="sub-heading">23.7.3 Prometheus + Grafana 监控体系</h3>
 
-<p>Prometheus 负责指标采集，Grafana 负责可视化，二者组合是云原生监控的事实标准。Agent 服务需要暴露以下自定义指标：</p>
+<p>Prometheus 负责指标采集，Grafana 负责可视化，二者组合是云原生监控的事实标准。下面这张架构图展示了 Agent 服务的完整监控数据流：</p>
+
+<div class="card">
+  <div class="card-title">📊 Agent 监控体系架构</div>
+  <svg width="100%" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" style="margin-top:12px;">
+    <defs>
+      <marker id="ah2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/>
+      </marker>
+    </defs>
+    <!-- Agent 服务 -->
+    <rect x="20" y="110" width="130" height="90" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+    <text x="85" y="140" text-anchor="middle" font-size="13" fill="#4338ca" font-weight="bold">Agent 服务</text>
+    <text x="85" y="160" text-anchor="middle" font-size="11" fill="#64748b">多实例(K8s)</text>
+    <text x="85" y="178" text-anchor="middle" font-size="11" fill="#64748b">/metrics 端点</text>
+    <!-- Prometheus -->
+    <rect x="230" y="40" width="130" height="70" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+    <text x="295" y="68" text-anchor="middle" font-size="13" fill="#c2410c" font-weight="bold">Prometheus</text>
+    <text x="295" y="88" text-anchor="middle" font-size="11" fill="#64748b">定时拉取指标</text>
+    <!-- Grafana -->
+    <rect x="230" y="140" width="130" height="70" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="295" y="168" text-anchor="middle" font-size="13" fill="#15803d" font-weight="bold">Grafana</text>
+    <text x="295" y="188" text-anchor="middle" font-size="11" fill="#64748b">可视化大屏</text>
+    <!-- Langfuse -->
+    <rect x="230" y="230" width="130" height="60" rx="10" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
+    <text x="295" y="252" text-anchor="middle" font-size="13" fill="#0e7490" font-weight="bold">Langfuse/LangSmith</text>
+    <text x="295" y="272" text-anchor="middle" font-size="11" fill="#64748b">Agent Trace</text>
+    <!-- 告警 -->
+    <rect x="450" y="40" width="120" height="70" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="510" y="68" text-anchor="middle" font-size="13" fill="#b91c1c" font-weight="bold">Alertmanager</text>
+    <text x="510" y="88" text-anchor="middle" font-size="11" fill="#64748b">阈值告警</text>
+    <!-- 通知 -->
+    <rect x="450" y="150" width="120" height="60" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="510" y="174" text-anchor="middle" font-size="13" fill="#7e22ce" font-weight="bold">通知渠道</text>
+    <text x="510" y="194" text-anchor="middle" font-size="11" fill="#64748b">飞书/钉钉/邮件</text>
+    <!-- 箭头 -->
+    <line x1="150" y1="130" x2="230" y2="80" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah2)"/>
+    <line x1="150" y1="170" x2="230" y2="180" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah2)"/>
+    <line x1="150" y1="195" x2="230" y2="255" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah2)"/>
+    <line x1="360" y1="75" x2="450" y2="75" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah2)"/>
+    <line x1="510" y1="110" x2="510" y2="150" stroke="#94a3b8" stroke-width="2" marker-end="url(#ah2)"/>
+    <!-- 说明 -->
+    <text x="360" y="20" text-anchor="middle" font-size="11" fill="#94a3b8">指标采集 → 可视化 → 阈值告警 → 通知，Trace 走独立的 Agent 观测链路</text>
+  </svg>
+</div>
+
+<p>Agent 服务需要暴露以下自定义指标：</p>
 
 <div class="multi-lang">
 <div class="lang-tabs">
