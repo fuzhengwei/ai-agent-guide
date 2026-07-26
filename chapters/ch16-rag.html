@@ -1949,6 +1949,2139 @@ public class RAGState {
   </p>
 </div>
 
+<!-- ===== 20.9 代码知识库：tree-sitter 符号感知分块 ===== -->
+<h2 class="section-heading" id="tree-sitter">20.9 代码知识库：tree-sitter 符号感知分块</h2>
+
+<p>前面的章节讲的都是<strong>文本 RAG</strong>——把文档切成固定大小的块。但如果你要建一个<strong>代码知识库</strong>，比如把整个项目的源码放进去让 AI 回答"<code>handle_messages 函数是干什么的</code>"，固定大小分块会出大问题。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：函数被从中间截断</div>
+  <p style="font-size: 13px;">
+    假设 <code>chunk_size=500</code>，一个 80 行的函数会被切成 2-3 个块。检索时可能只返回第 2 个块——没有函数签名、没有参数定义，AI 根本看不懂这段代码在做什么。<br><br>
+    <strong>更糟的是</strong>：块里可能混着两个半截函数，前半截是 <code>fn handle_messages</code> 的结尾，后半截是 <code>fn handle_connections</code> 的开头，语义完全混乱。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.9.1 tree-sitter 是什么？</h3>
+
+<p><strong>tree-sitter</strong> 是一个增量解析库，能将源码解析为 <strong>AST（抽象语法树）</strong>。它的核心能力是：给你一段代码，告诉你哪个字节范围是一个函数定义、哪个是类定义、哪个是方法。</p>
+
+<div class="card">
+  <div class="card-title">🔧 tree-sitter 的核心能力</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>增量解析</strong>：代码修改时只重新解析变化的部分，适合编辑器实时场景</li>
+    <li><strong>多语言支持</strong>：支持 TS/TSX/JS/Python/Rust/Go/Java 等 40+ 语言</li>
+    <li><strong>AST 节点类型</strong>：function_declaration、class_declaration、method_definition 等，精确到符号级别</li>
+    <li><strong>错误恢复</strong>：代码有语法错误也能解析出有效部分，不会直接崩溃</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">20.9.2 符号感知分块</h3>
+
+<p>核心思路：<strong>不按字符切，按 AST 符号边界切</strong>。每个 chunk 是一个完整的符号（函数/类/方法/结构体/接口/枚举），并附带元数据：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">元数据字段</th>
+        <th style="text-align: left; padding: 12px 8px;">说明</th>
+        <th style="text-align: left; padding: 12px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>symbol_name</code></td><td>符号名称</td><td><code>handle_messages</code></td></tr>
+      <tr><td><code>symbol_kind</code></td><td>符号类型</td><td><code>function</code> / <code>class</code> / <code>method</code></td></tr>
+      <tr><td><code>line_start</code></td><td>起始行号</td><td><code>42</code></td></tr>
+      <tr><td><code>line_end</code></td><td>结束行号</td><td><code>120</code></td></tr>
+      <tr><td><code>signature</code></td><td>函数签名</td><td><code>fn handle_messages(msg: Message) -> Result</code></td></tr>
+      <tr><td><code>docstring</code></td><td>文档注释</td><td><code>/// Process incoming messages and route to handlers</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="compare-grid">
+  <div class="compare-item">
+    <div class="compare-label">固定大小分块</div>
+    <pre style="font-size: 12px; background: var(--color-bg-secondary); padding: 12px; border-radius: 8px; overflow-x: auto;">
+chunk 1: [fn handle_messages() {
+    let msg = receive();
+    if msg.type == "text" {
+        route_text(msg);
+    } else if msg.type == "image" {
+        route_image(msg);
+    }
+// --- 截断 ---
+
+chunk 2: // 接上
+    } else {
+        route_unknown(msg);
+    }
+    log(msg);
+}
+
+fn handle_connections() {
+// --- 截断 ---</pre>
+    <p style="font-size: 12px; color: var(--color-danger); margin-top: 8px;">❌ 函数被截断，检索到 chunk 2 完全看不懂</p>
+  </div>
+  <div class="compare-item">
+    <div class="compare-label">符号感知分块</div>
+    <pre style="font-size: 12px; background: var(--color-bg-secondary); padding: 12px; border-radius: 8px; overflow-x: auto;">
+chunk 1: [fn handle_messages() {
+    let msg = receive();
+    if msg.type == "text" {
+        route_text(msg);
+    } else if msg.type == "image" {
+        route_image(msg);
+    } else {
+        route_unknown(msg);
+    }
+    log(msg);
+}]
+// 完整函数，元数据: symbol_name=handle_messages, kind=function
+
+chunk 2: [fn handle_connections() { ... }]
+// 完整函数，元数据: symbol_name=handle_connections, kind=function</pre>
+    <p style="font-size: 12px; color: var(--color-success); margin-top: 8px;">✅ 每个函数完整保留，可按符号类型过滤检索</p>
+  </div>
+</div>
+
+<h3 class="sub-heading">20.9.3 代码实现：提取符号边界</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from tree_sitter import Parser, Language
+
+# 加载语言（需要预编译 .so 文件）
+lang = Language("build/my-languages.so", "python")
+parser = Parser()
+parser.set_language(lang)
+
+# 符号类型映射：不同语言的 AST 节点名称不同
+SYMBOL_KINDS = {
+    'python': {
+        'function_definition': 'function',
+        'class_definition': 'class',
+    },
+    'rust': {
+        'function_item': 'function',
+        'struct_item': 'struct',
+        'enum_item': 'enum',
+        'impl_item': 'impl',
+        'trait_item': 'trait',
+    },
+    'typescript': {
+        'function_declaration': 'function',
+        'class_declaration': 'class',
+        'method_definition': 'method',
+        'interface_declaration': 'interface',
+        'enum_declaration': 'enum',
+    },
+}
+
+# 提取符号边界的核心函数
+def extract_symbols(source_code: str, language: str) -> list:
+    """从源码中提取所有顶层符号（函数/类/方法等）
+    返回: [{symbol_name, symbol_kind, line_start, line_end, signature, content}, ...]
+    """
+    tree = parser.parse(source_code.encode())
+    symbols = []
+    kinds = SYMBOL_KINDS.get(language, {})
+    
+    def walk(node):
+        # 匹配符号类型
+        if node.type in kinds:
+            symbol = {
+                'symbol_name': get_symbol_name(node, source_code),
+                'symbol_kind': kinds[node.type],
+                'line_start': node.start_point[0],
+                'line_end': node.end_point[0],
+                'content': source_code[node.start_byte:node.end_byte],
+                'signature': get_signature(node, source_code),
+                'docstring': get_docstring(node, source_code),
+            }
+            symbols.append(symbol)
+        # 递归子节点
+        for child in node.children:
+            walk(child)
+    
+    walk(tree.root_node)
+    return symbols
+
+# 分块：每个符号一个 chunk
+def split_code_by_symbols(source_code: str, language: str) -> list:
+    symbols = extract_symbols(source_code, language)
+    chunks = []
+    for sym in symbols:
+        chunks.append({
+            'content': sym['content'],
+            'metadata': {
+                'symbol_name': sym['symbol_name'],
+                'symbol_kind': sym['symbol_kind'],
+                'line_start': sym['line_start'],
+                'line_end': sym['line_end'],
+                'signature': sym['signature'],
+                'docstring': sym['docstring'],
+            }
+        })
+    return chunks
+
+# 使用示例
+source = open("handler.py").read()
+chunks = split_code_by_symbols(source, "python")
+for chunk in chunks:
+    print(f"{chunk['metadata']['symbol_kind']}: {chunk['metadata']['symbol_name']} "
+          f"(L{chunk['metadata']['line_start']}-{chunk['metadata']['line_end']})")
+# 输出:
+# function: handle_messages (L42-L120)
+# class: MessageRouter (L122-L200)
+# function: route_text (L202-L215)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import Parser from 'web-tree-sitter';
+
+// 符号类型映射
+const SYMBOL_KINDS: Record<string, Record<string, string>> = {
+  typescript: {
+    function_declaration: 'function',
+    class_declaration: 'class',
+    method_definition: 'method',
+    interface_declaration: 'interface',
+    enum_declaration: 'enum',
+  },
+};
+
+// 提取符号边界
+async function extractSymbols(
+  sourceCode: string,
+  language: string
+): Promise<Symbol[]> {
+  const parser = new Parser();
+  const lang = await Parser.Language.load('tree-sitter-typescript.wasm');
+  parser.setLanguage(lang);
+  const tree = parser.parse(sourceCode);
+  
+  const symbols: Symbol[] = [];
+  const kinds = SYMBOL_KINDS[language] || {};
+  
+  function walk(node: any) {
+    if (node.type in kinds) {
+      symbols.push({
+        symbolName: getSymbolName(node, sourceCode),
+        symbolKind: kinds[node.type],
+        lineStart: node.startPosition.row,
+        lineEnd: node.endPosition.row,
+        content: sourceCode.slice(node.startIndex, node.endIndex),
+        signature: getSignature(node, sourceCode),
+      });
+    }
+    for (const child of node.children) walk(child);
+  }
+  walk(tree.rootNode);
+  return symbols;
+}
+
+// 符号感知分块
+async function splitCodeBySymbols(
+  sourceCode: string,
+  language: string
+): Promise<Chunk[]> {
+  const symbols = await extractSymbols(sourceCode, language);
+  return symbols.map(sym => ({
+    content: sym.content,
+    metadata: {
+      symbol_name: sym.symbolName,
+      symbol_kind: sym.symbolKind,
+      line_start: sym.lineStart,
+      line_end: sym.lineEnd,
+      signature: sym.signature,
+    },
+  }));
+}
+
+// 使用示例
+const source = await readFile('handler.ts', 'utf-8');
+const chunks = await splitCodeBySymbols(source, 'typescript');
+chunks.forEach(c => {
+  const m = c.metadata;
+  console.log(`${m.symbol_kind}: ${m.symbol_name} (L${m.line_start}-${m.line_end})`);
+});</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+// tree-sitter Go 绑定: go get github.com/smacker/go-tree-sitter
+import "github.com/smacker/go-tree-sitter/python"
+
+// 符号类型映射
+var SymbolKinds = map[string]map[string]string{
+    "python": {
+        "function_definition": "function",
+        "class_definition":    "class",
+    },
+    "go": {
+        "function_declaration":  "function",
+        "type_declaration":       "struct",
+        "method_declaration":     "method",
+    },
+}
+
+// 提取符号边界
+func ExtractSymbols(sourceCode []byte, language string) []Symbol {
+    parser := sitter.NewParser()
+    parser.SetLanguage(python.GetLanguage())
+    tree := parser.Parse(nil, sourceCode)
+    
+    var symbols []Symbol
+    kinds := SymbolKinds[language]
+    
+    var walk func(node *sitter.Node)
+    walk = func(node *sitter.Node) {
+        if kind, ok := kinds[node.Type()]; ok {
+            symbols = append(symbols, Symbol{
+                SymbolName: getSymbolName(node, sourceCode),
+                SymbolKind: kind,
+                LineStart:  node.StartPoint().Row,
+                LineEnd:    node.EndPoint().Row,
+                Content:    node.Content(sourceCode),
+            })
+        }
+        for i := 0; i < node.ChildCount(); i++ {
+            walk(node.Child(i))
+        }
+    }
+    walk(tree.RootNode())
+    return symbols
+}
+
+// 符号感知分块
+func SplitCodeBySymbols(sourceCode []byte, language string) []Chunk {
+    symbols := ExtractSymbols(sourceCode, language)
+    var chunks []Chunk
+    for _, sym := range symbols {
+        chunks = append(chunks, Chunk{
+            Content: sym.Content,
+            Metadata: map[string]interface{}{
+                "symbol_name": sym.SymbolName,
+                "symbol_kind": sym.SymbolKind,
+                "line_start":  sym.LineStart,
+                "line_end":    sym.LineEnd,
+            },
+        })
+    }
+    return chunks
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import org.treesitter.TreeSitterPython;
+import org.treesitter.Parser;
+import org.treesitter.TSTree;
+import org.treesitter.TSNode;
+
+import java.util.ArrayList;
+import java.util.List;
+
+// 符号类型映射
+Map<String, String> pythonKinds = Map.of(
+    "function_definition", "function",
+    "class_definition",    "class"
+);
+
+// 提取符号边界
+List<Symbol> extractSymbols(String sourceCode, String language) {
+    Parser parser = new Parser();
+    parser.setLanguage(new TreeSitterPython());
+    TSTree tree = parser.parseString(null, sourceCode);
+    
+    List<Symbol> symbols = new ArrayList<>();
+    walk(tree.getRootNode(), sourceCode, pythonKinds, symbols);
+    return symbols;
+}
+
+void walk(TSNode node, String source, Map<String, String> kinds, List<Symbol> symbols) {
+    String kind = kinds.get(node.getType());
+    if (kind != null) {
+        symbols.add(new Symbol(
+            getSymbolName(node, source),
+            kind,
+            node.getStartPoint().getRow(),
+            node.getEndPoint().getRow(),
+            source.substring(node.getStartByte(), node.getEndByte())
+        ));
+    }
+    for (int i = 0; i < node.getChildCount(); i++) {
+        walk(node.getChild(i), source, kinds, symbols);
+    }
+}
+
+// 符号感知分块
+List<Chunk> splitCodeBySymbols(String sourceCode, String language) {
+    List<Symbol> symbols = extractSymbols(sourceCode, language);
+    List<Chunk> chunks = new ArrayList<>();
+    for (Symbol sym : symbols) {
+        chunks.add(new Chunk(
+            sym.content,
+            Map.of(
+                "symbol_name", sym.symbolName,
+                "symbol_kind", sym.symbolKind,
+                "line_start",  sym.lineStart,
+                "line_end",    sym.lineEnd
+            )
+        ));
+    }
+    return chunks;
+}</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔍 符号过滤检索</div>
+  <p style="font-size: 13px;">
+    分块时带了 <code>symbol_kind</code> 元数据，检索时就能做<strong>符号过滤</strong>：<br>
+    用户搜 "<code>handle_messages 函数</code>"，先 <code>hybrid_search</code> 得到结果，再 <code>filter_by_symbol(results, "function")</code> 只返回函数定义，过滤掉注释、import、变量声明等噪声。<br><br>
+    这是代码 RAG 和文本 RAG 的核心区别——<strong>分块策略</strong>决定检索质量，<strong>检索过滤</strong>决定结果精度。
+  </p>
+</div>
+
+<!-- ===== 20.10 HNSW 索引 ===== -->
+<h2 class="section-heading" id="hnsw-index">20.10 HNSW 索引：让向量搜索从 O(n) 到 O(log n)</h2>
+
+<p>上一节讲了向量检索，但有一个问题被跳过了：<strong>10 万个向量，怎么搜索？</strong></p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：线性扫描的代价</div>
+  <p style="font-size: 13px;">
+    最简单的做法：<strong>遍历所有向量，逐一计算余弦相似度，取 Top-K</strong>。10 万个向量就要算 10 万次余弦距离。每次计算涉及 1536 维浮点数（OpenAI text-embedding-3-small），单次搜索可能需要数百毫秒。<br><br>
+    这在生产环境完全不可接受。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.10.1 HNSW 原理：分层小世界图</h3>
+
+<p><strong>HNSW（Hierarchical Navigable Small World）</strong> 是目前最流行的近似最近邻搜索（ANN）算法。核心思想：<strong>构建多层图结构，上层稀疏（高速公路），下层稠密（城市道路），搜索时从上层快速定位区域，再在下层精细搜索</strong>。</p>
+
+<div class="flowchart-container" id="hnsw-flowchart"></div>
+<script>
+(function() {
+  const container = document.getElementById('hnsw-flowchart');
+  if (!container) return;
+  const svg = `
+  <svg viewBox="0 0 700 360" style="width:100%;height:360px;">
+    <!-- Layer 2 (top, sparse) -->
+    <text x="20" y="25" font-size="12" fill="#888">Layer 2 (稀疏 - 高速公路)</text>
+    <circle cx="150" cy="55" r="8" fill="#4A90D9"/>
+    <circle cx="350" cy="55" r="8" fill="#4A90D9"/>
+    <circle cx="550" cy="55" r="8" fill="#4A90D9"/>
+    <line x1="150" y1="55" x2="350" y2="55" stroke="#4A90D9" stroke-width="1.5"/>
+    <line x1="350" y1="55" x2="550" y2="55" stroke="#4A90D9" stroke-width="1.5"/>
+    
+    <!-- Connection between layers -->
+    <line x1="150" y1="63" x2="150" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
+    <line x1="350" y1="63" x2="350" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
+    <line x1="550" y1="63" x2="550" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
+    
+    <!-- Layer 1 (middle) -->
+    <text x="20" y="155" font-size="12" fill="#888">Layer 1 (中等 - 省道)</text>
+    <circle cx="100" cy="185" r="6" fill="#7B68EE"/>
+    <circle cx="200" cy="185" r="6" fill="#7B68EE"/>
+    <circle cx="300" cy="185" r="6" fill="#7B68EE"/>
+    <circle cx="400" cy="185" r="6" fill="#7B68EE"/>
+    <circle cx="500" cy="185" r="6" fill="#7B68EE"/>
+    <circle cx="600" cy="185" r="6" fill="#7B68EE"/>
+    <line x1="100" y1="185" x2="200" y2="185" stroke="#7B68EE" stroke-width="1"/>
+    <line x1="200" y1="185" x2="300" y2="185" stroke="#7B68EE" stroke-width="1"/>
+    <line x1="300" y1="185" x2="400" y2="185" stroke="#7B68EE" stroke-width="1"/>
+    <line x1="400" y1="185" x2="500" y2="185" stroke="#7B68EE" stroke-width="1"/>
+    <line x1="500" y1="185" x2="600" y2="185" stroke="#7B68EE" stroke-width="1"/>
+    
+    <!-- Connection between layers -->
+    <line x1="300" y1="191" x2="300" y2="247" stroke="#ccc" stroke-dasharray="3,3"/>
+    <line x1="500" y1="191" x2="500" y2="247" stroke="#ccc" stroke-dasharray="3,3"/>
+    
+    <!-- Layer 0 (bottom, dense) -->
+    <text x="20" y="265" font-size="12" fill="#888">Layer 0 (稠密 - 城市道路)</text>
+    ${Array.from({length: 16}, (_, i) => {
+      const x = 60 + i * 38;
+      return `<circle cx="${x}" cy="295" r="5" fill="#F5A623"/>`;
+    }).join('')}
+    ${Array.from({length: 15}, (_, i) => {
+      const x1 = 60 + i * 38;
+      const x2 = 60 + (i+1) * 38;
+      return `<line x1="${x1}" y1="295" x2="${x2}" y2="295" stroke="#F5A623" stroke-width="0.8"/>`;
+    }).join('')}
+    
+    <!-- Search path annotation -->
+    <text x="380" y="340" font-size="11" fill="#666">搜索：从 Layer 2 快速定位 → Layer 1 缩小范围 → Layer 0 精细搜索</text>
+  </svg>`;
+  container.innerHTML = svg;
+})();
+</script>
+
+<h3 class="sub-heading">20.10.2 搜索过程</h3>
+
+<p>HNSW 搜索使用<strong>贪心最佳优先搜索 + 优先级队列</strong>：</p>
+
+<div class="card">
+  <div class="card-title">📊 HNSW 搜索算法步骤</div>
+  <ol style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>从顶层入口节点开始</strong>，计算当前节点与查询向量的距离</li>
+    <li><strong>贪心搜索</strong>：检查邻居节点，如果有比当前更近的，移动过去</li>
+    <li><strong>本层没有更近的了</strong>：下降到下一层，以上层结果为入口</li>
+    <li><strong>到底层（Layer 0）</strong>：精细搜索，用优先级队列维护 Top-K 候选</li>
+    <li><strong>返回 Top-K</strong>：优先级队列中相似度最高的 K 个向量</li>
+  </ol>
+</div>
+
+<p><strong>余弦距离</strong>公式：<code>distance = 1 - cosine_similarity</code>。距离越小越相似。</p>
+
+<h3 class="sub-heading">20.10.3 纯手写 vs 外部向量数据库</h3>
+
+<p>大多数 RAG 教程直接用 Chroma/Pinecone/Milvus，但生产中很多场景不想引入新依赖。WaLiAPI 的做法是<strong>纯 Rust 手写 HNSW</strong>，用 <code>bincode</code> 序列化到本地文件，零外部依赖。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">方案</th>
+        <th style="text-align: left; padding: 12px 8px;">搜索复杂度</th>
+        <th style="text-align: left; padding: 12px 8px;">构建时间</th>
+        <th style="text-align: left; padding: 12px 8px;">内存占用</th>
+        <th style="text-align: left; padding: 12px 8px;">适合规模</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>线性扫描</strong></td><td>O(n)</td><td>无需构建</td><td>仅向量数据</td><td>&lt;1万</td></tr>
+      <tr><td><strong>HNSW（手写）</strong></td><td>O(log n)</td><td>中等</td><td>向量 + 图结构</td><td>1万-100万</td></tr>
+      <tr><td><strong>IVF（聚类）</strong></td><td>O(n/cluster)</td><td>需训练</td><td>向量 + 倒排</td><td>100万-1亿</td></tr>
+      <tr><td><strong>Milvus/Qdrant</strong></td><td>O(log n)</td><td>自动</td><td>完整服务</td><td>1亿+</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">20.10.4 代码实现：HNSW 搜索核心</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import heapq
+import numpy as np
+
+class HnswIndex:
+    """简化版 HNSW 索引"""
+    def __init__(self, dim: int, max_layers: int = 16):
+        self.dim = dim
+        self.max_layers = max_layers
+        self.nodes = []          # 所有向量
+        self.graphs = []         # 每层的图结构 {node_id: [neighbor_ids]}
+        self.entry_point = None  # 入口节点
+    
+    def insert(self, vector: list):
+        """插入一个向量，构建多层图"""
+        node_id = len(self.nodes)
+        self.nodes.append(np.array(vector))
+        
+        # 随机选择最高层（指数分布，越高层概率越低）
+        level = int(-np.log(np.random.random()) * 1.5)
+        
+        # 从顶层到 level 层，每层都插入节点
+        for layer in range(min(level + 1, self.max_layers)):
+            if layer >= len(self.graphs):
+                self.graphs.append({})
+            self.graphs[layer][node_id] = []
+            
+            # 连接到同层的近邻节点
+            if len(self.nodes) > 1:
+                neighbors = self._search_layer(vector, layer, ef=10)
+                self.graphs[layer][node_id] = neighbors[:5]
+        
+        if self.entry_point is None:
+            self.entry_point = node_id
+    
+    def search(self, query: list, top_k: int = 5) -> list:
+        """搜索 Top-K 最相似向量"""
+        if self.entry_point is None:
+            return []
+        
+        # 从顶层贪心搜索到底层
+        current = self.entry_point
+        for layer in range(len(self.graphs) - 1, 0, -1):
+            current = self._greedy_search(query, current, layer)
+        
+        # 底层精细搜索
+        candidates = self._search_layer(query, 0, ef=top_k * 4)
+        
+        # 按距离排序返回 Top-K
+        distances = [(node_id, self._distance(query, self.nodes[node_id]))
+                     for node_id in candidates]
+        distances.sort(key=lambda x: x[1])
+        return distances[:top_k]
+    
+    def _greedy_search(self, query, entry, layer):
+        """贪心搜索：不断移动到更近的邻居"""
+        current = entry
+        current_dist = self._distance(query, self.nodes[current])
+        while True:
+            improved = False
+            for neighbor in self.graphs[layer].get(current, []):
+                dist = self._distance(query, self.nodes[neighbor])
+                if dist < current_dist:
+                    current = neighbor
+                    current_dist = dist
+                    improved = True
+            if not improved:
+                break
+        return current
+    
+    def _search_layer(self, query, layer, ef=10):
+        """在某层搜索 ef 个候选"""
+        if not self.graphs[layer]:
+            return []
+        visited = set()
+        candidates = []
+        entry = self.entry_point if layer == len(self.graphs) - 1 else 0
+        heapq.heappush(candidates, (self._distance(query, self.nodes[entry]), entry))
+        visited.add(entry)
+        results = []
+        while candidates:
+            dist, node = heapq.heappop(candidates)
+            results.append(node)
+            if len(results) >= ef:
+                break
+            for neighbor in self.graphs[layer].get(node, []):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    heapq.heappush(candidates,
+                        (self._distance(query, self.nodes[neighbor]), neighbor))
+        return results
+    
+    def _distance(self, a, b):
+        """余弦距离 = 1 - 余弦相似度"""
+        return 1 - np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    
+    def save(self, path: str):
+        """序列化到文件"""
+        import pickle
+        with open(path, 'wb') as f:\n            pickle.dump({\n                'dim': self.dim,
+                'nodes': self.nodes,
+                'graphs': self.graphs,
+                'entry_point': self.entry_point,
+            }, f)
+    
+    @classmethod
+    def load(cls, path: str):
+        """从文件反序列化"""
+        import pickle
+        with open(path, 'rb') as f:\n            data = pickle.load(f)\n        idx = cls(data['dim'])\n        idx.nodes = data['nodes']\n        idx.graphs = data['graphs']\n        idx.entry_point = data['entry_point']
+        return idx
+
+# 使用示例
+index = HnswIndex(dim=1536)
+for vec in embeddings:
+    index.insert(vec)
+results = index.search(query_vec, top_k=5)
+# results = [(node_id, distance), ...]
+# 10万向量：线性扫描 ~200ms，HNSW ~2ms</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>class HnswIndex {
+  private nodes: number[][] = [];
+  private graphs: Map<number, number[]>[] = [];
+  private entryPoint: number | null = null;
+  
+  constructor(private dim: number, private maxLayers = 16) {}
+  
+  insert(vector: number[]): void {
+    const nodeId = this.nodes.length;
+    this.nodes.push(vector);
+    const level = Math.floor(-Math.log(Math.random()) * 1.5);
+    
+    for (let layer = 0; layer <= Math.min(level, this.maxLayers - 1); layer++) {
+      if (layer >= this.graphs.length) this.graphs.push(new Map());
+      this.graphs[layer].set(nodeId, []);
+      if (this.nodes.length > 1) {
+        const neighbors = this.searchLayer(vector, layer, 10);
+        this.graphs[layer].set(nodeId, neighbors.slice(0, 5));
+      }
+    }
+    if (this.entryPoint === null) this.entryPoint = nodeId;
+  }
+  
+  search(query: number[], topK = 5): [number, number][] {
+    if (this.entryPoint === null) return [];
+    let current = this.entryPoint;
+    for (let layer = this.graphs.length - 1; layer > 0; layer--) {
+      current = this.greedySearch(query, current, layer);
+    }
+    const candidates = this.searchLayer(query, 0, topK * 4);
+    return candidates
+      .map(id => [id, this.distance(query, this.nodes[id])] as [number, number])
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, topK);
+  }
+  
+  private greedySearch(query: number[], entry: number, layer: number): number {
+    let current = entry;
+    let currentDist = this.distance(query, this.nodes[current]);
+    while (true) {
+      let improved = false;
+      for (const neighbor of this.graphs[layer].get(current) || []) {
+        const dist = this.distance(query, this.nodes[neighbor]);
+        if (dist < currentDist) {
+          current = neighbor;
+          currentDist = dist;
+          improved = true;
+        }
+      }
+      if (!improved) break;
+    }
+    return current;
+  }
+  
+  private searchLayer(query: number[], layer: number, ef: number): number[] {
+    const graph = this.graphs[layer];
+    if (!graph || graph.size === 0) return [];
+    const visited = new Set<number>();
+    const heap: [number, number][] = [];
+    const entry = this.entryPoint!;
+    heap.push([this.distance(query, this.nodes[entry]), entry]);
+    visited.add(entry);
+    const results: number[] = [];
+    while (heap.length > 0 && results.length < ef) {
+      heap.sort((a, b) => a[0] - b[0]);
+      const [, node] = heap.shift()!;
+      results.push(node);
+      for (const neighbor of graph.get(node) || []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          heap.push([this.distance(query, this.nodes[neighbor]), neighbor]);
+        }
+      }
+    }
+    return results;
+  }
+  
+  private distance(a: number[], b: number[]): number {
+    const dot = a.reduce((s, v, i) => s + v * b[i], 0);
+    const norm = Math.sqrt(a.reduce((s, v) => s + v * v, 0)) *
+                 Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+    return 1 - dot / norm;
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "math"
+    "sort"
+)
+
+type HnswIndex struct {
+    Dim        int
+    Nodes      [][]float64
+    Graphs     []map[int][]int
+    EntryPoint int
+}
+
+func NewHnswIndex(dim int) *HnswIndex {
+    return &HnswIndex{Dim: dim, EntryPoint: -1}
+}
+
+func (idx *HnswIndex) Insert(vector []float64) {
+    nodeId := len(idx.Nodes)
+    idx.Nodes = append(idx.Nodes, vector)
+    level := int(-math.Log(rand.Float64()) * 1.5)
+    
+    for layer := 0; layer <= level; layer++ {
+        if layer >= len(idx.Graphs) {
+            idx.Graphs = append(idx.Graphs, make(map[int][]int))
+        }
+        idx.Graphs[layer][nodeId] = []int{}
+        if len(idx.Nodes) > 1 {
+            neighbors := idx.searchLayer(vector, layer, 10)
+            if len(neighbors) > 5 {
+                neighbors = neighbors[:5]
+            }
+            idx.Graphs[layer][nodeId] = neighbors
+        }
+    }
+    if idx.EntryPoint == -1 {
+        idx.EntryPoint = nodeId
+    }
+}
+
+func (idx *HnswIndex) Search(query []float64, topK int) [][2]float64 {
+    if idx.EntryPoint == -1 {
+        return nil
+    }
+    current := idx.EntryPoint
+    for layer := len(idx.Graphs) - 1; layer > 0; layer-- {
+        current = idx.greedySearch(query, current, layer)
+    }
+    candidates := idx.searchLayer(query, 0, topK*4)
+    results := make([][2]float64, 0, len(candidates))
+    for _, id := range candidates {
+        results = append(results, [2]float64{float64(id), idx.distance(query, idx.Nodes[id])})
+    }
+    sort.Slice(results, func(i, j int) bool { return results[i][1] < results[j][1] })
+    if len(results) > topK {
+        results = results[:topK]
+    }
+    return results
+}
+
+func (idx *HnswIndex) distance(a, b []float64) float64 {
+    dot, normA, normB := 0.0, 0.0, 0.0
+    for i := range a {
+        dot += a[i] * b[i]
+        normA += a[i] * a[i]
+        normB += b[i] * b[i]
+    }
+    return 1 - dot/(math.Sqrt(normA)*math.Sqrt(normB))
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class HnswIndex {
+    private int dim;
+    private List<double[]> nodes = new ArrayList<>();
+    private List<Map<Integer, List<Integer>>> graphs = new ArrayList<>();
+    private int entryPoint = -1;
+    
+    public HnswIndex(int dim) { this.dim = dim; }
+    
+    public void insert(double[] vector) {
+        int nodeId = nodes.size();
+        nodes.add(vector);
+        int level = (int)(-Math.log(Math.random()) * 1.5);
+        
+        for (int layer = 0; layer <= level; layer++) {
+            if (layer >= graphs.size()) graphs.add(new HashMap<>());
+            graphs.get(layer).put(nodeId, new ArrayList<>());
+            if (nodes.size() > 1) {
+                List<Integer> neighbors = searchLayer(vector, layer, 10);
+                graphs.get(layer).put(nodeId, neighbors.subList(0, Math.min(5, neighbors.size())));
+            }
+        }
+        if (entryPoint == -1) entryPoint = nodeId;
+    }
+    
+    public List<Map.Entry<Integer, Double>> search(double[] query, int topK) {
+        if (entryPoint == -1) return Collections.emptyList();
+        int current = entryPoint;
+        for (int layer = graphs.size() - 1; layer > 0; layer--) {
+            current = greedySearch(query, current, layer);
+        }
+        List<Integer> candidates = searchLayer(query, 0, topK * 4);
+        List<Map.Entry<Integer, Double>> results = new ArrayList<>();
+        for (int id : candidates) {
+            results.add(Map.entry(id, distance(query, nodes.get(id))));
+        }
+        results.sort(Map.Entry.comparingByValue());
+        return results.subList(0, Math.min(topK, results.size()));
+    }
+    
+    private double distance(double[] a, double[] b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i];
+        }
+        return 1 - dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+}</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔥 面试视角：HNSW 的空间换时间</div>
+  <p style="font-size: 13px;">
+    10 万向量线性扫描 O(n) = 10 万次距离计算 ≈ 200ms。<br>
+    HNSW O(log n) ≈ 17 次距离计算 ≈ 2ms。<strong>快了 100 倍</strong>。<br>
+    代价是构建图需要额外内存（每个节点存邻居指针），但搜索速度提升远超内存代价。<br><br>
+    <strong>面试要点</strong>：HNSW 是用空间换时间——构建图需要额外内存，但搜索从 O(n) 降到 O(log n)。
+  </p>
+</div>
+
+<!-- ===== 20.11 Token 预算管理 ===== -->
+<h2 class="section-heading" id="token-budget">20.11 Token 预算管理：上下文超限怎么办</h2>
+
+<p>RAG 检索到 20 个相关 chunk，加上对话历史，拼进 Prompt 后超过了模型的上下文窗口——这是个非常常见的生产问题。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：Prompt 超长被拒</div>
+  <p style="font-size: 13px;">
+    GPT-4o 上下文窗口 128K Token，GPT-3.5 只有 16K。如果检索结果 + 历史 + 问题总共 180K Token，API 直接报错 <code>context_length_exceeded</code>。<br><br>
+    更隐蔽的问题：即使没超限，超长 Prompt 也会导致<strong>注意力稀释</strong>——模型可能忽略中间位置的关键上下文（Lost in the Middle 问题）。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.11.1 Token 估算</h3>
+
+<p>不同字符的 Token 消耗不同，可以简单估算：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">字符类型</th>
+        <th style="text-align: left; padding: 12px 8px;">估算规则</th>
+        <th style="text-align: left; padding: 12px 8px;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>ASCII（英文/代码）</td><td>~4 字符 / Token</td><td><code>function handle_messages</code> ≈ 6 tokens</td></tr>
+      <tr><td>CJK（中文/日文）</td><td>~2 字符 / Token</td><td><code>处理消息函数</code> ≈ 3 tokens</td></tr>
+      <tr><td>混合内容</td><td>取加权平均</td><td>中英混排 ≈ 3 字符 / Token</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">20.11.2 三级降级策略</h3>
+
+<p>核心原则：<code>context_limit = model_limit × 0.7</code>（留 30% 给 Response）。</p>
+
+<div class="flowchart-container" id="token-degrade-flowchart"></div>
+<script>
+(function() {
+  const container = document.getElementById('token-degrade-flowchart');
+  if (!container) return;
+  container.innerHTML = `
+  <svg viewBox="0 0 700 400" style="width:100%;height:400px;">
+    <!-- Level 0 -->
+    <rect x="200" y="10" width="300" height="60" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+    <text x="350" y="35" text-anchor="middle" font-size="14" fill="#2E7D32" font-weight="bold">Level 0: 全量发送</text>
+    <text x="350" y="55" text-anchor="middle" font-size="11" fill="#666">estimated_tokens &lt; context_limit</text>
+    
+    <line x1="350" y1="70" x2="350" y2="95" stroke="#999" marker-end="url(#arrow)"/>
+    <text x="370" y="88" font-size="10" fill="#999">超限?</text>
+    
+    <!-- Level 1 -->
+    <rect x="200" y="100" width="300" height="70" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+    <text x="350" y="125" text-anchor="middle" font-size="14" fill="#E65100" font-weight="bold">Level 1: 裁剪上下文</text>
+    <text x="350" y="145" text-anchor="middle" font-size="11" fill="#666">移除低分 chunk，保留高分 chunk</text>
+    <text x="350" y="160" text-anchor="middle" font-size="11" fill="#666">+ 完整对话历史</text>
+    
+    <line x1="350" y1="170" x2="350" y2="195" stroke="#999" marker-end="url(#arrow)"/>
+    <text x="370" y="188" font-size="10" fill="#999">仍超限?</text>
+    
+    <!-- Level 2 -->
+    <rect x="200" y="200" width="300" height="70" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+    <text x="350" y="225" text-anchor="middle" font-size="14" fill="#E65100" font-weight="bold">Level 2: 裁剪历史</text>
+    <text x="350" y="245" text-anchor="middle" font-size="11" fill="#666">只保留最近 2 条历史</text>
+    <text x="350" y="260" text-anchor="middle" font-size="11" fill="#666">保留高分 chunk</text>
+    
+    <line x1="350" y1="270" x2="350" y2="295" stroke="#999" marker-end="url(#arrow)"/>
+    <text x="370" y="288" font-size="10" fill="#999">仍超限?</text>
+    
+    <!-- Level 3 -->
+    <rect x="200" y="300" width="300" height="70" rx="8" fill="#FFEBEE" stroke="#F44336" stroke-width="2"/>
+    <text x="350" y="325" text-anchor="middle" font-size="14" fill="#C62828" font-weight="bold">Level 3: 紧急模式</text>
+    <text x="350" y="345" text-anchor="middle" font-size="11" fill="#666">无历史，仅 top-3 chunk</text>
+    <text x="350" y="360" text-anchor="middle" font-size="11" fill="#666">简化 prompt</text>
+    
+    <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3" fill="#999"/>
+      </marker>
+    </defs>
+  </svg>`;
+})();
+</script>
+
+<h3 class="sub-heading">20.11.3 代码实现：Token 估算 + 逐级降级</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Token 估算：ASCII ~4字符/token，CJK ~2字符/token
+def estimate_tokens(text: str) -> int:
+    ascii_chars = sum(1 for c in text if ord(c) < 128)
+    cjk_chars = len(text) - ascii_chars
+    return (ascii_chars // 4) + (cjk_chars // 2)
+
+# 模型上下文窗口限制
+MODEL_LIMITS = {
+    "gpt-4o": 128_000,
+    "gpt-4o-mini": 128_000,
+    "gpt-3.5-turbo": 16_000,
+    "claude-3.5-sonnet": 200_000,
+    "deepseek-chat": 64_000,
+}
+
+def get_model_context_limit(model: str) -> int:
+    for key, limit in MODEL_LIMITS.items():
+        if key in model.lower():
+            return limit
+    return 16_000  # 默认 16K
+
+# 三级降级策略
+def build_prompt_with_fallback(
+    results: list,          # 检索结果 [(score, content), ...]
+    query: str,
+    history: list,          # 对话历史 [(role, content), ...]
+    model: str,
+) -> str:
+    model_limit = get_model_context_limit(model)
+    context_limit = int(model_limit * 0.7)  # 30% 留给 response
+    
+    # Level 0: 全量发送
+    context = "\n---\n".join([r[1] for r in results])
+    prompt = f"## 知识库内容\n{context}\n\n## 对话历史\n"
+    for role, content in history:
+        prompt += f"{role}: {content}\n"
+    prompt += f"\n## 问题\n{query}"
+    
+    if estimate_tokens(prompt) <= context_limit:
+        return prompt  # Level 0: 直接返回
+    
+    # Level 1: 裁剪上下文（移除低分 chunk）
+    sorted_results = sorted(results, key=lambda x: x[0], reverse=True)
+    trimmed_context = "\n---\n".join([r[1] for r in sorted_results[:5]])
+    prompt_l1 = f"## 知识库内容\n{trimmed_context}\n\n## 对话历史\n"
+    for role, content in history:
+        prompt_l1 += f"{role}: {content}\n"
+    prompt_l1 += f"\n## 问题\n{query}"
+    
+    if estimate_tokens(prompt_l1) <= context_limit:
+        return prompt_l1  # Level 1: 裁剪上下文
+    
+    # Level 2: 裁剪历史（只保留最近 2 条）
+    recent_history = history[-2:] if len(history) > 2 else history
+    prompt_l2 = f"## 知识库内容\n{trimmed_context}\n\n## 对话历史\n"
+    for role, content in recent_history:
+        prompt_l2 += f"{role}: {content}\n"
+    prompt_l2 += f"\n## 问题\n{query}"
+    
+    if estimate_tokens(prompt_l2) <= context_limit:
+        return prompt_l2  # Level 2: 裁剪历史
+    
+    # Level 3: 紧急模式（无历史，top-3 chunk，简化 prompt）
+    top3 = "\n".join([r[1] for r in sorted_results[:3]])
+    return f"基于以下信息回答：\n{top3}\n\n问题：{query}"
+
+# 使用示例
+prompt = build_prompt_with_fallback(
+    results=[(0.95, chunk1), (0.87, chunk2), ...],
+    query="如何配置渠道重试",
+    history=[("user", "之前问的"), ("assistant", "之前答的")],
+    model="gpt-4o",
+)</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Token 估算
+function estimateTokens(text: string): number {
+  const asciiChars = (text.match(/[\x00-\x7F]/g) || []).length;
+  const cjkChars = text.length - asciiChars;
+  return Math.floor(asciiChars / 4) + Math.floor(cjkChars / 2);
+}
+
+// 模型限制
+const MODEL_LIMITS: Record<string, number> = {
+  'gpt-4o': 128000,
+  'gpt-3.5-turbo': 16000,
+  'claude-3.5-sonnet': 200000,
+};
+
+function getModelLimit(model: string): number {
+  for (const [key, limit] of Object.entries(MODEL_LIMITS)) {
+    if (model.toLowerCase().includes(key)) return limit;
+  }
+  return 16000;
+}
+
+// 三级降级
+function buildPromptWithFallback(
+  results: [number, string][],
+  query: string,
+  history: [string, string][],
+  model: string,
+): string {
+  const contextLimit = Math.floor(getModelLimit(model) * 0.7);
+  const sorted = [...results].sort((a, b) => b[0] - a[0]);
+  
+  // Level 0
+  const fullContext = sorted.map(r => r[1]).join('\n---\n');
+  const fullPrompt = `## 知识库内容\n${fullContext}\n\n## 问题\n${query}`;
+  if (estimateTokens(fullPrompt) <= contextLimit) return fullPrompt;
+  
+  // Level 1: 裁剪上下文
+  const trimmed = sorted.slice(0, 5).map(r => r[1]).join('\n---\n');
+  const promptL1 = `## 知识库内容\n${trimmed}\n\n## 问题\n${query}`;
+  if (estimateTokens(promptL1) <= contextLimit) return promptL1;
+  
+  // Level 2: 裁剪历史
+  const recent = history.slice(-2);
+  const promptL2 = `## 知识库内容\n${trimmed}\n\n## 对话历史\n${recent.map(h => `${h[0]}: ${h[1]}`).join('\n')}\n\n## 问题\n${query}`;
+  if (estimateTokens(promptL2) <= contextLimit) return promptL2;
+  
+  // Level 3: 紧急模式
+  return `基于以下信息回答：\n${sorted.slice(0, 3).map(r => r[1]).join('\n')}\n\n问题：${query}`;
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "sort"
+    "strings"
+)
+
+// Token 估算
+func EstimateTokens(text string) int {
+    asciiCount := 0
+    for _, c := range text {
+        if c < 128 { asciiCount++ }
+    }
+    cjkCount := len(text) - asciiCount
+    return asciiCount/4 + cjkCount/2
+}
+
+// 三级降级
+func BuildPromptWithFallback(
+    results []SearchResult,
+    query string,
+    history []Conversation,
+    model string,
+) string {
+    contextLimit := int(float64(getModelLimit(model)) * 0.7)
+    
+    sort.Slice(results, func(i, j int) bool {
+        return results[i].Score > results[j].Score
+    })
+    
+    // Level 0: 全量
+    contexts := make([]string, len(results))
+    for i, r := range results { contexts[i] = r.Content }
+    prompt := strings.Join(contexts, "\n---\n") + "\n\n" + query
+    if EstimateTokens(prompt) <= contextLimit { return prompt }
+    
+    // Level 1: 裁剪上下文 top-5
+    top5 := make([]string, 0, 5)
+    for i := 0; i < 5 && i < len(results); i++ { top5 = append(top5, results[i].Content) }
+    prompt = strings.Join(top5, "\n---\n") + "\n\n" + query
+    if EstimateTokens(prompt) <= contextLimit { return prompt }
+    
+    // Level 2: 裁剪历史
+    // Level 3: 紧急模式
+    top3 := make([]string, 0, 3)
+    for i := 0; i < 3 && i < len(results); i++ { top3 = append(top3, results[i].Content) }
+    return "基于以下信息回答：\n" + strings.Join(top3, "\n") + "\n\n问题：" + query
+}
+
+func getModelLimit(model string) int {
+    // 返回模型上下文窗口大小
+    return 128000 // 默认
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public class TokenBudget {
+    // Token 估算
+    public static int estimateTokens(String text) {
+        int ascii = 0;
+        for (char c : text.toCharArray()) if (c < 128) ascii++;
+        int cjk = text.length() - ascii;
+        return ascii / 4 + cjk / 2;
+    }
+    
+    // 三级降级
+    public static String buildPromptWithFallback(
+        List<SearchResult> results, String query,
+        List<Conversation> history, String model) {
+        
+        int contextLimit = (int)(getModelLimit(model) * 0.7);
+        results.sort((a, b) -> Double.compare(b.score, a.score));
+        
+        // Level 0
+        String fullContext = results.stream()
+            .map(r -> r.content)
+            .reduce((a, b) -> a + "\n---\n" + b)
+            .orElse("");
+        String prompt = fullContext + "\n\n" + query;
+        if (estimateTokens(prompt) <= contextLimit) return prompt;
+        
+        // Level 1: top-5
+        String top5 = results.stream().limit(5)
+            .map(r -> r.content)
+            .reduce((a, b) -> a + "\n---\n" + b)
+            .orElse("");
+        prompt = top5 + "\n\n" + query;
+        if (estimateTokens(prompt) <= contextLimit) return prompt;
+        
+        // Level 3: 紧急模式
+        String top3 = results.stream().limit(3)
+            .map(r -> r.content)
+            .reduce((a, b) -> a + "\n" + b)
+            .orElse("");
+        return "基于以下信息回答：\n" + top3 + "\n\n问题：" + query;
+    }
+    
+    private static int getModelLimit(String model) {
+        if (model.contains("gpt-4o")) return 128000;
+        if (model.contains("claude")) return 200000;
+        return 16000;
+    }
+}</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📊 模型上下文窗口映射表</div>
+  <div style="font-size: 13px; color: var(--color-text-secondary);">
+    <code>GPT-4o</code> = 128K &nbsp;|&nbsp; <code>Claude 3.5 Sonnet</code> = 200K &nbsp;|&nbsp; <code>GPT-3.5</code> = 16K &nbsp;|&nbsp; <code>DeepSeek</code> = 64K<br>
+    context_limit = model_limit × 0.7（30% 留给 Response）
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔥 面试视角：降级不是截断</div>
+  <p style="font-size: 13px;">
+    降级策略的核心不是"粗暴截断"，而是<strong>优先级裁剪</strong>：<br>
+    ① 先裁低分 chunk（保高分的）→ ② 再裁老历史（保最近的）→ ③ 最后才紧急模式<br><br>
+    <strong>面试要点</strong>：降级不是"截断"，而是"优先级裁剪"——保高分 chunk、保最近历史。
+  </p>
+</div>
+
+<!-- ===== 20.12 从零构建 RAG ===== -->
+<h2 class="section-heading" id="zero-dependency-rag">20.12 从零构建 RAG：不依赖外部向量数据库</h2>
+
+<p>大多数 RAG 教程第一步就是 <code>pip install chromadb</code> 或注册 Pinecone。但生产中很多场景不想引入新依赖——桌面应用、私有部署、小团队工具。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：引入向量数据库的代价</div>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8;">
+    <li><strong>部署复杂度</strong>：Milvus 需要 etcd + MinIO + S3，Qdrant 需要 Docker，Pinecone 需要云账号</li>
+    <li><strong>运维成本</strong>：多一个组件就多一个故障点、多一个监控指标</li>
+    <li><strong>桌面应用不现实</strong>：你不可能让用户装一个 Milvus 来运行你的桌面 App</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading">20.12.1 嵌入式方案：SQLite 三件套</h3>
+
+<p>WaLiAPI 的做法：<strong>SQLite 存数据 + BLOB 存向量 + 手写 HNSW + FTS5 全文索引</strong>，一个 <code>.db</code> 文件搞定。</p>
+
+<div class="flowchart-container" id="zero-dep-arch"></div>
+<script>
+(function() {
+  const container = document.getElementById('zero-dep-arch');
+  if (!container) return;
+  container.innerHTML = `
+  <svg viewBox="0 0 700 320" style="width:100%;height:320px;">
+    <!-- SQLite DB -->
+    <rect x="50" y="20" width="600" height="280" rx="12" fill="#F8F9FA" stroke="#4A90D9" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="350" y="45" text-anchor="middle" font-size="14" fill="#4A90D9" font-weight="bold">一个 SQLite .db 文件</text>
+    
+    <!-- Six tables -->
+    <rect x="80" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="150" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_knowledge_bases</text>
+    <text x="150" y="100" text-anchor="middle" font-size="9" fill="#888">知识库元数据</text>
+    
+    <rect x="240" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="310" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_documents</text>
+    <text x="310" y="100" text-anchor="middle" font-size="9" fill="#888">文档记录 + content_hash</text>
+    
+    <rect x="400" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="470" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_chunks</text>
+    <text x="470" y="100" text-anchor="middle" font-size="9" fill="#888">分块 + BLOB 向量</text>
+    
+    <rect x="80" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="150" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_tasks</text>
+    <text x="150" y="160" text-anchor="middle" font-size="9" fill="#888">异步处理任务</text>
+    
+    <rect x="240" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="310" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_conversations</text>
+    <text x="310" y="160" text-anchor="middle" font-size="9" fill="#888">对话历史</text>
+    
+    <rect x="400" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
+    <text x="470" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_sources</text>
+    <text x="470" y="160" text-anchor="middle" font-size="9" fill="#888">来源导入记录</text>
+    
+    <!-- HNSW Index File -->
+    <rect x="80" y="190" width="220" height="50" rx="6" fill="#FFF3E0" stroke="#FF9800"/>
+    <text x="190" y="210" text-anchor="middle" font-size="11" fill="#E65100">HNSW 索引文件 (.bin)</text>
+    <text x="190" y="225" text-anchor="middle" font-size="9" fill="#888">bincode 序列化，内存映射加载</text>
+    
+    <!-- FTS5 Virtual Table -->
+    <rect x="320" y="190" width="220" height="50" rx="6" fill="#FFF3E0" stroke="#FF9800"/>
+    <text x="430" y="210" text-anchor="middle" font-size="11" fill="#E65100">FTS5 虚拟表 (全文索引)</text>
+    <text x="430" y="225" text-anchor="middle" font-size="9" fill="#888">SQLite 内置，BM25 排序</text>
+    
+    <!-- Embedding Channel -->
+    <rect x="180" y="255" width="340" height="35" rx="6" fill="#F3E5F5" stroke="#9C27B0"/>
+    <text x="350" y="277" text-anchor="middle" font-size="11" fill="#7B1FA2">Embedding 渠道复用（已有 LLM 网关的渠道调度）</text>
+  </svg>`;
+})();
+</script>
+
+<h3 class="sub-heading">20.12.2 Embedding 渠道复用</h3>
+
+<p>如果你已经有一个 LLM API 网关（如 WaLiAPI），它已经有完善的渠道调度、重试、多渠道 fallback。<strong>为什么不直接复用？</strong></p>
+
+<div class="card">
+  <div class="card-title">🔧 复用网关的 Embedding 调度</div>
+  <p style="font-size: 13px;">
+    <strong>不需要额外配置 API Key</strong>，直接复用用户已有的渠道设置：<br>
+    1. 获取启用的渠道列表 → 2. 选择支持 embedding 模型的渠道 → 3. 逐个尝试，失败自动 fallback<br><br>
+    这意味着：<strong>零额外 API Key、零额外配置、零额外服务</strong>。用户只要配好 LLM 渠道，知识库就能自动复用。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.12.3 对比：外部向量数据库 vs 嵌入式方案</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">维度</th>
+        <th style="text-align: left; padding: 12px 8px;">外部向量数据库<br>(Milvus/Qdrant/Pinecone)</th>
+        <th style="text-align: left; padding: 12px 8px;">嵌入式方案<br>(SQLite + BLOB + HNSW + FTS5)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>依赖</strong></td><td>独立服务 + Docker</td><td>零外部依赖，一个 .db 文件</td></tr>
+      <tr><td><strong>部署</strong></td><td>需部署 Milvus/Qdrant 服务</td><td>无需额外部署</td></tr>
+      <tr><td><strong>运维</strong></td><td>独立监控、备份、扩容</td><td>随主应用一起备份</td></tr>
+      <tr><td><strong>适合规模</strong></td><td>百万-亿级向量</td><td>万-百万级向量</td></tr>
+      <tr><td><strong>成本</strong></td><td>服务器/云费用</td><td>零额外成本</td></tr>
+      <tr><td><strong>适合场景</strong></td><td>大规模企业检索</td><td>桌面应用、小团队、私有部署</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">20.12.4 代码实现：SQLite BLOB 存向量</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import sqlite3
+import struct
+import numpy as np
+
+# 将向量编码为 BLOB（二进制存储，比 JSON 省 75% 空间）
+def encode_embedding(embedding: list[float]) -> bytes:
+    return struct.pack(f'{len(embedding)}f', *embedding)
+
+# 从 BLOB 解码向量
+def decode_embedding(blob: bytes, dim: int) -> np.ndarray:
+    return np.array(struct.unpack(f'{dim}f', blob), dtype=np.float32)
+
+# 存储向量到 SQLite
+conn = sqlite3.connect("knowledge.db")
+cur = conn.cursor()
+
+# 创建带 BLOB 向量列的表
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS kb_chunks (
+        id TEXT PRIMARY KEY,
+        content TEXT NOT NULL,
+        embedding BLOB,           -- 向量二进制存储
+        embedding_dim INTEGER,    -- 向量维度
+        metadata TEXT DEFAULT '{}'
+    )
+""")
+
+# 插入一个 chunk（向量存为 BLOB）
+embedding = [0.1, 0.2, 0.3, ...]  # 1536 维
+cur.execute(
+    "INSERT INTO kb_chunks (id, content, embedding, embedding_dim) VALUES (?, ?, ?, ?)",
+    ("chunk_001", "函数内容...", encode_embedding(embedding), len(embedding))
+)
+conn.commit()
+
+# 线性搜索（无索引时的 fallback）
+def vector_search(query_embedding: list[float], top_k: int = 5) -> list:
+    chunks = cur.execute("SELECT id, content, embedding, embedding_dim FROM kb_chunks").fetchall()
+    results = []
+    for chunk_id, content, blob, dim in chunks:
+        if dim != len(query_embedding):
+            continue
+        emb = decode_embedding(blob, dim)
+        score = np.dot(query_embedding, emb) / (
+            np.linalg.norm(query_embedding) * np.linalg.norm(emb)
+        )
+        results.append((chunk_id, content, float(score)))
+    results.sort(key=lambda x: x[2], reverse=True)
+    return results[:top_k]
+
+# FTS5 全文搜索
+cur.execute("""
+    CREATE VIRTUAL TABLE IF NOT EXISTS kb_chunks_fts 
+    USING fts5(chunk_id, content, symbol_name)
+""")
+
+def fts5_search(query: str, top_k: int = 5) -> list:
+    results = cur.execute(
+        "SELECT chunk_id, content, bm25(kb_chunks_fts) as rank "
+        "FROM kb_chunks_fts WHERE kb_chunks_fts MATCH ? ORDER BY rank LIMIT ?",
+        (query, top_k)
+    ).fetchall()
+    return results
+
+# 混合检索：向量 0.7 + FTS5 0.3
+def hybrid_search(query: str, query_embedding: list[float], top_k: int = 5) -> list:
+    vec_results = {r[0]: r[2] * 0.7 for r in vector_search(query_embedding, top_k * 2)}
+    fts_results = {r[0]: abs(r[2]) * 0.3 for r in fts5_search(query, top_k * 2)}
+    merged = {}
+    for chunk_id, score in vec_results.items():
+        merged[chunk_id] = merged.get(chunk_id, 0) + score
+    for chunk_id, score in fts_results.items():
+        merged[chunk_id] = merged.get(chunk_id, 0) + score
+    return sorted(merged.items(), key=lambda x: x[1], reverse=True)[:top_k]</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import Database from 'better-sqlite3';
+
+const db = new Database('knowledge.db');
+
+// 向量编码/解码（Float32Array ↔ Buffer）
+function encodeEmbedding(emb: number[]): Buffer {
+  const arr = new Float32Array(emb);
+  return Buffer.from(arr.buffer);
+}
+
+function decodeEmbedding(buf: Buffer, dim: number): number[] {
+  return Array.from(new Float32Array(buf.buffer, buf.byteOffset, dim));
+}
+
+// 创建表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS kb_chunks (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    embedding BLOB,
+    embedding_dim INTEGER,
+    metadata TEXT DEFAULT '{}'
+  )
+`);
+
+// 插入 chunk
+const insert = db.prepare(
+  'INSERT INTO kb_chunks (id, content, embedding, embedding_dim) VALUES (?, ?, ?, ?)'
+);
+insert.run('chunk_001', '函数内容...', encodeEmbedding([0.1, 0.2, ...]), 1536);
+
+// 线性搜索
+function vectorSearch(queryEmb: number[], topK = 5) {
+  const chunks = db.prepare(
+    'SELECT id, content, embedding, embedding_dim FROM kb_chunks'
+  ).all() as any[];
+  
+  const results = chunks
+    .filter(c => c.embedding_dim === queryEmb.length)
+    .map(c => {
+      const emb = decodeEmbedding(c.embedding, c.embedding_dim);
+      const dot = queryEmb.reduce((s, v, i) => s + v * emb[i], 0);
+      const norm = Math.sqrt(queryEmb.reduce((s, v) => s + v * v, 0)) *
+                   Math.sqrt(emb.reduce((s, v) => s + v * v, 0));
+      return { id: c.id, content: c.content, score: dot / norm };
+    })
+    .sort((a, b) => b.score - a.score);
+  return results.slice(0, topK);
+}
+
+// FTS5 搜索
+db.exec(`
+  CREATE VIRTUAL TABLE IF NOT EXISTS kb_chunks_fts
+  USING fts5(chunk_id, content, symbol_name)
+`);
+
+function fts5Search(query: string, topK = 5) {
+  return db.prepare(
+    'SELECT chunk_id, content, bm25(kb_chunks_fts) as rank ' +
+    'FROM kb_chunks_fts WHERE kb_chunks_fts MATCH ? ORDER BY rank LIMIT ?'
+  ).all(query, topK);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+import (
+    "database/sql"
+    "encoding/binary"
+    "math"
+    _ "github.com/mattn/go-sqlite3"
+)
+
+// 向量编码
+func encodeEmbedding(emb []float32) []byte {
+    buf := make([]byte, len(emb)*4)
+    for i, v := range emb {
+        binary.LittleEndian.PutUint32(buf[i*4:], math.Float32bits(v))
+    }
+    return buf
+}
+
+// 向量解码
+func decodeEmbedding(blob []byte, dim int) []float32 {
+    emb := make([]float32, dim)
+    for i := 0; i < dim; i++ {
+        emb[i] = math.Float32frombits(binary.LittleEndian.Uint32(blob[i*4:]))
+    }
+    return emb
+}
+
+// 余弦相似度
+func cosineSim(a, b []float32) float32 {
+    dot, normA, normB := float32(0), float32(0), float32(0)
+    for i := range a {
+        dot += a[i] * b[i]
+        normA += a[i] * a[i]
+        normB += b[i] * b[i]
+    }
+    return dot / (float32(math.Sqrt(float64(normA))) * float32(math.Sqrt(float64(normB))))
+}
+
+// 线性搜索
+func vectorSearch(db *sql.DB, queryEmb []float32, topK int) []SearchResult {
+    rows, _ := db.Query("SELECT id, content, embedding, embedding_dim FROM kb_chunks")
+    defer rows.Close()
+    
+    var results []SearchResult
+    for rows.Next() {
+        var id, content string
+        var blob []byte
+        var dim int
+        rows.Scan(&id, &content, &blob, &dim)
+        if dim != len(queryEmb) { continue }
+        emb := decodeEmbedding(blob, dim)
+        results = append(results, SearchResult{
+            ID: id, Content: content, Score: cosineSim(queryEmb, emb),
+        })
+    }
+    // 排序取 Top-K
+    return results
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.sql.*;
+import java.nio.ByteBuffer;
+import java.util.*;
+
+public class SQLiteVectorStore {
+    private Connection conn;
+    
+    // 向量编码
+    public static byte[] encodeEmbedding(float[] emb) {
+        ByteBuffer buf = ByteBuffer.allocate(emb.length * 4);
+        for (float v : emb) buf.putFloat(v);
+        return buf.array();
+    }
+    
+    // 向量解码
+    public static float[] decodeEmbedding(byte[] blob, int dim) {
+        ByteBuffer buf = ByteBuffer.wrap(blob);
+        float[] emb = new float[dim];
+        for (int i = 0; i < dim; i++) emb[i] = buf.getFloat();
+        return emb;
+    }
+    
+    // 余弦相似度
+    public static double cosineSim(float[] a, float[] b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+    
+    // 线性搜索
+    public List<SearchResult> vectorSearch(float[] queryEmb, int topK) throws SQLException {
+        var stmt = conn.prepareStatement(
+            "SELECT id, content, embedding, embedding_dim FROM kb_chunks");
+        var rs = stmt.executeQuery();
+        List<SearchResult> results = new ArrayList<>();
+        while (rs.next()) {
+            int dim = rs.getInt("embedding_dim");
+            if (dim != queryEmb.length) continue;
+            float[] emb = decodeEmbedding(rs.getBytes("embedding"), dim);
+            results.add(new SearchResult(
+                rs.getString("id"), rs.getString("content"),
+                cosineSim(queryEmb, emb)));
+        }
+        results.sort((a, b) -> Double.compare(b.score, a.score));
+        return results.subList(0, Math.min(topK, results.size()));
+    }
+}</pre></div>
+</div>
+
+<!-- ===== 20.13 MCP + RAG ===== -->
+<h2 class="section-heading" id="mcp-rag">20.13 MCP + RAG：让任何 AI Agent 使用你的知识库</h2>
+
+<p>知识库建好了，但问题来了：<strong>Claude Desktop 用不了、Cursor 用不了、Copilot 用不了</strong>——每个 AI 工具各自为战，知识库成了孤岛。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：知识库孤岛</div>
+  <p style="font-size: 13px;">
+    你花了一周建好知识库，上传了所有项目文档，RAG 问答也跑通了。然后：<br>
+    • 用 Claude Desktop？连不上你的知识库。<br>
+    • 用 Cursor？得自己写插件。<br>
+    • 用 Copilot？没有知识库接口。<br>
+    • 自研 Agent？从头对接一遍。<br><br>
+    每个工具都要单独对接，<strong>N 个工具 = N 套对接代码</strong>。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.13.1 MCP 是什么？</h3>
+
+<p><strong>MCP（Model Context Protocol）</strong> 是 Anthropic 推出的开放协议，标准化 AI 模型与外部工具的交互方式。你可以理解为：<strong>USB-C 接口之于充电器，MCP 之于 AI 工具</strong>。</p>
+
+<div class="flowchart-container" id="mcp-arch"></div>
+<script>
+(function() {
+  const container = document.getElementById('mcp-arch');
+  if (!container) return;
+  container.innerHTML = `
+  <svg viewBox="0 0 700 280" style="width:100%;height:280px;">
+    <!-- Knowledge Base -->
+    <rect x="250" y="10" width="200" height="50" rx="8" fill="#E3F2FD" stroke="#4A90D9" stroke-width="2"/>
+    <text x="350" y="40" text-anchor="middle" font-size="13" fill="#1565C0" font-weight="bold">知识库 (RAG)</text>
+    
+    <!-- MCP Server -->
+    <rect x="200" y="90" width="300" height="60" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+    <text x="350" y="115" text-anchor="middle" font-size="13" fill="#E65100" font-weight="bold">MCP Server (JSON-RPC + SSE)</text>
+    <text x="350" y="135" text-anchor="middle" font-size="10" fill="#888">13 个工具: search / ask / build_index / ...</text>
+    
+    <!-- Connection lines -->
+    <line x1="350" y1="60" x2="350" y2="90" stroke="#999" stroke-width="1.5"/>
+    
+    <!-- Agents -->
+    <rect x="30" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+    <text x="95" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Claude Desktop</text>
+    
+    <rect x="180" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+    <text x="245" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Cursor</text>
+    
+    <rect x="330" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+    <text x="395" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Copilot</text>
+    
+    <rect x="480" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+    <text x="545" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">自研 Agent</text>
+    
+    <!-- Connection lines -->
+    <line x1="95" y1="190" x2="250" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="245" y1="190" x2="300" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="395" y1="190" x2="400" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="545" y1="190" x2="450" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+    
+    <text x="350" y="265" text-anchor="middle" font-size="11" fill="#666">一个知识库，同时服务所有 AI Agent</text>
+  </svg>`;
+})();
+</script>
+
+<h3 class="sub-heading">20.13.2 暴露 13 个 MCP 工具</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">分类</th>
+        <th style="text-align: left; padding: 12px 8px;">工具名</th>
+        <th style="text-align: left; padding: 12px 8px;">说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td rowspan="3"><strong>检索问答</strong></td><td><code>search</code></td><td>语义搜索知识库</td></tr>
+      <tr><td><code>ask</code></td><td>RAG 问答（检索 + 生成）</td></tr>
+      <tr><td><code>list_knowledge_bases</code></td><td>列出所有知识库</td></tr>
+      <tr><td rowspan="4"><strong>文档管理</strong></td><td><code>read_document</code></td><td>读取文档内容</td></tr>
+      <tr><td><code>upload_document</code></td><td>上传文档</td></tr>
+      <tr><td><code>delete_document</code></td><td>删除文档</td></tr>
+      <tr><td><code>list_documents</code></td><td>列出知识库的文档</td></tr>
+      <tr><td rowspan="5"><strong>知识库管理</strong></td><td><code>create_kb</code></td><td>创建知识库</td></tr>
+      <tr><td><code>update_kb</code></td><td>更新知识库配置</td></tr>
+      <tr><td><code>delete_kb</code></td><td>删除知识库</td></tr>
+      <tr><td><code>get_kb_stats</code></td><td>获取知识库统计</td></tr>
+      <tr><td><code>build_index</code></td><td>构建 HNSW 索引</td></tr>
+      <tr><td><strong>来源导入</strong></td><td><code>import_source</code></td><td>从 Git/URL/本地目录导入</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">20.13.3 instructions 注入</h3>
+
+<p>Agent 首次连接 MCP Server 时，自动注入系统提示，引导 Agent 优先使用 <code>ask</code> / <code>search</code>：</p>
+
+<div class="card">
+  <div class="card-title">📝 instructions 示例</div>
+  <pre style="font-size: 12px; background: var(--color-bg-secondary); padding: 12px; border-radius: 8px; overflow-x: auto;">
+你已连接到知识库 MCP 服务。
+
+**优先使用以下工具：**
+- ask: 直接提问，系统会自动检索+生成回答
+- search: 语义搜索知识库内容
+
+**反模式提醒：**
+- ❌ 不要用 read_document 读取整个文档再自己分析
+- ❌ 不要用 list_documents 遍历所有文档
+- ✅ 直接用 ask 提问，让系统检索最相关内容
+
+**支持的文件格式：** md, txt, pdf, docx, code (rs/py/ts/js/go/java)</pre>
+</div>
+
+<h3 class="sub-heading">20.13.4 代码实现：MCP 工具定义</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre># MCP 工具定义（JSON-RPC 2.0 格式）
+MCP_TOOLS = [
+    {
+        "name": "search",
+        "description": "语义搜索知识库，返回最相关的文档片段",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "搜索查询"},
+                "kb_id": {"type": "string", "description": "知识库 ID（可选，不填则搜索所有）"},
+                "top_k": {"type": "integer", "default": 5},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "ask",
+        "description": "基于知识库内容回答问题（RAG 问答）",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string", "description": "问题"},
+                "kb_id": {"type": "string"},
+                "model": {"type": "string", "default": "gpt-4o"},
+                "history": {"type": "array", "items": {"type": "object"}},
+            },
+            "required": ["question"],
+        },
+    },
+    {
+        "name": "build_index",
+        "description": "为知识库构建 HNSW 向量索引",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "kb_id": {"type": "string", "description": "知识库 ID"},
+            },
+            "required": ["kb_id"],
+        },
+    },
+    # ... 共 13 个工具
+]
+
+# 处理 MCP 请求
+async def handle_mcp_request(method: str, params: dict) -> dict:
+    if method == "tools/call":
+        tool_name = params["name"]
+        arguments = params["arguments"]
+        
+        if tool_name == "search":
+            results = await retriever.search_all(
+                pool, await embed([arguments["query"]]),
+                arguments.get("top_k", 5), mcp_only=True
+            )
+            return {"content": [{"type": "text", "text": json.dumps(results)}]}
+        
+        elif tool_name == "ask":
+            answer = await rag.ask(
+                pool, arguments.get("kb_id", ""),
+                arguments["question"],
+                embedding_model, arguments.get("model", "gpt-4o"),
+                top_k=5, mcp_only=True,
+                history=arguments.get("history", []),
+            )
+            return {"content": [{"type": "text", "text": answer.answer}]}
+        
+        elif tool_name == "build_index":
+            await retriever.build_index(pool, arguments["kb_id"], progress_cb)
+            return {"content": [{"type": "text", "text": "索引构建完成"}]}
+    
+    elif method == "tools/list":
+        return {"tools": MCP_TOOLS}</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// MCP 工具定义
+const MCP_TOOLS = [
+  {
+    name: 'search',
+    description: '语义搜索知识库',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '搜索查询' },
+        kb_id: { type: 'string', description: '知识库 ID（可选）' },
+        top_k: { type: 'integer', default: 5 },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'ask',
+    description: '基于知识库内容回答问题（RAG 问答）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string' },
+        kb_id: { type: 'string' },
+        model: { type: 'string', default: 'gpt-4o' },
+      },
+      required: ['question'],
+    },
+  },
+  // ... 共 13 个工具
+];
+
+// 处理 MCP 请求
+async function handleMcpRequest(method: string, params: any): Promise<any> {
+  if (method === 'tools/list') return { tools: MCP_TOOLS };
+  if (method === 'tools/call') {
+    const { name, arguments: args } = params;
+    switch (name) {
+      case 'search':
+        const results = await searchAll(args.query, args.top_k || 5);
+        return { content: [{ type: 'text', text: JSON.stringify(results) }] };
+      case 'ask':
+        const answer = await ragAsk(args.question, args.model || 'gpt-4o');
+        return { content: [{ type: 'text', text: answer }] };
+      case 'build_index':
+        await buildIndex(args.kb_id);
+        return { content: [{ type: 'text', text: '索引构建完成' }] };
+    }
+  }
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+// MCP 工具定义
+var MCPTools = []McpTool{
+    {Name: "search", Description: "语义搜索知识库",
+        InputSchema: `{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`},
+    {Name: "ask", Description: "RAG 问答",
+        InputSchema: `{"type":"object","properties":{"question":{"type":"string"}},"required":["question"]}`},
+    {Name: "build_index", Description: "构建 HNSW 索引",
+        InputSchema: `{"type":"object","properties":{"kb_id":{"type":"string"}},"required":["kb_id"]}`},
+    // ... 共 13 个工具
+}
+
+// 处理 MCP 请求
+func handleMcpRequest(method string, params map[string]interface{}) interface{} {
+    switch method {
+    case "tools/list":
+        return map[string]interface{}{"tools": MCPTools}
+    case "tools/call":
+        toolName := params["name"].(string)
+        args := params["arguments"].(map[string]interface{})
+        switch toolName {
+        case "search":
+            results := searchAll(args["query"].(string))
+            return map[string]interface{}{"content": results}
+        case "ask":
+            answer := ragAsk(args["question"].(string))
+            return map[string]interface{}{"content": answer}
+        }
+    }
+    return nil
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import com.fasterxml.jackson.databind.*;
+import java.util.*;
+
+// MCP 工具定义
+List<Map<String, Object>> mcpTools = List.of(
+    Map.of(
+        "name", "search",
+        "description", "语义搜索知识库",
+        "inputSchema", Map.of(
+            "type", "object",
+            "properties", Map.of("query", Map.of("type", "string")),
+            "required", List.of("query")
+        )
+    ),
+    Map.of(
+        "name", "ask",
+        "description", "RAG 问答",
+        "inputSchema", Map.of(
+            "type", "object",
+            "properties", Map.of("question", Map.of("type", "string")),
+            "required", List.of("question")
+        )
+    )
+    // ... 共 13 个工具
+);
+
+// 处理 MCP 请求
+Map<String, Object> handleMcpRequest(String method, Map<String, Object> params) {
+    if ("tools/list".equals(method)) {
+        return Map.of("tools", mcpTools);
+    }
+    if ("tools/call".equals(method)) {
+        String toolName = (String) params.get("name");
+        Map<String, Object> args = (Map<String, Object>) params.get("arguments");
+        switch (toolName) {
+            case "search":
+                return Map.of("content", searchAll((String) args.get("query")));
+            case "ask":
+                return Map.of("content", ragAsk((String) args.get("question")));
+        }
+    }
+    return Map.of();
+}</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔥 面试视角：MCP 解决了什么问题？</div>
+  <p style="font-size: 13px;">
+    <strong>MCP 解决的是"工具调用标准化"问题</strong>。没有 MCP，每个 AI 工具都要单独对接知识库；有了 MCP，知识库只需要实现一次 MCP 协议，所有支持 MCP 的 Agent 都能直接使用。<br>
+    <strong>RAG + MCP = 知识库即服务</strong>——一个知识库，同时服务 Claude Desktop、Cursor、Copilot 和自研 Agent。
+  </p>
+</div>
+
+<!-- ===== 20.14 Deep Research ===== -->
+<h2 class="section-heading" id="deep-research">20.14 Deep Research：多轮迭代检索-分析-综合</h2>
+
+<p>Agentic RAG 解决了"检索结果够不够"的问题，但面对<strong>研究性问题</strong>——"分析我们系统所有模块的技术选型和设计权衡"——单轮检索+反思还是不够。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-danger);">
+  <div class="card-title">⚠️ 痛点：复杂研究性问题</div>
+  <p style="font-size: 13px;">
+    用户问"<code>分析我们系统所有模块的技术选型和设计权衡</code>"，这需要：<br>
+    • 第 1 轮：检索架构概览<br>
+    • 第 2 轮：检索每个模块的技术选型<br>
+    • 第 3 轮：检索每个模块的设计权衡<br>
+    • 第 4 轮：检索已知问题和改进方向<br>
+    • 最后：综合所有发现，生成研究报告<br><br>
+    Agentic RAG 的反思循环最多 3 轮，且侧重"信息够不够"而非"信息全不全"。
+  </p>
+</div>
+
+<h3 class="sub-heading">20.14.1 Deep Research 流程</h3>
+
+<div class="flowchart-container" id="deep-research-flowchart"></div>
+<script>
+(function() {
+  const container = document.getElementById('deep-research-flowchart');
+  if (!container) return;
+  container.innerHTML = `
+  <svg viewBox="0 0 700 400" style="width:100%;height:400px;">
+    <!-- Question -->
+    <rect x="250" y="10" width="200" height="40" rx="8" fill="#E3F2FD" stroke="#4A90D9" stroke-width="2"/>
+    <text x="350" y="35" text-anchor="middle" font-size="12" fill="#1565C0" font-weight="bold">用户问题</text>
+    
+    <!-- Round 1 -->
+    <rect x="50" y="80" width="180" height="80" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+    <text x="140" y="105" text-anchor="middle" font-size="11" fill="#E65100" font-weight="bold">第 1 轮检索</text>
+    <text x="140" y="125" text-anchor="middle" font-size="10" fill="#888">检索架构概览</text>
+    <text x="140" y="140" text-anchor="middle" font-size="10" fill="#888">检索模块列表</text>
+    
+    <!-- Analyze 1 -->
+    <rect x="260" y="80" width="180" height="80" rx="8" fill="#F3E5F5" stroke="#9C27B0" stroke-width="1.5"/>
+    <text x="350" y="105" text-anchor="middle" font-size="11" fill="#7B1FA2" font-weight="bold">分析发现</text>
+    <text x="350" y="125" text-anchor="middle" font-size="10" fill="#888">识别 6 个模块</text>
+    <text x="350" y="140" text-anchor="middle" font-size="10" fill="#888">每个模块需深入</text>
+    
+    <!-- Follow-up 1 -->
+    <rect x="470" y="80" width="180" height="80" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+    <text x="560" y="105" text-anchor="middle" font-size="11" fill="#2E7D32" font-weight="bold">生成追问</text>
+    <text x="560" y="125" text-anchor="middle" font-size="10" fill="#888">"模块A的技术选型?"</text>
+    <text x="560" y="140" text-anchor="middle" font-size="10" fill="#888">"模块B的设计权衡?"</text>
+    
+    <!-- Arrows round 1 -->
+    <line x1="230" y1="120" x2="260" y2="120" stroke="#999" marker-end="url(#arr2)"/>
+    <line x1="440" y1="120" x2="470" y2="120" stroke="#999" marker-end="url(#arr2)"/>
+    
+    <!-- Round 2 -->
+    <rect x="50" y="190" width="180" height="80" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+    <text x="140" y="215" text-anchor="middle" font-size="11" fill="#E65100" font-weight="bold">第 2 轮检索</text>
+    <text x="140" y="235" text-anchor="middle" font-size="10" fill="#888">检索每个模块详情</text>
+    <text x="140" y="250" text-anchor="middle" font-size="10" fill="#888">检索技术选型理由</text>
+    
+    <!-- Analyze 2 -->
+    <rect x="260" y="190" width="180" height="80" rx="8" fill="#F3E5F5" stroke="#9C27B0" stroke-width="1.5"/>
+    <text x="350" y="215" text-anchor="middle" font-size="11" fill="#7B1FA2" font-weight="bold">分析发现</text>
+    <text x="350" y="235" text-anchor="middle" font-size="10" fill="#888">发现 3 个设计权衡</text>
+    <text x="350" y="250" text-anchor="middle" font-size="10" fill="#888">还有改进方向未覆盖</text>
+    
+    <!-- Follow-up 2 -->
+    <rect x="470" y="190" width="180" height="80" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+    <text x="560" y="215" text-anchor="middle" font-size="11" fill="#2E7D32" font-weight="bold">生成追问</text>
+    <text x="560" y="235" text-anchor="middle" font-size="10" fill="#888">"已知问题?"</text>
+    <text x="560" y="250" text-anchor="middle" font-size="10" fill="#888">"改进方向?"</text>
+    
+    <!-- Arrows round 2 -->
+    <line x1="230" y1="230" x2="260" y2="230" stroke="#999" marker-end="url(#arr2)"/>
+    <line x1="440" y1="230" x2="470" y2="230" stroke="#999" marker-end="url(#arr2)"/>
+    <line x1="560" y1="170" x2="560" y2="190" stroke="#ccc" stroke-dasharray="3,3"/>
+    
+    <!-- Round 3 + Final -->
+    <rect x="50" y="300" width="180" height="50" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+    <text x="140" y="330" text-anchor="middle" font-size="11" fill="#E65100">第 N 轮检索</text>
+    
+    <rect x="260" y="300" width="380" height="50" rx="8" fill="#FFEBEE" stroke="#F44336" stroke-width="2"/>
+    <text x="450" y="330" text-anchor="middle" font-size="13" fill="#C62828" font-weight="bold">综合报告：技术选型 + 设计权衡 + 改进方向</text>
+    
+    <line x1="230" y1="325" x2="260" y2="325" stroke="#999" marker-end="url(#arr2)"/>
+    
+    <defs>
+      <marker id="arr2" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3" fill="#999"/>
+      </marker>
+    </defs>
+  </svg>`;
+})();
+</script>
+
+<h3 class="sub-heading">20.14.2 Deep Research vs Agentic RAG</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; padding: 12px 8px;">维度</th>
+        <th style="text-align: left; padding: 12px 8px;">Agentic RAG</th>
+        <th style="text-align: left; padding: 12px 8px;">Deep Research</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>核心循环</strong></td><td>检索 → 反思 → 再检索</td><td>检索 → 分析 → 追问 → 再检索 → 综合</td></tr>
+      <tr><td><strong>侧重</strong></td><td>信息够不够</td><td>信息全不全</td></tr>
+      <tr><td><strong>思维模式</strong></td><td>答题思维</td><td>调研思维</td></tr>
+      <tr><td><strong>输出</strong></td><td>简短回答</td><td>综合报告</td></tr>
+      <tr><td><strong>典型场景</strong></td><td>"限流策略和降级策略分别是什么？"</td><td>"分析所有模块的技术选型和设计权衡"</td></tr>
+      <tr><td><strong>迭代次数</strong></td><td>通常 ≤ 3 轮</td><td>通常 3-10 轮</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">20.14.3 代码实现：Deep Research 核心循环</h3>
+
+<div class="code-block" data-multi-lang>
+<div class="code-lang-pane" data-lang="python" data-label="Python"><pre>async def deep_research(
+    question: str,
+    kb_id: str,
+    max_rounds: int = 5,
+) -> str:
+    """多轮迭代检索-分析-综合"""
+    all_findings = []      # 所有发现
+    all_sources = []       # 所有引用来源
+    
+    current_query = question
+    
+    for round_num in range(max_rounds):
+        # 1. 检索
+        results = await hybrid_search(current_query, kb_id, top_k=10)
+        if not results:
+            break
+        
+        all_sources.extend(results)
+        
+        # 2. 分析：LLM 分析当前检索结果，提取发现 + 生成追问
+        analysis_prompt = f"""
+        原始问题：{question}
+        当前检索结果：{format_results(results)}
+        已有发现：{all_findings}
+        
+        请分析：
+        1. 从当前检索结果中提取了哪些新发现？
+        2. 还缺少什么信息？生成下一步检索查询。
+        3. 如果信息已充分，回复"信息充分"。
+        """
+        analysis = await llm.invoke(analysis_prompt)
+        
+        if "信息充分" in analysis:
+            break
+        
+        # 3. 提取发现
+        findings = extract_findings(analysis)
+        all_findings.extend(findings)
+        
+        # 4. 生成追问
+        current_query = extract_next_query(analysis)
+    
+    # 5. 综合报告
+    synthesis_prompt = f"""
+    原始问题：{question}
+    所有发现：{all_findings}
+    所有来源：{all_sources}
+    
+    请综合以上信息，生成一份完整的研究报告。
+    """
+    report = await llm.invoke(synthesis_prompt)
+    return report
+
+# 使用示例
+report = await deep_research(
+    "分析 WaLiAPI 所有模块的技术选型和设计权衡",
+    kb_id="waliapi-docs",
+    max_rounds=5,
+)
+print(report)  # 输出综合研究报告</pre></div>
+<div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>async function deepResearch(
+  question: string,
+  kbId: string,
+  maxRounds = 5,
+): Promise<string> {
+  const allFindings: string[] = [];
+  const allSources: any[] = [];
+  let currentQuery = question;
+  
+  for (let round = 0; round < maxRounds; round++) {
+    // 1. 检索
+    const results = await hybridSearch(currentQuery, kbId, 10);
+    if (results.length === 0) break;
+    allSources.push(...results);
+    
+    // 2. 分析
+    const analysis = await llm.invoke(`
+      原始问题：${question}
+      检索结果：${JSON.stringify(results)}
+      已有发现：${allFindings.join('\n')}
+      提取新发现，或回复"信息充分"。
+    `);
+    
+    if (analysis.includes('信息充分')) break;
+    
+    // 3. 提取发现 + 生成追问
+    allFindings.push(extractFindings(analysis));
+    currentQuery = extractNextQuery(analysis);
+  }
+  
+  // 4. 综合报告
+  return await llm.invoke(`
+    原始问题：${question}
+    所有发现：${allFindings.join('\n')}
+    生成综合研究报告。
+  `);
+}</pre></div>
+<div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
+
+func DeepResearch(question string, kbId string, maxRounds int) (string, error) {
+    allFindings := []string{}
+    currentQuery := question
+    
+    for round := 0; round < maxRounds; round++ {
+        // 1. 检索
+        results, err := HybridSearch(currentQuery, kbId, 10)
+        if err != nil || len(results) == 0 { break }
+        
+        // 2. 分析
+        analysis := llmInvoke(fmt.Sprintf(
+            "原始问题: %s\n检索结果: %v\n已有发现: %v\n提取发现或回复信息充分",
+            question, results, allFindings,
+        ))
+        
+        if strings.Contains(analysis, "信息充分") { break }
+        
+        // 3. 提取发现 + 生成追问
+        allFindings = append(allFindings, extractFindings(analysis))
+        currentQuery = extractNextQuery(analysis)
+    }
+    
+    // 4. 综合报告
+    return llmInvoke(fmt.Sprintf(
+        "原始问题: %s\n所有发现: %v\n生成综合研究报告",
+        question, allFindings,
+    )), nil
+}</pre></div>
+<div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
+
+public String deepResearch(String question, String kbId, int maxRounds) {
+    List<String> allFindings = new ArrayList<>();
+    String currentQuery = question;
+    
+    for (int round = 0; round < maxRounds; round++) {
+        // 1. 检索
+        List<SearchResult> results = hybridSearch(currentQuery, kbId, 10);
+        if (results.isEmpty()) break;
+        
+        // 2. 分析
+        String analysis = llm.invoke(String.format(
+            "原始问题: %s\n已有发现: %s\n提取发现或回复信息充分",
+            question, String.join("\n", allFindings)
+        ));
+        
+        if (analysis.contains("信息充分")) break;
+        
+        // 3. 提取发现 + 生成追问
+        allFindings.add(extractFindings(analysis));
+        currentQuery = extractNextQuery(analysis);
+    }
+    
+    // 4. 综合报告
+    return llm.invoke(String.format(
+        "原始问题: %s\n所有发现: %s\n生成综合研究报告",
+        question, String.join("\n", allFindings)
+    ));
+}</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🔥 面试视角：Deep Research vs Agentic RAG</div>
+  <p style="font-size: 13px;">
+    <strong>Agentic RAG</strong>是"答题思维"——检索→反思够不够→不够再搜→够了就答。<br>
+    <strong>Deep Research</strong>是"调研思维"——检索→分析发现了什么→追问还缺什么→再搜→最后综合成报告。<br><br>
+    核心区别：<strong>Agentic RAG 侧重"信息够不够"（宽度），Deep Research 侧重"信息全不全"（深度）</strong>。
+  </p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -2065,6 +4198,63 @@ public class RAGState {
       <strong>② 反思能力（够不够）</strong>：每轮检索后，Agent 评估已有文档是否足以完整回答问题。不足则指出缺什么，触发再检索。<br><br>
       <strong>③ 迭代能力（换角度重搜）</strong>：根据反思结果改写 Query，换角度重新检索。比如第 1 轮搜"限流策略"，反思发现还缺"降级策略"，第 2 轮改搜"降级策略"。<br><br>
       <strong>防止死循环</strong>：设最大检索次数（通常 3 轮），超过则用已有信息生成。面试要点：强调"决策+反思+迭代"三重能力，这是从"工具"升级为"智能体"的关键。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q12: 什么是 tree-sitter 符号感知分块？为什么代码 RAG 需要它？</div>
+    <div class="qa-answer">
+      传统按字符切分会截断函数/类，检索到的代码片段不完整——函数签名丢了、参数定义丢了，AI 根本看不懂。<br><br>
+      <strong>tree-sitter</strong> 构建 AST，按符号边界（函数/类/方法/结构体）切分，每个 chunk 带 <code>symbol_name</code>/<code>symbol_kind</code>/<code>line_start</code>/<code>line_end</code> 元数据。检索时可以按符号类型过滤：<strong>先 hybrid_search 再 filter_by_symbol(results, "function")</strong>，只返回函数定义，过滤掉注释和 import。<br><br>
+      支持 7 种语言：TS/TSX/JS/Python/Rust/Go/Java。面试要点：代码 RAG 和文本 RAG 的核心区别在于<strong>"分块策略"和"检索过滤"</strong>——不是按字符切，是按 AST 符号切；不是盲目返回，是按符号类型过滤。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q13: HNSW 索引的原理是什么？为什么不直接用线性扫描？</div>
+    <div class="qa-answer">
+      <strong>HNSW（分层小世界图）</strong>：上层稀疏（高速公路），下层稠密（城市道路），搜索时从上层快速定位区域，再在下层精细搜索。使用贪心最佳优先搜索 + 优先级队列。<br><br>
+      <strong>性能对比</strong>：10 万向量线性扫描 O(n) = 10 万次距离计算 ≈ 200ms；HNSW O(log n) ≈ 17 次距离计算 ≈ 2ms。<strong>快了 100 倍</strong>。<br><br>
+      余弦距离 = 1 - cosine_similarity。纯手写 HNSW + bincode 序列化到本地文件，不依赖外部向量数据库。<br><br>
+      面试要点：HNSW 是<strong>用空间换时间</strong>——构建图需要额外内存（每个节点存邻居指针），但搜索从 O(n) 降到 O(log n)，代价远小于收益。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q14: RAG 系统中 Token 超限怎么办？降级策略怎么设计？</div>
+    <div class="qa-answer">
+      <strong>Token 估算</strong>：ASCII ~4 字符/token，CJK ~2 字符/token。<code>context_limit = model_limit × 0.7</code>（30% 留给 Response）。<br><br>
+      <strong>三级降级</strong>：<br>
+      Level 1 裁低分 chunk（保留高分 + 完整历史）→ Level 2 裁历史只留最近 2 条（保留高分 chunk）→ Level 3 紧急模式（无历史，top-3 chunk，简化 prompt）。<br><br>
+      面试要点：降级不是"截断"，而是<strong>"优先级裁剪"</strong>——保高分 chunk（检索质量优先）、保最近历史（对话连贯性优先），不是简单砍掉尾部。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q15: 如何在不引入外部向量数据库的情况下实现 RAG？</div>
+    <div class="qa-answer">
+      <strong>SQLite 三件套</strong>：SQLite 存数据 + BLOB 存向量（二进制序列化，比 JSON 省 75% 空间）+ 手写 HNSW 索引 + FTS5 全文索引。一个 <code>.db</code> 文件搞定存储 + 向量 + 全文检索，零外部依赖。<br><br>
+      <strong>Embedding 复用</strong>：如果已有 LLM API 网关，复用其渠道调度做向量化，零额外 API Key、零额外配置。<br><br>
+      适合中小规模知识库（万级 chunk），大规模仍需 Milvus/Qdrant。面试要点：不是"用什么向量数据库"，而是<strong>"根据场景选择合适的方案"</strong>——嵌入式方案适合桌面应用、小团队、私有部署。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q16: MCP 如何让 AI Agent 使用知识库？</div>
+    <div class="qa-answer">
+      <strong>MCP（Model Context Protocol）</strong> 暴露 search/ask/build_index 等 13 个工具，任何 Agent 通过 JSON-RPC 调用。instructions 注入引导 Agent 优先用 ask/search，避免反模式（用 read_document 遍历整个文档）。<br><br>
+      <strong>一个知识库同时服务 Claude Desktop、Cursor、Copilot 和自研 Agent</strong>——不需要为每个工具单独对接。<br><br>
+      面试要点：MCP 解决的是<strong>"工具调用标准化"问题</strong>，就像 USB-C 之于充电器。RAG + MCP = <strong>知识库即服务</strong>。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q17: Deep Research 和 Agentic RAG 有什么区别？</div>
+    <div class="qa-answer">
+      <strong>Agentic RAG</strong>：检索 → 反思 → 再检索，侧重"信息够不够"，输出简短回答，通常 ≤ 3 轮。是<strong>"答题思维"</strong>。<br><br>
+      <strong>Deep Research</strong>：检索 → 分析 → 追问 → 再检索 → 综合，侧重"信息全不全"，输出综合报告，通常 3-10 轮。是<strong>"调研思维"</strong>。<br><br>
+      典型场景对比："限流策略和降级策略分别是什么？"用 Agentic RAG；"分析所有模块的技术选型和设计权衡"用 Deep Research。<br><br>
+      面试要点：Agentic RAG 侧重<strong>宽度</strong>（够不够），Deep Research 侧重<strong>深度</strong>（全不全）。不是替代关系，是互补关系。
     </div>
   </div>
 
@@ -2218,6 +4408,78 @@ var ch16Questions = [
     ],
     answer: [1],
     explanation: '关系分析需要遍历服务依赖图（A→B→C），是 GraphRAG 的黄金场景。事实性问答、实时查询、单文档摘要用向量 RAG 即可。'
+  },
+  {
+    type: 'single',
+    question: 'tree-sitter 符号感知分块的核心优势是什么？',
+    options: [
+      '分块速度更快',
+      '按函数/类/方法边界切分，检索返回完整代码结构而非截断片段',
+      '减少向量维度',
+      '不需要 Embedding 模型'
+    ],
+    answer: [1],
+    explanation: 'tree-sitter 构建 AST 按符号边界切分，每个 chunk 带 symbol_name/symbol_kind 元数据，检索时可以按符号类型过滤。'
+  },
+  {
+    type: 'single',
+    question: 'HNSW 索引的搜索复杂度是？',
+    options: [
+      'O(n)',
+      'O(n²)',
+      'O(log n)',
+      'O(1)'
+    ],
+    answer: [2],
+    explanation: 'HNSW 通过分层小世界图实现近似最近邻搜索，搜索复杂度从线性扫描的 O(n) 降到 O(log n)。'
+  },
+  {
+    type: 'single',
+    question: 'RAG 系统中 Token 降级策略的 Level 2 是什么？',
+    options: [
+      '移除所有上下文',
+      '移除低分 chunk，保留高分 chunk 和完整历史',
+      '只保留最近 2 条历史，保留高分 chunk',
+      '无历史、top-3 chunk、简化 prompt'
+    ],
+    answer: [2],
+    explanation: 'Level 1 裁低分 chunk，Level 2 裁历史只留最近 2 条，Level 3 紧急模式无历史 top-3。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些是"不依赖外部向量数据库"实现 RAG 的关键组件？（多选）',
+    options: [
+      'SQLite BLOB 存储向量',
+      '手写 HNSW 索引',
+      'FTS5 全文索引',
+      'Redis 缓存'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'SQLite BLOB + HNSW + FTS5 三件套可以实现零外部依赖的 RAG。Redis 缓存不是必需组件。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 协议在 RAG 中的作用是？',
+    options: [
+      '替代向量数据库',
+      '将 RAG 能力标准化暴露给任何 AI Agent 调用',
+      '加快 Embedding 速度',
+      '替代 LLM 生成回答'
+    ],
+    answer: [1],
+    explanation: 'MCP 把 search/ask 等工具标准化暴露，Claude Desktop/Cursor/自研 Agent 都能通过 JSON-RPC 调用同一个知识库。'
+  },
+  {
+    type: 'single',
+    question: 'Deep Research 和 Agentic RAG 的核心区别是？',
+    options: [
+      'Deep Research 不需要检索',
+      'Deep Research 侧重多轮信息收集和综合报告，Agentic RAG 侧重反思和再检索',
+      'Deep Research 只用一次检索',
+      'Agentic RAG 不支持多轮对话'
+    ],
+    answer: [1],
+    explanation: 'Agentic RAG 是"检索→反思→再检索"的答题思维；Deep Research 是"检索→分析→追问→综合"的调研思维。'
   },
 ];
 
