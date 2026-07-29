@@ -944,7 +944,7 @@ const AIChat = {
       newConfig = {
         id: `agnes_${Date.now()}`,
         name: '🤖 Agnes AI',
-        baseUrl: 'https://apihub.agnes-ai.com/v1',
+        baseUrl: 'https://apihub.agnes-ai.cn/v1',
         apiKey: '',
         model: 'agnes-2.0-flash'
       };
