@@ -6,7 +6,7 @@
 <p>第10章讲了 Function Calling 工具调用，第11章讲了工具的标准化协议（MCP）。本章讲工具的<strong>组合</strong>——把多个工具打包成一个"技能"，让 Agent 拥有更高层次的能力。</p>
 </div>
 
-<!-- ===== 11.1 从工具到技能 ===== -->
+<!-- ===== 12.1 从工具到技能 ===== -->
 <h2 class="section-heading">12.1 从工具到技能</h2>
 
 <p>打个比方：工具是一把锤子，技能是"钉钉子"——锤子只是一个工具，但"钉钉子"需要锤子 + 钉子 + 判断角度 + 控制力度。技能是工具的<strong>组合 + 使用知识</strong>。</p>
@@ -26,7 +26,7 @@
 </table>
 </div>
 
-<!-- ===== 11.2 Skills 的三层结构 ===== -->
+<!-- ===== 12.2 Skills 的三层结构 ===== -->
 <h2 class="section-heading">12.2 Skills 的三层结构</h2>
 
 <p>一个完整的 Skill 包含三层：</p>
@@ -70,7 +70,7 @@ knowledge: |
   - city 必须是中文城市名
   - date 支持 today/tomorrow/YYYY-MM-DD</pre></div>
 
-<!-- ===== 11.3 Skills 的发现与加载 ===== -->
+<!-- ===== 12.3 Skills 的发现与加载 ===== -->
 <h2 class="section-heading">12.3 Skills 的发现与加载</h2>
 
 <p>Agent 怎么知道有哪些 Skills 可用？和 CLI 工具类似，Skills 也需要<strong>自动发现</strong>机制：</p>
@@ -440,7 +440,7 @@ reloader.start();
 </pre></div>
 </div>
 
-<!-- ===== 11.4 Skills 的懒加载 ===== -->
+<!-- ===== 12.4 Skills 的懒加载 ===== -->
 <h2 class="section-heading">12.4 Skills 的懒加载</h2>
 
 <p>和 CLI 工具一样，Skills 太多会导致 Prompt 过长。解决方案是<strong>三层懒加载</strong>：</p>
@@ -660,7 +660,7 @@ public class LazySkillManager {
 </pre></div>
 </div>
 
-<!-- ===== 11.5 Skill 匹配与调度 ===== -->
+<!-- ===== 12.5 Skill 匹配与调度 ===== -->
 <h2 class="section-heading">12.5 Skill 匹配与调度</h2>
 
 <p>当用户说"北京明天天气怎么样，穿什么合适？"，Agent 需要：</p>
@@ -673,7 +673,7 @@ public class LazySkillManager {
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"user","label":"用户：北京明天天气\n穿什么合适?","type":"start"},{"id":"match","label":"Skill 匹配\n触发词「天气」→ weather-advisor","type":"process"},{"id":"activate","label":"激活 Skill\n加载完整 Schema + 知识","type":"process"},{"id":"plan","label":"AI 规划\n1. 调 get_weather\n2. 调 get_clothing_advice","type":"process"},{"id":"exec1","label":"执行 get_weather\n→ 晴 25°C","type":"process"},{"id":"exec2","label":"执行 get_clothing_advice\n→ 薄外套+长裤","type":"process"},{"id":"respond","label":"综合回答\n北京明天晴 25°C\n建议穿薄外套+长裤","type":"end"}],"edges":[{"from":"user","to":"match"},{"from":"match","to":"activate"},{"from":"activate","to":"plan"},{"from":"plan","to":"exec1"},{"from":"exec1","to":"exec2"},{"from":"exec2","to":"respond"}]}'></div>
 
-<!-- ===== 11.6 Skills vs MCP vs Function Calling ===== -->
+<!-- ===== 12.6 Skills vs MCP vs Function Calling ===== -->
 <h2 class="section-heading">12.6 Skills vs MCP vs Function Calling</h2>
 
 <div class="comparison-table">
@@ -703,7 +703,7 @@ public class LazySkillManager {
 <p>Skills 不排斥 MCP。一个 <code>database-advisor</code> Skill 可以包含一个 MCP database server 提供的查询工具，加上自定义的 SQL 优化建议工具，以及"先分析表结构再优化查询"的使用策略。</p>
 </div>
 
-<!-- ===== 11.7 实战：构建一个 Skill ===== -->
+<!-- ===== 12.7 实战：构建一个 Skill ===== -->
 <h2 class="section-heading">12.7 实战：构建一个 Skill</h2>
 
 <p>把第2章的天气查询升级为一个完整的 Skill：</p>
@@ -748,7 +748,7 @@ knowledge: |
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre># skills/weather-advisor/main.py
 def get_weather(city: str, date: str = "today") -> dict:
-    # ... 同第2章实现 ...
+    # ... 同第3章实现 ...
 
 def get_clothing_advice(temperature: float, weather: str) -> dict:
     advice = []
@@ -769,7 +769,7 @@ def get_clothing_advice(temperature: float, weather: str) -> dict:
     return {"advice": "、".join(advice)}</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// skills/weather-advisor/main.ts
 function getWeather(city: string, date: string = 'today'): Record&lt;string, unknown&gt; {
-  // ... 同第2章实现 ...
+  // ... 同第3章实现 ...
 }
 
 function getClothingAdvice(temperature: number, weather: string): { advice: string } {
@@ -797,7 +797,7 @@ function getClothingAdvice(temperature: number, weather: string): { advice: stri
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
 
 func getWeather(city string, date string) map[string]interface{} {
-	// ... 同第2章实现 ...
+	// ... 同第3章实现 ...
 	return nil
 }
 
@@ -828,7 +828,7 @@ func getClothingAdvice(temperature float64, weather string) map[string]interface
 public class WeatherAdvisor {
     // skills/weather-advisor/WeatherAdvisor.java
     public static Map&lt;String, Object&gt; getWeather(String city, String date) {
-        // ... 同第2章实现 ...
+        // ... 同第3章实现 ...
         return null;
     }
 
@@ -859,7 +859,7 @@ public class WeatherAdvisor {
 </pre></div>
 </div>
 
-<!-- ===== 11.8 Skill 市场：未来的应用商店 ===== -->
+<!-- ===== 12.8 Skill 市场：未来的应用商店 ===== -->
 <h2 class="section-heading">12.8 Skill 市场：未来的应用商店</h2>
 
 <p>Skills 的终极目标是形成<strong>市场</strong>——开发者像发布 App 一样发布 Skill 包，用户像装 App 一样安装 Skill：</p>
@@ -880,7 +880,7 @@ skill remove weather-advisor</pre></div>
 
 <p>这和 MCP 的愿景类似，但层次不同：MCP 是工具级的市场，Skills 是能力级的市场。未来可能两者融合——MCP Server 提供工具，Skill 包提供组合策略。</p>
 
-<!-- ===== 11.9 Skill 的分层体系 ===== -->
+<!-- ===== 12.9 Skill 的分层体系 ===== -->
 <h2 class="section-heading">12.9 Skill 的分层体系</h2>
 
 <p>就像企业架构有基础设施层、业务逻辑层、应用层一样，Skill 也存在<strong>三层金字塔</strong>——从底层的基础 Skill 到顶层的领域 Skill，每一层封装不同复杂度的能力：</p>
@@ -1223,7 +1223,7 @@ permissions:
 <p>底层越通用越好（read_file 跨所有项目可用），顶层越专业越好（finance-advisor 只在金融场景有用）。企业 Agent 应<strong>自下而上构建</strong>——先把基础 Skill 打磨好，再组装复合 Skill，最后才封装领域 Skill。不要跳层——没有稳固的基础 Skill，复合 Skill 就是空中楼阁。</p>
 </div>
 
-<!-- ===== 11.10 Skill 的沉淀与演进 ===== -->
+<!-- ===== 12.10 Skill 的沉淀与演进 ===== -->
 <h2 class="section-heading">12.10 Skill 的沉淀与演进</h2>
 
 <p>Skill 不是一次设计就完成的，它像代码一样有<strong>版本迭代</strong>的生命周期。好的 Skill 来自项目实践的<strong>反复提炼</strong>——从临时脚本 → 内部最佳实践 → 可复用 Skill 包。</p>
@@ -1905,7 +1905,7 @@ public class SkillVersionManager {
 <p>不要一开始就追求完美的 Skill 设计。WaLiCode 的 <strong>IterativeRefinement</strong> 模式告诉我们：先让 Agent 在项目中跑起来，观察它反复使用哪些工具组合，再把这些组合提炼成 Skill。项目实践是最好的 Skill 设计师——你只是把最佳实践<strong>固化</strong>下来。</p>
 </div>
 
-<!-- ===== 11.11 Skill 的权限与安全 ===== -->
+<!-- ===== 12.11 Skill 的权限与安全 ===== -->
 <h2 class="section-heading">12.11 Skill 的权限与安全</h2>
 
 <p>Skill 越强大，潜在风险越大。一个可以删除文件的 Skill 如果不加限制，Agent 可能误删关键数据。本章引入<strong>五层安全架构</strong>——参考 WaLiCode 的 permissionGuard 设计模式，给每一层加上护栏：</p>
@@ -3066,7 +3066,7 @@ public class SandboxExecutor {
 <p>不是所有 Skill 都需要五层防护。基础 Skill（如 get_weather）只需 Layer 1（声明）+ Layer 2（运行时拦截）。复合 Skill 加上 Layer 3（审批）+ Layer 4（审计）。领域 Skill 才需要完整的五层——包括沙箱隔离。安全不是越厚越好，而是<strong>按风险等级分层</strong>。</p>
 </div>
 
-<!-- ===== 11.12 实战：构建企业级 Skill 包 ===== -->
+<!-- ===== 12.12 实战：构建企业级 Skill 包 ===== -->
 <h2 class="section-heading">12.12 实战：构建企业级 Skill 包</h2>
 
 <p>前面讲了 Skill 的分层体系和安全架构，现在把它们<strong>串起来</strong>——从零构建一个完整的企业级 Skill 包，包括 YAML 定义、Python 实现、测试和发布流程：</p>
@@ -4196,7 +4196,7 @@ skill list | grep ${SKILL_NAME}</pre></div>
 </table>
 </div>
 
-<!-- ===== 11.13 Skill 与 OpenClaw 的关系 ===== -->
+<!-- ===== 12.13 Skill 与 OpenClaw 的关系 ===== -->
 <h2 class="section-heading">12.13 Skill 与 OpenClaw 的关系</h2>
 
 <p>OpenClaw 是一个<strong>实际落地</strong>的 Agent 平台，它的 Skill 生态是本章理论的最佳实践。让我们从 OpenClaw 的 <code>~/.qclaw/skills/</code> 目录出发，看看 Skill 是如何在真实系统中运作的：</p>

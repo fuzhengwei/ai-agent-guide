@@ -6,7 +6,7 @@
 <p>本章系统对比当前主流的 6 大 Agent 框架（LangGraph、AutoGen、CrewAI、Google ADK、Spring AI、OpenAI Agents SDK），涵盖核心架构、代码实战、特色机制、横向对比和迁移路径，助你做出最合适的选型决策。</p>
 </div>
 
-<!-- ===== 15.1 框架全景对比 ===== -->
+<!-- ===== 16.1 框架全景对比 ===== -->
 <h2 class="section-heading">16.1 框架全景对比</h2>
 
 <p>选择合适的 Agent 框架是项目成功的关键。本节从 8 个维度对比当前主流的 Agent 框架：</p>
@@ -31,7 +31,7 @@
 
 <p>表格列出了 8 大维度的对比，但每个框架的设计哲学差异远不止表格中的几行字。接下来的章节将逐个深入——从核心架构到完整实战代码，让你真正理解每个框架的"灵魂"。</p>
 
-<!-- ===== 15.2 AutoGen ===== -->
+<!-- ===== 16.2 AutoGen ===== -->
 <h2 class="section-heading">16.2 AutoGen：对话式多 Agent 框架</h2>
 
 <p>AutoGen 由微软研究院开发，核心思想是将 Agent 之间的协作建模为<strong>对话</strong>。每个 Agent 有自己的角色、能力和系统提示词，通过多轮对话完成任务——就像人类团队在群里讨论问题一样。</p>
@@ -1156,7 +1156,7 @@ public class CacheAndSandbox {
 }</pre></div>
 </div>
 
-<!-- ===== 15.3 CrewAI ===== -->
+<!-- ===== 16.3 CrewAI ===== -->
 <h2 class="section-heading">16.3 CrewAI：角色驱动的 Agent 团队</h2>
 
 <p><strong>CrewAI</strong> 的设计哲学完全不同于 AutoGen：它把多 Agent 协作建模为"项目团队"——每个 Agent 有明确角色（Role）、目标（Goal）和背景故事（Backstory），任务（Task）按流程分配，组成一个"团队"（Crew）。</p>
@@ -2134,7 +2134,7 @@ import java.io.*;
 </table>
 </div>
 
-<!-- ===== 15.4 Google ADK ===== -->
+<!-- ===== 16.4 Google ADK ===== -->
 <h2 class="section-heading">16.4 Google ADK：编排式 Agent 开发</h2>
 
 <p><strong>ADK（Agent Development Kit）</strong>是 Google 推出的 Agent 开发工具包。它的核心理念是<strong>渐进式披露（Progressive Disclosure）</strong>——从最简单的一行代码到复杂的多 Agent 系统，按需增加复杂度。</p>
@@ -3310,7 +3310,7 @@ public class ResearchResult {
 </table>
 </div>
 
-<!-- ===== 15.5 Spring AI ===== -->
+<!-- ===== 16.5 Spring AI ===== -->
 <h2 class="section-heading">16.5 Spring AI：Java 生态的 Agent 框架</h2>
 
 <p>Agent 框架大多集中在 Python 生态。但企业级 Java 项目怎么办？<strong>Spring AI</strong> 填补了这个空白——让 Java 开发者用熟悉的 Spring 风格开发 Agent。</p>
@@ -4009,12 +4009,12 @@ public StateGraph<AgentState> multiAgentWorkflow(
 </table>
 </div>
 
-<!-- ===== 15.6 选型决策树 ===== -->
+<!-- ===== 16.6 选型决策树 ===== -->
 <h2 class="section-heading">16.6 选型决策树</h2>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"q","label":"你的场景是?","type":"start"},{"id":"enterprise","label":"企业级 Java 项目?","type":"decision"},{"id":"spring","label":"Spring AI","type":"end"},{"id":"google","label":"Google Cloud 生态?","type":"decision"},{"id":"adk","label":"Google ADK","type":"end"},{"id":"safety","label":"安全优先\n需要护栏?","type":"decision"},{"id":"oai_sdk","label":"OpenAI Agents SDK","type":"end"},{"id":"complex","label":"复杂状态机\n多步工作流?","type":"decision"},{"id":"langgraph","label":"LangGraph","type":"end"},{"id":"team","label":"角色分工明确的\n团队协作?","type":"decision"},{"id":"crew","label":"CrewAI","type":"end"},{"id":"explore","label":"探索性任务\n代码生成?","type":"decision"},{"id":"autogen","label":"AutoGen","type":"end"},{"id":"nocode","label":"非技术人员\n快速验证?","type":"decision"},{"id":"dify","label":"Dify / Coze","type":"end"}],"edges":[{"from":"q","to":"enterprise"},{"from":"enterprise","to":"spring","label":"是"},{"from":"enterprise","to":"google","label":"否"},{"from":"google","to":"adk","label":"是"},{"from":"google","to":"safety","label":"否"},{"from":"safety","to":"oai_sdk","label":"是"},{"from":"safety","to":"complex","label":"否"},{"from":"complex","to":"langgraph","label":"是"},{"from":"complex","to":"team","label":"否"},{"from":"team","to":"crew","label":"是"},{"from":"team","to":"explore","label":"否"},{"from":"explore","to":"autogen","label":"是"},{"from":"explore","to":"nocode","label":"否"},{"from":"nocode","to":"dify","label":"是"}]}'></div>
 
-<!-- ===== 15.7 OpenAI Agents SDK ===== -->
+<!-- ===== 16.7 OpenAI Agents SDK ===== -->
 <h2 class="section-heading">16.7 OpenAI Agents SDK：安全优先的 Agent 框架</h2>
 
 <p><strong>OpenAI Agents SDK</strong> 是 OpenAI 于 2025 年推出的 Agent 开发框架。与 Google ADK 的"渐进式披露"不同，OpenAI SDK 的核心理念是<strong>安全优先</strong>——Handoff 交接机制、Trace 追踪、Guardrails 安全护栏，每一步都有护栏。</p>
@@ -4702,7 +4702,7 @@ import java.io.*;
 </table>
 </div>
 
-<!-- ===== 15.8 框架迁移路径 ===== -->
+<!-- ===== 16.8 框架迁移路径 ===== -->
 <h2 class="section-heading">16.8 框架迁移路径</h2>
 
 <p>项目发展过程中，你可能需要从一个框架迁移到另一个。最常见的迁移路径是从 AutoGen/CrewAI 迁移到 LangGraph——因为项目从探索性原型进入生产级，需要更精确的流程控制和状态持久化。</p>

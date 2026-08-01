@@ -7,7 +7,7 @@
 
   <!-- 基础 SEO -->
   <title>AI Agent 通识教程 — 从基础认知到面试通关（26章渐进式教程）</title>
-  <meta name="description" content="26章渐进式可视化教程，动画拆解 AI Agent 核心概念。覆盖 LLM、LangGraph、MCP、ReAct、记忆系统、RAG、Function Calling 等，配套 267+ 道面试题和在线考试，助你面试通关。">
+  <meta name="description" content="26章渐进式可视化教程，动画拆解 AI Agent 核心概念。覆盖 LLM、LangGraph、MCP、ReAct、记忆系统、RAG、Function Calling 等，配套 433 道面试题和在线考试，助你面试通关。">
   <meta name="keywords" content="AI Agent, LangGraph, MCP, ReAct, 大语言模型, LLM, RAG, 面试, 教程, Function Calling, 记忆系统, Prompt Engineering, 人工智能">
   <meta name="author" content="小傅哥">
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ai-agent-guide.xiaofuge.cn/">
   <meta property="og:title" content="AI Agent 通识教程 — 从基础认知到面试通关">
-  <meta property="og:description" content="26章渐进式可视化教程，动画拆解 AI Agent 核心概念。覆盖 LangGraph、MCP、ReAct、记忆系统等，配套 267+ 道面试题。">
+  <meta property="og:description" content="26章渐进式可视化教程，动画拆解 AI Agent 核心概念。覆盖 LangGraph、MCP、ReAct、记忆系统等，配套 433 道面试题。">
   <meta property="og:image" content="https://ai-agent-guide.xiaofuge.cn/assets/og-image.png">
   <meta property="og:locale" content="zh_CN">
   <meta property="og:site_name" content="AI Agent 通识教程">
@@ -137,8 +137,8 @@
   }
   </script>
 
-  <link rel="stylesheet" href="css/book.css?v=20260729.1">
-  <link rel="stylesheet" href="css/animations.css?v=20260729.1">
+  <link rel="stylesheet" href="css/book.css?v=20260801.1">
+  <link rel="stylesheet" href="css/animations.css?v=20260801.1">
   <!-- Prism.js 语法高亮 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" ></script>
@@ -187,6 +187,10 @@
       <div class="content-body" id="contentBody">
         <!-- 内容由 JS 动态加载 -->
       </div>
+      <!-- ===== 回到顶部按钮（跟随内容区，底部居中） ===== -->
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      </button>
     </main>
     
     <!-- ===== 章节目录栏 (TOC) ===== -->
@@ -234,7 +238,9 @@
         </div>
         <div class="chat-input-wrapper">
           <textarea id="chatInput" placeholder="输入你的问题..." rows="2"></textarea>
-          <button class="send-btn" id="chatSendBtn" title="发送">↑</button>
+          <button class="send-btn" id="chatSendBtn" title="发送" aria-label="发送">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
         </div>
       </div>
     </aside>
@@ -251,8 +257,6 @@
     
   </div>
   
-  <!-- ===== 回到顶部按钮 ===== -->
-  <button class="back-to-top" id="backToTop" title="回到顶部">↑</button>
 
   <!-- ===== API 设置弹窗 ===== -->
   <div class="modal-overlay" id="modalOverlay">
@@ -335,14 +339,14 @@
   
   <!-- ===== 脚本 ===== -->
   <!-- 版本检测（最先加载，检测到新版本自动刷新） -->
-  <script src="js/version.js?v=20260729.1"></script>
+  <script src="js/version.js?v=20260801.1"></script>
   <!-- 百度统计（首加载，全局共享） -->
   <script src="js/analytics.js"></script>
-  <script src="js/flowchart.js?v=20260729.1"></script>
-  <script src="js/compare.js?v=20260729.1"></script>
-  <script src="js/progress.js?v=20260729.1"></script>
-  <script src="js/quiz.js?v=20260729.1"></script>
-  <script src="js/chat.js?v=20260729.1"></script>
-  <script src="js/main.js?v=20260729.1"></script>
+  <script src="js/flowchart.js?v=20260801.1"></script>
+  <script src="js/compare.js?v=20260801.1"></script>
+  <script src="js/progress.js?v=20260801.1"></script>
+  <script src="js/quiz.js?v=20260801.1"></script>
+  <script src="js/chat.js?v=20260801.1"></script>
+  <script src="js/main.js?v=20260801.1"></script>
 </body>
 </html>

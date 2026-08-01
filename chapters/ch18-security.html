@@ -2,7 +2,7 @@
 <h1 class="chapter-title">第22章 Agent 安全与防护</h1>
 <p class="chapter-subtitle">当 Agent 拥有了工具调用能力，安全就不再是可选项</p>
 
-<!-- ===== 21.1 Agent 安全威胁全景 ===== -->
+<!-- ===== 22.1 Agent 安全威胁全景 ===== -->
 <h2 class="section-heading">22.1 Agent 面临的安全威胁</h2>
 
 <p>传统 Web 应用的安全关注 SQL 注入、XSS、CSRF。Agent 的安全完全不同——威胁来自<strong>自然语言本身</strong>。当 Agent 能执行代码、读写文件、调用 API 时，一段精心构造的 Prompt 就可能等同于一次攻击。</p>
@@ -40,7 +40,7 @@ setTimeout(() => {
 }, 100);
 </script>
 
-<!-- ===== 21.2 Prompt 注入攻击 ===== -->
+<!-- ===== 22.2 Prompt 注入攻击 ===== -->
 <h2 class="section-heading">22.2 Prompt 注入：Agent 的"SQL 注入"</h2>
 
 <p><strong>Prompt 注入</strong>是 Agent 安全的头号威胁。攻击者在数据中嵌入恶意指令，让 Agent "以为"这是用户的命令。</p>
@@ -545,7 +545,7 @@ public class ToolPermission {
 }</pre></div>
 </div>
 
-<!-- ===== 21.3 权限控制体系 ===== -->
+<!-- ===== 22.3 权限控制体系 ===== -->
 <h2 class="section-heading">22.3 Agent 权限控制体系</h2>
 
 <p>借鉴操作系统权限模型，给 Agent 建立<strong>最小权限原则</strong>：只授予完成任务所需的最少权限。</p>
@@ -672,7 +672,7 @@ public class AgentPermissions {
 }</pre></div>
 </div>
 
-<!-- ===== 21.4 数据安全 ===== -->
+<!-- ===== 22.4 数据安全 ===== -->
 <h2 class="section-heading">22.4 数据安全与隐私保护</h2>
 
 <p>Agent 处理的数据往往包含用户的敏感信息（PII）：姓名、电话、身份证、病历、财务记录。一旦这些数据被不加处理地送入第三方 LLM API，就可能违反《个人信息保护法》《GDPR》等法规，甚至因模型日志留存而造成永久性泄露。数据安全的核心目标，是在<strong>利用 LLM 能力</strong>和<strong>保护用户隐私</strong>之间找到平衡——既不因噎废食地放弃 Agent 能力，也不毫无防备地把数据交出去。主要手段有三层：传输前脱敏、存储时加密、访问时审计。</p>
@@ -877,7 +877,7 @@ public class OutputSanitizer {
 }</pre></div>
 </div>
 
-<!-- ===== 21.5 资源限制 ===== -->
+<!-- ===== 22.5 资源限制 ===== -->
 <h2 class="section-heading">22.5 资源限制与防滥用</h2>
 
 <p>Agent 可能陷入无限循环或被恶意用户滥用，需要设置硬性资源限制。</p>
@@ -1188,7 +1188,7 @@ public class AgentGuard {
 </div>
 
 
-<!-- ===== 21.6 红队测试：主动安全评估 ===== -->
+<!-- ===== 22.6 红队测试：主动安全评估 ===== -->
 <h2 class="section-heading">22.6 红队测试：主动安全评估</h2>
 
 <p><strong>红队测试（Red Team Testing）</strong>是指模拟攻击者视角，对 Agent 系统进行系统化的安全攻击演练，在黑客发现漏洞之前主动暴露问题。2025 年 OpenAI、Anthropic、Google 等头部厂商已将红队测试作为大模型发布前的标准流程，企业招聘安全岗位时几乎必问。</p>
@@ -1449,7 +1449,7 @@ export function checkPromptInjection(input: string): DefenseResult {
 <li><strong>Arthur Shield</strong>：商业方案，提供 Agent 运行时安全监控和攻击检测</li>
 </ul>
 
-<!-- ===== 21.7 数据隐私与合规 ===== -->
+<!-- ===== 22.7 数据隐私与合规 ===== -->
 <h2 class="section-heading">22.7 数据隐私与合规</h2>
 
 <h3 class="sub-heading">22.7.1 GDPR / 数据隐私合规</h3>
@@ -1541,7 +1541,7 @@ export function redactPII(text: string): string {
 <li><strong>数据保留</strong>：审计日志保留 ≥ 12 个月，支持按用户查询和删除</li>
 </ul>
 
-<!-- ===== 21.8 面试高频安全题 ===== -->
+<!-- ===== 22.8 面试高频安全题 ===== -->
 <h2 class="section-heading">22.8 面试高频安全题</h2>
 
 <div class="qa-list">

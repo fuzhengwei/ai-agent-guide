@@ -2,7 +2,7 @@
 <h1 class="chapter-title">第25章 2026 Agent 技术展望</h1>
 <p class="chapter-subtitle">终章 — AI Agent 的未来与全课回顾</p>
 
-<!-- ===== 24.1 2026趋势 ===== -->
+<!-- ===== 25.1 2026趋势 ===== -->
 <h2 class="section-heading">25.1 2026 年 AI Agent 发展趋势</h2>
 
 <div class="card">
@@ -47,7 +47,7 @@
   </div>
 </div>
 
-<!-- ===== 24.2 技术趋势 ===== -->
+<!-- ===== 25.2 技术趋势 ===== -->
 <h2 class="section-heading">25.2 技术演进方向</h2>
 
 <div class="card">
@@ -146,8 +146,8 @@
 <strong>对 Agent 开发者的影响</strong>：Responses API 不会立刻取代 Chat Completions API（两者并行支持），但新项目应该优先选择 Responses API。它大幅降低了 Agent 开发复杂度——以前需要自行实现的"工具循环+状态管理+流式解析"三件套，现在 API 层原生支持。LangChain、AutoGen 等框架已陆续适配 Responses API。
 </div>
 
-<!-- ===== 24.3 全课回顾 ===== -->
-<h2 class="section-heading">25.3 全课回顾：24章知识地图</h2>
+<!-- ===== 25.3 全课回顾 ===== -->
+<h2 class="section-heading">25.3 全课回顾：26章知识地图</h2>
 
 <div class="card">
   <div class="card-title">📚 知识地图</div>
@@ -196,7 +196,7 @@
   </div>
 </div>
 
-<!-- ===== 24.4 学习路线建议 ===== -->
+<!-- ===== 25.4 学习路线建议 ===== -->
 <h2 class="section-heading">25.4 学习路线建议</h2>
 
 <div class="card">
@@ -245,7 +245,7 @@
   </ol>
 </div>
 
-<!-- ===== 24.5 Agent 工程体系全景 ===== -->
+<!-- ===== 25.5 Agent 工程体系全景 ===== -->
 <h2 class="section-heading">25.5 Agent 工程体系全景：从 Prompt 到 Loop</h2>
 
 <p>回顾全书，你会发现 Agent 开发正在从"写好提示词"进化到"设计完整系统"。这个进化有四个层次：</p>
@@ -310,7 +310,7 @@ setTimeout(() => {
   这四层是叠加关系——每一层建立在上一层之上，而非替代。写好 Prompt 是基本功，设计 Context 是进阶能力，构建 Harness 是质量保证，实现 Loop 是系统级思维。Agent 开发者需要同时掌握这四层。
 </div>
 
-<!-- ===== 24.6 Harness Engineering ===== -->
+<!-- ===== 25.6 Harness Engineering ===== -->
 <h2 class="section-heading">25.6 Harness Engineering — Agent 的测试与可靠性验证</h2>
 
 <p>当你构建了一个 Agent，如何确保它真的可靠？Prompt 写得好不好？Context 选得对不对？这需要一套系统的测试框架——这就是 <strong>Harness Engineering</strong>。</p>
@@ -471,7 +471,7 @@ print("=== 回归测试 ===")
 print(json.dumps(harness.regression(), indent=2))</pre>
 </div>
 
-<!-- ===== 24.7 Loop Engineering ===== -->
+<!-- ===== 25.7 Loop Engineering ===== -->
 <h2 class="section-heading">25.7 Loop Engineering — 从提示词转向设计闭环系统</h2>
 
 <p>前面三层（Prompt → Context → Harness）都在优化<strong>单次调用</strong>。但真实 Agent 不是一次调用就结束——它是<strong>持续运行的闭环系统</strong>。Loop Engineering 关注的是如何设计这个闭环。</p>
@@ -689,8 +689,8 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 24.8 本地部署与推理框架 ===== -->
-<!-- ===== 24.8 本地部署与推理框架（详见第24章） ===== -->
+<!-- ===== 25.8 本地部署与推理框架 ===== -->
+<!-- ===== 25.8 本地部署与推理框架（详见第24章） ===== -->
 <h2 class="section-heading">25.8 本地部署与推理框架</h2>
 
 <p>不是所有 Agent 都要依赖云端 API。当你需要<strong>数据隐私、成本控制、低延迟</strong>时，本地部署是更好的选择——但这已经不是"未来展望"，而是<strong>当前每天都在用的技术</strong>。</p>
@@ -828,7 +828,7 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 24.10 MCP市场与Skills生态 ===== -->
+<!-- ===== 25.10 MCP市场与Skills生态 ===== -->
 <h2 class="section-heading">25.10 MCP 市场与 Skills 生态</h2>
 
 <p>第11章学了 MCP 协议的技术原理。现在看生态爆发——MCP 和 Skills 正在形成<strong>Agent的"App Store"</strong>。</p>
@@ -961,7 +961,7 @@ setTimeout(() => {
   </ol>
 </div>
 
-<!-- ===== 24.11 Token消耗量化与计费规则 ===== -->
+<!-- ===== 25.11 Token消耗量化与计费规则 ===== -->
 <h2 class="section-heading">25.11 Token 消耗量化与计费规则</h2>
 
 <p>面试中经常被问："写一千行代码大概消耗多少 token？""百万 token 计费规则是什么？"——这不仅是工程常识，更是<strong>成本意识</strong>的体现。一个合格的 Agent 开发者，必须能估算和管控 token 消耗。</p>
@@ -1122,7 +1122,7 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 24.12 场景化LLM模型选型指南 ===== -->
+<!-- ===== 25.12 场景化LLM模型选型指南 ===== -->
 <h2 class="section-heading">25.12 场景化 LLM 模型选型指南</h2>
 
 <p>面试中常问："不同场景下 LLM 模型如何选型？"——选型不是"哪个模型最强"，而是<strong>哪个模型最适合当前任务</strong>。用 GPT-4o 做简单问答是浪费钱，用 mini 模型做复杂推理是浪费精度。</p>
@@ -1228,7 +1228,7 @@ setTimeout(() => {
   </div>
 </div>
 
-<!-- ===== 24.13 Agent从业者的核心竞争力 ===== -->
+<!-- ===== 25.13 Agent从业者的核心竞争力 ===== -->
 <h2 class="section-heading">25.13 Agent 从业者的核心竞争力（职业思考题）</h2>
 
 <p>面试中的职业类问题（Q23-Q29）不是考"标准答案"，而是考你的<strong>思考深度和差异化认知</strong>。本节提供思考框架，而非照搬答案。</p>

@@ -1,8 +1,8 @@
 <!-- 第20章：RAG 检索增强生成 -->
 <h1 class="chapter-title">第20章 RAG：检索增强生成</h1>
-<p class="chapter-subtitle">第五篇：综合实战 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
+<p class="chapter-subtitle">第六篇：综合实战 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
 
-<!-- ===== 19.1 为什么 Agent 需要 RAG？ ===== -->
+<!-- ===== 20.1 为什么 Agent 需要 RAG？ ===== -->
 <h2 class="section-heading">20.1 为什么 Agent 需要 RAG？</h2>
 
 <p>大模型有两个硬伤：<strong>知识截止日期</strong>（训练数据有时效性）和<strong>领域知识不足</strong>（通用模型不懂你的业务）。微调可以解决一部分，但成本高、周期长、更新慢。<strong>RAG（Retrieval-Augmented Generation，检索增强生成）</strong>提供了更灵活的方案：<strong>先检索，再生成</strong>。</p>
@@ -57,7 +57,7 @@
   </table>
 </div>
 
-<!-- ===== 19.2 RAG 完整流程 ===== -->
+<!-- ===== 20.2 RAG 完整流程 ===== -->
 <h2 class="section-heading">20.2 RAG 的完整流程</h2>
 
 <p>RAG 不是简单的"搜索 + 拼接"，一个生产级 RAG 系统包含<strong>五个阶段</strong>：</p>
@@ -66,42 +66,23 @@
 
 <script>
 setTimeout(() => {
-  const container = document.getElementById('ragPipeline');
-  if (!container) return;
-  container.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 20px 0;">
-      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">📄</div>
-        <strong style="font-size: 13px; color: var(--color-accent);">1. 文档处理</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">加载/分块/清洗</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🔢</div>
-        <strong style="font-size: 13px; color: var(--color-info);">2. 向量化</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">Embedding 编码</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🗄️</div>
-        <strong style="font-size: 13px; color: var(--color-success);">3. 存储</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">向量数据库</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🔍</div>
-        <strong style="font-size: 13px; color: var(--color-warning);">4. 检索</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">相似度搜索</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 120px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🤖</div>
-        <strong style="font-size: 13px; color: var(--color-accent);">5. 生成</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">LLM 回答</p>
-      </div>
-    </div>
-  `;
-}, 100);
+  FlowChart.render('ragPipeline', {
+    nodes: [
+      { id: 'doc', label: '1. 文档处理\n加载/分块/清洗', type: 'start' },
+      { id: 'embed', label: '2. 向量化\nEmbedding 编码', type: 'process' },
+      { id: 'store', label: '3. 存储\n向量数据库', type: 'tool' },
+      { id: 'retrieve', label: '4. 检索\n相似度搜索', type: 'decision' },
+      { id: 'generate', label: '5. 生成\nLLM 回答', type: 'end' }
+    ],
+    edges: [
+      { from: 'doc', to: 'embed' },
+      { from: 'embed', to: 'store' },
+      { from: 'store', to: 'retrieve' },
+      { from: 'retrieve', to: 'generate' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">阶段一：文档处理（Chunking）</h3>
@@ -509,7 +490,7 @@ public class VectorStoreExample {
 }</pre></div>
 </div>
 
-<!-- ===== 19.3 检索策略 ===== -->
+<!-- ===== 20.3 检索策略 ===== -->
 <h2 class="section-heading">20.3 检索策略：不只是相似度搜索</h2>
 
 <p>最简单的 RAG 只做<strong>向量相似度搜索</strong>，但生产级 RAG 需要更复杂的检索策略。</p>
@@ -915,7 +896,7 @@ public class RerankExample {
 }</pre></div>
 </div>
 
-<!-- ===== 19.4 RAG 高级优化 ===== -->
+<!-- ===== 20.4 RAG 高级优化 ===== -->
 <h2 class="section-heading">20.4 RAG 高级优化技巧</h2>
 
 <h3 class="sub-heading">20.4.1 Query 改写</h3>
@@ -1054,7 +1035,7 @@ import java.io.*;
 # 优势：检索精度高（小块精确），上下文完整（大块信息丰富）</pre>
 </div>
 
-<!-- ===== 19.5 Agent + RAG 架构 ===== -->
+<!-- ===== 20.5 Agent + RAG 架构 ===== -->
 <h2 class="section-heading">20.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
 
 <p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
@@ -1233,7 +1214,7 @@ import java.io.*;
   </ul>
 </div>
 
-<!-- ===== 19.6 生产级 RAG 架构 ===== -->
+<!-- ===== 20.6 生产级 RAG 架构 ===== -->
 <h2 class="section-heading">20.6 生产级 RAG 架构</h2>
 
 <div class="card">
@@ -1262,7 +1243,7 @@ import java.io.*;
   </div>
 </div>
 
-<!-- ===== 19.7 GraphRAG ===== -->
+<!-- ===== 20.7 GraphRAG ===== -->
 <h2 class="section-heading">20.7 GraphRAG：知识图谱增强检索</h2>
 
 <p>传统向量 RAG 有一个致命弱点：<strong>只能检索局部相似片段，无法回答全局性问题</strong>。比如"整个系统架构包含哪些模块？"这样的问题需要跨文档、跨段落的全局视角。<strong>GraphRAG</strong> 通过构建知识图谱，让 RAG 具备"关联推理"的能力。</p>
@@ -1278,36 +1259,21 @@ import java.io.*;
 
 <script>
 setTimeout(() => {
-  const container = document.getElementById('graphRagFlow');
-  if (!container) return;
-  container.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 20px 0;">
-      <div style="padding: 16px 20px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">📄</div>
-        <strong style="font-size: 13px; color: var(--color-accent);">1. 实体抽取</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">LLM 识别实体</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🔗</div>
-        <strong style="font-size: 13px; color: var(--color-info);">2. 关系构建</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">实体间连边</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🕸️</div>
-        <strong style="font-size: 13px; color: var(--color-success);">3. 子图检索</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">定位相关子图</p>
-      </div>
-      <span style="font-size: 20px; color: var(--color-accent);">→</span>
-      <div style="padding: 16px 20px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 130px;">
-        <div style="font-size: 28px; margin-bottom: 6px;">🤖</div>
-        <strong style="font-size: 13px; color: var(--color-warning);">4. 图遍历生成</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">沿边扩展上下文</p>
-      </div>
-    </div>
-  `;
-}, 100);
+  FlowChart.render('graphRagFlow', {
+    nodes: [
+      { id: 'extract', label: '1. 实体抽取\nLLM 识别实体', type: 'start' },
+      { id: 'relate', label: '2. 关系构建\n实体间连边', type: 'process' },
+      { id: 'subgraph', label: '3. 子图检索\n定位相关子图', type: 'tool' },
+      { id: 'traverse', label: '4. 图遍历生成\n沿边扩展上下文', type: 'end' }
+    ],
+    edges: [
+      { from: 'extract', to: 'relate' },
+      { from: 'relate', to: 'subgraph' },
+      { from: 'subgraph', to: 'traverse' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <div class="code-block" data-multi-lang>
@@ -1496,7 +1462,7 @@ import java.io.*;
   </ul>
 </div>
 
-<!-- ===== 19.8 Agentic RAG ===== -->
+<!-- ===== 20.8 Agentic RAG ===== -->
 <h2 class="section-heading">20.8 Agentic RAG：Agent 驱动的自适应检索</h2>
 
 <p>传统 RAG 是一个<strong>固定流水线</strong>：用户提问 → 检索 → 拼接上下文 → LLM 生成。无论问题难易，流程都一样。但这不合理——有些问题不需要检索，有些需要检索多次，有些需要先检索再反思再检索。<strong>Agentic RAG</strong> 把 Agent 引入检索循环，让 Agent 动态决策<strong>是否检索、检索几次、何时停止</strong>。</p>
@@ -1537,36 +1503,25 @@ import java.io.*;
 
 <script>
 setTimeout(() => {
-  const container = document.getElementById('agenticRagLoop');
-  if (!container) return;
-  container.innerHTML = `
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0;">
-      <div style="padding: 14px 28px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
-        <strong style="font-size: 14px; color: var(--color-accent);">👤 用户提问</strong>
-      </div>
-      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓</span>
-      <div style="padding: 14px 28px; border: 2px solid var(--color-info); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
-        <strong style="font-size: 14px; color: var(--color-info);">🧠 Agent 判断：需要检索吗？</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">不需要 → 直接回答</p>
-      </div>
-      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓ 需要</span>
-      <div style="padding: 14px 28px; border: 2px solid var(--color-warning); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
-        <strong style="font-size: 14px; color: var(--color-warning);">🔍 执行检索</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">Query 改写 + 混合检索 + 重排序</p>
-      </div>
-      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓</span>
-      <div style="padding: 14px 28px; border: 2px solid var(--color-success); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
-        <strong style="font-size: 14px; color: var(--color-success);">🤔 反思：信息充分吗？</strong>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0;">不充分 → 改写 Query 重新检索（循环）</p>
-        <p style="font-size: 11px; color: var(--color-text-tertiary); margin: 2px 0 0;">充分 → 生成最终回答</p>
-      </div>
-      <span style="font-size: 18px; color: var(--color-text-tertiary);">↓ 充分</span>
-      <div style="padding: 14px 28px; border: 2px solid var(--color-accent); border-radius: 12px; background: var(--color-surface); text-align: center; min-width: 200px;">
-        <strong style="font-size: 14px; color: var(--color-accent);">✅ 生成回答 + 引用来源</strong>
-      </div>
-    </div>
-  `;
-}, 100);
+  FlowChart.render('agenticRagLoop', {
+    nodes: [
+      { id: 'ask', label: '用户提问', type: 'start' },
+      { id: 'judge', label: 'Agent 判断\n需要检索吗?', type: 'decision' },
+      { id: 'search', label: '执行检索\nQuery 改写 + 混合检索 + 重排序', type: 'tool' },
+      { id: 'reflect', label: '反思: 信息充分吗?', type: 'decision' },
+      { id: 'answer', label: '生成回答 + 引用来源', type: 'end' }
+    ],
+    edges: [
+      { from: 'ask', to: 'judge' },
+      { from: 'judge', to: 'answer', label: '不需要' },
+      { from: 'judge', to: 'search', label: '需要' },
+      { from: 'search', to: 'reflect' },
+      { from: 'reflect', to: 'search', label: '不充分,改写重检', dashed: true },
+      { from: 'reflect', to: 'answer', label: '充分' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <div class="code-block" data-multi-lang>
@@ -2354,59 +2309,22 @@ List<Chunk> splitCodeBySymbols(String sourceCode, String language) {
 
 <div class="flowchart-container" id="hnsw-flowchart"></div>
 <script>
-(function() {
-  const container = document.getElementById('hnsw-flowchart');
-  if (!container) return;
-  const svg = `
-  <svg viewBox="0 0 700 360" style="width:100%;height:360px;">
-    <!-- Layer 2 (top, sparse) -->
-    <text x="20" y="25" font-size="12" fill="#888">Layer 2 (稀疏 - 高速公路)</text>
-    <circle cx="150" cy="55" r="8" fill="#4A90D9"/>
-    <circle cx="350" cy="55" r="8" fill="#4A90D9"/>
-    <circle cx="550" cy="55" r="8" fill="#4A90D9"/>
-    <line x1="150" y1="55" x2="350" y2="55" stroke="#4A90D9" stroke-width="1.5"/>
-    <line x1="350" y1="55" x2="550" y2="55" stroke="#4A90D9" stroke-width="1.5"/>
-    
-    <!-- Connection between layers -->
-    <line x1="150" y1="63" x2="150" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
-    <line x1="350" y1="63" x2="350" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
-    <line x1="550" y1="63" x2="550" y2="137" stroke="#ccc" stroke-dasharray="3,3"/>
-    
-    <!-- Layer 1 (middle) -->
-    <text x="20" y="155" font-size="12" fill="#888">Layer 1 (中等 - 省道)</text>
-    <circle cx="100" cy="185" r="6" fill="#7B68EE"/>
-    <circle cx="200" cy="185" r="6" fill="#7B68EE"/>
-    <circle cx="300" cy="185" r="6" fill="#7B68EE"/>
-    <circle cx="400" cy="185" r="6" fill="#7B68EE"/>
-    <circle cx="500" cy="185" r="6" fill="#7B68EE"/>
-    <circle cx="600" cy="185" r="6" fill="#7B68EE"/>
-    <line x1="100" y1="185" x2="200" y2="185" stroke="#7B68EE" stroke-width="1"/>
-    <line x1="200" y1="185" x2="300" y2="185" stroke="#7B68EE" stroke-width="1"/>
-    <line x1="300" y1="185" x2="400" y2="185" stroke="#7B68EE" stroke-width="1"/>
-    <line x1="400" y1="185" x2="500" y2="185" stroke="#7B68EE" stroke-width="1"/>
-    <line x1="500" y1="185" x2="600" y2="185" stroke="#7B68EE" stroke-width="1"/>
-    
-    <!-- Connection between layers -->
-    <line x1="300" y1="191" x2="300" y2="247" stroke="#ccc" stroke-dasharray="3,3"/>
-    <line x1="500" y1="191" x2="500" y2="247" stroke="#ccc" stroke-dasharray="3,3"/>
-    
-    <!-- Layer 0 (bottom, dense) -->
-    <text x="20" y="265" font-size="12" fill="#888">Layer 0 (稠密 - 城市道路)</text>
-    ${Array.from({length: 16}, (_, i) => {
-      const x = 60 + i * 38;
-      return `<circle cx="${x}" cy="295" r="5" fill="#F5A623"/>`;
-    }).join('')}
-    ${Array.from({length: 15}, (_, i) => {
-      const x1 = 60 + i * 38;
-      const x2 = 60 + (i+1) * 38;
-      return `<line x1="${x1}" y1="295" x2="${x2}" y2="295" stroke="#F5A623" stroke-width="0.8"/>`;
-    }).join('')}
-    
-    <!-- Search path annotation -->
-    <text x="380" y="340" font-size="11" fill="#666">搜索：从 Layer 2 快速定位 → Layer 1 缩小范围 → Layer 0 精细搜索</text>
-  </svg>`;
-  container.innerHTML = svg;
-})();
+setTimeout(() => {
+  FlowChart.render('hnsw-flowchart', {
+    nodes: [
+      { id: 'l2', label: 'Layer 2 (稀疏)\n高速公路: 快速定位区域', type: 'start' },
+      { id: 'l1', label: 'Layer 1 (中等)\n省道: 缩小范围', type: 'process' },
+      { id: 'l0', label: 'Layer 0 (稠密)\n城市道路: 精细搜索', type: 'tool' },
+      { id: 'topk', label: '返回 Top-K\n相似度最高的 K 个向量', type: 'end' }
+    ],
+    edges: [
+      { from: 'l2', to: 'l1', label: '贪心搜索到本层最近' },
+      { from: 'l1', to: 'l0', label: '下降一层' },
+      { from: 'l0', to: 'topk', label: '优先级队列维护候选' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">20.10.2 搜索过程</h3>
@@ -2826,50 +2744,22 @@ public class HnswIndex {
 
 <div class="flowchart-container" id="token-degrade-flowchart"></div>
 <script>
-(function() {
-  const container = document.getElementById('token-degrade-flowchart');
-  if (!container) return;
-  container.innerHTML = `
-  <svg viewBox="0 0 700 400" style="width:100%;height:400px;">
-    <!-- Level 0 -->
-    <rect x="200" y="10" width="300" height="60" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
-    <text x="350" y="35" text-anchor="middle" font-size="14" fill="#2E7D32" font-weight="bold">Level 0: 全量发送</text>
-    <text x="350" y="55" text-anchor="middle" font-size="11" fill="#666">estimated_tokens &lt; context_limit</text>
-    
-    <line x1="350" y1="70" x2="350" y2="95" stroke="#999" marker-end="url(#arrow)"/>
-    <text x="370" y="88" font-size="10" fill="#999">超限?</text>
-    
-    <!-- Level 1 -->
-    <rect x="200" y="100" width="300" height="70" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
-    <text x="350" y="125" text-anchor="middle" font-size="14" fill="#E65100" font-weight="bold">Level 1: 裁剪上下文</text>
-    <text x="350" y="145" text-anchor="middle" font-size="11" fill="#666">移除低分 chunk，保留高分 chunk</text>
-    <text x="350" y="160" text-anchor="middle" font-size="11" fill="#666">+ 完整对话历史</text>
-    
-    <line x1="350" y1="170" x2="350" y2="195" stroke="#999" marker-end="url(#arrow)"/>
-    <text x="370" y="188" font-size="10" fill="#999">仍超限?</text>
-    
-    <!-- Level 2 -->
-    <rect x="200" y="200" width="300" height="70" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
-    <text x="350" y="225" text-anchor="middle" font-size="14" fill="#E65100" font-weight="bold">Level 2: 裁剪历史</text>
-    <text x="350" y="245" text-anchor="middle" font-size="11" fill="#666">只保留最近 2 条历史</text>
-    <text x="350" y="260" text-anchor="middle" font-size="11" fill="#666">保留高分 chunk</text>
-    
-    <line x1="350" y1="270" x2="350" y2="295" stroke="#999" marker-end="url(#arrow)"/>
-    <text x="370" y="288" font-size="10" fill="#999">仍超限?</text>
-    
-    <!-- Level 3 -->
-    <rect x="200" y="300" width="300" height="70" rx="8" fill="#FFEBEE" stroke="#F44336" stroke-width="2"/>
-    <text x="350" y="325" text-anchor="middle" font-size="14" fill="#C62828" font-weight="bold">Level 3: 紧急模式</text>
-    <text x="350" y="345" text-anchor="middle" font-size="11" fill="#666">无历史，仅 top-3 chunk</text>
-    <text x="350" y="360" text-anchor="middle" font-size="11" fill="#666">简化 prompt</text>
-    
-    <defs>
-      <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L6,3" fill="#999"/>
-      </marker>
-    </defs>
-  </svg>`;
-})();
+setTimeout(() => {
+  FlowChart.render('token-degrade-flowchart', {
+    nodes: [
+      { id: 'l0', label: 'Level 0: 全量发送\nestimated_tokens < context_limit', type: 'start' },
+      { id: 'l1', label: 'Level 1: 裁剪上下文\n移除低分 chunk, 保留高分 chunk + 完整历史', type: 'process' },
+      { id: 'l2', label: 'Level 2: 裁剪历史\n只保留最近 2 条历史 + 高分 chunk', type: 'process' },
+      { id: 'l3', label: 'Level 3: 紧急模式\n无历史, 仅 top-3 chunk + 简化 prompt', type: 'end' }
+    ],
+    edges: [
+      { from: 'l0', to: 'l1', label: '超限' },
+      { from: 'l1', to: 'l2', label: '仍超限' },
+      { from: 'l2', to: 'l3', label: '仍超限' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">20.11.3 代码实现：Token 估算 + 逐级降级</h3>
@@ -3138,55 +3028,34 @@ public class TokenBudget {
 
 <div class="flowchart-container" id="zero-dep-arch"></div>
 <script>
-(function() {
-  const container = document.getElementById('zero-dep-arch');
-  if (!container) return;
-  container.innerHTML = `
-  <svg viewBox="0 0 700 320" style="width:100%;height:320px;">
-    <!-- SQLite DB -->
-    <rect x="50" y="20" width="600" height="280" rx="12" fill="#F8F9FA" stroke="#4A90D9" stroke-width="2" stroke-dasharray="5,3"/>
-    <text x="350" y="45" text-anchor="middle" font-size="14" fill="#4A90D9" font-weight="bold">一个 SQLite .db 文件</text>
-    
-    <!-- Six tables -->
-    <rect x="80" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="150" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_knowledge_bases</text>
-    <text x="150" y="100" text-anchor="middle" font-size="9" fill="#888">知识库元数据</text>
-    
-    <rect x="240" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="310" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_documents</text>
-    <text x="310" y="100" text-anchor="middle" font-size="9" fill="#888">文档记录 + content_hash</text>
-    
-    <rect x="400" y="65" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="470" y="85" text-anchor="middle" font-size="11" fill="#1565C0">kb_chunks</text>
-    <text x="470" y="100" text-anchor="middle" font-size="9" fill="#888">分块 + BLOB 向量</text>
-    
-    <rect x="80" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="150" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_tasks</text>
-    <text x="150" y="160" text-anchor="middle" font-size="9" fill="#888">异步处理任务</text>
-    
-    <rect x="240" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="310" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_conversations</text>
-    <text x="310" y="160" text-anchor="middle" font-size="9" fill="#888">对话历史</text>
-    
-    <rect x="400" y="125" width="140" height="45" rx="6" fill="#E3F2FD" stroke="#4A90D9"/>
-    <text x="470" y="145" text-anchor="middle" font-size="11" fill="#1565C0">kb_sources</text>
-    <text x="470" y="160" text-anchor="middle" font-size="9" fill="#888">来源导入记录</text>
-    
-    <!-- HNSW Index File -->
-    <rect x="80" y="190" width="220" height="50" rx="6" fill="#FFF3E0" stroke="#FF9800"/>
-    <text x="190" y="210" text-anchor="middle" font-size="11" fill="#E65100">HNSW 索引文件 (.bin)</text>
-    <text x="190" y="225" text-anchor="middle" font-size="9" fill="#888">bincode 序列化，内存映射加载</text>
-    
-    <!-- FTS5 Virtual Table -->
-    <rect x="320" y="190" width="220" height="50" rx="6" fill="#FFF3E0" stroke="#FF9800"/>
-    <text x="430" y="210" text-anchor="middle" font-size="11" fill="#E65100">FTS5 虚拟表 (全文索引)</text>
-    <text x="430" y="225" text-anchor="middle" font-size="9" fill="#888">SQLite 内置，BM25 排序</text>
-    
-    <!-- Embedding Channel -->
-    <rect x="180" y="255" width="340" height="35" rx="6" fill="#F3E5F5" stroke="#9C27B0"/>
-    <text x="350" y="277" text-anchor="middle" font-size="11" fill="#7B1FA2">Embedding 渠道复用（已有 LLM 网关的渠道调度）</text>
-  </svg>`;
-})();
+setTimeout(() => {
+  FlowChart.render('zero-dep-arch', {
+    nodes: [
+      { id: 'sqlite', label: '一个 SQLite .db 文件', type: 'decision' },
+      { id: 'kbs', label: 'kb_knowledge_bases\n知识库元数据', type: 'tool' },
+      { id: 'docs', label: 'kb_documents\n文档记录 + content_hash', type: 'tool' },
+      { id: 'chunks', label: 'kb_chunks\n分块 + BLOB 向量', type: 'tool' },
+      { id: 'tasks', label: 'kb_tasks\n异步处理任务', type: 'tool' },
+      { id: 'convs', label: 'kb_conversations\n对话历史', type: 'tool' },
+      { id: 'sources', label: 'kb_sources\n来源导入记录', type: 'tool' },
+      { id: 'hnsw', label: 'HNSW 索引文件 (.bin)\nbincode 序列化, 内存映射加载', type: 'process' },
+      { id: 'fts5', label: 'FTS5 虚拟表\nSQLite 内置, BM25 排序', type: 'process' },
+      { id: 'embed', label: 'Embedding 渠道复用\n复用 LLM 网关的渠道调度', type: 'start' }
+    ],
+    edges: [
+      { from: 'kbs', to: 'sqlite' },
+      { from: 'docs', to: 'sqlite' },
+      { from: 'chunks', to: 'sqlite' },
+      { from: 'tasks', to: 'sqlite' },
+      { from: 'convs', to: 'sqlite' },
+      { from: 'sources', to: 'sqlite' },
+      { from: 'sqlite', to: 'hnsw' },
+      { from: 'sqlite', to: 'fts5' },
+      { from: 'embed', to: 'sqlite' }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">20.12.2 Embedding 渠道复用</h3>
@@ -3495,45 +3364,26 @@ public class SQLiteVectorStore {
 
 <div class="flowchart-container" id="mcp-arch"></div>
 <script>
-(function() {
-  const container = document.getElementById('mcp-arch');
-  if (!container) return;
-  container.innerHTML = `
-  <svg viewBox="0 0 700 280" style="width:100%;height:280px;">
-    <!-- Knowledge Base -->
-    <rect x="250" y="10" width="200" height="50" rx="8" fill="#E3F2FD" stroke="#4A90D9" stroke-width="2"/>
-    <text x="350" y="40" text-anchor="middle" font-size="13" fill="#1565C0" font-weight="bold">知识库 (RAG)</text>
-    
-    <!-- MCP Server -->
-    <rect x="200" y="90" width="300" height="60" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
-    <text x="350" y="115" text-anchor="middle" font-size="13" fill="#E65100" font-weight="bold">MCP Server (JSON-RPC + SSE)</text>
-    <text x="350" y="135" text-anchor="middle" font-size="10" fill="#888">13 个工具: search / ask / build_index / ...</text>
-    
-    <!-- Connection lines -->
-    <line x1="350" y1="60" x2="350" y2="90" stroke="#999" stroke-width="1.5"/>
-    
-    <!-- Agents -->
-    <rect x="30" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
-    <text x="95" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Claude Desktop</text>
-    
-    <rect x="180" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
-    <text x="245" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Cursor</text>
-    
-    <rect x="330" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
-    <text x="395" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">Copilot</text>
-    
-    <rect x="480" y="190" width="130" height="50" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
-    <text x="545" y="220" text-anchor="middle" font-size="12" fill="#7B1FA2">自研 Agent</text>
-    
-    <!-- Connection lines -->
-    <line x1="95" y1="190" x2="250" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
-    <line x1="245" y1="190" x2="300" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
-    <line x1="395" y1="190" x2="400" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
-    <line x1="545" y1="190" x2="450" y2="150" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
-    
-    <text x="350" y="265" text-anchor="middle" font-size="11" fill="#666">一个知识库，同时服务所有 AI Agent</text>
-  </svg>`;
-})();
+setTimeout(() => {
+  FlowChart.render('mcp-arch', {
+    nodes: [
+      { id: 'kb', label: '知识库 (RAG)', type: 'start' },
+      { id: 'mcp', label: 'MCP Server\nJSON-RPC + SSE\n13 个工具', type: 'decision' },
+      { id: 'claude', label: 'Claude Desktop', type: 'tool' },
+      { id: 'cursor', label: 'Cursor', type: 'tool' },
+      { id: 'copilot', label: 'Copilot', type: 'tool' },
+      { id: 'custom', label: '自研 Agent', type: 'tool' }
+    ],
+    edges: [
+      { from: 'kb', to: 'mcp' },
+      { from: 'mcp', to: 'claude', dashed: true },
+      { from: 'mcp', to: 'cursor', dashed: true },
+      { from: 'mcp', to: 'copilot', dashed: true },
+      { from: 'mcp', to: 'custom', dashed: true }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">20.13.2 暴露 13 个 MCP 工具</h3>
@@ -3817,76 +3667,33 @@ Map<String, Object> handleMcpRequest(String method, Map<String, Object> params) 
 
 <div class="flowchart-container" id="deep-research-flowchart"></div>
 <script>
-(function() {
-  const container = document.getElementById('deep-research-flowchart');
-  if (!container) return;
-  container.innerHTML = `
-  <svg viewBox="0 0 700 400" style="width:100%;height:400px;">
-    <!-- Question -->
-    <rect x="250" y="10" width="200" height="40" rx="8" fill="#E3F2FD" stroke="#4A90D9" stroke-width="2"/>
-    <text x="350" y="35" text-anchor="middle" font-size="12" fill="#1565C0" font-weight="bold">用户问题</text>
-    
-    <!-- Round 1 -->
-    <rect x="50" y="80" width="180" height="80" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
-    <text x="140" y="105" text-anchor="middle" font-size="11" fill="#E65100" font-weight="bold">第 1 轮检索</text>
-    <text x="140" y="125" text-anchor="middle" font-size="10" fill="#888">检索架构概览</text>
-    <text x="140" y="140" text-anchor="middle" font-size="10" fill="#888">检索模块列表</text>
-    
-    <!-- Analyze 1 -->
-    <rect x="260" y="80" width="180" height="80" rx="8" fill="#F3E5F5" stroke="#9C27B0" stroke-width="1.5"/>
-    <text x="350" y="105" text-anchor="middle" font-size="11" fill="#7B1FA2" font-weight="bold">分析发现</text>
-    <text x="350" y="125" text-anchor="middle" font-size="10" fill="#888">识别 6 个模块</text>
-    <text x="350" y="140" text-anchor="middle" font-size="10" fill="#888">每个模块需深入</text>
-    
-    <!-- Follow-up 1 -->
-    <rect x="470" y="80" width="180" height="80" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
-    <text x="560" y="105" text-anchor="middle" font-size="11" fill="#2E7D32" font-weight="bold">生成追问</text>
-    <text x="560" y="125" text-anchor="middle" font-size="10" fill="#888">"模块A的技术选型?"</text>
-    <text x="560" y="140" text-anchor="middle" font-size="10" fill="#888">"模块B的设计权衡?"</text>
-    
-    <!-- Arrows round 1 -->
-    <line x1="230" y1="120" x2="260" y2="120" stroke="#999" marker-end="url(#arr2)"/>
-    <line x1="440" y1="120" x2="470" y2="120" stroke="#999" marker-end="url(#arr2)"/>
-    
-    <!-- Round 2 -->
-    <rect x="50" y="190" width="180" height="80" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
-    <text x="140" y="215" text-anchor="middle" font-size="11" fill="#E65100" font-weight="bold">第 2 轮检索</text>
-    <text x="140" y="235" text-anchor="middle" font-size="10" fill="#888">检索每个模块详情</text>
-    <text x="140" y="250" text-anchor="middle" font-size="10" fill="#888">检索技术选型理由</text>
-    
-    <!-- Analyze 2 -->
-    <rect x="260" y="190" width="180" height="80" rx="8" fill="#F3E5F5" stroke="#9C27B0" stroke-width="1.5"/>
-    <text x="350" y="215" text-anchor="middle" font-size="11" fill="#7B1FA2" font-weight="bold">分析发现</text>
-    <text x="350" y="235" text-anchor="middle" font-size="10" fill="#888">发现 3 个设计权衡</text>
-    <text x="350" y="250" text-anchor="middle" font-size="10" fill="#888">还有改进方向未覆盖</text>
-    
-    <!-- Follow-up 2 -->
-    <rect x="470" y="190" width="180" height="80" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
-    <text x="560" y="215" text-anchor="middle" font-size="11" fill="#2E7D32" font-weight="bold">生成追问</text>
-    <text x="560" y="235" text-anchor="middle" font-size="10" fill="#888">"已知问题?"</text>
-    <text x="560" y="250" text-anchor="middle" font-size="10" fill="#888">"改进方向?"</text>
-    
-    <!-- Arrows round 2 -->
-    <line x1="230" y1="230" x2="260" y2="230" stroke="#999" marker-end="url(#arr2)"/>
-    <line x1="440" y1="230" x2="470" y2="230" stroke="#999" marker-end="url(#arr2)"/>
-    <line x1="560" y1="170" x2="560" y2="190" stroke="#ccc" stroke-dasharray="3,3"/>
-    
-    <!-- Round 3 + Final -->
-    <rect x="50" y="300" width="180" height="50" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
-    <text x="140" y="330" text-anchor="middle" font-size="11" fill="#E65100">第 N 轮检索</text>
-    
-    <rect x="260" y="300" width="380" height="50" rx="8" fill="#FFEBEE" stroke="#F44336" stroke-width="2"/>
-    <text x="450" y="330" text-anchor="middle" font-size="13" fill="#C62828" font-weight="bold">综合报告：技术选型 + 设计权衡 + 改进方向</text>
-    
-    <line x1="230" y1="325" x2="260" y2="325" stroke="#999" marker-end="url(#arr2)"/>
-    
-    <defs>
-      <marker id="arr2" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L6,3" fill="#999"/>
-      </marker>
-    </defs>
-  </svg>`;
-})();
+setTimeout(() => {
+  FlowChart.render('deep-research-flowchart', {
+    nodes: [
+      { id: 'question', label: '用户问题', type: 'start' },
+      { id: 'round1', label: '第 1 轮检索\n检索架构概览 / 模块列表', type: 'tool' },
+      { id: 'analyze1', label: '分析发现\n识别 6 个模块, 每个需深入', type: 'process' },
+      { id: 'follow1', label: '生成追问\n模块A技术选型? 模块B设计权衡?', type: 'decision' },
+      { id: 'round2', label: '第 2 轮检索\n检索模块详情 / 技术选型理由', type: 'tool' },
+      { id: 'analyze2', label: '分析发现\n3 个设计权衡, 改进方向未覆盖', type: 'process' },
+      { id: 'follow2', label: '生成追问\n已知问题? 改进方向?', type: 'decision' },
+      { id: 'roundN', label: '第 N 轮检索', type: 'tool' },
+      { id: 'report', label: '综合报告\n技术选型 + 设计权衡 + 改进方向', type: 'end' }
+    ],
+    edges: [
+      { from: 'question', to: 'round1' },
+      { from: 'round1', to: 'analyze1' },
+      { from: 'analyze1', to: 'follow1' },
+      { from: 'follow1', to: 'round2', label: '追问' },
+      { from: 'round2', to: 'analyze2' },
+      { from: 'analyze2', to: 'follow2' },
+      { from: 'follow2', to: 'roundN', label: '追问' },
+      { from: 'roundN', to: 'report', label: '信息充分' },
+      { from: 'follow2', to: 'report', label: '无需再检', dashed: true }
+    ],
+    animate: true
+  });
+}, 300);
 </script>
 
 <h3 class="sub-heading">20.14.2 Deep Research vs Agentic RAG</h3>

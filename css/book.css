@@ -2319,10 +2319,14 @@ p {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 18px;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
   position: relative;
   overflow: hidden;
+}
+
+.chat-input-area .send-btn svg {
+  display: block;
+  margin-left: 2px;
 }
 
 /* 按钮光晕效果 */
@@ -4072,9 +4076,8 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
     padding: var(--space-md) var(--space-md) calc(var(--space-xl) + 200px) !important;
   }
 
-  /* 8. 回到顶部按钮调整位置 */
+  /* 8. 回到顶部按钮保持底部居中 */
   .back-to-top {
-    right: 16px !important;
     bottom: 72px !important;
   }
 
@@ -4335,13 +4338,14 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 /* ===== 移动端响应式适配 ===== */
 
 
-/* ===== 回到顶部按钮 ===== */
+/* ===== 回到顶部按钮（跟随内容区，底部居中） ===== */
 .back-to-top {
-  position: fixed;
-  bottom: 40px;
-  right: 420px;
-  width: 44px;
-  height: 44px;
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--color-accent);
   color: #fff;
@@ -4353,22 +4357,24 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   box-shadow: var(--shadow-md);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px);
   transition: all 0.3s ease;
-  z-index: 100;
-  font-size: 20px;
+  z-index: 50;
+}
+
+.back-to-top svg {
+  display: block;
 }
 
 .back-to-top:hover {
   background: var(--color-accent-dark);
   box-shadow: var(--shadow-lg);
-  transform: translateY(0) scale(1.08);
+  transform: translateX(-50%) translateY(0) scale(1.08);
 }
 
 .back-to-top.visible {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 [data-theme="dark"] .back-to-top {
@@ -4380,11 +4386,10 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   background: var(--color-accent);
 }
 
-/* 响应式：小屏调整位置 */
+/* 响应式：小屏保持底部居中 */
 @media (max-width: 1200px) {
   .back-to-top {
-    right: 30px;
-    bottom: 30px;
+    bottom: 20px;
   }
 }
 
