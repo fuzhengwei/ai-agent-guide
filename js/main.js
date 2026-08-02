@@ -670,6 +670,14 @@ const App = {
           <div class="hero-projects">
             <div class="hero-map-title">🏗️ 实战项目 · 点击进入</div>
             <div class="project-group">
+              <a class="project-card" href="https://bugstack.cn/md/project/waliapi/waliapi.html" target="_blank">
+                <span class="project-icon">🛡️</span>
+                <div class="project-info">
+                  <span class="project-name">WaLiAPI - AI LLM LocalGateway 本地网关系统</span>
+                  <span class="project-desc">渠道分发、日志留存、日志审计、知识库</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
               <a class="project-card" href="https://bugstack.cn/md/project/walissh/walissh.html" target="_blank">
                 <span class="project-icon">🖥️</span>
                 <div class="project-info">
