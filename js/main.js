@@ -1353,18 +1353,19 @@ const App = {
     if (!pageDiv) return;
 
     // 查找八股总结区域 — 兼容多种格式
+    // 收集所有八股区域元素（一章可能有多块八股总结/补充八股题）
+    const baguEls = new Set();
     let baguStartEl = null;
-    let baguParentEl = null;
     // 格式1: <div class="summary-title"> 含"八股"文字（标准格式，含 qa-item 卡片）
     const allSummaryTitles = pageDiv.querySelectorAll('.summary-title');
     for (const el of allSummaryTitles) {
       const text = el.textContent.trim();
       // 匹配"八股总结"或"面试高频考点"
       if (/八股|面试高频/.test(text)) {
-        baguStartEl = el;
+        if (!baguStartEl) baguStartEl = el;
         // 找到该 summary-title 所在 summary-box（通常是 pageDiv 的直接子元素）
-        baguParentEl = el.closest('.summary-box');
-        break;
+        const box = el.closest('.summary-box') || el;
+        baguEls.add(box);
       }
     }
     // 格式2: <h2 class="section-heading"> 含"八股"文字（非标准格式，含 ol 列表）
@@ -1372,12 +1373,18 @@ const App = {
       const allHeadings = pageDiv.querySelectorAll('h2.section-heading');
       for (const el of allHeadings) {
         if (/八股/.test(el.textContent.trim())) {
-          baguStartEl = el;
-          baguParentEl = el;
-          break;
+          if (!baguStartEl) baguStartEl = el;
+          baguEls.add(el);
         }
       }
     }
+    // 判断一个元素是否属于八股区域
+    const isBaguEl = (el) => {
+      for (const box of baguEls) {
+        if (box === el || box.contains(el)) return true;
+      }
+      return false;
+    };
 
     // 查找考试区域
     const quizStartEl = pageDiv.querySelector('#quizArea');
@@ -1386,7 +1393,10 @@ const App = {
     if (!baguStartEl && !quizStartEl) return;
 
     // 标记各个区域的内容
+    // 逐元素独立判断：八股区域仅限八股 summary-box 本身，不粘连后续正文；
+    // 考试区域从 #quizArea 开始（含其后渲染题目的 <script>）到末尾。
     let currentSection = 'article';
+    let quizStarted = false;
     const children = Array.from(pageDiv.children);
 
     // 用于统计八股题目数和面试题目数
@@ -1394,13 +1404,17 @@ const App = {
     let quizCount = 0;
 
     children.forEach(child => {
-      // 检查是否是八股开始（用 contains 判断，因为 baguStartEl 可能是子元素而非直接子元素）
-      if (baguParentEl && baguParentEl.contains(child)) {
-        currentSection = 'bagu';
+      // 考试区域：从 quizArea 开始（含其后的 <script>）粘性到末尾
+      if (!quizStarted && (child === quizStartEl || child.id === 'quizArea')) {
+        quizStarted = true;
       }
-      // 检查是否是考试开始
-      if (child === quizStartEl || child.id === 'quizArea') {
+      if (quizStarted) {
         currentSection = 'quiz';
+      } else if (isBaguEl(child)) {
+        // 八股区域：仅当该元素属于某个八股 summary-box 时标记为 bagu
+        currentSection = 'bagu';
+      } else {
+        currentSection = 'article';
       }
 
       // 添加数据属性标记
