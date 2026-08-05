@@ -5846,6 +5846,116 @@ if (lost.length &gt; 0) {
 <p><strong>选型建议</strong>:通用对话选 Mem0,长期伴随选 Letta,需要时序推理选 Zep。也可组合使用——Zep 做图谱存储 + Mem0 做分层检索。</p>
 </div>
 
+<!-- ===== 6.13 工业级记忆系统实现：Claude Code 案例 ===== -->
+<h2 class="section-heading">6.13 工业级记忆系统实现：Claude Code 案例</h2>
+
+<p>前面几节讲了记忆系统的架构设计（三层记忆）、检索策略（向量/混合/重排序）、压缩方案（生产级压缩系统）。但当一个工业级 Agent 真正落地时，记忆系统是怎么实现的？本节以 Claude Code 的记忆系统为例，拆解从文件持久化到自动压缩的完整实现。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 案例背景：Claude Code 的记忆挑战</div>
+<p>Claude Code 是一个 CLI Agent，每次会话独立启动（无服务端状态）。它需要记住用户的编程偏好、项目上下文、历史反馈——但不能用向量数据库（CLI 工具不能依赖外部服务）。解决方案：<strong>纯文件系统记忆 + LLM 驱动的自动压缩</strong>。</p>
+</div>
+
+<h3 class="sub-heading">6.13.1 CLAUDE.md：四类型记忆分类</h3>
+
+<p>Claude Code 的记忆入口文件是 <code>CLAUDE.md</code>（或 <code>MEMORY.md</code>），存放在项目根目录。文件大小限制：<strong>200 行 / 25,000 字节</strong>。超出则触发压缩或截断。</p>
+
+<p>关键设计不是“一个大文件记所有东西”，而是<strong>按类型分类</strong>。Claude Code 定义了四种记忆类型：</p>
+
+<table class="comparison-table">
+<thead>
+<tr><th>类型</th><th>含义</th><th>写入触发</th><th>示例</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>user</strong></td><td>用户画像与偏好</td><td>学到用户角色、技术栈、工作习惯时</td><td>“用户是 Java 开发者，偏好 DDD 架构”</td></tr>
+<tr><td><strong>feedback</strong></td><td>用户纠正的反馈</td><td>被用户纠正时（记录失败 AND 成功案例）</td><td>“不要用 git add -A，用户偏好逐文件 add”</td></tr>
+<tr><td><strong>project</strong></td><td>项目上下文</td><td>确认非当前项目状态可推导的信息时</td><td>“本项目用 pnpm 而非 npm”</td></tr>
+<tr><td><strong>reference</strong></td><td>外部引用</td><td>发现有价值的外部资源时</td><td>“API 文档在 https://xxx”</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 关键原则：只记无法推导的上下文</div>
+<p>Claude Code 的记忆写入原则是：<strong>只存无法从当前项目状态推导的上下文</strong>。如果信息可以从 <code>package.json</code> 读到（如“本项目用 React”），就不写记忆文件。只有跨会话需要的、无法从文件系统读到的信息才写入。</p>
+</div>
+
+<p>每条记忆的 body 结构也有规范：</p>
+<pre><code class="language-markdown">## 规则标题
+
+规则内容（简洁的祈使句）
+
+**Why:** 为什么有这条规则——通常是一次事故或用户反馈
+
+**How to apply:** 如何应用——具体到操作层面</code></pre>
+
+<p>此外，记忆还有 scope 分离：<strong>private</strong>（私有，仅当前用户可见）和 <strong>team</strong>（团队共享，提交到版本控制）。private 记忆放在 <code>~/.claude/CLAUDE.md</code>，team 记忆放在项目根目录的 <code>CLAUDE.md</code>。</p>
+
+<h3 class="sub-heading">6.13.2 有效上下文窗口</h3>
+
+<p>“模型上下文窗口 200K token”不等于“可用 200K token”。工业级 Agent 需要计算<strong>有效上下文窗口</strong>：</p>
+
+<pre><code class="language-text">有效上下文窗口 = 模型上下文窗口 - max(maxOutputTokens, 20000) - AUTOCOMPACT_BUFFER</code></pre>
+
+<p>例如 200K 窗口的模型，maxOutputTokens 可能是 8192，但安全起见取 <code>max(8192, 20000) = 20000</code>。再减去 <code>AUTOCOMPACT_BUFFER_TOKENS = 13,000</code>（压缩触发预留），有效窗口 = 200,000 - 20,000 - 13,000 = <strong>167,000 token</strong>。</p>
+
+<p>当对话 token 使用量接近有效窗口时，触发自动压缩。还有预警机制：</p>
+<ul>
+<li><strong>WARNING 阈值</strong>（20,000 token 剩余）：提醒用户上下文即将耗尽</li>
+<li><strong>ERROR 阈值</strong>（更少）：强制压缩，不允许继续对话</li>
+</ul>
+
+<h3 class="sub-heading">6.13.3 AutoCompact：三级压缩降级链</h3>
+
+<p>Claude Code 的自动压缩不是一步到位的，而是<strong>三级渐进式降级</strong>：</p>
+
+<table class="comparison-table">
+<thead>
+<tr><th>级别</th><th>触发条件</th><th>策略</th><th>数据损失</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Level 1: MicroCompact</strong></td><td>有效窗口剩余 < 13K token</td><td>清理旧的工具结果（FileRead/Bash/Grep 等），替换为 <code>[Old tool result content cleared]</code>；图片保留但限制 2000 token</td><td>低（只删工具输出，保留推理和决策）</td></tr>
+<tr><td><strong>Level 2: AutoCompact</strong></td><td>MicroCompact 后仍超阈值</td><td>调用 LLM 生成对话摘要（保留 20,000 token 给摘要），用摘要替换历史消息</td><td>中（推理过程被压缩为摘要）</td></tr>
+<tr><td><strong>Level 3: SessionMemoryCompact</strong></td><td>AutoCompact 失败或会话结束时</td><td>将关键信息写入持久化记忆文件，清理会话内上下文</td><td>高（仅保留最关键的记忆条目）</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">⚙️ 工程细节：可压缩工具白名单</div>
+<p>MicroCompact 不是所有工具结果都压缩。有白名单：<code>COMPACTABLE_TOOLS = [FileRead, Bash, Grep, Glob, WebSearch, WebFetch, FileEdit, FileWrite]</code>。不在白名单中的工具结果（如用户输入、Agent 决策）不压缩。</p>
+</div>
+
+<h3 class="sub-heading">6.13.4 连续压缩失败熔断</h3>
+
+<p>AutoCompact 调用 LLM 生成摘要，这个调用本身也可能失败（API 超时、模型异常）。如果不做保护，会陷入“压缩失败 → 重试 → 再次失败”的死循环。</p>
+
+<p>Claude Code 的解决方案：<strong>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</strong>。连续失败 3 次后停止重试，直接降级到 SessionMemoryCompact。</p>
+
+<div class="info-card">
+<div class="info-card-title">📊 数据驱动的设计决策</div>
+<p>“3 次”这个数字不是拍脑袋定的。Anthropic 通过 BQ（BigQuery）数据分析发现：1,279 个会话出现单会话 50+ 次连续压缩失败，最高达 3,272 次，全球每天约 25 万次无效 API 调用。设为 3 次后，99.9% 的异常会话在熔断前恢复，同时避免了无效 API 消耗。</p>
+</div>
+
+<h3 class="sub-heading">6.13.5 对比：教学级 vs 工业级记忆系统</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>教学级（6.1-6.8）</th><th>工业级（6.13）</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>存储</strong></td><td>向量数据库 + Redis</td><td>纯文件系统（CLAUDE.md）</td></tr>
+<tr><td><strong>分类</strong></td><td>短期/长期/工作记忆</td><td>四类型（user/feedback/project/reference）+ private/team scope</td></tr>
+<tr><td><strong>压缩</strong></td><td>摘要 + 向量检索</td><td>三级降级链（microCompact → autoCompact → sessionMemoryCompact）</td></tr>
+<tr><td><strong>窗口管理</strong></td><td>固定 token 限制</td><td>有效窗口计算（窗口 - 输出预留 - 压缩缓冲）</td></tr>
+<tr><td><strong>容错</strong></td><td>重试机制</td><td>连续失败熔断 + 降级策略</td></tr>
+<tr><td><strong>写入触发</strong></td><td>每轮对话后</td><td>仅记录无法从项目状态推导的上下文</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>能说出“记忆四类型分类”和“三级压缩降级链”的候选人非常少。如果你能解释清楚为什么 MicroCompact 只压缩工具结果而不压缩推理过程，以及熔断阈值的“数据驱动”来源，基本能拿到高级工程师的 Offer。</p>
+</div>
+
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 - 面试高频考点</div>
 
@@ -6049,6 +6159,24 @@ if (lost.length &gt; 0) {
       <strong>Letta 记忆分页</strong>:借鉴 OS 虚拟内存机制,把记忆分为 Core Memory（常驻上下文,类似 RAM,放最关键的用户信息和任务状态,通常 &lt; 2000 token）和 Archival Memory（外部存储,类似磁盘,放历史交互）。Core 满了自动把低优先级记忆"换出"到 Archival,需要时通过 search_archival 工具"换入"。Agent 还能通过 edit_core_memory 工具<strong>自编辑</strong>记忆,纠正过时信息。<br><br>
       <strong>Zep 时序知识图谱</strong>:把对话中的实体、关系、事件抽取为带时间戳的三元组,如 (用户, 换设备, Mac, 2025-06)。优势:①支持时序查询（"用户什么时候换的电脑"）,向量检索做不到;②支持关系查询（"X和Y什么关系"）;③自动摘要随时间衰减,新摘要权重更高,解决旧摘要和新摘要同等权重的问题。代价是图谱构建质量依赖 NLP 抽取能力。<br><br>
       面试要点:Letta 重点说"OS 式分页 + 自编辑",Zep 重点说"时序 + 结构化"。对比时强调:Letta 解决的是有限窗口 vs 无限记忆的矛盾,Zep 解决的是向量检索无法回答时序和关系查询的矛盾。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q18: Claude Code 的记忆系统如何分类？四类型记忆分别是什么？</div>
+    <div class="qa-answer">
+      <strong>四类型</strong>：①<strong>user</strong>（用户画像与偏好，如"用户是 Java 开发者"）；②<strong>feedback</strong>（用户纠正的反馈，记录失败和成功案例）；③<strong>project</strong>（项目上下文，如"本项目用 pnpm"）；④<strong>reference</strong>（外部引用，如 API 文档链接）。<br><br>
+      <strong>关键原则</strong>：只存无法从当前项目状态推导的上下文。如果信息可以从 package.json 读到，就不写记忆文件。<br><br>
+      <strong>body 结构</strong>：规则 → **Why:**（原因/事故）→ **How to apply:**（操作指导）。scope 分 private（仅当前用户）和 team（团队共享，提交到版本控制）。文件大小限制 200 行 / 25,000 字节。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q19: 什么是 AutoCompact 三级压缩降级链？连续压缩失败熔断阈值是多少？</div>
+    <div class="qa-answer">
+      <strong>三级降级</strong>：①<strong>MicroCompact</strong>（有效窗口剩余 < 13K token）：清理旧工具结果，替换为占位符，保留推理和决策；②<strong>AutoCompact</strong>：调用 LLM 生成对话摘要，保留 20,000 token 给摘要，用摘要替换历史消息；③<strong>SessionMemoryCompact</strong>：将关键信息写入持久化记忆文件，清理会话内上下文。<br><br>
+      <strong>熔断阈值</strong>：MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3。连续失败 3 次后停止重试，直接降级到 SessionMemoryCompact。<br><br>
+      <strong>数据来源</strong>：BQ 分析发现 1,279 个会话出现 50+ 次连续失败，最高 3,272 次，全球每天约 25 万次无效 API 调用。设为 3 后 99.9% 异常会话在熔断前恢复。
     </div>
   </div>
 </div>
@@ -6259,6 +6387,30 @@ var ch05Questions = [
     ],
     answer: [1],
     explanation: 'Letta 借鉴 OS 虚拟内存机制:Core Memory 类似 RAM 常驻上下文（放最关键信息,&lt; 2000 token）,Archival Memory 类似磁盘外部存储（放历史交互）。Core 满了自动换出到 Archival,需要时换入。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 的记忆系统中，以下哪项应该写入记忆文件？',
+    options: [
+      '本项目使用 React 框架（可从 package.json 读取）',
+      '用户偏好逐文件 git add 而非 git add -A（无法从项目状态推导）',
+      '项目有 3 个 TypeScript 文件（可从文件系统扫描得到）',
+      'API 文档在 node_modules 中（可从依赖树读取）'
+    ],
+    answer: [1],
+    explanation: 'Claude Code 的记忆写入原则：只存无法从当前项目状态推导的上下文。用户偏好（逐文件 add）无法从文件系统读取，应写入记忆。其余三项都可以从 package.json、文件扫描、node_modules 推导，不应写入。'
+  },
+  {
+    type: 'single',
+    question: 'AutoCompact 三级压缩降级链的正确顺序是？',
+    options: [
+      'AutoCompact → MicroCompact → SessionMemoryCompact',
+      'SessionMemoryCompact → AutoCompact → MicroCompact',
+      'MicroCompact → AutoCompact → SessionMemoryCompact',
+      'AutoCompact → SessionMemoryCompact → MicroCompact'
+    ],
+    answer: [2],
+    explanation: '三级降级顺序：①MicroCompact（清理旧工具结果，损失低）→ ②AutoCompact（LLM 生成摘要替换历史，损失中）→ ③SessionMemoryCompact（写入持久化记忆，清理会话上下文，损失高）。逐级降级，越靠后数据损失越大。'
   }
 ];
 

@@ -2039,6 +2039,110 @@ import java.io.*;
   ④ Runner 跟踪整个移交链路，可记录和回溯每一步决策
 </div>
 
+<!-- ===== 14.9 工业级实践：Fork Subagent 机制 ===== -->
+<h2 class="section-heading">14.9 工业级实践：Fork Subagent 机制</h2>
+
+<p>前面的章节讲了多 Agent 的协作模式（编排者-执行者、辩论对抗、Handoffs），但有一个工程问题被回避了：<strong>子代理启动时，要不要继承主代理的上下文？</strong></p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实案例：Claude Code 的 AgentTool</div>
+<p>Claude Code 的 <code>AgentTool</code> 支持两种子代理模式：<strong>Fork</strong>（继承当前对话上下文）和 <strong>Fresh Subagent</strong>（零上下文启动）。这个设计直接影响 prompt cache 命中率、上下文污染风险、以及任务编排的灵活性。</p>
+</div>
+
+<h3 class="sub-heading">14.9.1 Fork vs Fresh：上下文继承的权衡</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>Fork（继承上下文）</th><th>Fresh Subagent（零上下文）</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>启动上下文</strong></td><td>继承主代理完整对话历史</td><td>空白启动，只有 prompt 中提供的信息</td></tr>
+<tr><td><strong>Prompt Cache</strong></td><td>✅ 共享主代理的 prompt cache prefix</td><td>❌ 需要重新建立缓存</td></tr>
+<tr><td><strong>Token 消耗</strong></td><td>低（不需要重复传上下文）</td><td>高（prompt 中需要详细 briefing）</td></tr>
+<tr><td><strong>上下文污染风险</strong></td><td>⚠️ 高（主代理的偏见/错误可能传递）</td><td>✅ 低（独立视角）</td></tr>
+<tr><td><strong>适用场景</strong></td><td>执行型任务（主代理知道要做什么，需要子代理干活）</td><td>验证/审查型任务（需要独立判断）</td></tr>
+</tbody>
+</table>
+
+<h3 class="sub-heading">14.9.2 Fork Prompt 的黄金规则</h3>
+
+<p>Fork 子代理的 prompt 写法与普通子代理不同。Claude Code 总结了四条黄金规则：</p>
+
+<div class="info-card">
+<div class="info-card-title">📜 Fork Prompt 四规则</div>
+<ol>
+<li><strong>不偷看（Don't peek）</strong>：Fork 完成后会发通知，通知到达前不能访问 output_file。不能猜结果。</li>
+<li><strong>不编造（Don't fabricate）</strong>：如果用户问“Fork 进展如何”而通知未到，回答“正在运行”，不能编造中间结果。</li>
+<li><strong>不推诿理解（Don't delegate understanding）</strong>：不能写“根据你的发现，修复 bug”——这把综合判断推给了子代理。应该写“修改 src/auth.ts 第 42 行的 token 校验逻辑，将 === 改为 startWith”。</li>
+<li><strong>指令式而非背景介绍式（Directive not briefing）</strong>：Fork 已经继承了上下文，不需要重复解释“为什么做这个任务”。直接给指令：“运行 npm test -- --grep auth”。</li>
+</ol>
+</div>
+
+<p>对于 Fresh Subagent，规则 4 正好相反：需要像给刚进门的同事解释一样——说明背景、已尝试的方案、预期结果。</p>
+
+<h3 class="sub-heading">14.9.3 验证代理（VERIFICATION_AGENT）</h3>
+
+<p>Fork 机制的一个重要应用是<strong>验证代理</strong>。Claude Code 规定：非平凡实现（3+ 文件修改或后端逻辑变更）必须由独立的验证代理进行对抗性验证后才能报告完成。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔍 验证代理工作流</div>
+<pre><code class="language-text">主代理完成编码
+    ↓
+Fork 验证代理（Fresh，零上下文）
+    - 独立阅读代码变更
+    - 检查边界条件
+    - 运行测试
+    - 尝试找出 bug
+    ↓
+验证通过 → 报告完成
+验证失败 → 返回问题列表 → 主代理修复 → 重新验证</code></pre>
+</div>
+
+<p>验证代理必须是 Fresh（零上下文），因为 Fork 会继承主代理的“自我确认偏误”——如果主代理写错了代码，Fork 验证代理可能也看不出问题。Fresh 代理以独立视角审查，更能发现错误。</p>
+
+<h3 class="sub-heading">14.9.4 Worktree 隔离</h3>
+
+<p>当多个子代理同时修改代码时，文件冲突是工程头染问题。Claude Code 的解决方案：<code>isolation: "worktree"</code>。</p>
+
+<div class="info-card">
+<div class="info-card-title">🌳 Worktree 隔离机制</div>
+<p>设置 <code>isolation: "worktree"</code> 后，子代理在一个临时 <strong>git worktree</strong> 中工作——这是当前仓库的独立工作目录，有自己的文件副本。</p>
+<ul>
+<li>多个子代理可以并行修改同一文件，互不干扰</li>
+<li>子代理完成后，如果没有修改，worktree 自动清理</li>
+<li>如果有修改，返回 worktree 路径和分支名，主代理决定如何合并</li>
+</ul>
+</div>
+
+<h3 class="sub-heading">14.9.5 Agent List 附件注入：缓存优化</h3>
+
+<p>多 Agent 系统中，可用 Agent 列表（名称、描述、能力）需要传给 LLM。但列表是动态的——每次加载/卸载 Agent 都变化。如果放在工具描述中，会导致<strong>工具 schema 缓存 bust</strong>。</p>
+
+<div class="info-card">
+<div class="info-card-title">💾 缓存优化方案</div>
+<p>Claude Code 将 Agent 列表从工具描述中移出，改为通过 <strong>附件消息</strong>注入（<code>shouldInjectAgentListInMessages()</code>）。这样工具 schema 保持不变，prompt cache 不受 Agent 列表变化影响。</p>
+<p><strong>收益</strong>：Agent 列表占 fleet cache_creation tokens 的 ~10.2%。改为附件注入后，这部分缓存不再每轮 bust。</p>
+</div>
+
+<h3 class="sub-heading">14.9.6 对比：四种子代理模式全景</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>模式</th><th>上下文</th><th>隔离</th><th>典型用途</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Fork（前台）</strong></td><td>继承</td><td>共享工作目录</td><td>执行型任务（写代码、运行命令）</td></tr>
+<tr><td><strong>Fork + Worktree</strong></td><td>继承</td><td>git worktree</td><td>并行编码（多个子代理同时修改代码）</td></tr>
+<tr><td><strong>Fresh Subagent</strong></td><td>零上下文</td><td>独立进程</td><td>验证/审查（需要独立视角）</td></tr>
+<tr><td><strong>Handoffs</strong></td><td>移交</td><td>完全移交</td><td>任务流转（Agent A → Agent B）</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>当被问“多 Agent 系统如何保证代码质量”时，能说出<strong>验证代理 + Fresh 上下文 + 对抗性验证</strong>的候选人非常少。关键点是解释为什么验证代理必须 Fresh 而不是 Fork——避免自我确认偏误。</p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -2134,6 +2238,23 @@ import java.io.*;
       <strong>与编排者模式的区别</strong>：编排者是中央控制（项目经理），Handoffs是去中心化（接力赛）<br>
       <strong>关键设计</strong>：handoffs列表限定移交范围防循环、完整对话历史确保上下文连续、移交是LLM自主决策<br>
       <strong>两者可结合</strong>：编排者做初始分配，Agent内部用Handoffs灵活流转
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: Fork 子代理和 Fresh 子代理有什么区别？各自适用什么场景？</div>
+    <div class="qa-answer">
+      <strong>Fork</strong>：继承主代理完整对话历史，共享 prompt cache，token 消耗低。但上下文污染风险高（主代理的偏见/错误可能传递）。适用执行型任务（主代理知道要做什么，需要子代理干活）。<br><br>
+      <strong>Fresh Subagent</strong>：零上下文启动，不继承任何对话历史。需要 prompt 中详细 briefing（背景、已尝试方案、预期结果）。token 消耗高但独立性强。适用验证/审查型任务（需要独立判断，不受主代理推理影响）。<br><br>
+      <strong>Fork Prompt 四规则</strong>：不偷看（通知到达前不访问 output_file）、不编造（不能猜结果）、不推诿理解（不能写"根据你的发现修复bug"）、指令式而非背景介绍式。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: 什么是 Worktree 隔离？为什么 Agent 列表要用附件注入？</div>
+    <div class="qa-answer">
+      <strong>Worktree 隔离</strong>：设置 isolation: "worktree" 后，子代理在临时 git worktree 中工作——当前仓库的独立工作目录。多个子代理可并行修改同一文件互不干扰。完成后无修改自动清理，有修改返回 worktree 路径和分支名由主代理决定合并。<br><br>
+      <strong>Agent 列表附件注入</strong>：Agent 列表（名称、描述、能力）是动态的，如果放在工具描述中，每次变化会导致工具 schema 缓存 bust。改为附件消息注入后，工具 schema 保持不变。实测 Agent 列表占 fleet cache_creation tokens 的 ~10.2%，改为附件注入后这部分缓存不再每轮 bust。
     </div>
   </div>
 </div>
@@ -2256,6 +2377,30 @@ var ch10Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '增加Agent数量反而会增加Token消耗（成本倍增效应）。成本控制应该是减少无效调用、精简上下文、合理选模型，而非盲目增加Agent。'
+  },
+  {
+    type: 'single',
+    question: '验证代理（VERIFICATION_AGENT）为什么必须是 Fresh Subagent 而不是 Fork？',
+    options: [
+      'Fresh Subagent 成本更低',
+      'Fork 会继承主代理的推理链和判断逻辑，可能重复主代理的错误（自我确认偏误）',
+      'Fresh Subagent 速度更快',
+      'Fork 不支持代码审查功能'
+    ],
+    answer: [1],
+    explanation: 'Fork 继承主代理完整上下文，包括推理链和判断逻辑。如果主代理写错了代码，Fork 验证代理可能也看不出问题——因为它们共享同样的思维模式。Fresh 代理零上下文启动，以完全独立的视角审查，更能发现错误。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Fork 子代理机制，以下说法正确的有哪些？',
+    options: [
+      'Fork 继承主代理完整对话历史，共享 prompt cache',
+      'Worktree 隔离允许多个子代理并行修改同一文件互不干扰',
+      'Agent 列表改为附件注入可节省约 10.2% cache_creation tokens',
+      'Fork 适用于验证/审查型任务，Fresh 适用于执行型任务'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'A/B/C 正确。D 说反了：Fork 适用于执行型任务（继承上下文直接干活），Fresh 适用于验证/审查型任务（需要独立视角）。'
   }
 ];
 

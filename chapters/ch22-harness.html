@@ -128,6 +128,24 @@
   代表项目：E2B（云沙箱）、Docker 容器沙箱、Jupyter kernel</p>
 </div>
 
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🛡️ 从"三层隔离"到"纵深防御"</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">上面的"三层隔离"是<strong>单一沙箱内部</strong>的隔离手段。但工业级 Agent 不止一层沙箱——它采用<strong>纵深防御（Defense in Depth）</strong>：多层独立的安全检查，任一层都能单独阻断威胁。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">以 Claude Code 为例，它的纵深防御不是"一个沙箱的三层隔离"，而是<strong>三层独立的防御机制叠加</strong>：</p>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px;">
+    <div style="padding: 8px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 12px;">
+      <strong style="color: var(--color-success);">应用层</strong>：命令安全检查（23+ 验证器 + AST 解析）→ 检测注入和危险命令
+    </div>
+    <div style="padding: 8px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 12px;">
+      <strong style="color: var(--color-warning);">决策层</strong>：权限决策引擎（shouldUseSandbox 三步决策）→ 决定是否进沙箱、以什么模式运行
+    </div>
+    <div style="padding: 8px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 12px;">
+      <strong style="color: var(--color-error);">系统层</strong>：OS 沙箱执行（Seatbelt/Bubblewrap）→ 文件系统隔离 + 网络代理 + 域名白名单
+    </div>
+  </div>
+  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">核心思想：不依赖单一安全机制。即使第一层漏过某条命令，第二层可以降级为需确认，第三层可以在 OS 级别隔离其影响。<strong>参见第8章 8.4.5</strong>。</p>
+</div>
+
 <h3 class="sub-heading">9.2.3 AGENTS.md / System Prompt——解决"知识过时"</h3>
 
 <p>模型的知识有截止日期——截止之后的新 API、新框架版本、新安全漏洞它都不知道。AGENTS.md 是一个<strong>无需训练</strong>就能注入知识的机制。</p>
@@ -231,6 +249,12 @@
 - 方法名用 camelCase
 - 常量用 UPPER_SNAKE_CASE
 - 包名全小写（不用下划线）</pre></div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🔒 安全引导型 Prompt</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">AGENTS.md 不仅注入项目知识，还承担<strong>安全引导</strong>职责。Claude Code 的 System Prompt 中明确写道：<em>"默认应在沙箱内运行命令；除非特定条件，否则不要设置 dangerouslyDisableSandbox: true"</em>。这条 Prompt 规则让 LLM 生成的命令默认走沙箱路径——<strong>从源头降低风险</strong>，而不是等命令生成后再拦截。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 6px;">关键设计：<code>dangerouslyDisableSandbox</code> 参数需显式声明，且<strong>逐个重置回沙箱</strong>——不会因为一次禁用就永久绕过沙箱。这是 Prompt Engineering 与 Safety Engineering 交叉的典型案例。</p>
 </div>
 
 <h3 class="sub-heading">9.2.4 Web Search + MCP——解决"知识截止日期"</h3>
@@ -1007,6 +1031,26 @@ public class FullHarnessAgent {
   <p style="font-size: 13px; color: var(--color-text-secondary);">Claude Code 证明了：<strong>headless 模式 + allowedTools + max-turns</strong> 就是一个完整的 Harness 安全架构。它不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。这是 Harness Engineering 的"最小可行架构"。</p>
 </div>
 
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🏗️ 深入：Claude Code 的三层纵深防御</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">上面的参数表只是"冰山一角"。Claude Code 源码分析揭示了一套<strong>三层纵深防御架构</strong>——这不是简单的参数约束，而是工程级安全系统：</p>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px;">
+    <div style="padding: 10px; border: 1px solid var(--color-border); border-radius: 6px; border-left: 3px solid var(--color-success);">
+      <strong style="color: var(--color-success);">第一层：命令安全检查</strong>（应用级静态分析）<br>
+      <span style="font-size: 12px; color: var(--color-text-secondary);">23+ 安全验证器 + Tree-sitter AST 解析，在命令进入沙箱前检测注入、Shell 元字符、混淆标志。复合命令拆分上限 50 子命令防 ReDoS。</span>
+    </div>
+    <div style="padding: 10px; border: 1px solid var(--color-border); border-radius: 6px; border-left: 3px solid var(--color-warning);">
+      <strong style="color: var(--color-warning);">第二层：权限决策引擎</strong>（沙箱入口）<br>
+      <span style="font-size: 12px; color: var(--color-text-secondary);"><code>shouldUseSandbox()</code> 三步决策：沙箱是否启用 → 是否显式禁用 → 是否在排除列表。三种模式（auto-allow / regular / disabled）+ 5 层设置源合并（policy > flag > project > local > user）。</span>
+    </div>
+    <div style="padding: 10px; border: 1px solid var(--color-border); border-radius: 6px; border-left: 3px solid var(--color-error);">
+      <strong style="color: var(--color-error);">第三层：OS 沙箱执行</strong>（系统级隔离）<br>
+      <span style="font-size: 12px; color: var(--color-text-secondary);">macOS 用 Seatbelt（sandbox-exec），Linux 用 Bubblewrap + seccomp。文件系统三级控制（可写/只读/屏蔽）+ HTTP/SOCKS 代理 + 域名白名单。</span>
+    </div>
+  </div>
+  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">📐 完整架构分析参见<strong>第8章 8.4.5 工业级沙箱实践：Claude Code 案例</strong>。</p>
+</div>
+
 <h3 class="sub-heading">9.4.2 OpenAI Codex</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
@@ -1295,7 +1339,8 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
       ④ <strong>--verbose</strong>：详细日志 → 可观测性<br>
       ⑤ <strong>headless 模式</strong>：无交互纯命令行 → CI/CD 集成<br>
       ⑥ <strong>CLAUDE.md</strong>：项目级知识注入 → AGENTS.md<br><br>
-      面试要点：Claude Code 证明了"headless + allowedTools + max-turns"就是最小可行 Harness 安全架构。不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。
+      面试要点：Claude Code 证明了"headless + allowedTools + max-turns"就是最小可行 Harness 安全架构。不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。<br><br>
+      <strong>深入</strong>：参数只是冰山一角，源码分析揭示了三层纵深防御架构——命令安全检查（23+ 验证器）→ 权限决策引擎（shouldUseSandbox 三步决策 + 5 层设置源合并）→ OS 沙箱执行（Seatbelt/Bubblewrap + seccomp）。详见<strong>第8章 8.4.5</strong>。
     </div>
   </div>
 
@@ -1402,6 +1447,30 @@ var ch22Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '上下文工程三大策略：滑动窗口管近期、摘要压缩管远期、关键信息保留永不丢。全量存储会导致Token超限，不是可行策略。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 的三层纵深防御架构中，第一层“命令安全检查”的作用是？',
+    options: [
+      '在 OS 级别隔离命令执行环境',
+      '在命令进入沙箱前检测注入、Shell 元字符、危险路径',
+      '决定命令是否需要用户确认',
+      '记录所有命令执行日志'
+    ],
+    answer: [1],
+    explanation: '第一层是应用级静态分析：23+ 安全验证器 + Tree-sitter AST 解析，在命令进入沙箱前检测注入和危险命令。第二层是权限决策引擎，第三层是 OS 沙箱执行。'
+  },
+  {
+    type: 'multiple',
+    question: 'Claude Code 权限决策引擎的三种模式是？（多选）',
+    options: [
+      'auto-allow（沙箱内自动放行）',
+      'regular（需常规校验/用户确认）',
+      'disabled（不使用沙箱）',
+      'force-kill（强制终止命令）'
+    ],
+    answer: [0, 1, 2],
+    explanation: '三种模式：auto-allow（沙箱内自动放行，逃逸回退 regular）、regular（需常规校验）、disabled（不使用沙箱）。另有 failIfUnavailable 硬失败模式。force-kill 不存在。'
   }
 ];
 

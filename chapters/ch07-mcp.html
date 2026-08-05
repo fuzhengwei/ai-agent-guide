@@ -1985,6 +1985,85 @@ confirmation:
   </div>
 </div>
 
+<!-- ===== 11.12 工业级补充：MCP 与 Prompt 缓存冲突 ===== -->
+<h2 class="section-heading">11.12 工业级补充：MCP 与 Prompt 缓存冲突</h2>
+
+<p>MCP 的动态性是它的优势——服务器可以随时连接/断开。但这带来一个工程问题：<strong>MCP 指令每轮都可能变化，会破坏 Prompt 缓存</strong>。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实案例：Claude Code 的缓存困境</div>
+<p>Claude Code 的 System Prompt 中有一节 <code>getMcpInstructions()</code>，它遍历所有已连接的 MCP 服务器，生成 <code>## {server_name}\n{instructions}</code> 块。问题：用户每轮可能连接或断开 MCP 服务器，导致这节内容变化。如果用普通方式注入，整个 prompt prefix 从变化点开始全部 cache miss。</p>
+</div>
+
+<h3 class="sub-heading">11.12.1 问题分析：缓存 bust 的代价</h3>
+
+<p>LLM API 提供商（如 Anthropic）支持 prompt cache——如果两次请求的 prompt prefix 相同，第二次可以复用缓存的 KV（Key-Value）计算结果，减少延迟和成本。</p>
+
+<pre><code class="language-text">请求 1: [静态区][半静态区][MCP指令 A][B][C] → cache miss（首次）
+请求 2: [静态区][半静态区][MCP指令 A][B][C] → cache hit ✅（prefix 相同）
+请求 3: [静态区][半静态区][MCP指令 A][B]    → cache miss ❌（C 断开，变化点在 B 之后）
+请求 4: [静态区][半静态区][MCP指令 A][B][D] → cache miss ❌（D 连接，变化点在 B 之后）</code></pre>
+
+<p>如果 MCP 指令有 1000 token，每次 cache miss 意味着额外的 1000 token 计算（约 0.003 美元/次）。在高频调用下（每天 10 万次），每天额外成本约 300 美元。</p>
+
+<h3 class="sub-heading">11.12.2 解决方案 1：DANGEROUS_uncachedSystemPromptSection</h3>
+
+<p>Claude Code 用 <code>DANGEROUS_uncachedSystemPromptSection()</code> 包装 MCP 指令。效果：</p>
+<ul>
+<li>MCP 指令放在 System Prompt 的<strong>最后</strong>（动态区），让前面的静态区和半静态区仍然命中缓存</li>
+<li>函数名带 <code>DANGEROUS</code> 是提醒开发者：这节内容会破坏缓存，谨慎使用</li>
+<li>实际损失从“整个 prompt cache miss”降低为“只有 MCP 指令部分 cache miss”</li>
+</ul>
+
+<h3 class="sub-heading">11.12.3 解决方案 2：Agent List 附件注入</h3>
+
+<p>更高级的优化：不仅是 MCP 指令，Agent 列表（可用的子代理名称、描述、能力）也是动态的。如果放在工具描述（tool schema）中，每次变化都会导致<strong>工具 schema 缓存 bust</strong>。</p>
+
+<div class="info-card">
+<div class="info-card-title">💾 附件注入方案</div>
+<p>将 Agent 列表从工具描述中移出，改为通过<strong>附件消息</strong>（attachment message）注入：</p>
+<ul>
+<li>工具 schema 保持不变 → 工具 schema 缓存不受影响</li>
+<li>Agent 列表作为单独的消息块注入 → 变化只影响该消息的缓存</li>
+<li><strong>收益</strong>：Agent 列表占 fleet cache_creation tokens 的 ~10.2%，改为附件注入后这部分缓存不再每轮 bust</li>
+</ul>
+</div>
+
+<h3 class="sub-heading">11.12.4 MCP 缓存设计最佳实践</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>策略</th><th>做法</th><th>缓存影响</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>排序稳定</strong></td><td>MCP 服务器按 name 字母序排列</td><td>避免顺序变化导致的缓存 bust</td></tr>
+<tr><td><strong>指令精简</strong></td><td>MCP instructions 只包含必要信息，不包含示例</td><td>减少动态区 token 量</td></tr>
+<tr><td><strong>放最后</strong></td><td>MCP 指令放 System Prompt 最末尾</td><td>最大化前面静态区的缓存命中</td></tr>
+<tr><td><strong>附件注入</strong></td><td>动态列表用附件消息而非工具描述</td><td>避免工具 schema 缓存 bust</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>当被问“MCP 在生产环境有什么挑战”时，大多数人回答安全或性能。如果你能说出<strong>缓存冲突</strong>——MCP 的动态性破坏 prompt cache、以及 DANGEROUS_uncachedSystemPromptSection 和附件注入两种解决方案——能展现出对工业级 MCP 部署的深入理解。</p>
+</div>
+
+<div class="qa-item">
+  <div class="qa-question">Q14: MCP 与 Prompt 缓存存在什么冲突？如何缓解？</div>
+  <div class="qa-answer">
+    <strong>冲突</strong>：MCP 服务器可随时连接/断开，导致 MCP instructions 每轮可能变化。如果用普通方式注入 System Prompt，变化点之后的所有内容 cache miss。1000 token 的缓存 miss 意味着额外延迟和成本。<br><br>
+    <strong>缓解方案 1</strong>：用 DANGEROUS_uncachedSystemPromptSection() 包装 MCP 指令，放在 System Prompt 最末尾。前面的静态区和半静态区仍然命中缓存。函数名带 DANGEROUS 提醒开发者缓存影响。<br><br>
+    <strong>缓解方案 2</strong>：Agent 列表从工具描述中移出，改为附件消息注入。避免工具 schema 每轮变化导致缓存 bust。实测节省 ~10.2% cache_creation tokens。
+  </div>
+</div>
+
+<div class="qa-item">
+  <div class="qa-question">Q15: MCP 缓存设计的最佳实践有哪些？</div>
+  <div class="qa-answer">
+    四项最佳实践：①<strong>排序稳定</strong>——MCP 服务器按 name 字母序排列，避免顺序变化导致缓存 bust；②<strong>指令精简</strong>——MCP instructions 只包含必要信息，不包含示例，减少动态区 token 量；③<strong>放最后</strong>——MCP 指令放 System Prompt 最末尾，最大化前面静态区的缓存命中；④<strong>附件注入</strong>——动态列表用附件消息而非工具描述，避免工具 schema 缓存 bust。
+  </div>
+</div>
+
 <!-- ===== 课后考试 ===== -->
 <div id="quizArea"></div>
 
@@ -2168,6 +2247,30 @@ var ch07Questions = [
     ],
     answer: [0, 1, 2],
     explanation: 'MCP 安全三原则是：最小权限、默认拒绝、可审计。没有权限管控的 MCP Server 存在安全风险——恶意 Prompt 可以通过 Agent 间接调用 MCP Server 执行危险操作。权限管理是必须的，而非可选的。'
+  },
+  {
+    type: 'single',
+    question: 'MCP 与 Prompt 缓存冲突的根本原因是？',
+    options: [
+      'MCP 服务器响应速度太慢',
+      'MCP 服务器可随时连接/断开，导致指令每轮可能变化，破坏 prompt prefix 缓存',
+      'MCP 协议与 HTTP 不兼容',
+      'MCP 服务器的 token 数量超过了模型限制'
+    ],
+    answer: [1],
+    explanation: 'MCP 的动态性是根本原因——服务器连接/断开导致 MCP instructions 每轮可能变化，变化点之后的所有 prompt 内容 cache miss。解决方案是将 MCP 指令放 System Prompt 最末尾（DANGEROUS_uncachedSystemPromptSection），让前面的静态区仍命中缓存。'
+  },
+  {
+    type: 'multiple',
+    question: '缓解 MCP 缓存冲突的最佳实践包括哪些？',
+    options: [
+      'MCP 服务器按 name 字母序排列（排序稳定）',
+      'MCP instructions 只包含必要信息，不含示例（指令精简）',
+      'MCP 指令放 System Prompt 最末尾（放最后）',
+      '动态 Agent 列表用附件消息注入而非工具描述（附件注入）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四项全部正确。排序稳定避免顺序变化导致缓存 bust；指令精简减少动态区 token 量；放最后最大化前面静态区的缓存命中；附件注入避免工具 schema 缓存 bust（实测节省 ~10.2% cache tokens）。'
   }
 ];
 

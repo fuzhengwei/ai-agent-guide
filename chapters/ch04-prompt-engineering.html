@@ -1407,8 +1407,115 @@ public class PromptRegistry {
 </div>
 
 <p>这些日志可以聚合分析：哪些 Prompt 版本质量分数最高？哪些触发了解析失败？哪些响应时间异常？——这就是 PromptOps 的数据基础。</p>
-<!-- ===== 4.7 常见陷阱与避坑指南 ===== -->
-<h2 class="section-heading">4.7 常见陷阱与避坑指南</h2>
+
+<!-- ===== 4.7 工业级 Prompt 分区缓存设计 ===== -->
+<h2 class="section-heading">4.7 工业级 Prompt 分区缓存设计</h2>
+
+<p>4.6 的 PromptOps 关注的是<strong>模板管理</strong>——版本控制、灰度发布、可观测性。但当 Prompt 进入大规模生产环境时，还有一个更底层的问题：<strong>每次 API 请求都要发送几千甚至上万 token 的 System Prompt，能不能缓存？</strong></p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实场景：Claude Code 的 Prompt 组装</div>
+<p>Claude Code（Anthropic 的 CLI Agent）每次请求的 System Prompt 包含：工具使用规则（~2000 token）、安全策略（~800 token）、环境信息（~500 token）、用户偏好（~300 token）、MCP 指令（动态）、记忆文件（动态）……总计 4000-6000 token。如果每轮都全量发送，不仅成本高，还会增加首 token 延迟。</p>
+</div>
+
+<h3 class="sub-heading">4.7.1 静态区与动态区的分离</h3>
+
+<p>工业级 Agent 的 System Prompt 不是一整段文本，而是<strong>分区组装</strong>的。核心设计原则：把不变的内容放前面（可缓存），把每轮变化的内容放后面（不可缓存）。</p>
+
+<table class="comparison-table">
+<thead>
+<tr><th>分区</th><th>内容</th><th>跨用户可缓存</th><th>跨会话可缓存</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>静态区</strong></td><td>工具使用规则、安全策略、输出格式规范、Git 安全协议</td><td>✅ 是</td><td>✅ 是</td></tr>
+<tr><td><strong>半静态区</strong></td><td>用户偏好、项目配置、记忆文件</td><td>❌ 否</td><td>✅ 同会话内</td></tr>
+<tr><td><strong>动态区</strong></td><td>MCP 指令（服务器连接状态变化）、临时指令、Agent 列表</td><td>❌ 否</td><td>❌ 每轮变化</td></tr>
+</tbody>
+</table>
+
+<p>Claude Code 用一个 <code>SYSTEM_PROMPT_DYNAMIC_BOUNDARY</code> 标记分隔静态区和动态区。Boundary 之前的内容跨用户可缓存——因为工具规则和安全策略对所有用户相同；Boundary 之后的内容每轮可能变化——因为 MCP 服务器可能连接/断开。</p>
+
+<h3 class="sub-heading">4.7.2 Memoized vs Uncached：两种动态分节策略</h3>
+
+<p>动态区的内容并非每轮都变。Claude Code 将动态分节分为两类：</p>
+
+<div class="info-card">
+<div class="info-card-title">📝 Memoized Section（有缓存的动态分节）</div>
+<p>用 <code>systemPromptSection()</code> 包装。内容在 <code>/clear</code> 或 <code>/compact</code> 之前保持不变，跨轮次复用。典型场景：用户偏好、项目配置、记忆文件摘要。</p>
+<p><strong>实现</strong>：memoize 函数以配置对象为 key，配置不变则返回缓存结果。当 <code>/clear</code> 或 <code>/compact</code> 触发时重置 memoize 缓存。</p>
+</div>
+
+<div class="info-card">
+<div class="info-card-title">⚠️ Uncached Section（无缓存的动态分节）</div>
+<p>用 <code>DANGEROUS_uncachedSystemPromptSection()</code> 包装。每轮重新计算，会破坏 Prompt 缓存。典型场景：MCP instructions（服务器连接状态每轮可能变化）。</p>
+<p><strong>为什么"DANGEROUS"</strong>：函数名中带 DANGEROUS 是提醒开发者——每轮重算意味着 prompt prefix 改变，导致 API 提供商的 prompt cache 全部 miss。1000+ token 的缓存 miss 意味着额外的延迟和成本。</p>
+</div>
+
+<h3 class="sub-heading">4.7.3 Prompt 分层组装顺序</h3>
+
+<p>分区的顺序直接影响缓存命中率。Claude Code 的 System Prompt 按以下顺序组装：</p>
+
+<pre><code class="language-text">┌─────────────────────────────────────────┐
+│  静态区（跨用户可缓存）                     │
+│  1. intro          自我介绍               │
+│  2. system         系统级指令             │
+│  3. doingTasks     任务执行规则            │
+│  4. actions        操作安全策略            │
+│  5. usingTools     工具使用规则            │
+│  6. toneStyle      沟通风格               │
+│  7. outputEfficiency 输出效率              │
+├─────────────────────────────────────────┤  ← DYNAMIC_BOUNDARY
+│  半静态区（同会话内可缓存）                  │
+│  8. session_guidance 会话级引导            │
+│  9. memory         记忆文件摘要            │
+│  10. env_info      环境信息               │
+│  11. language      语言偏好               │
+│  12. output_style  输出样式               │
+├─────────────────────────────────────────┤
+│  动态区（每轮可能变化）                      │
+│  13. mcp_instructions MCP 服务器指令       │
+│  14. scratchpad     临时草稿              │
+│  15. frc            功能路由上下文          │
+│  16. summarize_tool_results 工具结果摘要   │
+└─────────────────────────────────────────┘</code></pre>
+
+<p><strong>设计原则</strong>：越稳定的越靠前。工具规则和安全策略对所有用户完全相同，放最前面；MCP 指令每轮可能变化，放最后。这样 API 提供商可以从前往后做前缀匹配缓存，遇到第一个变化的分节就停止——前面的部分仍然命中缓存。</p>
+
+<h3 class="sub-heading">4.7.4 Token 优化技巧</h3>
+
+<p>除了分区缓存，Claude Code 还有几个细节级优化：</p>
+
+<div class="info-card">
+<div class="info-card-title">🔧 三个 Token 优化技巧</div>
+<ol>
+<li><strong>Dedup 去重</strong>：沙箱配置中可能有重复的路径或规则，注入 prompt 前先去重。实测节省 150-200 tokens/请求。在大规模调用下（每天百万次请求），这意味着每天节省数千万 token。</li>
+<li><strong>$TMPDIR 归一化</strong>：将实际临时路径（如 <code>/var/folders/xx/yy/T/</code>）替换为 <code>$TMPDIR</code>。这不仅让 prompt 跨用户一致（提高缓存命中率），还避免了泄露用户系统路径信息。</li>
+<li><strong>工具描述预算</strong>：Skill/工具列表占用上下文窗口的 1%（如 200K 窗口 = 2000 token = 8000 字符预算）。单条描述上限 250 字符，超预算时逐步截断——先截断 whenToUse，再截断 description，最后用省略号。</li>
+</ol>
+</div>
+
+<h3 class="sub-heading">4.7.5 对比：教学级 vs 工业级 PromptOps</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>教学级 PromptOps（4.6）</th><th>工业级 PromptOps（4.7）</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>关注点</strong></td><td>模板版本管理、灰度发布</td><td>缓存命中率、token 成本优化</td></tr>
+<tr><td><strong>Prompt 结构</strong></td><td>单一模板字符串</td><td>分区组装（静态/半静态/动态）</td></tr>
+<tr><td><strong>缓存策略</strong></td><td>不关注</td><td>memoized vs uncached，boundary 分界</td></tr>
+<tr><td><strong>Token 优化</strong></td><td>模板复用减少重复编写</td><td>dedup 去重、路径归一化、描述预算</td></tr>
+<tr><td><strong>可观测性</strong></td><td>版本日志、质量评分</td><td>缓存命中率监控、token 消耗追踪</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>当被问"你的 Agent System Prompt 如何设计"时，能说出<strong>分区缓存</strong>这个概念的候选人不超过 5%。如果你能解释清楚静态/动态分界、memoized vs uncached、以及为什么 MCP 指令会破坏缓存，基本稳过。</p>
+</div>
+
+<!-- ===== 4.8 常见陷阱与避坑指南 ===== -->
+<h2 class="section-heading">4.8 常见陷阱与避坑指南</h2>
 
 <p>即使理解了三层结构和 C.L.E.A.R 原则，在实际工程中你仍会踩坑。以下是 Agent 提示词工程中最常见的 5 个陷阱及其解决方案：</p>
 
@@ -1914,6 +2021,24 @@ ${FEW_SHOT_EXAMPLES}
       结构化输出（JSON Schema 约束 + 严格模式）保证 LLM 输出是合法 JSON 且符合 Schema，下游代码可以用 <code>JSON.parse()</code> 直接解析，配合类型验证（Pydantic/Zod）实现"解析+验证一步到位"。这是 Agent Loop 稳定运行的基础。
     </div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q8: 工业级 Agent 的 System Prompt 为什么要做分区缓存设计？静态区和动态区如何划分？</div>
+    <div class="qa-answer">
+      <strong>原因</strong>：工业级 Agent 的 System Prompt 可达 4000-6000 token（工具规则+安全策略+环境信息+记忆文件）。如果每轮全量发送，不仅成本高，还增加首 token 延迟。分区缓存可以让不变的部分跨请求复用。<br><br>
+      <strong>划分方式</strong>：①<strong>静态区</strong>（工具规则、安全策略）跨用户可缓存；②<strong>半静态区</strong>（用户偏好、记忆文件）同会话内可缓存；③<strong>动态区</strong>（MCP 指令、临时指令）每轮可能变化。<br><br>
+      <strong>实现</strong>：用 SYSTEM_PROMPT_DYNAMIC_BOUNDARY 标记分隔静态区和动态区。静态区用 global scope 缓存，半静态区用 memoize（以配置对象为 key），动态区用 DANGEROUS_uncachedSystemPromptSection（每轮重算）。越稳定的越靠前，最大化前缀缓存命中。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q9: 什么是 memoized section 和 uncached section？为什么后者函数名带 DANGEROUS？</div>
+    <div class="qa-answer">
+      <strong>memoized section</strong>：用 systemPromptSection() 包装的动态分节，在 /clear 或 /compact 之前保持不变，跨轮次复用。典型场景：用户偏好、项目配置。以配置对象为 key 做 memoize，配置不变则返回缓存。<br><br>
+      <strong>uncached section</strong>：用 DANGEROUS_uncachedSystemPromptSection() 包装的分节，每轮重新计算，会破坏 Prompt 缓存。典型场景：MCP instructions（服务器连接状态每轮可能变化）。<br><br>
+      <strong>DANGEROUS 命名</strong>：提醒开发者每轮重算意味着 prompt prefix 改变，导致 API 提供商的 prompt cache 全部 miss。1000+ token 的缓存 miss 意味着额外延迟和成本。命名强制开发者在 code review 时关注缓存影响。
+    </div>
+  </div>
 </div>
 
 <!-- ===== 课后考试 ===== -->
@@ -1990,6 +2115,30 @@ var ch04Questions = [
     options: ['只用 Temperature=0', 'System Prompt 明确约束 + 输入过滤 + 输出校验三层防御', '不使用 System Prompt', '限制用户输入长度'],
     answer: [1],
     explanation: 'Prompt Injection 需要三层防御：System Prompt 中加入明确约束（"禁止执行…"）、输入端过滤可疑内容、输出端校验是否符合预期格式。详见第22章 Agent 安全与防护。'
+  },
+  {
+    type: 'single',
+    question: '工业级 Agent 的 System Prompt 分区缓存设计中，以下哪项应放在“静态区”？',
+    options: [
+      'MCP 服务器指令（每轮可能变化）',
+      '工具使用规则和安全策略（所有用户相同）',
+      '用户个人偏好（因用户而异）',
+      '临时草稿和功能路由上下文'
+    ],
+    answer: [1],
+    explanation: '静态区放跨用户可缓存的内容——工具规则和安全策略对所有用户相同，可做 global scope 缓存。MCP 指令是动态区（每轮可能变化），用户偏好是半静态区（同会话内可缓存），临时草稿是动态区。越稳定的越靠前，最大化前缀缓存命中。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 DANGEROUS_uncachedSystemPromptSection() 的说法，正确的有哪些？',
+    options: [
+      '每轮重新计算，会破坏 Prompt 缓存',
+      '典型场景是 MCP instructions（服务器状态每轮可能变化）',
+      '函数名带 DANGEROUS 是提醒开发者缓存影响',
+      '应该尽可能多用，提高实时性'
+    ],
+    answer: [0, 1, 2],
+    explanation: 'DANGEROUS_uncachedSystemPromptSection 每轮重算，会破坏 prompt cache，典型场景是 MCP 指令。函数名带 DANGEROUS 提醒开发者缓存影响。应该尽可能少用——只在内容确实每轮变化时使用，能用 memoized section 就不用 uncached。'
   }
 ];
 

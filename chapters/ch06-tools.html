@@ -4668,6 +4668,68 @@ public class Main {
   </div>
 </div>
 
+<!-- ===== 9.15 工业级补充：工具描述 Token 预算与截断降级 ===== -->
+<h2 class="section-heading">9.15 工业级补充：工具描述 Token 预算与截断降级</h2>
+
+<p>9.11 的上下文工程讲了 JIT 加载和 Tool RAG——按意图只加载相关工具。但工业级 Agent 还有一个更底层的问题：<strong>工具描述本身也要做 token 预算管理</strong>。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实案例：Claude Code 的工具描述预算</div>
+<p>Claude Code 有大量内置工具和动态加载的 Skill。如果全量传入，工具描述会占用上下文窗口的 5-10%。解决方案：预算制 + 截断降级。</p>
+</div>
+
+<h3 class="sub-heading">9.15.1 Token 预算分配</h3>
+
+<p>Claude Code 为 Skill/工具列表分配的 token 预算：</p>
+
+<pre><code class="language-text">SKILL_BUDGET_CONTEXT_PERCENT = 0.01  // 上下文窗口的 1%
+CHARS_PER_TOKEN = 4                  // 粗略估算：1 token ≈ 4 字符
+DEFAULT_CHAR_BUDGET = 8_000          // 默认 200K 窗口 → 2000 token → 8000 字符
+
+// 200K 上下文窗口：
+//   token 预算 = 200,000 × 1% = 2,000 token
+//   字符预算 = 2,000 × 4 = 8,000 字符
+//   单条上限 = 250 字符</code></pre>
+
+<p>1% 看似很少，但工具描述是“发现性内容”——只需要让 LLM 知道“有这个工具”，具体用法在调用时才加载。200K 窗口下 8000 字符可以容纳 30+ 个工具的简短描述。</p>
+
+<h3 class="sub-heading">9.15.2 截断降级策略</h3>
+
+<p>当工具列表总长度超过预算时，Claude Code 采用<strong>逐步截断</strong>策略：</p>
+
+<table class="comparison-table">
+<thead>
+<tr><th>阶段</th><th>策略</th><th>信息损失</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Level 1</strong></td><td>完整描述（name + description + whenToUse）</td><td>无</td></tr>
+<tr><td><strong>Level 2</strong></td><td>截断 whenToUse（保留 name + description）</td><td>低（使用场景信息丢失）</td></tr>
+<tr><td><strong>Level 3</strong></td><td>截断 description（保留 name + 简短描述）</td><td>中（功能细节丢失）</td></tr>
+<tr><td><strong>Level 4</strong></td><td>用省略号替代（name + “…”）</td><td>高（仅保留工具名）</td></tr>
+</tbody>
+</table>
+
+<p>关键设计：<strong>逐条截断而非整体删除</strong>。即使预算只够 10 个完整描述 + 20 个截断描述，也比“只保留 10 个完整描述”好——因为 LLM 至少知道那 20 个工具存在，可以在需要时主动查询详情。</p>
+
+<h3 class="sub-heading">9.15.3 对比：Tool RAG vs Token 预算</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>Tool RAG（9.11）</th><th>Token 预算（9.15）</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>思路</strong></td><td>按意图检索相关工具</td><td>全量保留但截断描述</td></tr>
+<tr><td><strong>适用场景</strong></td><td>工具数量多（100+）</td><td>工具数量中（10-50）</td></tr>
+<tr><td><strong>优势</strong></td><td>准确率高（只看相关工具）</td><td>不漏工具（LLM 知道所有工具存在）</td></tr>
+<tr><td><strong>劣势</strong></td><td>可能漏掉相关工具</td><td>描述截断影响选择准确率</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>能说出“工具描述也需要 token 预算管理”已经不错了。如果能进一步解释“逐条截断而非整体删除”的设计理由——让 LLM 至少知道所有工具存在——能展现出对工具发现机制的深入理解。</p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <!-- ===== 10.15 工程深度：工具并发控制与弱模型兼容 ===== -->
 <h2 class="section-heading">10.15 工程深度：工具并发控制与弱模型兼容</h2>
@@ -5301,6 +5363,15 @@ public class ToolRetryExecutor {
       面试要点：三层保障要讲全——语义层防格式混乱、逻辑层防误操作、异常层防崩溃，体现"防御纵深"思维。
     </div>
   </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q13: 工业级 Agent 如何管理工具描述的 Token 预算？截断降级策略是什么？</div>
+    <div class="qa-answer">
+      <strong>预算分配</strong>：工具列表占用上下文窗口的 1%（如 200K 窗口 = 2000 token = 8000 字符预算）。单条描述上限 250 字符。可用环境变量 SLASH_COMMAND_TOOL_CHAR_BUDGET 覆盖。<br><br>
+      <strong>截断降级</strong>：①Level 1 完整描述（name+description+whenToUse）；②Level 2 截断 whenToUse；③Level 3 截断 description；④Level 4 用省略号替代。关键设计：逐条截断而非整体删除——即使预算只够 10 个完整描述 + 20 个截断描述，也比只保留 10 个好，因为 LLM 至少知道所有工具存在。<br><br>
+      <strong>对比 Tool RAG</strong>：Tool RAG 按意图检索相关工具，准确率高但可能漏掉相关工具；Token 预算全量保留但截断描述，不漏工具但描述截断影响选择准确率。工具数 100+ 用 RAG，10-50 用预算制。
+    </div>
+  </div>
 </div>
 
 <!-- ===== 课后考试 ===== -->
@@ -5454,6 +5525,18 @@ var ch06Questions = [
     ],
     answer: [0, 1, 2],
     explanation: '不分层导致职责混淆（A）、维护困难（B）和性能浪费（C）。D选项错误——不分层反而不利于权限管理，分层后可以按层级控制访问权限（如L0内部工具不允许外部直接调用）。'
+  },
+  {
+    type: 'single',
+    question: '工具描述 Token 预算管理中，“逐条截断而非整体删除”的设计理由是？',
+    options: [
+      '截断比删除计算成本更低',
+      '让 LLM 至少知道所有工具存在，需要时可主动查询详情',
+      '整体删除会导致 JS 数组报错',
+      '截断后的描述比删除更美观'
+    ],
+    answer: [1],
+    explanation: '逐条截断确保 LLM 知道所有工具的存在（即使描述被截断）。如果整体删除超预算的工具，LLM 不知道这些工具存在，无法在需要时主动查询。这是“发现性”和“描述精度”之间的权衡。'
   }
 ];
 

@@ -3566,6 +3566,83 @@ import java.io.*;
 <p><strong>413 压缩</strong>：请求过大时紧急压缩重试，是正常压缩的兜底方案。</p>
 </div>
 
+<!-- ===== 5.14 工业级 ReAct 增强：子代理与验证代理 ===== -->
+<h2 class="section-heading">5.14 工业级 ReAct 增强：子代理与验证代理</h2>
+
+<p>5.13 讲了主循环的工程化（Token Budget、死循环保护、重试机制）。但 ReAct 模式在生产环境中还有一个核心挑战：<strong>复杂任务的单线程执行效率低下</strong>。解决思路是引入子代理机制，让 ReAct 循环可以并行和委派。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实案例：Claude Code 的 ReAct 增强</div>
+<p>Claude Code 基于 ReAct 模式运行（Thought → Action → Observation 循环），但在主循环之外增加了三个增强机制：<strong>子代理 Fork</strong>、<strong>验证代理</strong>、<strong>TodoWrite 任务管理</strong>。</p>
+</div>
+
+<h3 class="sub-heading">5.14.1 子代理 Fork：并行任务委派</h3>
+
+<p>标准 ReAct 是串行的：Thought → Action → Observation → Thought → …。如果任务中有独立的子任务（如“运行测试”和“检查类型”），串行执行浪费时间。</p>
+
+<p>Claude Code 的增强方案：主代理在 Thought 阶段判断“这个子任务可以委派”，然后 Fork 一个子代理执行。子代理在后台运行，主代理继续处理其他任务。子代理完成后发通知，主代理在下一个 Thought 阶段整合结果。</p>
+
+<pre><code class="language-text">标准 ReAct（串行）:
+  Thought: 需要运行测试
+  Action: npm test
+  Observation: 测试结果
+  Thought: 需要检查类型
+  Action: tsc --noEmit
+  Observation: 类型检查结果
+  → 2 次串行等待
+
+增强 ReAct（Fork 并行）:
+  Thought: 测试和类型检查互相独立，可以并行
+  Action: Fork 子代理 A（运行测试） + Fork 子代理 B（类型检查）
+  [主代理继续处理其他工作]
+  Notification: 子代理 A 完成（测试通过）
+  Notification: 子代理 B 完成（发现 2 个类型错误）
+  Thought: 整合结果，修复类型错误
+  → 1 次并行等待</code></pre>
+
+<div class="info-card">
+<div class="info-card-title">⚠️ Fork 的纪律</div>
+<p>Fork 子代理后，主代理<strong>不能偷看</strong>（peek output_file）、<strong>不能编造</strong>（fabricate results）。如果用户问“子任务进展如何”而通知未到，只能回答“正在运行”。这保证了结果的可靠性。</p>
+</div>
+
+<h3 class="sub-heading">5.14.2 验证代理：对抗性自查</h3>
+
+<p>ReAct 循环的一个常见问题是<strong>自我确认偏误</strong>：Agent 写了代码后，用自己的标准检查自己的代码，容易忽略自己的错误。</p>
+
+<p>Claude Code 的规则：非平凡实现（3+ 文件修改或后端逻辑变更）必须由独立的<strong>验证代理</strong>进行对抗性验证。验证代理是 Fresh Subagent（零上下文启动），不继承主代理的分析和推理——以完全独立的视角审查代码变更。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔍 验证代理 vs 自我验证</div>
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>自我验证（标准 ReAct）</th><th>验证代理（增强 ReAct）</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>视角</strong></td><td>主观（自己检查自己）</td><td>客观（独立代理审查）</td></tr>
+<tr><td><strong>上下文</strong></td><td>继承完整推理链</td><td>零上下文（只看代码 diff）</td></tr>
+<tr><td><strong>偏误风险</strong></td><td>⚠️ 高（可能重复自己的错误逻辑）</td><td>✅ 低（不受主代理推理影响）</td></tr>
+<tr><td><strong>成本</strong></td><td>低（无额外 API 调用）</td><td>中（一次额外 LLM 调用）</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 class="sub-heading">5.14.3 TodoWrite：ReAct 中的任务管理</h3>
+
+<p>标准 ReAct 的 Thought 阶段是“自由推理”——LLM 自行决定下一步做什么。但在多步骤任务中，自由推理容易导致<strong>任务遗漏</strong>和<strong>优先级漂移</strong>。</p>
+
+<p>Claude Code 在 ReAct 循环中集成了 TodoWrite 工具：</p>
+<ul>
+<li><strong>任务状态</strong>：pending（待执行）→ in_progress（执行中）→ completed（已完成）</li>
+<li><strong>单任务约束</strong>：in_progress 状态的任务必须<strong>恰好一个</strong>——这防止 Agent 同时开多个任务导致混乱</li>
+<li><strong>双形式描述</strong>：content（祈使句，如“修复认证逻辑”）+ activeForm（进行时，如“正在修复认证逻辑”）</li>
+<li><strong>即时标记</strong>：任务完成后立即标记为 completed，不批量更新——避免“以为做完了其实没做”的问题</li>
+</ul>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>标准 ReAct 面试题：“ReAct 的优势和局限是什么”。如果你能回答“标准 ReAct 的局限是串行执行和自我确认偏误，工业级增强方案是 Fork 子代理并行 + Fresh 验证代理对抗性自查 + TodoWrite 任务管理”，基本能拿到高级工程师的 Offer。</p>
+</div>
+
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
 
@@ -3642,6 +3719,24 @@ import java.io.*;
       <strong>截断</strong>：直接丢弃最早的消息，简单但可能丢失关键信息。<br>
       <strong>摘要</strong>：用 LLM 将早期对话压缩成摘要，保留语义但消耗额外调用。<br>
       <strong>语义保护型压缩</strong>：将消息分为三层——<strong>锁定层</strong>（System Prompt + 原始问题，不压缩）、<strong>压缩层</strong>（中间步骤，摘要压缩）、<strong>保留层</strong>（最近K步，原样保留）。核心思想是确保关键指令永远不丢失，只压缩可牺牲的中间推理过程。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q10: 标准 ReAct 模式在生产环境中有哪些局限？如何用 Fork 子代理机制增强？</div>
+    <div class="qa-answer">
+      <strong>局限</strong>：①标准 ReAct 串行执行，独立子任务无法并行；②自我确认偏误——Agent 用自己的标准检查自己的代码，容易忽略错误；③自由推理容易导致任务遗漏和优先级漂移。<br><br>
+      <strong>Fork 子代理增强</strong>：主代理在 Thought 阶段判断子任务可委派，Fork 子代理后台执行。子代理继承主代理上下文，共享 prompt cache。完成后发通知，主代理整合结果。<br><br>
+      <strong>Fork Prompt 四规则</strong>：不偷看（通知到达前不访问 output_file）、不编造（不能猜结果）、不推诿理解（不能把综合判断推给子代理）、指令式而非背景介绍式（Fork 已继承上下文，不需要重复解释）。
+    </div>
+  </div>
+
+  <div class="qa-item">
+    <div class="qa-question">Q11: 什么是验证代理（VERIFICATION_AGENT）？为什么它必须是 Fresh 而不是 Fork？</div>
+    <div class="qa-answer">
+      <strong>验证代理</strong>：非平凡实现（3+ 文件修改或后端逻辑变更）必须由独立验证代理进行对抗性验证后才能报告完成。验证代理独立阅读代码变更、检查边界条件、运行测试、尝试找出 bug。<br><br>
+      <strong>必须 Fresh 的原因</strong>：Fork 会继承主代理的推理链和判断逻辑——如果主代理写错了代码，Fork 验证代理可能也看不出问题（自我确认偏误）。Fresh 代理零上下文启动，以完全独立的视角审查，更能发现错误。<br><br>
+      <strong>对比</strong>：自我验证视角主观、偏误风险高、成本低；验证代理视角客观、偏误风险低、成本中（一次额外 LLM 调用）。生产级 Agent 应对非平凡实现强制使用验证代理。
     </div>
   </div>
 </div>
@@ -3784,6 +3879,30 @@ var ch04Questions = [
     ],
     answer: [0, 1, 2],
     explanation: 'Structured Output 解决的是输出格式可靠性问题，与 Reflexion 的反思推理能力是不同维度的问题，不能替代。'
+  },
+  {
+    type: 'single',
+    question: '标准 ReAct 模式的“自我确认偏误”问题是什么？如何解决？',
+    options: [
+      'Agent 忘记了之前的推理过程，通过增加上下文窗口解决',
+      'Agent 用自己的标准检查自己的代码，容易忽略自己的错误，通过 Fresh 验证代理解决',
+      'Agent 拒绝执行用户指令，通过增加安全策略解决',
+      'Agent 陷入死循环，通过 Token Budget 解决'
+    ],
+    answer: [1],
+    explanation: '自我确认偏误是 Agent 用自己的推理链验证自己的输出，容易重复自己的错误逻辑。解决方案是 Fresh 验证代理——零上下文启动，以完全独立的视角审查代码变更，不受主代理推理影响。'
+  },
+  {
+    type: 'multiple',
+    question: 'Fork 子代理的 Prompt 四规则包括哪些？',
+    options: [
+      '不偷看（Don\'t peek）——通知到达前不访问 output_file',
+      '不编造（Don\'t fabricate）——不能猜结果',
+      '不推诿理解（Don\'t delegate understanding）——不能把综合判断推给子代理',
+      '指令式而非背景介绍式——Fork 已继承上下文，不需要重复解释'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四规则全部正确。Fork 继承了主代理上下文，因此不需要重复解释背景（指令式），但也不能偷看结果、编造中间状态、或把理解推给子代理。Fresh Subagent 则正好相反——需要详细 briefing。'
   }
 ];
 

@@ -2075,6 +2075,88 @@ public class AgentEvalTest {
   <p style="font-size: 13px; color: var(--color-text-secondary);">如果你的 Agent 包含 RAG，用 <strong>Ragas 评估检索质量</strong>（Context Precision/Recall），用 <strong>DeepEval 评估生成质量和安全性</strong>（Hallucination/Toxicity）。两者互补，覆盖完整。</p>
 </div>
 
+<!-- ===== 21.8b 工业级补充：数据驱动设计案例 ===== -->
+<h2 class="section-heading">21.8b 工业级补充：数据驱动设计案例</h2>
+
+<p>21.8 的 EDD 讲了“先设计评估再开发”的理念。但评估数据不仅能指导开发，还能<strong>驱动架构决策</strong>。本节通过一个真实案例，展示如何用生产数据分析来发现问题和验证解决方案。</p>
+
+<div class="info-card">
+<div class="info-card-title">🔌 真实案例：Claude Code 的 AutoCompact 熔断器</div>
+<p>Claude Code 有一个 AutoCompact 功能——当对话 token 接近上限时，自动调用 LLM 生成摘要压缩上下文。但这个压缩调用本身可能失败（API 超时、模型异常）。如果失败后无限重试，会导致无效 API 调用。问题：<strong>重试几次后应该熔断？</strong></p>
+</div>
+
+<h3 class="sub-heading">21.8b.1 发现问题：BQ 数据分析</h3>
+
+<p>Anthropic 通过 BigQuery 分析生产数据，发现了令人惊讶的现象：</p>
+
+<table class="comparison-table">
+<thead>
+<tr><th>指标</th><th>数值</th><th>含义</th></tr>
+</thead>
+<tbody>
+<tr><td>异常会话数</td><td>1,279</td><td>出现单会话 50+ 次连续压缩失败的会话</td></tr>
+<tr><td>最高连续失败次数</td><td>3,272</td><td>单个会话中压缩连续失败 3,272 次</td></tr>
+<tr><td>全球每日无效调用</td><td>~250,000</td><td>每天约 25 万次无效 API 调用（压缩失败后重试）</td></tr>
+</tbody>
+</table>
+
+<p>这意味着：每天有 25 万次 API 调用是纯浪费——它们几乎注定失败，但还是被反复调用。每次调用的成本、延迟、以及对用户体验的负面影响都在累积。</p>
+
+<h3 class="sub-heading">21.8b.2 设计决策：熔断阈值</h3>
+
+<p>基于上述数据，Anthropic 设置了 <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>：</p>
+
+<pre><code class="language-text">连续失败次数 < 3: 继续重试（可能是临时网络问题）
+连续失败次数 = 3: 熔断，停止重试，降级到 SessionMemoryCompact
+  → 将关键信息写入持久化记忆文件
+  → 清理会话内上下文
+  → 通知用户“上下文已压缩，部分历史可能丢失”</code></pre>
+
+<h3 class="sub-heading">21.8b.3 验证决策：为什么是 3 次？</h3>
+
+<p>“3 次”不是拍脑袋定的，而是基于数据分析：</p>
+<ul>
+<li><strong>1 次太少</strong>：临时网络问题导致的单次失败很常见（约 0.3% 的请求），熔断太早会误杀</li>
+<li><strong>2 次偏紧</strong>：连续 2 次失败有 0.05% 的概率是临时问题，熔断可能过早</li>
+<li><strong>3 次平衡</strong>：连续 3 次失败后恢复的概率 < 0.01%，继续重试没有意义</li>
+<li><strong>5 次太多</strong>：多 2 次重试意味着多 2 次 API 调用成本和延迟，在 1,279 个异常会话中累计约 2,558 次额外无效调用</li>
+</ul>
+
+<p>最终结果：设为 3 后，<strong>99.9% 的异常会话在熔断前恢复</strong>，同时消除了每天 25 万次无效 API 调用。</p>
+
+<h3 class="sub-heading">21.8b.4 数据驱动设计的四步法</h3>
+
+<p>这个案例总结了一个通用的<strong>数据驱动设计</strong>流程：</p>
+
+<div class="info-card">
+<div class="info-card-title">📊 数据驱动设计四步法</div>
+<ol>
+<li><strong>发现异常</strong>：通过生产数据分析发现非预期模式（如“压缩失败后无限重试”）</li>
+<li><strong>量化影响</strong>：计算异常的规模和成本（1,279 会话 / 25 万次/天）</li>
+<li><strong>设计干预</strong>：基于数据设定阈值（MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3）</li>
+<li><strong>验证效果</strong>：部署后验证干预效果（99.9% 会话在熔断前恢复，无效调用消除）</li>
+</ol>
+</div>
+
+<h3 class="sub-heading">21.8b.5 对比：直觉驱动 vs 数据驱动</h3>
+
+<table class="comparison-table">
+<thead>
+<tr><th>维度</th><th>直觉驱动</th><th>数据驱动</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>阈值设定</strong></td><td>“感觉 5 次差不多”</td><td>BQ 分析：3 次后恢复率 < 0.01%</td></tr>
+<tr><td><strong>问题发现</strong></td><td>用户投诉后才发现</td><td>生产数据主动发现</td></tr>
+<tr><td><strong>效果验证</strong></td><td>“上线后没投诉了”</td><td>量化指标：99.9% 恢复率 + 25 万次/天调用消除</td></tr>
+<tr><td><strong>决策信心</strong></td><td>靠经验和个人权威</td><td>靠数据证据和统计</td></tr>
+</tbody>
+</table>
+
+<div class="info-card">
+<div class="info-card-title">💡 面试加分点</div>
+<p>当被问“如何设计 Agent 的容错机制”时，大多数人回答“重试 + 指数退避”。如果你能补充“但重试本身需要熔断机制，熔断阈值应该基于生产数据分析而非直觉”，并举出“3 次熔断消除 25 万次/天无效调用”的案例，能展现出对工业级可观测性的深入理解。</p>
+</div>
+
 <!-- ===== 八股总结 ===== -->
 <div class="summary-box">
   <div class="summary-title">📋 八股总结 — 面试高频考点</div>
@@ -2469,6 +2551,15 @@ class AgentEvalSuite {
 </div>
 </div>
 
+  <div class="qa-item">
+    <div class="qa-question">Q13: 什么是数据驱动设计？以 Claude Code 的 AutoCompact 熔断器为例说明。</div>
+    <div class="qa-answer">
+      <strong>数据驱动设计四步法</strong>：①发现异常（生产数据分析发现非预期模式）；②量化影响（计算异常规模和成本）；③设计干预（基于数据设定阈值）；④验证效果（部署后验证干预效果）。<br><br>
+      <strong>AutoCompact 熔断案例</strong>：BQ 分析发现 1,279 个会话出现 50+ 次连续压缩失败，最高 3,272 次，全球每天约 25 万次无效 API 调用。设 MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3 后，99.9% 异常会话在熔断前恢复，消除了每天 25 万次无效调用。<br><br>
+      <strong>为什么是 3 次</strong>：1 次太少（临时网络问题常见）、2 次偏紧、3 次平衡（连续 3 次失败后恢复率 < 0.01%）、5 次太多（多 2 次重试 = 多 2 次无效调用）。阈值设定基于数据而非直觉。
+    </div>
+  </div>
+
 <!-- ===== 课后考试 ===== -->
 <div id="quizArea"></div>
 
@@ -2614,6 +2705,30 @@ var ch17Questions = [
     ],
     answer: [0, 1, 3],
     explanation: 'A/B 测试需要更大样本量（LLM 随机性大），同一用户确定性分组（避免体验不一致），对比多指标。A/B 测试主要用于线上评估，选项 C 错误。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 的 AutoCompact 熔断阈值设为 3 次的依据是？',
+    options: [
+      '工程师凭经验设定的默认值',
+      'BQ 数据分析发现连续 3 次失败后恢复率 < 0.01%，平衡了灵敏度和容错',
+      '参考了其他开源项目的熔断阈值',
+      '3 是分布式系统的通用重试次数'
+    ],
+    answer: [1],
+    explanation: '阈值 3 基于 BQ 生产数据分析：1 次太少（临时网络问题常见）、2 次偏紧、3 次平衡（恢复率 < 0.01%）、5 次太多（额外无效调用）。这是数据驱动设计的典型案例——阈值设定基于数据而非直觉。'
+  },
+  {
+    type: 'multiple',
+    question: '数据驱动设计的四步法包括哪些？',
+    options: [
+      '发现异常（生产数据分析发现非预期模式）',
+      '量化影响（计算异常规模和成本）',
+      '设计干预（基于数据设定阈值）',
+      '验证效果（部署后验证干预效果）'
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: '四步全部正确。AutoCompact 熔断案例：发现 1,279 会话 50+ 次连续失败 → 每天 25 万次无效调用 → 设阈值为 3 → 99.9% 会话在熔断前恢复，无效调用消除。'
   }
 ];
 
