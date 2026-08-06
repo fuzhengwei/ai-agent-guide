@@ -1566,7 +1566,7 @@ public class PromptRegistry {
   <p><strong>防御策略</strong>：在 System Prompt 中加入明确约束 + 输入过滤 + 输出校验三层防御。</p>
 </div>
 
-<p>Prompt 注入防御的详细内容将在<strong>第22章 Agent 安全与防护</strong>中深入讲解，这里只需要建立意识：提示词不仅是"怎么问"的问题，还涉及"怎么防"的问题。</p>
+<p>Prompt 注入防御的详细内容将在<strong>第23章 Agent 安全与防护</strong>中深入讲解，这里只需要建立意识：提示词不仅是"怎么问"的问题，还涉及"怎么防"的问题。</p>
 
 <!-- ===== 4.8 工程落地 ===== -->
 <h2 class="section-heading">4.8 实战：从 WaLiCode 看提示词工程落地</h2>
@@ -1955,7 +1955,7 @@ ${FEW_SHOT_EXAMPLES}
     <li><strong>第6章 记忆系统</strong>：上下文工程是提示词工程的超集——如何管理进入 LLM 上下文窗口的所有信息</li>
     <li><strong>第7章 意图识别与决策中枢</strong>：System Prompt 和角色设定的实战应用</li>
     <li><strong>第10章 Function Calling 与工具设计</strong>：结构化输出和工具描述的 Schema 设计</li>
-    <li><strong>第22章 Agent 安全与防护</strong>：Prompt Injection 攻防、红队测试</li>
+    <li><strong>第23章 Agent 安全与防护</strong>：Prompt Injection 攻防、红队测试</li>
   </ul>
 </div>
 
@@ -2114,7 +2114,7 @@ var ch04Questions = [
     question: 'Prompt Injection（提示词注入）的最佳防御策略是？',
     options: ['只用 Temperature=0', 'System Prompt 明确约束 + 输入过滤 + 输出校验三层防御', '不使用 System Prompt', '限制用户输入长度'],
     answer: [1],
-    explanation: 'Prompt Injection 需要三层防御：System Prompt 中加入明确约束（"禁止执行…"）、输入端过滤可疑内容、输出端校验是否符合预期格式。详见第22章 Agent 安全与防护。'
+    explanation: 'Prompt Injection 需要三层防御：System Prompt 中加入明确约束（"禁止执行…"）、输入端过滤可疑内容、输出端校验是否符合预期格式。详见第23章 Agent 安全与防护。'
   },
   {
     type: 'single',
