@@ -4340,14 +4340,12 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 
 /* ===== 回到顶部按钮（跟随内容区，底部居中） ===== */
 .back-to-top {
-  position: absolute;
+  position: fixed;
   bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: #5b6b5e;
   color: #fff;
   border: none;
   cursor: pointer;
@@ -4366,24 +4364,24 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 }
 
 .back-to-top:hover {
-  background: var(--color-accent-dark);
+  background: #4a5a4d;
   box-shadow: var(--shadow-lg);
-  transform: translateX(-50%) translateY(0) scale(1.08);
+  transform: scale(1.08);
 }
 
 .back-to-top.visible {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
 }
 
 [data-theme="dark"] .back-to-top {
-  background: var(--color-accent-light);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: #7a8a7d;
+  box-shadow: 0 4px 12px rgba(91, 107, 94, 0.3);
 }
 
 [data-theme="dark"] .back-to-top:hover {
-  background: var(--color-accent);
+  background: #5b6b5e;
 }
 
 /* 响应式：小屏保持底部居中 */

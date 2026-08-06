@@ -167,6 +167,21 @@ const App = {
     const backToTopBtn = document.getElementById('backToTop');
     const contentArea = document.querySelector('.content-area');
     if (backToTopBtn && contentArea) {
+      // 动态定位：fixed 模式下用 JS 计算水平居中位置（对齐内容区中心）
+      const positionBackToTop = () => {
+        const rect = contentArea.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        backToTopBtn.style.left = (centerX - 21) + 'px'; // 21 = 按钮宽度 42 的一半
+      };
+      positionBackToTop();
+      window.addEventListener('resize', positionBackToTop);
+      // 侧边栏折叠/展开时也要重算
+      const appLayout = document.querySelector('.app-layout');
+      if (appLayout) {
+        const observer = new MutationObserver(positionBackToTop);
+        observer.observe(appLayout, { attributes: true, attributeFilter: ['class'] });
+      }
+
       backToTopBtn.addEventListener('click', () => {
         contentArea.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -672,6 +687,30 @@ const App = {
           <!-- 实战项目区域 -->
           <div class="hero-projects">
             <div class="hero-map-title">🏗️ 实战项目 · 点击进入</div>
+
+            <div class="project-divider">
+              <span class="divider-line"></span>
+              <span class="divider-text">学习路线</span>
+              <span class="divider-line"></span>
+            </div>
+
+            <div class="project-group">
+              <a class="project-card project-card-highlight" href="https://bugstack.cn/md/zsxq/material/student-learn-ai.html" target="_blank">
+                <span class="project-icon">🎓</span>
+                <div class="project-info">
+                  <span class="project-name">AI Agent 应用开发工程师学习计划</span>
+                  <span class="project-desc">系统化学习路线，从基础到实战的完整成长路径</span>
+                </div>
+                <span class="project-arrow">↗</span>
+              </a>
+            </div>
+
+            <div class="project-divider">
+              <span class="divider-line"></span>
+              <span class="divider-text">实战项目</span>
+              <span class="divider-line"></span>
+            </div>
+
             <div class="project-group">
               <a class="project-card" href="https://bugstack.cn/md/project/waliapi/waliapi.html" target="_blank">
                 <span class="project-icon">🛡️</span>
