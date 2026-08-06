@@ -1,5 +1,5 @@
-<!-- 第8章：Agent 运行时架构 -->
-<h1 class="chapter-title">第8章 Agent 运行时：Loop 引擎与沙箱</h1>
+<!-- 第9章：Agent 运行时架构 -->
+<h1 class="chapter-title">第9章 Agent 运行时：Loop 引擎与沙箱</h1>
 <p class="chapter-subtitle">从执行循环到安全沙箱——大脑的工程化基础设施</p>
 
 <!-- ===== 8.1 概述 ===== -->
@@ -1155,7 +1155,7 @@ func (sa *SecureAgent) Run(userInput string) (string, error) {
 
 <h3 class="sub-heading">8.6.1 上下文溢出熔断</h3>
 
-<p>当上下文压缩系统（参见第6章 6.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
+<p>当上下文压缩系统（参见第7章 6.12）也无法阻止 Context 增长时,Loop 必须有<strong>熔断机制</strong>——宁可终止任务,也不能让 Context 溢出导致 API 报错或输出质量崩溃。</p>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>class LoopCircuitBreaker:
@@ -1411,7 +1411,7 @@ function onUserActivity() {
     <tbody>
       <tr><td><strong>上下文溢出熔断</strong></td><td>Context 无限增长导致 API 报错</td><td>max_context_tokens = 120K</td><td>ch05 5.12 + 本节</td></tr>
       <tr><td><strong>死循环检测</strong></td><td>工具反复失败导致 Loop 卡死</td><td>max_turns = 20, max_tool_errors = 3</td><td>ch21 7.2.4</td></tr>
-      <tr><td><strong>压缩降级链</strong></td><td>压缩失败导致历史丢失</td><td>AI→规则→硬截断</td><td>第6章 6.12.7</td></tr>
+      <tr><td><strong>压缩降级链</strong></td><td>压缩失败导致历史丢失</td><td>AI→规则→硬截断</td><td>第7章 6.12.7</td></tr>
       <tr><td><strong>Checkpoint 恢复</strong></td><td>中断后无法继续任务</td><td>状态序列化 + 反序列化</td><td>本节</td></tr>
       <tr><td><strong>心跳检测</strong></td><td>用户离开后 Agent 继续烧钱</td><td>idle_timeout = 10min</td><td>本节 8.6.3</td></tr>
     </tbody>
@@ -1493,7 +1493,7 @@ function onUserActivity() {
     <div class="qa-answer">
       <strong>① 上下文溢出熔断</strong>：Context 超过阈值（如 120K token）自动终止,防止 API 报错。<br>
       <strong>② 死循环检测</strong>：max_turns 上限 + 同工具连续失败上限,防止 Loop 卡死。<br>
-      <strong>③ 压缩降级链</strong>：AI 摘要→规则摘要→硬截断,确保压缩始终有结果（参见 第6章 6.12.7）。<br>
+      <strong>③ 压缩降级链</strong>：AI 摘要→规则摘要→硬截断,确保压缩始终有结果（参见 第7章 6.12.7）。<br>
       <strong>④ Checkpoint 恢复</strong>：序列化 Loop 状态,中断后可从断点恢复任务。<br>
       <strong>⑤ 心跳检测</strong>：空闲超时自动暂停,防止用户离开后 Agent 继续烧钱。<br><br>
       <strong>核心原则</strong>:宁可提前终止,不可带病运行。熔断是主动保护,不是失败。

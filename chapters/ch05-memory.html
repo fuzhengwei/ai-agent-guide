@@ -1,5 +1,5 @@
-<!-- 第6章:记忆系统 -->
-<h1 class="chapter-title">第6章 Agent 的记忆系统</h1>
+<!-- 第7章:记忆系统 -->
+<h1 class="chapter-title">第7章 Agent 的记忆系统</h1>
 <p class="chapter-subtitle">让 Agent 拥有短期的专注和长期的经验</p>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -3902,7 +3902,7 @@ public class PromptAssembler {
     <strong>动态Prompt</strong> = 记忆召回片段 + Skill完整指令 + 对话历史 + 用户当前输入,每轮都变,放Prompt后面,按变化频率分层。<br><br>
     <strong>组装策略</strong>:固定→半固定→动态→当前请求,四层叠放。核心原则:<strong>不变的放前面最大化缓存,变化的放后面最小化缓存失效</strong>。<br><br>
     关联面试题 → Q11(动态vs静态Prompt)、Q12(缓存命中设计)<br>
-    关联章节 → 1.1.6(上下文窗口Token经济学)、第5章 5.13(Token Budget)
+    关联章节 → 1.1.6(上下文窗口Token经济学)、第6章 5.13(Token Budget)
   </p>
 </div>
 
@@ -3968,7 +3968,7 @@ setTimeout(() => {
   <div class="card" style="border-left: 3px solid var(--color-success);">
     <div class="card-title">🛡️ Layer 1: 预防--不让压力累积</div>
     <ul style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-      <li><strong>Token Budget</strong>:设定全局上限(如20万Token),实时累加,超预算立即停止(详见第5章 5.13节)</li>
+      <li><strong>Token Budget</strong>:设定全局上限(如20万Token),实时累加,超预算立即停止(详见第6章 5.13节)</li>
       <li><strong>JIT召回原则</strong>:只检索当前步骤需要的记忆,不提前加载全量(详见6.8节)</li>
       <li><strong>输出长度约束</strong>:要求模型"只输出关键结论"而非长篇大论,减少输出Token</li>
       <li><strong>工具结果精简</strong>:工具返回后先做格式化过滤(只保留关键行),不原样塞入上下文</li>
@@ -4346,7 +4346,7 @@ public class StateOverflowGuard {
     Layer 4 兜底:紧急压缩(413)+ 降级回答 + 自动会话切分 + 人工介入<br><br>
     <strong>3 最后强调</strong>--不是某一层单独起作用,而是四层递进。预防失败→压缩兜住,压缩不够→淘汰兜住,淘汰也不够→紧急兜底。<br><br>
     关联面试题 → Q23(状态爆炸)<br>
-    关联章节 → 第5章 5.13(Token Budget)、6.3(短期记忆管理)、6.5(上下文压缩)、6.8(记忆治理)、6.11(召回防控)、6.12(生产级压缩系统)
+    关联章节 → 第6章 5.13(Token Budget)、6.3(短期记忆管理)、6.5(上下文压缩)、6.8(记忆治理)、6.11(召回防控)、6.12(生产级压缩系统)
   </p>
 </div>
 

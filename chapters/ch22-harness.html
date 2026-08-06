@@ -1,5 +1,5 @@
-<!-- 第9章：Harness Engineering -->
-<h1 class="chapter-title">第9章 Harness 工程：大脑的工程化外壳</h1>
+<!-- 第10章：Harness Engineering -->
+<h1 class="chapter-title">第10章 Harness 工程：大脑的工程化外壳</h1>
 <p class="chapter-subtitle">模型不动，只优化 Harness 就提升 10 倍——大脑的工程化体系</p>
 
 <!-- ===== 9.1 三个范式 ===== -->
@@ -143,7 +143,7 @@
       <strong style="color: var(--color-error);">系统层</strong>：OS 沙箱执行（Seatbelt/Bubblewrap）→ 文件系统隔离 + 网络代理 + 域名白名单
     </div>
   </div>
-  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">核心思想：不依赖单一安全机制。即使第一层漏过某条命令，第二层可以降级为需确认，第三层可以在 OS 级别隔离其影响。<strong>参见第8章 8.4.5</strong>。</p>
+  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">核心思想：不依赖单一安全机制。即使第一层漏过某条命令，第二层可以降级为需确认，第三层可以在 OS 级别隔离其影响。<strong>参见第9章 8.4.5</strong>。</p>
 </div>
 
 <h3 class="sub-heading">9.2.3 AGENTS.md / System Prompt——解决"知识过时"</h3>
@@ -1048,7 +1048,7 @@ public class FullHarnessAgent {
       <span style="font-size: 12px; color: var(--color-text-secondary);">macOS 用 Seatbelt（sandbox-exec），Linux 用 Bubblewrap + seccomp。文件系统三级控制（可写/只读/屏蔽）+ HTTP/SOCKS 代理 + 域名白名单。</span>
     </div>
   </div>
-  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">📐 完整架构分析参见<strong>第8章 8.4.5 工业级沙箱实践：Claude Code 案例</strong>。</p>
+  <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">📐 完整架构分析参见<strong>第9章 8.4.5 工业级沙箱实践：Claude Code 案例</strong>。</p>
 </div>
 
 <h3 class="sub-heading">9.4.2 OpenAI Codex</h3>
@@ -1227,7 +1227,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
   <div class="card-title">陷阱 2：约束不足 — 不加限制 Agent 可能做危险操作</div>
   <p style="font-size: 13px; color: var(--color-text-secondary);">想象一个没有任何交通规则的城市——虽然出行自由，但车祸频发。<br><br>
   典型症状：① Agent 删除了重要文件；② Agent 泄露了 API Key；③ Agent 无限循环消耗大量 Token；④ Agent 执行了 rm -rf / 这样的危险命令。<br><br>
-  <strong>解法</strong>：至少要有三层防护——工具白名单（声明式权限）、运行时拦截（动态检查参数）、审计日志（事后追溯）。详见第23章 Agent 安全与防护。</p>
+  <strong>解法</strong>：至少要有三层防护——工具白名单（声明式权限）、运行时拦截（动态检查参数）、审计日志（事后追溯）。详见第24章 Agent 安全与防护。</p>
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
@@ -1340,7 +1340,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
       ⑤ <strong>headless 模式</strong>：无交互纯命令行 → CI/CD 集成<br>
       ⑥ <strong>CLAUDE.md</strong>：项目级知识注入 → AGENTS.md<br><br>
       面试要点：Claude Code 证明了"headless + allowedTools + max-turns"就是最小可行 Harness 安全架构。不需要 GUI 交互，不需要人工审批，靠参数约束就实现了安全运行。<br><br>
-      <strong>深入</strong>：参数只是冰山一角，源码分析揭示了三层纵深防御架构——命令安全检查（23+ 验证器）→ 权限决策引擎（shouldUseSandbox 三步决策 + 5 层设置源合并）→ OS 沙箱执行（Seatbelt/Bubblewrap + seccomp）。详见<strong>第8章 8.4.5</strong>。
+      <strong>深入</strong>：参数只是冰山一角，源码分析揭示了三层纵深防御架构——命令安全检查（23+ 验证器）→ 权限决策引擎（shouldUseSandbox 三步决策 + 5 层设置源合并）→ OS 沙箱执行（Seatbelt/Bubblewrap + seccomp）。详见<strong>第9章 8.4.5</strong>。
     </div>
   </div>
 
