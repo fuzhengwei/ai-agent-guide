@@ -7,7 +7,7 @@
 
 <p>上一章我们讲了 RAG——通过向量检索从外部文档中获取知识。但 Agent 还需要另一种知识：<strong>项目知识</strong>——这个项目的架构约定、代码规范、部署流程、业务规则。这些知识不是"检索"来的，而是 Agent 每次启动时直接读取的。</p>
 
-<p>LLM-Wiki 最初由 Andrej Karpathy 在其 [llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 中提出，核心理念是：<strong>用文件系统代替向量检索，用自然语言代替微调，让知识被编译一次、持续维护</strong>。传统 RAG 每次查询都从头检索和回答，而 LLM-Wiki 让 LLM 增量构建并维护一个持久化的知识库——知识只编译一次并持续更新，而非每次查询都重新推导。</p>
+<p>LLM-Wiki 最初由 Andrej Karpathy 在其 <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank">llm-wiki gist</a> 中提出，核心理念是：<strong>用文件系统代替向量检索，用自然语言代替微调，让知识被编译一次、持续维护</strong>。传统 RAG 每次查询都从头检索和回答，而 LLM-Wiki 让 LLM 增量构建并维护一个持久化的知识库——知识只编译一次并持续更新，而非每次查询都重新推导。</p>
 
 <div class="card">
   <div class="card-title">💡 一句话定义</div>
