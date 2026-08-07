@@ -655,7 +655,7 @@ const App = {
           
           <div class="hero-stats">
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="26">0</span>
+              <span class="stat-num" data-target="27">0</span>
               <span class="stat-label">章节</span>
             </div>
             <div class="hero-stat-item">
