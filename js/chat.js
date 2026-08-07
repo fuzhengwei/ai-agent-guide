@@ -17,13 +17,13 @@ const AIChat = {
     title: '',
     num: 0,
     section: '',
-    contentText: ''  // 提取的章节纯文本（截断到 3000 字符）
+    contentText: ''  // 提取的章节纯文本（截断到 10000 字符）
   },
 
   STORAGE_KEY: 'ai-agent-guide-api-configs',
 
   // 章节内容最大长度（字符数），避免 token 过多
-  MAX_CHAPTER_CONTENT_LENGTH: 3000,
+  MAX_CHAPTER_CONTENT_LENGTH: 10000,
 
   /**
    * 初始化
@@ -77,7 +77,7 @@ const AIChat = {
     text = text.replace(/\s+/g, ' ').trim();
     // 截断
     if (text.length > this.MAX_CHAPTER_CONTENT_LENGTH) {
-      text = text.substring(0, this.MAX_CHAPTER_CONTENT_LENGTH) + '...（内容过长，已截断）';
+      text = text.substring(0, this.MAX_CHAPTER_CONTENT_LENGTH) + '...（内容过长，已截断，如需完整内容请直接阅读章节原文）';
     }
     
     this.chapterContext.contentText = text;
@@ -393,6 +393,8 @@ const AIChat = {
       }
       
       systemPrompt += `\n\n请基于以上章节内容，结合你的 AI Agent 知识体系，为用户提供精准、有用的学习帮助。`;
+      systemPrompt += `\n\n## ⚠️ 跨章节知识检索`;
+      systemPrompt += `\n如果用户问的知识点不在当前章节内容中，请基于你对 AI Agent 知识体系的理解进行回答，并在回答开头标注「📚 此知识点来自第X章「章节名」」，帮助用户定位到对应章节学习。不要说"找不到"或"当前章节没有"——本教程共 28 章，你掌握全部章节的知识。`;
     } else {
       systemPrompt += `\n\n用户目前在首页，尚未选择具体章节。`;
       systemPrompt += `\n此时用户可能想了解：`;
