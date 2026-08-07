@@ -904,3 +904,128 @@ function sessionMemoryCompact(messages) {
     <div class="quiz-explanation">三级压缩链体现"渐进式压缩"哲学：先用低成本（规则提取）压低价值内容（工具返回值），不够再用中成本（LLM 摘要）压中价值（旧历史），最后用高成本（持久化转存）处理高价值（会话记忆）。就像水坝泄洪——先开小闸，再开中闸，最后才开大闸。</div>
   </div>
 </div>
+
+<!-- ===== 课后考试 ===== -->
+<div id="quizArea"></div>
+
+<script>
+var ch04bQuestions = [
+  {
+    type: 'single',
+    question: '上下文工程和提示词工程的核心区别是什么？',
+    options: [
+      '上下文工程是提示词工程的另一种叫法',
+      '提示词工程关注"怎么写指令"，上下文工程关注"每次调用带什么信息"',
+      '上下文工程只管 System Prompt，提示词工程管用户输入',
+      '提示词工程比上下文工程更高级'
+    ],
+    answer: [1],
+    explanation: '提示词工程关注指令本身的设计（三层结构、采样参数、模板），上下文工程关注的是进入 LLM 上下文窗口的所有信息的管理——哪些消息该留、哪些该压缩、哪些该丢弃。'
+  },
+  {
+    type: 'single',
+    question: '在消息优先级裁剪中，P0 级消息的特点是什么？',
+    options: [
+      'token 占用最多，需要优先压缩',
+      '可以安全丢弃，因为不关键',
+      '永不裁剪，丢失会导致 Agent 行为异常',
+      '只在会话开始时存在，之后自动移除'
+    ],
+    answer: [2],
+    explanation: 'P0 是"永不裁剪"级别，包括 System Prompt（行为准则）和当前用户输入（本轮任务目标）。一旦丢失，Agent 会失去行为约束或不知道要做什么。'
+  },
+  {
+    type: 'single',
+    question: '以下哪种裁剪策略的信息保留率最高？',
+    options: ['截断', '滑动窗口', '语义保护型压缩', '摘要压缩'],
+    answer: [2],
+    explanation: '语义保护型压缩锁定核心指令、保留行动-结果对、只压缩中间推理，在压缩率和信息完整性之间取得最优平衡，信息保留率最高。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 的 microCompact 在什么时机触发？',
+    options: [
+      '上下文接近 70% 容量时自动触发',
+      '上下文接近 85% 容量时自动触发',
+      '用户手动执行 /compact 时触发',
+      '每轮对话后都触发'
+    ],
+    answer: [0],
+    explanation: 'microCompact 在 ~70% 容量时自动触发，压缩工具返回值；autoCompact 在 ~85% 时触发，用 LLM 摘要旧历史；sessionMemoryCompact 在用户手动或会话结束时触发。'
+  },
+  {
+    type: 'single',
+    question: 'autoCompact 的防死锁设计是什么？',
+    options: [
+      '限制最多压缩 3 次',
+      '压缩失败后直接截断',
+      '查询来源为 compact 时返回 false，防止递归压缩',
+      '压缩时断开网络连接'
+    ],
+    answer: [2],
+    explanation: 'shouldAutoCompact 递归守卫：当查询来源是 session_memory 或 compact 时返回 false，防止"压缩→查询→再压缩"的死循环。另有 MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3 熔断。'
+  },
+  {
+    type: 'single',
+    question: 'Claude Code 三级压缩链的设计哲学是？',
+    options: [
+      '一次性最大压缩',
+      '只保留最近 N 轮',
+      '用户手动选择压缩级别',
+      '渐进式：先低成本压低价值，不够再逐级升级'
+    ],
+    answer: [3],
+    explanation: '三级压缩链体现"渐进式压缩"哲学：先用低成本（规则提取）压低价值内容，不够再用中成本（LLM 摘要）压中价值，最后用高成本（持久化转存）处理高价值。就像水坝泄洪——先开小闸，再开中闸，最后才开大闸。'
+  },
+  {
+    type: 'single',
+    question: '混合裁剪策略中，工具返回值（Tool Result）通常用什么方式处理？',
+    options: [
+      '原样保留，不压缩',
+      '完全丢弃，只保留摘要',
+      '提取关键字段（状态码、核心数据），丢弃原始响应体',
+      '用 LLM 重新生成一遍'
+    ],
+    answer: [2],
+    explanation: '工具返回值通常很大（API 响应、文件内容），但大部分是细节。混合裁剪策略下，提取关键字段（如 status、data 中的核心结果），丢弃冗长的原始响应体，既保留信息又释放 token。'
+  },
+  {
+    type: 'single',
+    question: '上下文工程和记忆系统的关系是？',
+    options: [
+      '上下文工程是记忆系统的子集',
+      '记忆系统是上下文工程的子集',
+      '上下文工程管"带什么"，记忆系统管"存什么"',
+      '两者完全独立，无交集'
+    ],
+    answer: [2],
+    explanation: '上下文工程是短期（单会话内窗口管理），记忆系统是长期（跨会话持久化）。记忆系统检索到的内容注入上下文窗口后，由上下文工程决定是否保留。'
+  },
+  {
+    type: 'multiple',
+    question: '以下哪些属于上下文工程的裁剪策略？（多选）',
+    options: [
+      '截断策略——保留最新消息，丢弃最早的历史',
+      '摘要策略——用 LLM 把旧对话压缩成摘要',
+      '滑动窗口——维护固定长度的对话窗口',
+      '微调策略——把知识训练进模型参数'
+    ],
+    answer: [0, 1, 2],
+    explanation: '微调策略不属于上下文工程——它改变的是模型参数，不是管理上下文窗口内容。前三种都是上下文窗口内的消息管理策略。'
+  },
+  {
+    type: 'multiple',
+    question: '关于 Claude Code 的三级压缩链，以下说法正确的是？（多选）',
+    options: [
+      'microCompact 用规则提取压缩工具返回值，不调用 LLM',
+      'autoCompact 保留 20,000 token 给摘要，用 LLM 生成',
+      'sessionMemoryCompact 将会话记忆持久化转存',
+      '三级压缩按固定顺序依次执行，不可跳过'
+    ],
+    answer: [0, 1, 2],
+    explanation: '三级压缩是按需触发的——microCompact 在 ~70% 时触发，只有不够才升级到 autoCompact (~85%)，再不够才升级到 sessionMemoryCompact。不是固定依次执行，而是渐进式升级。'
+  }
+];
+
+setTimeout(() => { Quiz.render('quizArea', ch04bQuestions); }, 500);
+</script>
