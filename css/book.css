@@ -4078,7 +4078,7 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 
   /* 8. 回到顶部按钮保持底部居中 */
   .back-to-top {
-    bottom: 72px !important;
+    bottom: calc(72px + var(--mobile-footer-height, 0px)) !important;
   }
 
   /* 9. 聊天面板拖拽手柄在手机端隐藏 */
@@ -4341,6 +4341,7 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 /* ===== 回到顶部按钮（跟随内容区，底部居中） ===== */
 .back-to-top {
   position: fixed;
+  left: 50%;
   bottom: 28px;
   width: 42px;
   height: 42px;
@@ -4355,6 +4356,7 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   box-shadow: var(--shadow-md);
   opacity: 0;
   visibility: hidden;
+  transform: translate(-50%, 10px);
   transition: all 0.3s ease;
   z-index: 50;
 }
@@ -4366,13 +4368,17 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 .back-to-top:hover {
   background: #4a5a4d;
   box-shadow: var(--shadow-lg);
-  transform: scale(1.08);
+  transform: translate(-50%, 0) scale(1.08);
 }
 
 .back-to-top.visible {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translate(-50%, 0);
+}
+
+.back-to-top.visible:hover {
+  transform: translate(-50%, 0) scale(1.08);
 }
 
 [data-theme="dark"] .back-to-top {

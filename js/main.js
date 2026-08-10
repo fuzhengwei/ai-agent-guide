@@ -167,20 +167,31 @@ const App = {
     // 回到顶部按钮
     const backToTopBtn = document.getElementById('backToTop');
     const contentArea = document.querySelector('.content-area');
+    const footer = document.querySelector('.footer-bottom');
     if (backToTopBtn && contentArea) {
-      // 动态定位：fixed 模式下用 JS 计算水平居中位置（对齐内容区中心）
+      // fixed 按钮脱离滚动容器后，始终对齐当前内容区的水平中心。
       const positionBackToTop = () => {
         const rect = contentArea.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        backToTopBtn.style.left = (centerX - 21) + 'px'; // 21 = 按钮宽度 42 的一半
+        backToTopBtn.style.left = `${rect.left + rect.width / 2}px`;
+        backToTopBtn.style.setProperty(
+          '--mobile-footer-height',
+          `${footer ? footer.getBoundingClientRect().height : 0}px`
+        );
       };
       positionBackToTop();
       window.addEventListener('resize', positionBackToTop);
-      // 侧边栏折叠/展开时也要重算
+
+      // 网格栏位有过渡动画；持续监听内容区尺寸，避免只在动画起点计算而产生偏移。
+      if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(positionBackToTop);
+        observer.observe(contentArea);
+        if (footer) observer.observe(footer);
+      }
+
+      // 兼顾仅发生位置变化、尺寸未变化的布局调整。
       const appLayout = document.querySelector('.app-layout');
       if (appLayout) {
-        const observer = new MutationObserver(positionBackToTop);
-        observer.observe(appLayout, { attributes: true, attributeFilter: ['class'] });
+        appLayout.addEventListener('transitionend', positionBackToTop);
       }
 
       backToTopBtn.addEventListener('click', () => {

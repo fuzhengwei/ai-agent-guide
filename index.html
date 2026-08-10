@@ -137,8 +137,8 @@
   }
   </script>
 
-  <link rel="stylesheet" href="css/book.css?v=20260807.1">
-  <link rel="stylesheet" href="css/animations.css?v=20260807.1">
+  <link rel="stylesheet" href="css/book.css?v=20260810.1">
+  <link rel="stylesheet" href="css/animations.css?v=20260810.1">
   <!-- Prism.js 语法高亮 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" ></script>
@@ -187,10 +187,6 @@
       <div class="content-body" id="contentBody">
         <!-- 内容由 JS 动态加载 -->
       </div>
-      <!-- ===== 回到顶部按钮（跟随内容区，底部居中） ===== -->
-      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
-      </button>
     </main>
     
     <!-- ===== 章节目录栏 (TOC) ===== -->
@@ -256,6 +252,11 @@
     </aside>
     
   </div>
+
+  <!-- ===== 回到顶部按钮（脱离滚动容器，固定在内容区底部中央） ===== -->
+  <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+  </button>
   
 
   <!-- ===== API 设置弹窗 ===== -->
@@ -339,14 +340,14 @@
   
   <!-- ===== 脚本 ===== -->
   <!-- 版本检测（最先加载，检测到新版本自动刷新） -->
-  <script src="js/version.js?v=20260807.1"></script>
+  <script src="js/version.js?v=20260810.1"></script>
   <!-- 百度统计（首加载，全局共享） -->
   <script src="js/analytics.js"></script>
-  <script src="js/flowchart.js?v=20260807.1"></script>
-  <script src="js/compare.js?v=20260807.1"></script>
-  <script src="js/progress.js?v=20260807.1"></script>
-  <script src="js/quiz.js?v=20260807.1"></script>
-  <script src="js/chat.js?v=20260807.1"></script>
-  <script src="js/main.js?v=20260807.1"></script>
+  <script src="js/flowchart.js?v=20260810.1"></script>
+  <script src="js/compare.js?v=20260810.1"></script>
+  <script src="js/progress.js?v=20260810.1"></script>
+  <script src="js/quiz.js?v=20260810.1"></script>
+  <script src="js/chat.js?v=20260810.1"></script>
+  <script src="js/main.js?v=20260810.1"></script>
 </body>
 </html>
