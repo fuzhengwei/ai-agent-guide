@@ -146,7 +146,7 @@
 
 /* 代码块：深色圆角卡 + 语言标签（更透气） */
 .rich .mp-codeblock {
-  position: relative; margin: 34rpx 0; border-radius: 16rpx;
+  position: relative; margin: 38rpx 0; border-radius: 16rpx;
   background: #1c2230; overflow: hidden;
 }
 .night .rich .mp-codeblock { background: #0d1017; border: 1rpx solid #262c3a; }
@@ -212,6 +212,36 @@
   white-space: normal; min-width: 120rpx; line-height: 1.7;
 }
 .rich .mp-table tr { background: transparent; }
+
+/* ===== 对话模拟气泡（chat-line 转换产物）===== */
+.rich .mp-chat {
+  position: relative; margin: 22rpx 0; padding: 22rpx 24rpx 22rpx 30rpx;
+  background: var(--panel-bg); border: 1rpx solid var(--panel-border);
+  border-radius: 6rpx 20rpx 20rpx 20rpx; line-height: 1.85;
+}
+.rich .mp-chat-label {
+  display: inline-block; font-size: 21rpx; font-weight: 600;
+  padding: 4rpx 16rpx; border-radius: 999rpx; margin: 0 0 10rpx;
+  letter-spacing: 0.5rpx;
+}
+.rich .mp-chat-body { font-size: inherit; color: var(--fg-body); }
+/* 类型色条 + 标签配色：用户蓝 / 思考紫 / 行动橙 / 观察青 / 回答绿 */
+.rich .mp-chat.chat-user { border-left: 6rpx solid #4f6ef7; }
+.rich .mp-chat.chat-user .mp-chat-label { color: #4353c9; background: #eef1fb; }
+.rich .mp-chat.chat-thought { border-left: 6rpx solid #8b5cf6; }
+.rich .mp-chat.chat-thought .mp-chat-label { color: #7c3aed; background: #f3eefe; }
+.rich .mp-chat.chat-action { border-left: 6rpx solid #e8890c; }
+.rich .mp-chat.chat-action .mp-chat-label { color: #c26a00; background: #fef3e2; }
+.rich .mp-chat.chat-observe { border-left: 6rpx solid #0d9488; }
+.rich .mp-chat.chat-observe .mp-chat-label { color: #0f766e; background: #e6f7f5; }
+.rich .mp-chat.chat-reply { border-left: 6rpx solid #16a34a; }
+.rich .mp-chat.chat-reply .mp-chat-label { color: #15803d; background: #eaf8ef; }
+.night .rich .mp-chat { background: #141926; }
+.night .rich .mp-chat.chat-user .mp-chat-label { color: #9db1f7; background: #232c4a; }
+.night .rich .mp-chat.chat-thought .mp-chat-label { color: #c4a8f9; background: #2c2347; }
+.night .rich .mp-chat.chat-action .mp-chat-label { color: #f0b060; background: #3d2d14; }
+.night .rich .mp-chat.chat-observe .mp-chat-label { color: #5eead4; background: #10312e; }
+.night .rich .mp-chat.chat-reply .mp-chat-label { color: #6ee7a0; background: #10331f; }
 
 /* 信息卡：浅底壳 + 左侧强调条（accent 类由构建期注入，与内容色呼应） */
 .rich .mp-card {

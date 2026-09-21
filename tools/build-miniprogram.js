@@ -622,6 +622,25 @@ function renderContainer($, el, cls, out) {
     return;
   }
 
+  if (/\bchat-line\b/.test(cls)) {                         // 对话模拟行：标签胶囊 + 正文气泡
+    const $label = el.find('.chat-label').first();
+    const label = $label.length ? $label.text().replace(/\s+/g, ' ').trim() : '';
+    if ($label.length) $label.remove();
+    const body = renderFlow($, el, []).join('');
+    if (!body && !label) return;
+    // 类型色：thought 思考/observe 观察/action 行动/reply 回答/user 用户
+    let tone = 'chat-user';
+    if (/chat-thought/.test(cls)) tone = 'chat-thought';
+    else if (/chat-observe/.test(cls)) tone = 'chat-observe';
+    else if (/chat-action/.test(cls)) tone = 'chat-action';
+    else if (/chat-reply/.test(cls)) tone = 'chat-reply';
+    else if (/chat-user/.test(cls)) tone = 'chat-user';
+    out.push(`<div class="mp-chat ${tone}">`
+      + (label ? `<span class="mp-chat-label">${escapeHtml(label)}</span>` : '')
+      + `<div class="mp-chat-body">${body}</div></div>`);
+    return;
+  }
+
   if (CARD_RE.test(cls)) {                                 // 卡片：浅底壳 + 标题 + 递归内容
     const $title = el.find(CARD_TITLE_SEL).first();
     const title = $title.length ? $title.text().replace(/\s+/g, ' ').trim() : '';
