@@ -49,8 +49,19 @@ function saveQuizResult(chKey, result) {
     attempts: (prev.attempts || 0) + 1,
     correct: result.correct,
     total: result.total,
+    wrongIds: result.wrongIds || prev.wrongIds || [],
     time: Date.now(),
   };
+  wx.setStorageSync(KEYS.QUIZ_RECORDS, records);
+}
+
+// 错题本：把答对的题从该场错题记录中移除（错题重练模式用）
+function removeWrongIds(chKey, ids) {
+  if (!ids || !ids.length) return;
+  const records = getQuizRecords();
+  const rec = records[chKey];
+  if (!rec || !rec.wrongIds) return;
+  rec.wrongIds = rec.wrongIds.filter(id => ids.indexOf(id) === -1);
   wx.setStorageSync(KEYS.QUIZ_RECORDS, records);
 }
 
@@ -74,5 +85,6 @@ function clearAll() {
 module.exports = {
   getReadMap, markRead,
   getQuizRecords, saveQuizResult, calcStars, isPassed, getGameStats,
+  removeWrongIds,
   clearAll,
 };

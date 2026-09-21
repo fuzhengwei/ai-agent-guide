@@ -6,7 +6,7 @@
     <view class="hero-deco d2"></view>
     <view class="hero-badge">🎤 模拟面试</view>
     <view class="hero-title">AI Agent 岗位 · 一对一面试</view>
-    <view class="hero-sub">每章一场面试 · {{totalQuestions}} 道真题 · 面试官现场点评</view>
+    <view class="hero-sub">{{tab === 'mix' ? '跨章节混合抽题 · 自由选择面试方式' : '每章一场面试 · ' + totalQuestions + ' 道真题 · 面试官现场点评'}}</view>
 
     <view class="hero-stats">
       <view class="stat">
@@ -26,84 +26,155 @@
     </view>
   </view>
 
-  <!-- 面试官风格选择 -->
-  <view class="panel-card">
-    <view class="panel-title">选择面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则按场次自动轮换'}}</text></view>
-    <view class="style-grid">
-      <view
-        wx:for="{{styleCards}}"
-        wx:key="id"
-        class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="pickStyle"
-      >
-        <view class="sc-emoji">{{item.emoji}}</view>
-        <view class="sc-name">{{item.name}}</view>
-        <view class="sc-desc">{{item.desc}}</view>
-        <view class="sc-tag">{{item.tag}}</view>
-      </view>
+  <!-- 面试方式切换页签 -->
+  <view class="tab-bar">
+    <view class="tab-item {{tab === 'chapter' ? 'on' : ''}}" data-tab="chapter" bindtap="switchTab">
+      章节面试
+    </view>
+    <view class="tab-item {{tab === 'mix' ? 'on' : ''}}" data-tab="mix" bindtap="switchTab">
+      混合抽题<text wx:if="{{wrongCount}}" class="tab-dot"></text>
     </view>
   </view>
 
-  <!-- 面试官阵容 -->
-  <view class="panel-card">
-    <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
-    <view class="panel-row">
-      <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
-        <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
-        <view class="pi-name">{{item.name}}</view>
-        <view class="pi-title">{{item.title}}</view>
-      </view>
-    </view>
-  </view>
+  <!-- ================= 混合面试面板 ================= -->
+  <block wx:if="{{tab === 'mix'}}">
 
-  <!-- 场次列表 -->
-  <view class="list-head">
-    <text class="lh-title">面试场次</text>
-    <text class="lh-tip">通过一场，解锁下一场</text>
-  </view>
-
-  <view
-    wx:for="{{sessions}}"
-    wx:key="key"
-    class="session {{item.unlocked ? '' : 'is-locked'}}"
-    data-key="{{item.key}}"
-    data-unlocked="{{item.unlocked}}"
-    bindtap="startSession"
-    style="animation-delay: {{index * 30}}ms"
-  >
-    <!-- 场次号 -->
-    <view class="s-no {{item.passed ? 'done' : (item.unlocked ? 'open' : 'lock')}}">
-      <text wx:if="{{item.unlocked}}">{{item.no}}</text>
-      <text wx:else>🔒</text>
-    </view>
-
-    <!-- 场次信息 -->
-    <view class="s-main">
-      <view class="s-title">{{item.title}}<text wx:if="{{item.isBoss}}" class="boss-badge">真题</text></view>
-      <view class="s-meta">
-        <view class="s-iv">
-          <view class="s-iv-avatar" style="background: {{item.ivGradient}}">{{item.ivInitial}}</view>
-          <text>{{item.ivName}} 面试 · {{item.ivStyle}}</text>
+    <!-- 面试方式选择 -->
+    <view class="panel-card">
+      <view class="panel-title">选择面试方式<text class="panel-tip">进入后直接开考，题目随机混抽</text></view>
+      <view class="mode-grid">
+        <view
+          wx:for="{{mixModes}}"
+          wx:key="id"
+          class="mode-card {{item.empty ? 'empty' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="startMix"
+        >
+          <view wx:if="{{item.hot}}" class="mode-hot">热门</view>
+          <view class="mo-emoji">{{item.emoji}}</view>
+          <view class="mo-name">{{item.name}}</view>
+          <view class="mo-desc">{{item.desc}}</view>
+          <view class="mo-count">{{item.empty ? '暂无错题' : item.count + ' 题'}}</view>
         </view>
-        <text class="s-sep">·</text>
-        <text>{{item.count}} 题</text>
-        <text class="s-sep">·</text>
-        <text>约 {{item.minutes}} 分钟</text>
-      </view>
-      <view class="s-note warn" wx:if="{{item.done && !item.passed}}">上次未通过 · 建议再面一次</view>
-      <view class="s-note" wx:elif="{{item.passed && item.bestScore}}">最佳表现 {{item.bestScore}} 分 · {{item.gradeLabel}}</view>
-    </view>
-
-    <!-- 评级 + 入口 -->
-    <view class="s-right">
-      <view wx:if="{{item.grade}}" class="s-grade g{{item.stars}}">{{item.grade}}</view>
-      <view wx:else class="s-grade none">未面试</view>
-      <view class="s-btn {{item.unlocked ? (item.done ? 'again' : 'go') : 'lock'}}">
-        {{item.unlocked ? (item.done ? '再面一次' : '开始面试') : '未解锁'}}
       </view>
     </view>
-  </view>
 
-  <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 大厂真题场常驻开放</view>
+    <!-- 面试官风格选择 -->
+    <view class="panel-card">
+      <view class="panel-title">面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则随机安排'}}</text></view>
+      <view class="style-grid">
+        <view
+          wx:for="{{styleCards}}"
+          wx:key="id"
+          class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="pickStyle"
+        >
+          <view class="sc-emoji">{{item.emoji}}</view>
+          <view class="sc-name">{{item.name}}</view>
+          <view class="sc-desc">{{item.desc}}</view>
+          <view class="sc-tag">{{item.tag}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 面试官阵容 -->
+    <view class="panel-card">
+      <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
+      <view class="panel-row">
+        <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
+          <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
+          <view class="pi-name">{{item.name}}</view>
+          <view class="pi-title">{{item.title}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="footer">混合面试不计入章节解锁链 · 答对错题自动移出错题本</view>
+  </block>
+
+  <!-- ================= 章节面试列表 ================= -->
+  <block wx:else>
+
+    <!-- 面试官风格选择 -->
+    <view class="panel-card">
+      <view class="panel-title">选择面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则按场次自动轮换'}}</text></view>
+      <view class="style-grid">
+        <view
+          wx:for="{{styleCards}}"
+          wx:key="id"
+          class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="pickStyle"
+        >
+          <view class="sc-emoji">{{item.emoji}}</view>
+          <view class="sc-name">{{item.name}}</view>
+          <view class="sc-desc">{{item.desc}}</view>
+          <view class="sc-tag">{{item.tag}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 面试官阵容 -->
+    <view class="panel-card">
+      <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
+      <view class="panel-row">
+        <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
+          <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
+          <view class="pi-name">{{item.name}}</view>
+          <view class="pi-title">{{item.title}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 场次列表 -->
+    <view class="list-head">
+      <text class="lh-title">面试场次</text>
+      <text class="lh-tip">通过一场，解锁下一场</text>
+    </view>
+
+    <view
+      wx:for="{{sessions}}"
+      wx:key="key"
+      class="session {{item.unlocked ? '' : 'is-locked'}}"
+      data-key="{{item.key}}"
+      data-unlocked="{{item.unlocked}}"
+      bindtap="startSession"
+      style="animation-delay: {{index * 30}}ms"
+    >
+      <!-- 场次号 -->
+      <view class="s-no {{item.passed ? 'done' : (item.unlocked ? 'open' : 'lock')}}">
+        <text wx:if="{{item.unlocked}}">{{item.no}}</text>
+        <text wx:else>🔒</text>
+      </view>
+
+      <!-- 场次信息 -->
+      <view class="s-main">
+        <view class="s-title">{{item.title}}<text wx:if="{{item.isBoss}}" class="boss-badge">真题</text></view>
+        <view class="s-meta">
+          <view class="s-iv">
+            <view class="s-iv-avatar" style="background: {{item.ivGradient}}">{{item.ivInitial}}</view>
+            <text>{{item.ivName}} 面试 · {{item.ivStyle}}</text>
+          </view>
+          <text class="s-sep">·</text>
+          <text>{{item.count}} 题</text>
+          <text class="s-sep">·</text>
+          <text>约 {{item.minutes}} 分钟</text>
+        </view>
+        <view class="s-note warn" wx:if="{{item.done && !item.passed}}">上次未通过 · 建议再面一次</view>
+        <view class="s-note" wx:elif="{{item.passed && item.bestScore}}">最佳表现 {{item.bestScore}} 分 · {{item.gradeLabel}}</view>
+      </view>
+
+      <!-- 评级 + 入口 -->
+      <view class="s-right">
+        <view wx:if="{{item.grade}}" class="s-grade g{{item.stars}}">{{item.grade}}</view>
+        <view wx:else class="s-grade none">未面试</view>
+        <view class="s-btn {{item.unlocked ? (item.done ? 'again' : 'go') : 'lock'}}">
+          {{item.unlocked ? (item.done ? '再面一次' : '开始面试') : '未解锁'}}
+        </view>
+      </view>
+    </view>
+
+    <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 大厂真题场常驻开放</view>
+  </block>
 </view>

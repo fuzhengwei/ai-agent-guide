@@ -1,6 +1,7 @@
 const chapters = require('../../data/chapters.js');
 const store = require('../../utils/store.js');
 const IV = require('../../utils/interview.js');
+const MIX = require('../../utils/mix.js');
 
 // 每种风格的展示卡（阵容区按风格分组展示）
 const STYLE_CARDS = [
@@ -12,10 +13,13 @@ const STYLE_CARDS = [
 
 Page({
   data: {
+    tab: 'chapter',          // chapter 章节场 | mix 混合场
     sessions: [],
     panel: [],
     styleCards: STYLE_CARDS,
     selectedStyle: '',       // '' = 自动轮换
+    mixModes: [],
+    wrongCount: 0,
     doneCount: 0,
     passedCount: 0,
     totalQuestions: 0,
@@ -82,15 +86,35 @@ Page({
     // 面试官阵容（按当前风格筛选；未选风格展示全部）
     const panel = sel ? IV.PANEL.filter(p => p.styleId === sel) : IV.PANEL;
 
+    // 混合面试方式卡：错题重练附上当前错题数，无错题时置灰
+    const wrongCount = MIX.collectWrongIds(records).length;
+    const mixModes = MIX.MODES.map(m => ({
+      id: m.id,
+      name: m.name,
+      emoji: m.emoji,
+      desc: m.desc,
+      count: m.wrong ? wrongCount : m.count,
+      hot: !!m.hot,
+      empty: !!m.wrong && !wrongCount,
+    }));
+
     this.setData({
       sessions,
       panel,
+      mixModes,
+      wrongCount,
       total: sessions.length,
       doneCount: sessions.filter(x => x.done).length,
       passedCount: sessions.filter(x => x.passed).length,
       totalQuestions: sessions.reduce((s, x) => s + x.count, 0),
       xp: stats.xp,
     });
+  },
+
+  // 切换顶部页签：章节场 / 混合场
+  switchTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (tab && tab !== this.data.tab) this.setData({ tab });
   },
 
   // 章节序号（作为面试官轮换种子）
@@ -105,6 +129,19 @@ Page({
     const id = e.currentTarget.dataset.id || '';
     this.setData({ selectedStyle: this.data.selectedStyle === id ? '' : id });
     this.onShow();
+  },
+
+  // 进入混合面试：style 一并带过去（错题重练无题时提示）
+  startMix(e) {
+    const id = e.currentTarget.dataset.id;
+    const mode = MIX.byId(id);
+    if (!mode) return;
+    if (mode.wrong && !this.data.wrongCount) {
+      wx.showToast({ title: '错题本是空的，先去面试吧', icon: 'none' });
+      return;
+    }
+    const style = this.data.selectedStyle ? '&style=' + this.data.selectedStyle : '';
+    wx.navigateTo({ url: `/packages/quiz/pages/runner/runner?mix=${mode.id}${style}` });
   },
 
   startSession(e) {

@@ -1,9 +1,15 @@
 /**
  * 模拟面试：面试官以聊天气泡逐题提问 → 作答 → 现场点评 + 标准答案 → 面试报告
  * 去掉生命值/倒计时/连击，保留进度与评级（复用 store 的正确率评级规则）
+ *
+ * 两种进入方式：
+ *   ?ch=ch01           单章面试（章节解锁链，存章节记录）
+ *   ?mix=mix_all       混合面试（utils/mix.js 跨章组题，不计入解锁链）
+ * 可选 &style=sharp   指定面试官风格
  */
 const store = require('../../../../utils/store.js');
 const IV = require('../../../../utils/interview.js');
+const MIX = require('../../../../utils/mix.js');
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -12,6 +18,7 @@ Page({
     iv: {},
     chKey: '',
     title: '',
+    isMix: false,
     // 对话流
     messages: [],
     typing: false,
@@ -35,27 +42,57 @@ Page({
   },
 
   onLoad(query) {
-    const chKey = query.ch;
     const bank = require('../../data/index.js');
-    const questions = bank[chKey] || [];
-    if (!questions.length) {
-      wx.showToast({ title: '题库为空', icon: 'error' });
-      return;
+    let questions = [];
+    let chKey = '';
+    let title = '';
+    let isMix = false;
+    let next = null;
+
+    if (query.mix) {
+      // ===== 混合面试：跨章随机组题 =====
+      const mode = MIX.byId(query.mix);
+      if (!mode) {
+        wx.showToast({ title: '面试方式不存在', icon: 'error' });
+        return;
+      }
+      questions = MIX.build(mode, bank, store.getQuizRecords());
+      if (!questions.length) {
+        wx.showToast({ title: mode.wrong ? '错题本是空的' : '题库为空', icon: 'none' });
+        setTimeout(() => wx.navigateBack({ fail: () => {} }), 600);
+        return;
+      }
+      isMix = true;
+      chKey = 'mix_' + mode.id;
+      title = mode.emoji + ' ' + mode.name + ' · 混合面试';
+    } else {
+      // ===== 单章面试 =====
+      chKey = query.ch;
+      questions = bank[chKey] || [];
+      if (!questions.length) {
+        wx.showToast({ title: '题库为空', icon: 'error' });
+        return;
+      }
+      const chapters = require('../../../../data/chapters.js');
+      const meta = chapters.find(c => c.quizKey === chKey);
+      const quizList = chapters.filter(c => c.quizKey);
+      const pos = quizList.findIndex(c => c.quizKey === chKey);
+      next = pos !== -1 && pos < quizList.length - 1 ? quizList[pos + 1] : null;
+      title = meta ? meta.title : chKey;
     }
-    const chapters = require('../../../../data/chapters.js');
-    const meta = chapters.find(c => c.quizKey === chKey);
-    const quizList = chapters.filter(c => c.quizKey);
-    const pos = quizList.findIndex(c => c.quizKey === chKey);
-    const next = pos !== -1 && pos < quizList.length - 1 ? quizList[pos + 1] : null;
+
+    const posForIv = isMix ? Math.floor(Math.random() * 7) : this._chapterPos(chKey);
     const iv = query.style
-      ? IV.pickByStyle(query.style, pos < 0 ? 0 : pos)
-      : IV.pick(pos < 0 ? 0 : pos);
+      ? IV.pickByStyle(query.style, posForIv)
+      : IV.pick(posForIv);
 
     this._questions = questions;
     this._results = [];
     this._seq = 0;
     this._start = Date.now();
     this._iv = iv;
+    this._isMix = isMix;
+    this._modeId = query.mix || '';
 
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -64,17 +101,26 @@ Page({
     this.setData({
       iv: { name: iv.name, initial: iv.initial, title: iv.title, gradient: iv.gradient },
       chKey,
-      title: meta ? meta.title : chKey,
+      title,
+      isMix,
       total: questions.length,
       progressText: '第 1 / ' + questions.length + ' 题',
       dayText: hh + ':' + mm,
       nextKey: next ? next.quizKey : '',
       hasNext: !!next,
     });
-    wx.setNavigationBarTitle({ title: '模拟面试 · ' + (meta ? meta.title : chKey) });
+    wx.setNavigationBarTitle({ title: '模拟面试 · ' + title });
 
-    const lines = iv.open.map(t => t.replace('{title}', this.data.title).replace('{n}', questions.length));
+    const lines = iv.open.map(t => t.replace('{title}', title).replace('{n}', questions.length));
     this._say(lines.map(text => ({ role: 'iv', kind: 'plain', text })), () => this.ask(0));
+  },
+
+  // 章节场：面试官按章节顺序轮换，保证同场次复访面试官一致
+  _chapterPos(chKey) {
+    const chapters = require('../../../../data/chapters.js');
+    const quizList = chapters.filter(c => c.quizKey);
+    const pos = quizList.findIndex(c => c.quizKey === chKey);
+    return pos >= 0 ? pos : 0;
   },
 
   onUnload() {
@@ -269,7 +315,25 @@ Page({
     const durationText = Math.floor(seconds / 60) + ' 分 ' + (seconds % 60) + ' 秒';
     const prev = store.getQuizRecords()[this.data.chKey];
 
-    store.saveQuizResult(this.data.chKey, { correct, total, score, stars });
+    // 错题 id 集合：混合场与章节场都记，供错题重练使用
+    const wrongIds = this._questions
+      .map((q, i) => (this._results[i] ? null : q.id))
+      .filter(Boolean);
+
+    store.saveQuizResult(this.data.chKey, { correct, total, score, stars, wrongIds });
+
+    // 错题重练模式：本次答对的题从错题本移除
+    if (this._isMix && this._modeId === 'mix_wrong') {
+      const rightIds = this._questions
+        .map((q, i) => (this._results[i] ? q.id : null))
+        .filter(Boolean);
+      // 错题原属各章节记录，按 id 全局移除
+      const records = store.getQuizRecords();
+      Object.keys(records).forEach(k => {
+        const hit = (records[k].wrongIds || []).filter(id => rightIds.indexOf(id) !== -1);
+        if (hit.length) store.removeWrongIds(k, hit);
+      });
+    }
 
     const wrongList = [];
     this._questions.forEach((q, i) => {
@@ -313,18 +377,42 @@ Page({
   },
 
   restart() {
+    // 混合面试「再来一局」重新随机组题；章节场沿用原题
+    if (this._isMix) {
+      this._reloadMix();
+      return;
+    }
+    this._resetChat();
+    const iv = this._iv;
+    const lines = iv.open.map(t => t.replace('{title}', this.data.title).replace('{n}', this.data.total));
+    this._say(lines.map(text => ({ role: 'iv', kind: 'plain', text })), () => this.ask(0));
+  },
+
+  // 混合场重新组题（同一模式再抽一次）
+  _reloadMix() {
+    const mode = MIX.byId(this._modeId);
+    if (!mode) return this._resetChat();
+    const bank = require('../../data/index.js');
+    const questions = MIX.build(mode, bank, store.getQuizRecords());
+    if (!questions.length) return this._resetChat();
+    this._questions = questions;
+    this._resetChat();
+    const iv = this._iv;
+    const lines = iv.open.map(t => t.replace('{title}', this.data.title).replace('{n}', this.data.total));
+    this._say(lines.map(text => ({ role: 'iv', kind: 'plain', text })), () => this.ask(0));
+  },
+
+  _resetChat() {
     this._results = [];
     this._seq = 0;
     this._start = Date.now();
     this.setData({
       messages: [], typing: false, options: [], selected: [], awaiting: false,
       index: 0, correctCount: 0, finished: false, report: null,
-      progressText: '第 1 / ' + this.data.total + ' 题',
+      progressText: '第 1 / ' + (this._questions ? this._questions.length : 0) + ' 题',
+      total: this._questions ? this._questions.length : 0,
       tick: 0, scrollInto: '',
     });
-    const iv = this._iv;
-    const lines = iv.open.map(t => t.replace('{title}', this.data.title).replace('{n}', this.data.total));
-    this._say(lines.map(text => ({ role: 'iv', kind: 'plain', text })), () => this.ask(0));
   },
 
   goNextLevel() {
