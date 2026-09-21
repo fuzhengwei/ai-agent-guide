@@ -1,0 +1,24 @@
+page {
+  background: #f6f7f9;
+  color: #1f2937;
+  /* 统一字体栈：数字/英文用系统 UI 无衬线，中文优先苹方/鸿蒙/小米/OPPO 等厂商字体 */
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+    "HarmonyOS Sans SC", "MiSans", "OPPO Sans", "HONOR Sans", "Source Han Sans SC",
+    "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.8;
+  /* 抗锯齿，小字号更锐利 */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 数字与等宽场景 */
+.code-font {
+  font-family: "SF Mono", Menlo, Consolas, "JetBrains Mono", monospace;
+}
+
+/* ================================================================
+   说明：章节正文 rich-text 的内容块样式统一在 reader 页面维护
+   （tools/mp-templates/reader/reader.wxss 的 .rich 前缀作用域），
+   此处不再重复定义 .ct/.sh/.mp-card 等，避免双处冲突。
+   ================================================================ */

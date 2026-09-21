@@ -2,3 +2,4 @@
 /.walicode/
 /chapters.bak.*
 /chapters.old.*
+ci/private.key

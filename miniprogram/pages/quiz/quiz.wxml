@@ -1,0 +1,90 @@
+<view class="wrap">
+
+  <!-- 顶部 Hero：面试战绩 -->
+  <view class="hero">
+    <view class="hero-deco d1"></view>
+    <view class="hero-deco d2"></view>
+    <view class="hero-badge">🎤 模拟面试</view>
+    <view class="hero-title">AI Agent 岗位 · 一对一面试</view>
+    <view class="hero-sub">每章一场面试 · {{totalQuestions}} 道真题 · 面试官现场点评</view>
+
+    <view class="hero-stats">
+      <view class="stat">
+        <view class="stat-num">{{doneCount}}<text class="stat-max">/{{total}}</text></view>
+        <view class="stat-label">已面试场次</view>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat">
+        <view class="stat-num hl">{{passedCount}}</view>
+        <view class="stat-label">通过场次</view>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat">
+        <view class="stat-num">{{xp}}</view>
+        <view class="stat-label">表现分</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 面试官阵容 -->
+  <view class="panel-card">
+    <view class="panel-title">本栏目面试官</view>
+    <view class="panel-row">
+      <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
+        <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
+        <view class="pi-name">{{item.name}}</view>
+        <view class="pi-title">{{item.title}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 场次列表 -->
+  <view class="list-head">
+    <text class="lh-title">面试场次</text>
+    <text class="lh-tip">通过一场，解锁下一场</text>
+  </view>
+
+  <view
+    wx:for="{{sessions}}"
+    wx:key="key"
+    class="session {{item.unlocked ? '' : 'is-locked'}}"
+    data-key="{{item.key}}"
+    data-unlocked="{{item.unlocked}}"
+    bindtap="startSession"
+    style="animation-delay: {{index * 30}}ms"
+  >
+    <!-- 场次号 -->
+    <view class="s-no {{item.passed ? 'done' : (item.unlocked ? 'open' : 'lock')}}">
+      <text wx:if="{{item.unlocked}}">{{item.no}}</text>
+      <text wx:else>🔒</text>
+    </view>
+
+    <!-- 场次信息 -->
+    <view class="s-main">
+      <view class="s-title">{{item.title}}</view>
+      <view class="s-meta">
+        <view class="s-iv">
+          <view class="s-iv-avatar" style="background: {{item.ivGradient}}">{{item.ivInitial}}</view>
+          <text>{{item.ivName}} 面试</text>
+        </view>
+        <text class="s-sep">·</text>
+        <text>{{item.count}} 题</text>
+        <text class="s-sep">·</text>
+        <text>约 {{item.minutes}} 分钟</text>
+      </view>
+      <view class="s-note warn" wx:if="{{item.done && !item.passed}}">上次未通过 · 建议再面一次</view>
+      <view class="s-note" wx:elif="{{item.passed && item.bestScore}}">最佳表现 {{item.bestScore}} 分 · {{item.gradeLabel}}</view>
+    </view>
+
+    <!-- 评级 + 入口 -->
+    <view class="s-right">
+      <view wx:if="{{item.grade}}" class="s-grade g{{item.stars}}">{{item.grade}}</view>
+      <view wx:else class="s-grade none">未面试</view>
+      <view class="s-btn {{item.unlocked ? (item.done ? 'again' : 'go') : 'lock'}}">
+        {{item.unlocked ? (item.done ? '再面一次' : '开始面试') : '未解锁'}}
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 面试官按场次轮换</view>
+</view>

@@ -1,0 +1,36 @@
+<view class="wrap">
+  <view class="stats">
+    <view class="stat-card">
+      <view class="stat-num">{{readCount}}/{{total}}</view>
+      <view class="stat-label">已读章节</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-num">{{xp}}</view>
+      <view class="stat-label">总积分</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-num">⭐{{stars}}<text class="stat-max">/{{totalStars}}</text></view>
+      <view class="stat-label">累计星数</view>
+    </view>
+  </view>
+
+  <view class="menu" wx:if="{{payEnabled}}">
+    <view class="menu-item" bindtap="toggleUnlock">
+      <view>{{unlocked ? '已解锁全部章节 ✓' : '解锁全部章节'}}</view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+
+  <view class="menu">
+    <view class="menu-item" bindtap="about">
+      <view>关于本教程</view>
+      <view class="arrow">›</view>
+    </view>
+    <view class="menu-item danger" bindtap="clearData">
+      <view>清除学习记录</view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+
+  <view class="footer">AI Agent 通识教程 v1.0</view>
+</view>

@@ -1,0 +1,89 @@
+<view class="wrap">
+
+  <!-- 顶部 Hero -->
+  <view class="hero">
+    <image class="hero-logo" src="/assets/tab/course-active.png" mode="aspectFit" />
+    <view class="hero-deco d1"></view>
+    <view class="hero-deco d2"></view>
+    <view class="hero-badge">AI AGENT COURSE</view>
+    <view class="hero-title">AI Agent 通识教程</view>
+    <view class="hero-sub">从基础认知到面试通关 · 28 章渐进式学习</view>
+
+    <view class="hero-stats">
+      <view class="stat">
+        <view class="stat-num">{{totalChapters}}</view>
+        <view class="stat-label">章节</view>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat">
+        <view class="stat-num">{{totalQuestions}}</view>
+        <view class="stat-label">面试题</view>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat">
+        <view class="stat-num hl">{{readCount}}</view>
+        <view class="stat-label">已读</view>
+      </view>
+    </view>
+
+    <view class="hero-progress">
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{totalChapters ? readCount * 100 / totalChapters : 0}}%"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 继续学习 -->
+  <view class="continue-card" bindtap="tapContinue" wx:if="{{nextChapter}}">
+    <view class="continue-left">
+      <view class="continue-label">{{readCount === 0 ? '开始学习' : (readCount >= totalChapters ? '温故知新' : '继续学习')}}</view>
+      <view class="continue-title">{{nextChapter.title}}</view>
+    </view>
+    <view class="continue-btn">▶</view>
+  </view>
+
+  <view class="pay-banner" wx:if="{{payEnabled}}">
+    <text class="pay-banner-text">前 {{freeCount}} 章免费 · 解锁全部 28 章 {{priceLabel}}</text>
+    <view class="pay-banner-btn" bindtap="tapUnlock">解锁</view>
+  </view>
+
+  <!-- 阶段分组 -->
+  <view class="stage" wx:for="{{stages}}" wx:key="name" wx:for-item="stage" wx:for-index="si">
+    <view class="stage-head">
+      <view class="stage-icon {{stage.color}}">{{stage.icon}}</view>
+      <view class="stage-info">
+        <view class="stage-name">阶段 {{si + 1}} · {{stage.name}}</view>
+        <view class="stage-desc">{{stage.desc}}</view>
+      </view>
+      <view class="stage-count {{stage.done === stage.list.length ? 'all' : ''}}">{{stage.done}}/{{stage.list.length}}</view>
+    </view>
+
+    <view class="chapter-list">
+      <view
+        wx:for="{{stage.list}}"
+        wx:key="key"
+        class="chapter-item {{item.read ? 'read' : ''}}"
+        data-key="{{item.key}}"
+        data-pkg="{{item.pkg}}"
+        data-slug="{{item.slug}}"
+        bindtap="openChapter"
+        style="animation-delay: {{index * 40}}ms"
+      >
+        <view class="chapter-badge {{stage.color}} {{item.read ? 'is-read' : ''}}">
+          <text wx:if="{{item.read}}" class="badge-check">✓</text>
+          <text wx:else>{{item.num}}</text>
+        </view>
+        <view class="chapter-info">
+          <view class="chapter-title">
+            <text>{{item.title}}</text>
+            <text wx:if="{{item.locked}}" class="lock-icon">🔒</text>
+          </view>
+          <view class="chapter-sub" wx:if="{{item.subtitle}}">{{item.subtitle}}</view>
+        </view>
+        <view class="chapter-arrow">›</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">📚 学完一章，去「题库」接受面试官的一对一模拟面试</view>
+</view>

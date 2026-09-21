@@ -1,0 +1,74 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/quiz/quiz",
+    "pages/mine/mine"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "AI Agent 通识教程",
+    "backgroundColor": "#f6f7f9",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8a94a6",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "课程",
+        "iconPath": "assets/tab/course.png",
+        "selectedIconPath": "assets/tab/course-active.png"
+      },
+      {
+        "pagePath": "pages/quiz/quiz",
+        "text": "题库",
+        "iconPath": "assets/tab/quiz.png",
+        "selectedIconPath": "assets/tab/quiz-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "assets/tab/mine.png",
+        "selectedIconPath": "assets/tab/mine-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "subpackages": [
+    {
+      "root": "packages/content-a",
+      "pages": [
+        "pages/reader/reader"
+      ]
+    },
+    {
+      "root": "packages/content-b",
+      "pages": [
+        "pages/reader/reader"
+      ]
+    },
+    {
+      "root": "packages/content-c",
+      "pages": [
+        "pages/reader/reader"
+      ]
+    },
+    {
+      "root": "packages/content-d",
+      "pages": [
+        "pages/reader/reader"
+      ]
+    },
+    {
+      "root": "packages/quiz",
+      "pages": [
+        "pages/runner/runner"
+      ]
+    }
+  ]
+}

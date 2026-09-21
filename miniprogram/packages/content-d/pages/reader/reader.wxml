@@ -1,0 +1,53 @@
+<view class="reader-wrap {{nightMode ? 'night' : ''}} fs-{{fontMode}}">
+
+  <!-- 顶部阅读进度条 -->
+  <view class="read-progress">
+    <view class="read-progress-fill" style="width: {{progress}}%"></view>
+  </view>
+
+  <!-- 阅读设置：悬浮按钮 + 面板 -->
+  <view class="reader-tools">
+    <view class="tool-btn" bindtap="togglePanel">Aa</view>
+  </view>
+  <view class="settings-mask" wx:if="{{panelOpen}}" bindtap="togglePanel"></view>
+  <view class="settings-panel {{panelOpen ? 'open' : ''}}" wx:if="{{panelOpen}}">
+    <view class="set-row">
+      <view class="set-label">夜间模式</view>
+      <switch checked="{{nightMode}}" bindchange="toggleNight" color="#5a7cf7" />
+    </view>
+    <view class="set-row">
+      <view class="set-label">字号</view>
+      <view class="fs-opts">
+        <view class="fs-opt {{fontMode === 's' ? 'on' : ''}}" bindtap="setFont" data-mode="s">小</view>
+        <view class="fs-opt {{fontMode === 'm' ? 'on' : ''}}" bindtap="setFont" data-mode="m">标准</view>
+        <view class="fs-opt {{fontMode === 'l' ? 'on' : ''}}" bindtap="setFont" data-mode="l">大</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 章节头 -->
+  <view class="reader-head">
+    <view class="reader-chip" wx:if="{{chapterNum !== ''}}">第 {{chapterNum}} 章</view>
+    <view class="reader-title">{{title}}</view>
+    <view class="reader-sub" wx:if="{{subtitle}}">{{subtitle}}</view>
+  </view>
+
+  <rich-text class="rich" nodes="{{html}}"></rich-text>
+
+  <!-- 章末：去面试 -->
+  <view class="quiz-cta" wx:if="{{quizKey}}" bindtap="goQuiz">
+    <view class="cta-left">
+      <view class="cta-title">🎤 学完了？来面一场</view>
+      <view class="cta-sub">本章配套模拟面试 · 面试官现场点评</view>
+    </view>
+    <view class="cta-btn">去面试</view>
+  </view>
+
+  <view class="reader-end">— 本章完 · 已自动记录阅读进度 —</view>
+
+  <view class="reader-nav">
+    <view class="nav-btn prev" bindtap="goPrev">← 上一章</view>
+    <view class="nav-btn next" bindtap="goNext">{{finished ? '完成' : '下一章 →'}}</view>
+  </view>
+  <view class="nav-progress">{{currentIndex + 1}} / {{total}}</view>
+</view>

@@ -1,0 +1,114 @@
+.wrap { padding: 24rpx 24rpx 60rpx; 
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+    "HarmonyOS Sans SC", "MiSans", "OPPO Sans", "HONOR Sans", "Source Han Sans SC",
+    "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Hero ===== */
+.hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+  border-radius: 28rpx; padding: 44rpx 36rpx 40rpx; color: #ffffff; margin-bottom: 24rpx;
+  box-shadow: 0 12rpx 40rpx rgba(30, 58, 138, 0.25);
+}
+.hero-deco { position: absolute; border-radius: 50%; opacity: 0.14; background: #ffffff; }
+.hero-deco.d1 { width: 260rpx; height: 260rpx; right: -80rpx; top: -90rpx; }
+.hero-deco.d2 { width: 150rpx; height: 150rpx; right: 90rpx; bottom: -60rpx; opacity: 0.08; }
+.hero-logo {
+  width: 88rpx; height: 88rpx; border-radius: 20rpx;
+  background: rgba(255,255,255,0.92); padding: 10rpx; box-sizing: border-box;
+  margin-bottom: 20rpx; box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.18);
+}
+.hero-badge {
+  display: inline-block; font-size: 20rpx; letter-spacing: 3rpx; font-weight: 600;
+  background: rgba(255,255,255,0.16); border: 1rpx solid rgba(255,255,255,0.25);
+  border-radius: 999rpx; padding: 6rpx 18rpx; margin-bottom: 18rpx;
+}
+.hero-title { font-size: 44rpx; font-weight: 800; letter-spacing: 2rpx; }
+.hero-sub { font-size: 25rpx; opacity: 0.82; margin-top: 10rpx; }
+
+.hero-stats { display: flex; align-items: center; margin-top: 34rpx; background: rgba(255,255,255,0.10); border-radius: 18rpx; padding: 20rpx 0; }
+.stat { flex: 1; text-align: center; }
+.stat-num { font-size: 38rpx; font-weight: 800; }
+.stat-num.hl { color: #7dd3fc; }
+.stat-label { font-size: 22rpx; opacity: 0.75; margin-top: 4rpx; }
+.stat-divider { width: 1rpx; height: 44rpx; background: rgba(255,255,255,0.22); }
+
+.hero-progress { margin-top: 26rpx; }
+.progress-track { height: 12rpx; background: rgba(255,255,255,0.18); border-radius: 999rpx; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #7dd3fc); border-radius: 999rpx; transition: width 0.6s ease; }
+
+/* ===== 继续学习卡 ===== */
+.continue-card {
+  display: flex; align-items: center;
+  background: #ffffff; border-radius: 20rpx; padding: 26rpx 28rpx; margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 24rpx rgba(15, 23, 42, 0.07);
+  border-left: 8rpx solid #f59e0b;
+}
+.continue-left { flex: 1; overflow: hidden; }
+.continue-label { font-size: 22rpx; color: #f59e0b; font-weight: 700; letter-spacing: 2rpx; }
+.continue-title { font-size: 29rpx; font-weight: 600; color: #111827; margin-top: 6rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.continue-btn {
+  width: 72rpx; height: 72rpx; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff;
+  font-size: 26rpx; text-align: center; line-height: 72rpx; padding-left: 6rpx;
+  box-shadow: 0 6rpx 16rpx rgba(245, 158, 11, 0.35);
+}
+
+/* ===== 付费横幅 ===== */
+.pay-banner { display: flex; align-items: center; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 16rpx; padding: 20rpx 24rpx; margin-bottom: 24rpx; }
+.pay-banner-text { flex: 1; font-size: 25rpx; color: #92400e; }
+.pay-banner-btn { background: #f59e0b; color: #ffffff; font-size: 25rpx; padding: 10rpx 28rpx; border-radius: 999rpx; }
+.lock-icon { font-size: 24rpx; margin-left: 8rpx; }
+
+/* ===== 阶段 ===== */
+.stage { margin-bottom: 36rpx; }
+.stage-head { display: flex; align-items: center; margin-bottom: 18rpx; padding: 0 4rpx; }
+.stage-icon {
+  width: 64rpx; height: 64rpx; border-radius: 18rpx; text-align: center; line-height: 64rpx;
+  font-size: 32rpx; margin-right: 18rpx; flex-shrink: 0;
+}
+.stage-icon.green { background: #dcfce7; }
+.stage-icon.blue { background: #dbeafe; }
+.stage-icon.purple { background: #ede9fe; }
+.stage-icon.orange { background: #ffedd5; }
+.stage-icon.red { background: #fee2e2; }
+.stage-info { flex: 1; overflow: hidden; }
+.stage-name { font-size: 30rpx; font-weight: 700; color: #111827; }
+.stage-desc { font-size: 22rpx; color: #9ca3af; margin-top: 2rpx; }
+.stage-count {
+  font-size: 24rpx; font-weight: 600; color: #6b7280;
+  background: #f1f5f9; border-radius: 999rpx; padding: 6rpx 20rpx; flex-shrink: 0;
+}
+.stage-count.all { background: #dcfce7; color: #16a34a; }
+
+/* ===== 章节卡片 ===== */
+.chapter-item {
+  display: flex; align-items: center; background: #ffffff; border-radius: 18rpx;
+  padding: 24rpx; margin-bottom: 14rpx;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.05);
+  animation: card-in 0.35s ease both;
+}
+@keyframes card-in { from { opacity: 0; transform: translateY(16rpx); } to { opacity: 1; transform: translateY(0); } }
+.chapter-item.read { background: #fafcfa; }
+
+.chapter-badge {
+  width: 64rpx; height: 64rpx; border-radius: 16rpx; margin-right: 20rpx; flex-shrink: 0;
+  font-size: 27rpx; font-weight: 700; text-align: center; line-height: 64rpx; color: #ffffff;
+}
+.chapter-badge.green { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4rpx 12rpx rgba(34,197,94,0.3); }
+.chapter-badge.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4rpx 12rpx rgba(59,130,246,0.3); }
+.chapter-badge.purple { background: linear-gradient(135deg, #a855f7, #7c3aed); box-shadow: 0 4rpx 12rpx rgba(168,85,247,0.3); }
+.chapter-badge.orange { background: linear-gradient(135deg, #f97316, #ea580c); box-shadow: 0 4rpx 12rpx rgba(249,115,22,0.3); }
+.chapter-badge.red { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4rpx 12rpx rgba(239,68,68,0.3); }
+.chapter-badge.is-read { opacity: 0.55; }
+.badge-check { font-size: 30rpx; }
+
+.chapter-info { flex: 1; overflow: hidden; }
+.chapter-title { font-size: 29rpx; font-weight: 600; color: #111827; }
+.chapter-item.read .chapter-title { color: #9ca3af; }
+.chapter-sub { font-size: 23rpx; color: #9ca3af; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chapter-arrow { color: #d1d5db; font-size: 40rpx; margin-left: 12rpx; }
+
+.footer { text-align: center; color: #9ca3af; font-size: 24rpx; margin-top: 24rpx; }

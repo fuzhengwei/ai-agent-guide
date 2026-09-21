@@ -1,0 +1,160 @@
+<view class="iv-page">
+
+  <!-- ==================== 面试进行中 ==================== -->
+  <block wx:if="{{!finished}}">
+
+    <!-- 顶部：面试官信息 + 进度 -->
+    <view class="iv-bar">
+      <view class="iv-avatar" style="background: {{iv.gradient}}">{{iv.initial}}</view>
+      <view class="iv-info">
+        <view class="iv-name">{{iv.name}}<text class="iv-online"></text></view>
+        <view class="iv-title">{{iv.title}}</view>
+      </view>
+      <view class="iv-progress">{{progressText}}</view>
+    </view>
+
+    <!-- 对话流 -->
+    <scroll-view class="chat" scroll-y scroll-into-view="{{scrollInto}}" scroll-with-animation>
+      <view class="day">{{dayText}}</view>
+
+      <block wx:for="{{messages}}" wx:key="id">
+        <!-- 面试官 -->
+        <view wx:if="{{item.role === 'iv'}}" class="row iv" id="m{{item.id}}">
+          <view class="iv-avatar sm" style="background: {{iv.gradient}}">{{iv.initial}}</view>
+          <view class="bubble-wrap">
+            <!-- 问题 -->
+            <view wx:if="{{item.kind === 'question'}}" class="bubble iv question">
+              <view class="q-label">{{item.label}}</view>
+              <view class="q-body">{{item.text}}</view>
+            </view>
+            <!-- 点评 -->
+            <view wx:elif="{{item.kind === 'ok' || item.kind === 'bad'}}" class="bubble iv {{item.kind}}">
+              <view class="v-tag">{{item.kind === 'ok' ? '面试官点评' : '面试官纠正'}}</view>
+              <view class="v-text">{{item.text}}</view>
+            </view>
+            <!-- 标准答案 / 考点 -->
+            <view wx:elif="{{item.kind === 'analysis'}}" class="bubble iv analysis">
+              <view class="an-title">{{item.title}}</view>
+              <view wx:if="{{item.answerText}}" class="an-answer">{{item.answerText}}</view>
+              <view wx:if="{{item.text}}" class="an-body">{{item.text}}</view>
+            </view>
+            <!-- 阶段性反馈 -->
+            <view wx:elif="{{item.kind === 'note'}}" class="bubble iv note">{{item.text}}</view>
+            <!-- 普通发言 -->
+            <view wx:else class="bubble iv plain">{{item.text}}</view>
+          </view>
+        </view>
+
+        <!-- 我 -->
+        <view wx:else class="row me" id="m{{item.id}}">
+          <view class="bubble me answer">
+            <view class="ans-tag">我的回答</view>
+            <view class="ans-text">{{item.text}}</view>
+          </view>
+          <view class="me-avatar">我</view>
+        </view>
+      </block>
+
+      <!-- 正在输入 -->
+      <view wx:if="{{typing}}" class="row iv">
+        <view class="iv-avatar sm" style="background: {{iv.gradient}}">{{iv.initial}}</view>
+        <view class="bubble iv typing">
+          <view class="dot"></view><view class="dot"></view><view class="dot"></view>
+        </view>
+      </view>
+
+      <view class="chat-pad" id="bt{{tick}}"></view>
+    </scroll-view>
+
+    <!-- 回答区 -->
+    <view class="answer-panel" wx:if="{{awaiting}}">
+      <view class="ap-tip">{{multiMode ? '这道题是多选 · 选好后点发送' : '点击选项即可作答'}}</view>
+      <view
+        wx:for="{{options}}"
+        wx:key="oi"
+        class="ap-opt {{item.cls}}"
+        data-i="{{item.oi}}"
+        bindtap="pickOption"
+      >
+        <view class="ap-letter">{{item.letter}}</view>
+        <view class="ap-text">{{item.text}}</view>
+        <text wx:if="{{item.mark}}" class="ap-mark {{item.cls}}">{{item.mark}}</text>
+      </view>
+      <view wx:if="{{multiMode}}" class="ap-send {{selected.length ? 'on' : ''}}" bindtap="sendMulti">
+        发送回答（已选 {{selected.length}} 项）
+      </view>
+    </view>
+
+    <!-- 面试官发言中：底部占位提示 -->
+    <view class="answer-hint" wx:else>
+      <text class="hint-dot"></text>
+      <text>面试中…</text>
+    </view>
+  </block>
+
+  <!-- ==================== 面试报告 ==================== -->
+  <scroll-view class="report" wx:else scroll-y>
+
+    <view class="rp-hero">
+      <view class="rp-deco"></view>
+      <view class="rp-avatar" style="background: {{iv.gradient}}">{{iv.initial}}</view>
+      <view class="rp-from">{{iv.name}} 的面试反馈</view>
+      <view class="rp-grade g{{report.stars}}">{{report.grade}}</view>
+      <view class="rp-grade-label">{{report.gradeLabel}}</view>
+      <view class="rp-remark">“{{report.remark}}”</view>
+    </view>
+
+    <view class="rp-stats">
+      <view class="rp-stat">
+        <view class="rp-stat-num">{{report.correct}}<text class="rp-stat-max">/{{report.total}}</text></view>
+        <view class="rp-stat-label">答对题数</view>
+      </view>
+      <view class="rp-divider"></view>
+      <view class="rp-stat">
+        <view class="rp-stat-num">{{report.rate}}%</view>
+        <view class="rp-stat-label">正确率</view>
+      </view>
+      <view class="rp-divider"></view>
+      <view class="rp-stat">
+        <view class="rp-stat-num">{{report.durationText}}</view>
+        <view class="rp-stat-label">面试用时</view>
+      </view>
+    </view>
+
+    <view class="rp-record" wx:if="{{report.newRecord && report.score > 0}}">🏆 刷新了本场最佳表现</view>
+
+    <!-- 逐题回顾 -->
+    <view class="rp-card">
+      <view class="rp-card-title">逐题表现</view>
+      <view class="rp-sheet">
+        <view wx:for="{{report.sheet}}" wx:key="n" class="rp-cell {{item.st}}">{{item.n}}</view>
+      </view>
+    </view>
+
+    <!-- 面试官的建议 -->
+    <view class="rp-card" wx:if="{{report.wrongList.length}}">
+      <view class="rp-card-title">
+        面试官建议复习的点
+        <text class="rp-card-sub">（{{report.wrongList.length}} 题）</text>
+      </view>
+      <view class="rp-item" wx:for="{{report.wrongList}}" wx:key="n">
+        <view class="rp-q">{{item.n}}. {{item.question}}</view>
+        <view class="rp-a">✅ {{item.answer}}</view>
+        <view class="rp-e" wx:if="{{item.explanation}}">{{item.explanation}}</view>
+      </view>
+    </view>
+
+    <view class="rp-card perfect" wx:else>
+      <view class="perfect-emoji">🎊</view>
+      <view class="perfect-text">全部答对，这一章的面试考点你已经完全掌握。</view>
+    </view>
+
+    <view class="rp-actions">
+      <view class="rp-btn ghost" bindtap="restart">再面一次</view>
+      <view class="rp-btn primary" wx:if="{{hasNext}}" bindtap="goNextLevel">下一场面试 →</view>
+      <view class="rp-btn primary" wx:else bindtap="goBack">返回面试大厅</view>
+    </view>
+
+    <view class="rp-foot">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60%（通过）</view>
+  </scroll-view>
+</view>
