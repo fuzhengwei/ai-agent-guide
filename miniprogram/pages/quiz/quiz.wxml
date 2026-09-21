@@ -26,9 +26,28 @@
     </view>
   </view>
 
+  <!-- 面试官风格选择 -->
+  <view class="panel-card">
+    <view class="panel-title">选择面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则按场次自动轮换'}}</text></view>
+    <view class="style-grid">
+      <view
+        wx:for="{{styleCards}}"
+        wx:key="id"
+        class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="pickStyle"
+      >
+        <view class="sc-emoji">{{item.emoji}}</view>
+        <view class="sc-name">{{item.name}}</view>
+        <view class="sc-desc">{{item.desc}}</view>
+        <view class="sc-tag">{{item.tag}}</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 面试官阵容 -->
   <view class="panel-card">
-    <view class="panel-title">本栏目面试官</view>
+    <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
     <view class="panel-row">
       <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
         <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
@@ -61,11 +80,11 @@
 
     <!-- 场次信息 -->
     <view class="s-main">
-      <view class="s-title">{{item.title}}</view>
+      <view class="s-title">{{item.title}}<text wx:if="{{item.isBoss}}" class="boss-badge">真题</text></view>
       <view class="s-meta">
         <view class="s-iv">
           <view class="s-iv-avatar" style="background: {{item.ivGradient}}">{{item.ivInitial}}</view>
-          <text>{{item.ivName}} 面试</text>
+          <text>{{item.ivName}} 面试 · {{item.ivStyle}}</text>
         </view>
         <text class="s-sep">·</text>
         <text>{{item.count}} 题</text>
@@ -86,5 +105,5 @@
     </view>
   </view>
 
-  <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 面试官按场次轮换</view>
+  <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 大厂真题场常驻开放</view>
 </view>

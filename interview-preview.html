@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模拟面试 · 交互预览 | AI Agent 通识教程</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #eef0f5; color: #111827; min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+      "HarmonyOS Sans SC", "MiSans", "OPPO Sans", "Source Han Sans SC",
+      "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 30px 20px 60px;
+  }
+  .page-head { max-width: 1080px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 26px; font-weight: 800; letter-spacing: .5px; }
+  .page-head h1 span { font-size: 14px; font-weight: 500; color: #6b7280; margin-left: 10px; }
+  .page-head p { font-size: 14px; color: #6b7280; margin-top: 10px; line-height: 1.7; }
+
+  .layout { max-width: 1080px; margin: 0 auto; display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ---------- 手机框 ---------- */
+  .phone {
+    width: 375px; height: 748px; flex-shrink: 0; background: #eef0f5;
+    border-radius: 40px; box-shadow: 0 24px 60px rgba(15,23,42,.22), 0 0 0 10px #1f2937;
+    overflow: hidden; display: flex; flex-direction: column; position: relative;
+  }
+  .statusbar {
+    height: 26px; flex-shrink: 0; background: #fff; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 18px; font-size: 11px; font-weight: 600; color: #111827;
+  }
+  .navbar {
+    height: 42px; flex-shrink: 0; background: #fff; display: flex; align-items: center;
+    justify-content: center; position: relative; border-bottom: 1px solid #e9ecf1;
+    font-size: 15px; font-weight: 600;
+  }
+  .navbar .back { position: absolute; left: 16px; font-size: 16px; color: #374151; }
+
+  /* 面试官条 */
+  .iv-bar { flex-shrink: 0; display: flex; align-items: center; padding: 10px 13px; background: #fff; border-bottom: 1px solid #e9ecf1; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; color: #fff;
+    font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(15,23,42,.16);
+  }
+  .avatar.sm { width: 30px; height: 30px; border-radius: 8px; font-size: 13px; margin-right: 8px; box-shadow: none; }
+  .iv-info { flex: 1; overflow: hidden; margin-left: 9px; }
+  .iv-name { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .iv-online { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .iv-title { font-size: 10.5px; color: #94a3b8; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .iv-progress { flex-shrink: 0; font-size: 11px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 5px 9px; border-radius: 99px; }
+
+  /* 聊天区 */
+  .chat { flex: 1; overflow-y: auto; padding: 0 12px; scroll-behavior: smooth; }
+  .chat::-webkit-scrollbar { width: 0; }
+  .day { text-align: center; font-size: 10.5px; color: #a3adbd; margin: 11px 0 13px; }
+  .chat-pad { height: 16px; }
+
+  .row { display: flex; align-items: flex-start; margin-bottom: 12px; animation: bubble-in .26s ease both; }
+  .row.iv { justify-content: flex-start; }
+  .row.me { justify-content: flex-end; }
+  @keyframes bubble-in { from { opacity: 0; transform: translateY(7px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .bubble { padding: 10px 12px; font-size: 14px; line-height: 1.6; word-break: break-word; max-width: 258px; }
+  .bubble.iv { background: #fff; color: #1f2937; border-radius: 3px 10px 10px 10px; box-shadow: 0 1px 5px rgba(15,23,42,.05); }
+  .bubble.iv.question { border-left: 3px solid #2563eb; }
+  .q-label { font-size: 10.5px; font-weight: 700; color: #2563eb; letter-spacing: .5px; margin-bottom: 5px; }
+  .q-body { font-size: 14.5px; font-weight: 600; line-height: 1.55; }
+  .bubble.iv.ok { border-left: 3px solid #22c55e; }
+  .bubble.iv.bad { border-left: 3px solid #f97316; }
+  .v-tag { font-size: 10.5px; font-weight: 700; margin-bottom: 4px; }
+  .bubble.iv.ok .v-tag { color: #16a34a; }
+  .bubble.iv.bad .v-tag { color: #ea580c; }
+  .bubble.iv.analysis { border-radius: 10px; border: 1px solid #e6e9f0; }
+  .an-title { font-size: 11px; font-weight: 700; color: #7c3aed; margin-bottom: 6px; }
+  .an-answer { font-size: 13px; font-weight: 700; color: #15803d; line-height: 1.5; background: #f0fdf4; border-radius: 6px; padding: 7px 9px; margin-bottom: 7px; }
+  .an-body { font-size: 13px; color: #4b5563; line-height: 1.75; }
+  .bubble.iv.note { background: #fefce8; color: #854d0e; border-left: 3px solid #facc15; font-size: 13px; }
+
+  .bubble.me.answer { background: #95ec69; color: #10281a; border-radius: 10px 3px 10px 10px; box-shadow: 0 1px 5px rgba(21,128,61,.14); }
+  .ans-tag { font-size: 10px; font-weight: 700; color: #3f7a45; margin-bottom: 3px; }
+  .me-avatar {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; margin-left: 8px;
+    background: linear-gradient(135deg,#64748b,#334155); color: #fff; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .bubble.iv.typing { display: flex; align-items: center; padding: 12px 13px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; margin-right: 5px; animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; margin-right: 0; }
+  @keyframes blink { 0%,60%,100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+  /* 回答区 */
+  .answer-panel {
+    flex-shrink: 0; background: #fff; border-top: 1px solid #e9ecf1;
+    padding: 11px 12px 14px; box-shadow: 0 -3px 12px rgba(15,23,42,.06); animation: panel-in .3s ease both;
+  }
+  @keyframes panel-in { from { transform: translateY(15px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .ap-tip { font-size: 10.5px; color: #9aa4b2; margin-bottom: 7px; }
+  .ap-opt {
+    display: flex; align-items: flex-start; padding: 10px 11px; margin-bottom: 7px;
+    border: 1px solid #e6e9f0; border-radius: 8px; background: #fbfcfe; cursor: pointer; transition: all .15s;
+  }
+  .ap-opt:hover { border-color: #bfdbfe; background: #f5f9ff; }
+  .ap-opt.picked { border-color: #2563eb; background: #eff6ff; }
+  .ap-letter {
+    width: 21px; height: 21px; border-radius: 50%; flex-shrink: 0; margin-right: 8px;
+    background: #eef2f7; color: #64748b; font-size: 11.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ap-opt.picked .ap-letter { background: #2563eb; color: #fff; }
+  .ap-text { flex: 1; font-size: 13px; color: #374151; line-height: 1.5; }
+  .ap-send { margin-top: 4px; text-align: center; padding: 11px; border-radius: 99px; background: #e9edf3; color: #9aa4b2; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .ap-send.on { background: #2563eb; color: #fff; box-shadow: 0 4px 10px rgba(37,99,235,.25); }
+
+  .answer-hint {
+    flex-shrink: 0; background: #fff; border-top: 1px solid #e9ecf1; padding: 14px 0;
+    text-align: center; font-size: 11px; color: #a3adbd;
+  }
+  .hint-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; margin-right: 6px; animation: blink 1.4s infinite; }
+
+  /* 报告 */
+  .report { flex: 1; overflow-y: auto; padding: 12px; }
+  .report::-webkit-scrollbar { width: 0; }
+  .rp-hero {
+    position: relative; overflow: hidden; text-align: center; color: #fff;
+    background: linear-gradient(150deg,#1e1b4b 0%,#4c1d95 62%,#6d28d9 100%);
+    border-radius: 14px; padding: 22px 16px 20px; box-shadow: 0 6px 18px rgba(76,29,149,.28);
+  }
+  .rp-deco { position: absolute; width: 130px; height: 130px; border-radius: 50%; background: #fff; opacity: .08; right: -40px; top: -50px; }
+  .rp-avatar { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 8px; color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .rp-from { font-size: 12px; opacity: .82; }
+  .rp-grade { font-size: 56px; font-weight: 900; line-height: 1.15; letter-spacing: 2px; }
+  .rp-grade.g3 { color: #fde047; }
+  .rp-grade.g2 { color: #93c5fd; }
+  .rp-grade.g1 { color: #6ee7b7; }
+  .rp-grade.g0 { color: #fda4af; }
+  .rp-grade-label { font-size: 15px; font-weight: 700; margin-top: -3px; }
+  .rp-remark { font-size: 12.5px; line-height: 1.7; opacity: .88; margin-top: 11px; text-align: left; }
+  .rp-stats { display: flex; align-items: center; background: #fff; border-radius: 11px; padding: 13px 0; margin-top: 11px; }
+  .rp-stat { flex: 1; text-align: center; }
+  .rp-stat-num { font-size: 16px; font-weight: 800; }
+  .rp-stat-num small { font-size: 10.5px; font-weight: 400; color: #9aa4b2; }
+  .rp-stat-label { font-size: 10.5px; color: #9aa4b2; margin-top: 3px; }
+  .rp-divider { width: 1px; height: 23px; background: #eef1f6; }
+  .rp-card { background: #fff; border-radius: 11px; padding: 14px 13px; margin-top: 11px; }
+  .rp-card-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+  .rp-card-title small { font-size: 11px; font-weight: 400; color: #9aa4b2; }
+  .rp-sheet { display: flex; flex-wrap: wrap; gap: 7px; }
+  .rp-cell { width: 34px; height: 34px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .rp-cell.right { background: #dcfce7; color: #15803d; }
+  .rp-cell.wrong { background: #ffe4e6; color: #be123c; }
+  .rp-item { border-top: 1px solid #f1f4f8; padding-top: 11px; margin-top: 11px; }
+  .rp-item:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .rp-q { font-size: 13px; font-weight: 600; line-height: 1.55; }
+  .rp-a { font-size: 12.5px; color: #15803d; background: #f0fdf4; border-radius: 6px; padding: 7px 9px; margin-top: 6px; line-height: 1.5; }
+  .rp-e { font-size: 12px; color: #6b7280; line-height: 1.7; margin-top: 6px; }
+  .rp-perfect { text-align: center; padding: 18px 0; }
+  .rp-perfect div:first-child { font-size: 32px; }
+  .rp-perfect div:last-child { font-size: 13px; color: #15803d; font-weight: 600; margin-top: 6px; }
+  .rp-actions { display: flex; gap: 10px; margin-top: 15px; }
+  .rp-btn { flex: 1; text-align: center; padding: 13px 0; border-radius: 99px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .rp-btn.ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+  .rp-btn.primary { background: linear-gradient(135deg,#2563eb,#6d28d9); color: #fff; box-shadow: 0 5px 12px rgba(37,99,235,.28); }
+  .rp-foot { text-align: center; font-size: 10.5px; color: #a3adbd; margin: 13px 0 20px; }
+
+  /* ---------- 右侧说明 ---------- */
+  .side { flex: 1; min-width: 300px; }
+  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 14px rgba(15,23,42,.06); margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  .card p { font-size: 13px; color: #4b5563; line-height: 1.8; }
+  .card ul { list-style: none; }
+  .card li { font-size: 13px; color: #4b5563; line-height: 1.8; padding-left: 18px; position: relative; margin-bottom: 4px; }
+  .card li::before { content: "·"; position: absolute; left: 6px; color: #2563eb; font-weight: 800; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .ctrl button {
+    font-family: inherit; font-size: 12.5px; font-weight: 600; color: #475569;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 99px; padding: 8px 14px; cursor: pointer; transition: all .15s;
+  }
+  .ctrl button:hover { border-color: #bfdbfe; color: #2563eb; }
+  .ctrl button.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ctrl .label { font-size: 12px; color: #9aa4b2; align-self: center; margin-right: 2px; }
+  .hint { font-size: 12px; color: #9aa4b2; line-height: 1.7; }
+  .kbd { background: #f1f5f9; border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>🎤 模拟面试 · 交互预览<span>AI Agent 通识教程 · 小程序题库改版</span></h1>
+  <p>面试官以聊天方式逐题提问，你点选答案后，面试官当场点评并给出标准答案，最后出一份面试反馈。下面是可点击的真实交互（数据取自 4 个真实题库，共 72 道题）。</p>
+</div>
+
+<div class="layout">
+  <div class="phone" id="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●  5G  ▮</span></div>
+    <div class="navbar"><span class="back">‹</span>模拟面试</div>
+    <div id="app" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h2>选择面试场次</h2>
+      <div class="ctrl" id="chCtrl"></div>
+      <div class="ctrl">
+        <span class="label">语速</span>
+        <button data-speed="1" class="active">正常</button>
+        <button data-speed="2">2×</button>
+        <button data-speed="4">4×</button>
+      </div>
+      <div class="ctrl">
+        <button id="btnFast">一键答完看报告</button>
+        <button id="btnRestart">重新开始</button>
+      </div>
+      <p class="hint">面试官按场次轮换（林致远 / 苏晚 / 陈默），不同面试官点评语气不同。打字中会有省略号动效，回答区在面试官问完后才出现。</p>
+    </div>
+
+    <div class="card">
+      <h2>这一版改了什么</h2>
+      <ul>
+        <li>题库 Tab：闯关地图 → <b>面试大厅</b>，每章一场面试，显示面试官、题量、预计时长与评级</li>
+        <li>答题页：生命值 / 30 秒倒计时 / 连击飘分 → <b>聊天对话流</b>（面试官头像 + 气泡 + 打字动效）</li>
+        <li>作答即"发消息"：点选项 → 选项变成绿色「我的回答」气泡</li>
+        <li>每题即时反馈：答对给「面试官点评 + 考点延伸」，答错给「面试官纠正 + 标准答案」</li>
+        <li>每 5 题一次阶段性反馈，让对话有节奏</li>
+        <li>结算 → <b>面试反馈报告</b>：S / A / B / C 评级 + 逐题表现 + 面试官建议复习的点</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>评级规则（沿用原有通过线）</h2>
+      <p><b>S 强烈推荐</b> ≥ 90% · <b>A 建议录用</b> ≥ 70% · <b>B 勉强通过</b> ≥ 60% · <b>C 暂不通过</b> &lt; 60%</p>
+      <p style="margin-top:8px;">通关线与"解锁下一场"的判断沿用原来的正确率 ≥ 60%，历史做题记录、解锁链、我的页统计全部兼容，不需要清缓存。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 复用小程序源码：面试官池 / 评级 / 正确率规则 ===== */
+const IV_SRC = "/**\n * 模拟面试配置：面试官池（按风格分类）+ 评级映射 + 话术\n *\n * 面试官分四种风格：\n *   sharp  犀利施压型 —— 追问到底，点评直接，还原大厂压力面\n *   gentle 温柔引导型 —— 循循善诱，先肯定再补正，适合初学者\n *   boss   大厂实战型 —— 字节/美团/京东风格，紧盯工程落地与权衡取舍\n *   steady 稳重基础型 —— 老架构师，注重基本功与概念准确性\n *\n * pick(seed)：按场次序号自动轮换（兼容旧逻辑，保证同场次复访面试官一致）\n * pickByStyle(styleId, seed)：用户指定风格，在同风格池内按场次序号轮换\n */\n\nconst PANEL = [\n  /* ---------- 稳重基础型 ---------- */\n  {\n    name: '林致远',\n    initial: '林',\n    title: 'AI 平台架构师 · 12 年经验',\n    styleId: 'steady',\n    styleName: '稳重基础',\n    gradient: 'linear-gradient(135deg, #2563eb, #1e3a8a)',\n    open: [\n      '你好，我是林致远，平时负责 AI 平台架构这块。',\n      '这场面试我们围绕《{title}》展开，一共 {n} 道题。不用紧张，按你自己的理解说就好。',\n    ],\n    praise: [\n      '嗯，这个点抓得准。',\n      '对，思路是对的。',\n      '回答得挺稳，看得出是真看过。',\n      '不错，这块你理解到位了。',\n    ],\n    push: [\n      '嗯……这个点我们得再对一下。',\n      '这里容易踩坑，我补充一下。',\n      '理解有点偏，我说一下标准答案。',\n      '先别急，这道题我拆开讲。',\n    ],\n  },\n\n  /* ---------- 温柔引导型 ---------- */\n  {\n    name: '苏晚',\n    initial: '苏',\n    title: '大模型应用负责人 · 8 年经验',\n    styleId: 'gentle',\n    styleName: '温柔引导',\n    gradient: 'linear-gradient(135deg, #7c3aed, #5b21b6)',\n    open: [\n      '你好呀，我是苏晚，平时带大模型应用落地的团队。',\n      '今天这场面试围绕《{title}》，一共 {n} 道题，我们边聊边展开。',\n    ],\n    praise: [\n      '挺好的，这个理解没问题。',\n      '嗯嗯，说到点子上了。',\n      '答得不错，看得出来有思考。',\n      '对，这块你已经掌握了。',\n    ],\n    push: [\n      '嗯，这里我们再捋一捋。',\n      '这个细节容易混，我给你对一下。',\n      '思路差一点点，正确姿势是这样的。',\n      '别急，这道题我展开说说。',\n    ],\n  },\n  {\n    name: '温言',\n    initial: '温',\n    title: 'AI 技术教练 · 带教 100+ 工程师',\n    styleId: 'gentle',\n    styleName: '温柔引导',\n    gradient: 'linear-gradient(135deg, #db2777, #9d174d)',\n    open: [\n      '你好，我是温言，面试风格偏轻松，就当是一次技术聊天。',\n      '《{title}》这一章我们聊 {n} 道题，答错了也没关系，我会帮你把概念补齐。',\n    ],\n    praise: [\n      '很好，这个角度我很喜欢。',\n      '哇，这一点很多候选人都答不到。',\n      '讲得很清楚，继续保持。',\n      '对啦，就是这个意思。',\n    ],\n    push: [\n      '没关系，这里很多人都会理解错，我来帮你理一下。',\n      '差一点点就对了，我把正确答案给你讲讲。',\n      '别有压力，这道题我们慢慢拆。',\n      '这里我换个说法解释，你听听看。',\n    ],\n  },\n\n  /* ---------- 犀利施压型 ---------- */\n  {\n    name: '陈默',\n    initial: '陈',\n    title: '技术总监 · Agent 方向',\n    styleId: 'sharp',\n    styleName: '犀利施压',\n    gradient: 'linear-gradient(135deg, #0f766e, #115e59)',\n    open: [\n      '我是陈默，直接一点，今天聊《{title}》。',\n      '一共 {n} 道题，我会问得比较细，答不上来也没关系，重点是搞清楚。',\n    ],\n    praise: [\n      '可以，这个回答站得住。',\n      '对，就是要这个答案。',\n      '嗯，基本功在。',\n      '答得干净利落。',\n    ],\n    push: [\n      '不对，这里要重新想一下。',\n      '这个答案我打个问号。',\n      '嗯，差得有点远，我把标准答案说一下。',\n      '这道题很多人栽在这里，你听我说。',\n    ],\n  },\n  {\n    name: '顾严',\n    initial: '顾',\n    title: '字节跳动 · 大模型算法专家',\n    styleId: 'sharp',\n    styleName: '犀利施压',\n    gradient: 'linear-gradient(135deg, #dc2626, #7f1d1d)',\n    open: [\n      '我是顾严，字节这边的算法面试官，风格比较直接。',\n      '《{title}》，{n} 道题，我会一路追问到底，你尽量把原理讲透。',\n    ],\n    praise: [\n      '嗯，这层理解可以。',\n      '问到点子上了，继续。',\n      '这个回答有深度，过。',\n      '原理讲清楚了，我很满意。',\n    ],\n    push: [\n      '停，这只是表面。往下再想一层。',\n      '这个解释我不满意，听我说标准答案。',\n      '不对。这个原理你根本没吃透，我讲一遍。',\n      '面试里这么答会被挂掉的，听好。',\n    ],\n  },\n\n  /* ---------- 大厂实战型 ---------- */\n  {\n    name: '周航',\n    initial: '周',\n    title: '美团 · Agent 应用落地负责人',\n    styleId: 'boss',\n    styleName: '大厂实战',\n    gradient: 'linear-gradient(135deg, #f59e0b, #b45309)',\n    open: [\n      '我是周航，在美团做 Agent 业务落地，只聊能落地的方案。',\n      '《{title}》这章 {n} 道题，重点看你的工程判断和取舍。',\n    ],\n    praise: [\n      '嗯，这是能上生产的思路。',\n      '对，工程上就该这么干。',\n      '有落料，说明你真踩过坑。',\n      '这个 tradeoff 讲得好。',\n    ],\n    push: [\n      '方案能跑，但上线会出事，听我说生产环境的做法。',\n      'Demo 思维了，我给你讲讲业务里怎么处理。',\n      '这里光有原理不够，工程上要加防线。',\n      '这个细节线上一定踩坑，我展开讲。',\n    ],\n  },\n  {\n    name: '韩玥',\n    initial: '韩',\n    title: '京东 · 电商 AI 架构师',\n    styleId: 'boss',\n    styleName: '大厂实战',\n    gradient: 'linear-gradient(135deg, #e11d48, #881337)',\n    open: [\n      '你好，我是韩玥，京东电商 AI 方向，场景题会多一些。',\n      '今天围绕《{title}》问 {n} 道题，注意结合业务场景来答。',\n    ],\n    praise: [\n      '对，业务里就是这么用的。',\n      '这个方案在真实场景里站得住。',\n      '回答很完整，兼顾了成本和效果。',\n      '不错，这就是我们要的答案。',\n    ],\n    push: [\n      '放在大促的量级下，这个方案要出问题的，我讲一下正确做法。',\n      '嗯，思路可以，但成本算过吗？听我说。',\n      '这里业务约束你没考虑到，我补一下。',\n      '这个做法在实际业务里走不通，正确姿势是这样。',\n    ],\n  },\n];\n\nconst STYLE_IDS = ['sharp', 'gentle', 'boss', 'steady'];\n\n// 评级（下标 = 星级 0~3）\nconst GRADES = [\n  { grade: 'C', label: '暂不通过', brief: '未通过' },\n  { grade: 'B', label: '勉强通过', brief: '通过' },\n  { grade: 'A', label: '建议录用', brief: '推荐' },\n  { grade: 'S', label: '强烈推荐', brief: '强推' },\n];\n\n// 面试官总评（下标 = 星级）\nconst REMARKS = [\n  '坦白说，这一章你还不熟，先回去把内容读完，我们下次再聊。',\n  '基本概念是有了，但深度不够，建议把错题涉及的点重新过一遍。',\n  '整体是靠谱的，个别细节再抠一下就更稳了。',\n  '这一章你基本吃透了，几乎每道题都踩在考点上。',\n];\n\n// 结束语（按正确率）\nfunction closingByRatio(ratio) {\n  if (ratio >= 0.9) return '好，我这边的问题问完了，这一章你答得很扎实。';\n  if (ratio >= 0.7) return '嗯，问题问完了，整体还算扎实。';\n  if (ratio >= 0.6) return '行，就先问到这里，有些点还需要再补。';\n  return '好，我们今天就聊到这里吧。';\n}\n\nfunction pick(seed) {\n  const n = Math.abs(Number(seed) || 0);\n  return PANEL[n % PANEL.length];\n}\n\n// 按风格选面试官：同风格池内按 seed 轮换；风格无效时回退全池轮换\nfunction pickByStyle(styleId, seed) {\n  if (STYLE_IDS.indexOf(styleId) !== -1) {\n    const pool = PANEL.filter(p => p.styleId === styleId);\n    const n = Math.abs(Number(seed) || 0);\n    return pool[n % pool.length];\n  }\n  return pick(seed);\n}\n\nfunction gradeOf(stars) {\n  const s = Math.max(0, Math.min(3, Math.floor(Number(stars) || 0)));\n  return { stars: s, grade: GRADES[s].grade, label: GRADES[s].label, brief: GRADES[s].brief, remark: REMARKS[s] };\n}\n\nmodule.exports = { PANEL, STYLE_IDS, pick, pickByStyle, gradeOf, closingByRatio };\n";
+const STORE_SRC = "/**\n * 学习进度与做题记录存储（基于 wx.setStorageSync）\n */\nconst KEYS = {\n  READ_MAP: 'dsh_read_map',\n  QUIZ_RECORDS: 'dsh_quiz_records',\n};\n\n// 星级规则：正确率 >=90% 三星 / >=70% 两星 / >=60% 一星（通关）\nconst PASS_RATIO = 0.6;\n\nfunction getReadMap() {\n  return wx.getStorageSync(KEYS.READ_MAP) || {};\n}\n\nfunction markRead(chKey) {\n  const map = getReadMap();\n  if (!map[chKey]) {\n    map[chKey] = { time: Date.now() };\n    wx.setStorageSync(KEYS.READ_MAP, map);\n  }\n}\n\nfunction getQuizRecords() {\n  return wx.getStorageSync(KEYS.QUIZ_RECORDS) || {};\n}\n\nfunction calcStars(correct, total) {\n  if (!total) return 0;\n  const r = correct / total;\n  if (r >= 0.9) return 3;\n  if (r >= 0.7) return 2;\n  if (r >= PASS_RATIO) return 1;\n  return 0;\n}\n\nfunction isPassed(rec) {\n  return !!(rec && rec.total && rec.correct / rec.total >= PASS_RATIO);\n}\n\nfunction saveQuizResult(chKey, result) {\n  const records = getQuizRecords();\n  const prev = records[chKey] || { best: 0, attempts: 0, bestScore: 0, stars: 0 };\n  const stars = Math.max(result.stars || 0, calcStars(result.correct, result.total));\n  records[chKey] = {\n    best: Math.max(prev.best || 0, result.correct),\n    bestScore: Math.max(prev.bestScore || 0, result.score || 0),\n    stars,\n    attempts: (prev.attempts || 0) + 1,\n    correct: result.correct,\n    total: result.total,\n    time: Date.now(),\n  };\n  wx.setStorageSync(KEYS.QUIZ_RECORDS, records);\n}\n\n// 全局学习统计：总积分（各关最佳分之和）、总星数、通关数\nfunction getGameStats() {\n  const records = getQuizRecords();\n  let xp = 0, stars = 0, passed = 0;\n  Object.keys(records).forEach(k => {\n    xp += records[k].bestScore || 0;\n    stars += records[k].stars || 0;\n    if (isPassed(records[k])) passed++;\n  });\n  return { xp, stars, passed };\n}\n\nfunction clearAll() {\n  wx.removeStorageSync(KEYS.READ_MAP);\n  wx.removeStorageSync(KEYS.QUIZ_RECORDS);\n}\n\nmodule.exports = {\n  getReadMap, markRead,\n  getQuizRecords, saveQuizResult, calcStars, isPassed, getGameStats,\n  clearAll,\n};\n";
+function loadModule(src) {
+  const mod = { exports: {} };
+  new Function('module', 'exports', src)(mod, mod.exports);
+  return mod.exports;
+}
+const IV = loadModule(IV_SRC);
+const store = loadModule(STORE_SRC);
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const SESSIONS = [{"key":"ch00","title":"第0章 Agent 能力全景展示","iv":{"name":"林致远","initial":"林","title":"AI 平台架构师 · 12 年经验","gradient":"linear-gradient(135deg, #2563eb, #1e3a8a)","open":["你好，我是林致远，平时负责 AI 平台架构这块。","这场面试我们围绕《{title}》展开，一共 {n} 道题。不用紧张，按你自己的理解说就好。"],"praise":["嗯，这个点抓得准。","对，思路是对的。","回答得挺稳，看得出是真看过。","不错，这块你理解到位了。"],"push":["嗯……这个点我们得再对一下。","这里容易踩坑，我补充一下。","理解有点偏，我说一下标准答案。","先别急，这道题我拆开讲。"]},"questions":[{"id":"ch00_q01","type":"single","question":"在 GPT 系列模型中，中文文本的 Token 消耗通常比英文多约多少倍？","options":["约 0.5 倍，中文更省 Token","约 1.5-2 倍，中文分词效率较低","完全相同，Token 数与语言无关","约 3 倍，中文每个字固定 3 个 Token"],"answer":[1],"explanation":"由于 GPT 系列模型的分词器主要基于 BPE 算法训练，英文文本通常一个单词对应 1-2 个 Token，而中文一个汉字往往需要 1.5-2 个 Token，因此中文文本的 Token 消耗通常比英文多约 1.5-2 倍。"},{"id":"ch00_q02","type":"single","question":"System Prompt 和 User Prompt 的核心区别是什么？","options":["System Prompt 是系统自动生成的，User Prompt 是用户输入的","System Prompt 用于设定角色和规则，User Prompt 是具体问题或任务","两者完全相同，只是位置不同","System Prompt 只能在 API 中使用，User Prompt 只能在聊天界面使用"],"answer":[1],"explanation":"System Prompt 用于设定 AI 的角色、行为规则和约束条件，在整个对话中持续生效；User Prompt 是用户提出的具体问题或任务指令。两者在 API 中有不同的 role 字段（system 和 user）。"},{"id":"ch00_q03","type":"single","question":"Embedding 向量化的主要目的是什么？","options":["压缩文本以节省存储空间","将文本转换为数值向量，使语义相似的文本在向量空间中距离更近","加密文本内容保护隐私","将文本翻译成机器语言供编译器执行"],"answer":[1],"explanation":"Embedding 将文本映射到高维向量空间，使语义相似的文本在空间中距离更近。这是语义搜索、推荐系统、RAG 等应用的基础技术，通过余弦相似度等指标可以量化文本间的语义相似性。"},{"id":"ch00_q04","type":"single","question":"Function Calling 中 LLM 的角色是什么？","options":["LLM 直接执行函数代码并返回结果","LLM 根据用户意图输出结构化的函数调用参数，由外部系统执行","LLM 只能调用预置的函数，不能自定义","LLM 负责编译函数代码为可执行文件"],"answer":[1],"explanation":"在 Function Calling 中，LLM 的角色是理解用户意图并输出结构化的 JSON 格式函数调用参数（函数名+参数），实际函数执行由外部系统完成。LLM 本身不执行任何代码，只负责生成调用指令。"},{"id":"ch00_q05","type":"single","question":"以下哪个模型的开源协议允许商业使用？","options":["GPT-4o（OpenAI 闭源）","Claude Sonnet（Anthropic 闭源）","Llama 3（Meta 开源，有商业限制）","Gemini Ultra（Google 闭源）"],"answer":[2],"explanation":"Llama 3 是 Meta 开源的模型，允许商业使用但有月活用户限制（7亿）。GPT-4o、Claude、Gemini 均为闭源模型，只能通过 API 调用。开源模型还包括 Qwen、DeepSeek 等，多数允许商业使用。"},{"id":"ch00_q06","type":"multi","question":"以下哪些是 Chain-of-Thought (CoT) 思维链的优势？","options":["提升复杂推理任务的准确率","减少 Token 消耗降低成本","让推理过程可追溯便于调试","适用于所有类型的任务包括简单问答","可以通过分步推理解决数学应用题"],"answer":[0,2,4],"explanation":"CoT 的主要优势包括：通过分步推理提升复杂任务准确率、让推理过程透明可追溯便于调试、特别适合数学逻辑等需要中间步骤的问题。但 CoT 会增加 Token 消耗（输出更多中间步骤），且对简单问答任务无益甚至有害。"},{"id":"ch00_q07","type":"multi","question":"关于上下文窗口，以下说法正确的是？","options":["上下文窗口越大，模型理解能力一定越强","上下文窗口满了可以通过摘要压缩历史对话","GPT-4o 最大支持 128K Token 的上下文窗口","上下文窗口内的信息模型一定能完美记住","Claude 3.5 Sonnet 支持 200K Token 的上下文窗口"],"answer":[1,2,4],"explanation":"上下文窗口大小不等于理解能力，过长的上下文可能丢失中间信息（Lost in the Middle 问题）。窗口满时可通过摘要压缩历史对话。GPT-4o 支持 128K，Claude 3.5 Sonnet 支持 200K，但模型不保证完美记住窗口内所有信息。"},{"id":"ch00_q08","type":"multi","question":"以下哪些属于 Prompt Engineering 的高级技巧？","options":["Few-Shot Prompting（少样本提示）","Role Prompting（角色扮演）","Gradient Descent（梯度下降）","Self-Consistency（自一致性）","Backpropagation（反向传播）"],"answer":[0,1,3],"explanation":"Prompt Engineering 的高级技巧包括 Few-Shot（提供示例引导输出格式）、Role Prompting（设定角色提升专业度）、Self-Consistency（多次采样取一致结果）。梯度下降和反向传播是模型训练阶段的优化算法，不属于 Prompt 技巧。"},{"id":"ch00_q09","type":"multi","question":"选择关于 Token 计费正确的说法：","options":["Output Token 通常比 Input Token 贵 3-4 倍","Token 计费与模型版本无关，价格统一","缓存命中的 Input Token 可以享受折扣价","不同模型的 Token 价格差异可能达 10 倍以上","Token 计费只按字符数计算，与分词无关"],"answer":[0,2,3],"explanation":"Output Token 确实通常比 Input 贵 3-4 倍（因为生成需要逐 Token 自回归）。缓存命中的 Input Token 可享折扣（如 OpenAI 的 Prompt Caching）。不同模型价格差异巨大，如 GPT-4 比 GPT-3.5 贵 10+ 倍。Token 是按分词计算而非字符数。"},{"id":"ch00_q10","type":"multi","question":"以下哪些是主流的 Embedding 模型？","options":["text-embedding-3-small（OpenAI）","BGE（智源研究院）","ResNet-50（微软）","text2vec-large-chinese","YOLOv8（Ultralytics）"],"answer":[0,1,3],"explanation":"text-embedding-3-small 是 OpenAI 的 Embedding 模型，BGE 是智源研究院的开源 Embedding 模型，text2vec 是中文 Embedding 模型。ResNet-50 是图像分类模型，YOLOv8 是目标检测模型，都不是 Embedding 模型。"},{"id":"ch00_q11","type":"single","question":"AI 从 ChatBot 进化到 Agent 的第三代（2024-2026），解锁的核心能力是什么？","options":["生成文本","调用外部 API","自主规划多步任务、循环调用工具、自我纠错","基于训练数据回答问题"],"answer":[2],"explanation":"第三代 Agent（ReAct 模式）的核心跃迁是自主规划、循环执行和自我纠错——不再是简单的一问一答，而是能拆解任务、多步执行、根据反馈调整。"},{"id":"ch00_q12","type":"single","question":"以下哪个能力是「第一代纯聊天」AI 完全不具备的？","options":["写文章","翻译","查实时天气","回答通识问题"],"answer":[2],"explanation":"第一代 AI 只能基于训练数据生成文本，无法获取实时信息（如天气）、不能调用 API、不能执行代码。查实时天气需要工具调用，是第二代才有的能力。"},{"id":"ch00_q13","type":"single","question":"一个 Agent 要完成「帮用户订机票」这个任务，至少需要哪些能力组合？","options":["仅文本生成","文本生成 + 一次 API 调用","感知 + 决策 + 工具调用 + 循环观察 + 反馈","仅 Function Calling"],"answer":[2],"explanation":"订机票涉及多步：理解需求→查航班→比价→确认→下单，需要完整的感知-决策-行动-观察-反馈闭环，单次 API 调用或纯文本生成都无法胜任。"},{"id":"ch00_q14","type":"multi","question":"以下哪些是 Agent 区别于 ChatBot 的本质特征？（多选）","options":["能自主决定下一步做什么","拥有工具调用能力","能基于训练数据回答问题","能通过循环处理多步任务"],"answer":[0,1,3],"explanation":"ChatBot 也能基于训练数据回答问题（选项2不是区分点）。Agent 的本质是：自主决策、工具调用、循环执行多步任务，三者共同构成与 ChatBot 的范式差异。"},{"id":"ch00_q15","type":"multi","question":"关于 Agent 的适用场景，以下说法正确的是？（多选）","options":["需要调用外部工具的任务","需要多步决策的任务","确定性高、流程固定的任务","需要持续反馈和纠错的任务"],"answer":[0,1,3],"explanation":"Agent 适合需要工具调用、多步决策、持续反馈的不确定性任务。确定性高、流程固定的任务用传统程序更高效、更可靠，不需要 Agent。"}]},{"key":"ch01","title":"第1章 大模型与 Agent 基础概念","iv":{"name":"苏晚","initial":"苏","title":"大模型应用负责人 · 8 年经验","gradient":"linear-gradient(135deg, #7c3aed, #5b21b6)","open":["你好呀，我是苏晚，平时带大模型应用落地的团队。","今天这场面试围绕《{title}》，一共 {n} 道题，我们边聊边展开。"],"praise":["挺好的，这个理解没问题。","嗯嗯，说到点子上了。","答得不错，看得出来有思考。","对，这块你已经掌握了。"],"push":["嗯，这里我们再捋一捋。","这个细节容易混，我给你对一下。","思路差一点点，正确姿势是这样的。","别急，这道题我展开说说。"]},"questions":[{"id":"ch01_q01","type":"single","question":"AI Agent 与传统 Chatbot 的核心区别是什么？","options":["Agent 只能在命令行运行，Chatbot 只能在网页运行","Agent 具备自主规划和工具调用能力，Chatbot 只做对话回复","Agent 使用大模型，Chatbot 使用规则引擎","Agent 和 Chatbot 本质相同，只是叫法不同"],"answer":[1],"explanation":"AI Agent 的核心特征是具备自主规划、工具调用和行动执行能力，能够感知环境→制定计划→调用工具→观察结果→调整策略，形成闭环。传统 Chatbot 主要做对话回复，没有自主行动能力。"},{"id":"ch01_q02","type":"single","question":"Agentic Loop（Agent 循环）的标准流程顺序是？","options":["行动→感知→规划→观察","感知→行动→规划→反思","感知→规划→行动→观察→反思","规划→感知→观察→行动"],"answer":[2],"explanation":"标准 Agentic Loop 流程为：感知（接收输入/环境信息）→规划（LLM 推理制定行动方案）→行动（调用工具/执行操作）→观察（获取执行结果）→反思（评估结果并调整策略），然后回到感知进入下一轮循环。"},{"id":"ch01_q03","type":"single","question":"以下哪个不是 AI Agent 的核心组件？","options":["LLM（大语言模型，负责推理和决策）","Memory（记忆系统，存储上下文）","Tools（工具集，执行具体操作）","GPU（图形处理器，渲染画面）"],"answer":[3],"explanation":"AI Agent 的核心组件包括 LLM（推理决策）、Memory（记忆存储）、Tools（工具调用）、Planning（规划能力）。GPU 是硬件层面的计算资源，不是 Agent 的逻辑组件，虽然 Agent 的运行依赖 GPU 算力。"},{"id":"ch01_q04","type":"single","question":"AutoGPT 被认为是 AI Agent 发展史上的里程碑，主要因为？","options":["它是第一个基于 GPT-4 的应用","它首次展示了 Agent 自主分解任务、上网搜索、执行代码的闭环能力","它的代码量最大最复杂","它是 OpenAI 官方发布的产品"],"answer":[1],"explanation":"AutoGPT 于 2023 年开源，首次在公众面前展示了 Agent 的自主循环能力：自动分解目标任务→上网搜索信息→编写和执行代码→根据结果调整策略。虽然效果不完美，但验证了 Agent 范式的可行性，激发了整个 Agent 生态的发展。"},{"id":"ch01_q05","type":"single","question":"Agent 的自主决策能力主要体现在？","options":["能自动选择调用哪个工具完成任务","能自动关闭不相关的浏览器标签","能自动升级自己的模型版本","能自动购买更多 GPU 算力"],"answer":[0],"explanation":"Agent 的自主决策核心体现在：根据当前任务和观察到的环境信息，LLM 自主判断应该调用哪个工具、传递什么参数、是否需要多步执行。这种基于 LLM 推理的动态决策是 Agent 区别于固定流程脚本的关键。"},{"id":"ch01_q06","type":"multi","question":"以下哪些是 AI Agent 的典型应用场景？","options":["自动化代码审查和 Bug 修复","智能客服自动回复常见问题","自主上网搜索并总结研究报告","批量处理 Excel 数据并生成图表","自动管理服务器监控和告警处理"],"answer":[0,2,3,4],"explanation":"AI Agent 适用于需要自主规划和工具调用的场景：代码审查、研究调研、数据分析、运维监控等。智能客服回复常见问题更偏向传统 Chatbot 场景（固定问答库），除非需要调用工具查询订单等操作才升级为 Agent。"},{"id":"ch01_q07","type":"multi","question":"以下哪些是 Agent 相对于纯 LLM 的优势？","options":["能获取实时信息（通过搜索工具）","能执行代码和操作文件系统","推理速度一定比纯 LLM 快","能与其他 Agent 协作完成复杂任务","模型参数量一定比纯 LLM 大"],"answer":[0,1,3],"explanation":"Agent 在纯 LLM 基础上增加了工具调用（获取实时信息、执行代码）、记忆系统和多 Agent 协作能力。但 Agent 由于需要多轮工具调用，通常比纯 LLM 推理更慢，且 Agent 和 LLM 使用同一个底层模型，参数量无差异。"},{"id":"ch01_q08","type":"multi","question":"关于 Devin、Claude Computer Use、OpenAI Operator 三个产品，正确的说法是？","options":["Devin 定位为 AI 软件工程师，能自主完成开发任务","Claude Computer Use 能操控图形界面完成任务","OpenAI Operator 是开源的本地部署 Agent","三者都展示了 Agent 自主操作计算机界面的能力","三者都只能通过 API 调用，没有可视化界面"],"answer":[0,1,3],"explanation":"Devin 是 Cognition 推出的 AI 软件工程师，能自主编写代码、调试、部署。Claude Computer Use 能操控浏览器和桌面应用。OpenAI Operator 是 OpenAI 的 Agent 产品。前两者展示了自主操作计算机的能力，但 OpenAI Operator 并非开源本地部署产品。"},{"id":"ch01_q09","type":"multi","question":"以下哪些属于 Agent 的环境交互能力？","options":["通过 API 获取外部数据","通过浏览器自动化操作网页","通过 SSH 执行远程服务器命令","通过传感器感知物理世界温度","通过修改自身模型权重来学习新知识"],"answer":[0,1,2,3],"explanation":"Agent 的环境交互包括数字环境（API、浏览器、SSH、文件系统）和物理环境（传感器、IoT 设备）。但 Agent 不能直接修改自身模型权重来学习——它使用固定的 LLM，通过外部记忆系统和工具来扩展能力，而非改变模型本身。"},{"id":"ch01_q10","type":"multi","question":"Agent 的发展趋势包括以下哪些？","options":["从单一 Agent 向多 Agent 协作发展","从纯文本交互向多模态（视觉/语音）发展","从通用 Agent 向垂直领域专业化发展","从需要人类监督向完全自主无需人类参与发展","从基于 LLM 向基于传统规则引擎发展"],"answer":[0,1,2],"explanation":"Agent 发展趋势：多 Agent 协作、多模态交互、垂直领域专业化。但完全无需人类监督目前还不现实，安全和伦理要求人类始终在环。Agent 也不会回退到传统规则引擎，LLM 是 Agent 的核心推理引擎。"},{"id":"ch01_q11","type":"single","question":"Agent从用户输入到输出的完整链路包含8个步骤，正确的顺序是？","options":["意图识别→任务分类→执行调度→工具选择→工具调用→结果验证→结果整合→输出呈现","输入→理解→执行→输出(4步简化)","意图→规划→执行→反馈→修正→输出(6步)","用户提问→LLM思考→工具调用→返回答案(3步)"],"answer":[0],"explanation":"完整8步链路：意图识别→任务分类→执行调度→工具选择→工具调用→结果验证→结果整合→输出呈现。简化版本会遗漏关键决策节点。"},{"id":"ch01_q12","type":"multi","question":"意图识别的四种任务类型包括哪些？（多选）","options":["信息查询型（问事实、查资料）","任务执行型（写代码、发邮件）","推理分析型（数学推理、逻辑判断）","创意生成型（写文案、设计方案）"],"answer":[0,1,2,3],"explanation":"四种任务类型：信息查询、任务执行、推理分析、创意生成。不同类型决定不同的执行路径和工具选择策略。"},{"id":"ch01_q13","type":"multi","question":"执行调度决策的核心考虑因素包括？（多选）","options":["任务类型（该用模型还是工具？）","执行成本（token消耗、时间开销）","失败概率（可能出错的程度）","依赖关系（是否需要前序步骤的结果）"],"answer":[0,1,2,3],"explanation":"调度决策需综合考虑任务类型、执行成本、失败概率和依赖关系，而非简单的'交给LLM处理'。"},{"id":"ch01_q14","type":"single","question":"AI Agent 的六大核心模块不包括以下哪个？","options":["感知模块（Perception）","规划模块（Planning）","编译模块（Compilation）","反思模块（Reflection）"],"answer":[2],"explanation":"AI Agent 的六大核心模块为：感知、规划、记忆、工具、执行、反思。编译模块是编译器的工作，不属于 Agent 架构。感知负责接收环境信息，规划制定行动方案，记忆存储上下文，工具执行具体操作，执行落地行动，反思评估和调整策略。"},{"id":"ch01_q15","type":"single","question":"感知-规划-行动闭环中，规划模块的主要输入是什么？","options":["只有用户原始指令","感知模块的输出和记忆系统中的历史信息","只有工具执行的结果","只有外部 API 的返回数据"],"answer":[1],"explanation":"规划模块的输入包括感知模块获取的环境信息和用户指令，以及记忆系统中存储的历史对话和经验。规划模块综合这些信息，通过 LLM 推理生成下一步行动方案，输出给执行模块。"},{"id":"ch01_q16","type":"single","question":"Agent 的反思模块在什么情况下触发？","options":["只在任务完成时触发一次","在每次工具调用失败或结果不符合预期时触发","只在用户明确要求时触发","每隔固定时间自动触发"],"answer":[1],"explanation":"反思模块通常在工具调用失败、结果不符合预期、或 Agent 陷入循环时触发。反思会评估当前策略的有效性，分析失败原因，并调整后续规划。一些高级 Agent 也会在关键决策点主动进行反思。"},{"id":"ch01_q17","type":"single","question":"端到端 Agent 架构的主要特点是什么？","options":["所有功能由一个 LLM 完成，不区分模块","感知和规划由一个模型处理，执行和反思由另一个处理","每个模块使用独立的模型，通过管道连接","完全不需要 LLM，使用传统算法"],"answer":[0],"explanation":"端到端架构中，一个 LLM 负责从感知到规划到行动决策的所有工作，不显式区分模块。优点是简单直接，缺点是难以调试和优化特定环节。相比之下，模块化架构将各功能分离，更可控但更复杂。"},{"id":"ch01_q18","type":"single","question":"在 Agent 架构中，LLM 的角色是什么？","options":["负责存储历史对话数据","负责推理决策和自然语言理解，是 Agent 的大脑","负责执行代码和调用 API","负责加密通信和数据安全"],"answer":[1],"explanation":"LLM 在 Agent 架构中扮演大脑角色，负责自然语言理解、推理决策、规划行动方案。记忆系统负责数据存储，工具和执行模块负责具体操作，LLM 本身不存储数据也不执行代码。"},{"id":"ch01_q19","type":"multi","question":"以下哪些是模块化 Agent 架构的优势？","options":["各模块可独立优化和替换","便于调试定位问题出在哪个环节","推理速度一定比端到端快","可以为不同模块选择不同的模型","架构更简单，代码量更少"],"answer":[0,1,3],"explanation":"模块化架构的优势：各模块可独立优化替换（如规划用 GPT-4，执行用小模型）、便于调试定位问题、可为不同环节选择不同模型。但模块化架构比端到端更复杂，代码量更大，且模块间通信有开销，不一定更快。"},{"id":"ch01_q20","type":"multi","question":"Agent 的记忆系统通常包含哪些类型？","options":["短期记忆（工作记忆，存储当前对话上下文）","长期记忆（向量数据库，存储历史经验）","程序性记忆（存储工具使用方法和流程）","基因记忆（从父 Agent 继承的记忆）","情景记忆（存储特定事件的上下文）"],"answer":[0,1,2,4],"explanation":"Agent 记忆系统包括：短期记忆（当前对话上下文）、长期记忆（向量数据库存储历史信息）、程序性记忆（工具使用经验）、情景记忆（特定事件上下文）。基因记忆不存在于 Agent 中，Agent 不会继承记忆。"},{"id":"ch01_q21","type":"multi","question":"关于 Agent 执行模块，正确的说法是？","options":["执行模块负责调用工具和 API","执行模块需要处理工具调用失败的情况","执行模块只能调用一个工具","执行模块的输出会反馈给感知模块","执行模块负责生成自然语言回复"],"answer":[0,1,3],"explanation":"执行模块负责实际调用工具和 API，需要处理失败重试和错误恢复。执行结果会反馈给感知模块（或直接给 LLM）进行下一步决策。执行模块可以并行调用多个工具，但生成自然语言回复是 LLM 的工作，不是执行模块的职责。"},{"id":"ch01_q22","type":"multi","question":"以下哪些是 Agent 架构设计的常见模式？","options":["端到端模式（单个 LLM 处理所有工作）","模块化模式（各功能分离，LLM 只做推理）","混合模式（核心模块化+部分端到端）","瀑布模式（严格顺序执行不可回溯）","微服务模式（每个工具独立部署为服务）"],"answer":[0,1,2],"explanation":"常见架构模式：端到端（简单但难调试）、模块化（可控但复杂）、混合模式（平衡简单性和可控性）。瀑布模式过于僵化不适合 Agent 的迭代循环特性。微服务是部署架构而非 Agent 逻辑架构。"},{"id":"ch01_q23","type":"multi","question":"设计 Agent 架构时需要考虑哪些关键因素？","options":["任务复杂度（简单任务用端到端，复杂任务用模块化）","延迟要求（实时场景需要精简流程）","成本预算（多模型调用成本更高）","模型颜色偏好（蓝色模型比红色好）","安全要求（高风险操作需要人工审核环节）"],"answer":[0,1,2,4],"explanation":"Agent 架构设计需考虑：任务复杂度决定架构复杂度、延迟要求影响工具调用策略、成本预算决定模型选择和调用次数、安全要求决定是否需要人工介入。模型颜色偏好是无意义因素，与架构设计无关。"},{"id":"ch01_q24","type":"single","question":"动态Prompt和静态Prompt的核心区别是？","options":["动态Prompt每轮重新组装上下文，静态Prompt系统指令固定不变","动态Prompt比静态Prompt更长","静态Prompt比动态Prompt更准确","两者没有实质区别"],"answer":[0],"explanation":"动态Prompt根据当前意图、记忆检索结果、工具描述等每轮重新组装；静态Prompt（系统指令、角色设定）固定不变，作为基础框架。"},{"id":"ch01_q25","type":"multi","question":"上下文窗口中token分配策略包括哪些？（多选）","options":["系统指令预留（固定分配给角色设定和规则）","对话历史滚动（保留最近N轮，丢弃旧对话）","工具描述动态注入（按需加载相关工具描述）","全部token留给模型输出"],"answer":[0,1,2],"explanation":"token预算分配需平衡系统指令、对话历史、工具描述三部分，不能全部留给输出，否则模型缺乏足够的上下文信息。"},{"id":"ch01_q26","type":"single","question":"Prompt Caching命中时，输入token成本大约降低多少？","options":["约50%","约70%","约90%","100%（完全免费）"],"answer":[2],"explanation":"Prompt Caching命中时，输入token成本降低约90%。例如OpenAI的缓存命中输入价格从$5/M降到$0.5/M。"},{"id":"ch01_q27","type":"multi","question":"动态Prompt组装中常见的变量来源包括？（多选）","options":["用户输入（当前问题的内容）","记忆检索结果（从长期记忆中召回的相关信息）","工具返回结果（上一步工具执行的结果）","系统配置（角色设定、规则约束）"],"answer":[0,1,2,3],"explanation":"动态Prompt从用户输入、记忆检索、工具返回、系统配置四个来源组装上下文，确保模型有足够的决策信息。"}]},{"key":"ch02","title":"第2章 什么是 AI Agent？","iv":{"name":"温言","initial":"温","title":"AI 技术教练 · 带教 100+ 工程师","gradient":"linear-gradient(135deg, #db2777, #9d174d)","open":["你好，我是温言，面试风格偏轻松，就当是一次技术聊天。","《{title}》这一章我们聊 {n} 道题，答错了也没关系，我会帮你把概念补齐。"],"praise":["很好，这个角度我很喜欢。","哇，这一点很多候选人都答不到。","讲得很清楚，继续保持。","对啦，就是这个意思。"],"push":["没关系，这里很多人都会理解错，我来帮你理一下。","差一点点就对了，我把正确答案给你讲讲。","别有压力，这道题我们慢慢拆。","这里我换个说法解释，你听听看。"]},"questions":[{"id":"ch02_q01","question":"Agent 循环（感知→决策→行动→观察）什么时候停止？","options":["A. AI 调用工具后立即停止","B. 当 AI 不再请求调用工具时（finish_reason 为 stop）","C. 当用户说 'quit' 时","D. 当达到最大循环次数时"],"answer":[1],"explanation":"Agent 循环的核心是 AI 自主决定是否继续调工具。当 AI 不再请求 tool_calls 时，说明它已经有足够信息回答用户，循环自然结束。","type":"single"},{"id":"ch02_q03","question":"Agent 和普通 LLM 调用最本质的区别是什么？","options":["A. Agent 用了更贵的模型","B. Agent 有工具调用能力和循环执行机制","C. Agent 只能查天气","D. Agent 不需要 API Key"],"answer":[1],"explanation":"普通 LLM 是一问一答，没有工具。Agent = AI + 工具 + 循环。三者缺一不可：没有工具的 AI 只能聊天，没有循环只能做一次调用。","type":"single"},{"id":"ch02_q04","question":"在多轮对话中，AI 为什么有时不调用工具也能回答追问？","options":["A. AI 会猜测答案","B. AI 从对话历史中推理出答案","C. AI 有内置数据库","D. AI 不需要工具也能查天气"],"answer":[1],"explanation":"Agent 的'记忆'就是对话历史。当用户追问'哪个城市更热'时，AI 从历史中已有两次天气查询结果，直接推理比较，无需再次调工具。","type":"single"},{"id":"ch02_q06","question":"以下哪个场景更适合用传统程序而非 Agent？","options":["A. 用户自由提问的客服场景","B. 固定格式的数据报表生成","C. 需要多步推理的编程助手","D. 需要调用多个工具的旅行规划"],"answer":[1],"explanation":"固定格式、确定性强的任务用传统程序更可靠、更快、更便宜。Agent 的价值在于处理不确定性——意图不明确、步骤不固定的场景。","type":"single"},{"id":"ch02_q10","question":"Agent 的 '观察' 步骤具体做了什么？","options":["A. 让 AI 等待用户反馈","B. 将工具执行结果加入对话历史，供 AI 下一步推理","C. 打印日志到终端","D. 清除之前的对话历史"],"answer":[1],"explanation":"观察步骤将工具结果以 role='tool' 消息加入 messages 数组。AI 在下一轮循环中能看到这些结果，决定是否继续调工具或直接回答。","type":"single"},{"id":"ch02_q06","type":"single","question":"ChatBot 与 Agent 的范式跃迁，本质区别在于？","options":["Agent 用了更大的模型","Agent 具备'感知→决策→行动→观察'的完整闭环，能与真实世界交互","Agent 的回答更长","Agent 支持语音输入"],"answer":[1],"explanation":"范式跃迁的本质是闭环完整性：ChatBot 止步于生成文本（顾问），Agent 延伸到改变外部状态（员工），核心是感知-决策-行动-观察循环。"},{"id":"ch02_q07","type":"single","question":"AI Agent 的四大核心模块中，负责'将复杂任务拆解为子任务'的是？","options":["LLM（大脑）","记忆（Memory）","规划（Planning）","工具（Tools）"],"answer":[2],"explanation":"规划模块负责任务拆解与执行计划制定。LLM 是智力引擎，记忆管上下文，工具管行动。"},{"id":"ch02_q08","type":"multi","question":"关于 Agent 的核心闭环（感知→决策→行动→反馈），正确的理解是？（多选）","options":["源自控制论 OODA 循环","'反馈回到感知'的回边让 Agent 能持续修正","去掉反馈回边 Agent 就变成单向流水线，遇意外会卡死","闭环只执行一次就结束"],"answer":[0,1,2],"explanation":"闭环源自 OODA 循环，反馈回边是关键——它让 Agent 从一次性执行变为持续修正，具备容错自适应能力。闭环是循环执行的。"},{"id":"ch02_q09","type":"single","question":"在 Agent vs ChatBot vs Copilot 的光谱中，Copilot 的定位是？","options":["被动应答","人机协作（AI 给建议、人来执行）","自主执行","完全无需人工"],"answer":[1],"explanation":"三者是自主性三层级：ChatBot 被动应答、Copilot 人机协作（AI 建议人执行）、Agent 自主执行。Copilot 需人引导落地。"},{"id":"ch02_q10","type":"multi","question":"以下哪些场景更适合用 Agent 而非传统程序？（多选）","options":["任务步骤无法预先完全枚举","需要理解自然语言的模糊意图","需要动态调用不同工具完成任务","精确计算 1+1 的结果"],"answer":[0,1,2],"explanation":"Agent 适合步骤不可枚举、意图模糊、需动态选工具的开放任务。确定性计算用传统程序更可靠高效。"},{"id":"ch02_q11","type":"single","question":"Agent 的 OODA 循环中，反馈回到感知这条回边的核心作用是什么？","options":["减少 Token 消耗","让 Agent 从一次性执行变成持续修正","加快 API 响应速度","避免调用工具"],"answer":[1],"explanation":"反馈回边让 Agent 在每次行动后观察结果、调整下一步，从而具备容错和自适应能力。没有它，Agent 只是单向流水线，遇到意外就会卡死。"},{"id":"ch02_q12","type":"single","question":"以下哪个不是 Agent 执行链路（8步）中的环节？","options":["用户输入接收","意图理解","模型训练","执行调度"],"answer":[2],"explanation":"Agent 执行链路是推理期流程（输入接收→意图理解→任务规划→执行调度→工具调用→结果整合→响应生成→记忆更新），模型训练是训练期的事，不属于运行时链路。"},{"id":"ch02_q13","type":"single","question":"Agent 的调度器决定调用模型还是调用工具的核心依据是什么？","options":["用户的语气","当前子任务的类型——需要推理/生成文本则调模型，需要搜索/计算/文件操作则调工具","API 的响应速度","历史对话长度"],"answer":[1],"explanation":"调度器根据子任务性质决策：需要语言推理或文本生成时调用 LLM，需要外部数据或操作时调用工具。这是执行调度的核心逻辑。"},{"id":"ch02_q14","type":"multi","question":"关于 Agent 与 Copilot 的区别，以下说法正确的是？（多选）","options":["Copilot 是人机协作，人主导决策","Agent 是自主执行，Agent 主导决策","Copilot 和 Agent 完全相同","Copilot 的自主性介于 ChatBot 和 Agent 之间"],"answer":[0,1,3],"explanation":"在自主性光谱上：ChatBot（无自主）→ Copilot（人机协作，人主导）→ Agent（自主执行，Agent 主导）。Copilot 介于两者之间，与 Agent 在决策主导权上有本质区别。"},{"id":"ch02_q15","type":"multi","question":"一个 Agent 要具备持续修正能力，需要哪些组件协同？（多选）","options":["感知（收集行动后的结果）","记忆（保存历史状态）","决策（根据反馈调整计划）","固定流程（不允许偏离预设步骤）"],"answer":[0,1,2],"explanation":"持续修正依赖感知（获取反馈）、记忆（对比历史）、决策（调整计划）三者协同。固定流程反而会阻碍修正——Agent 的价值在于能根据意外情况灵活调整。"}]},{"key":"ch03","title":"第3章 你的第一个 Agent：天气查询助手","iv":{"name":"陈默","initial":"陈","title":"技术总监 · Agent 方向","gradient":"linear-gradient(135deg, #0f766e, #115e59)","open":["我是陈默，直接一点，今天聊《{title}》。","一共 {n} 道题，我会问得比较细，答不上来也没关系，重点是搞清楚。"],"praise":["可以，这个回答站得住。","对，就是要这个答案。","嗯，基本功在。","答得干净利落。"],"push":["不对，这里要重新想一下。","这个答案我打个问号。","嗯，差得有点远，我把标准答案说一下。","这道题很多人栽在这里，你听我说。"]},"questions":[{"id":"ch02_q02","question":"工具 Schema 中哪个字段最重要？AI 主要靠它判断是否调用工具。","options":["A. name","B. parameters","C. description","D. type"],"answer":[2],"explanation":"description 是 AI 决定是否调工具的关键依据。写得越具体（如'查询指定城市指定日期的天气'），AI 的判断越准确。","type":"single"},{"id":"ch02_q05","question":"工具异常处理中，指数退避（Exponential Backoff）的核心思想是什么？","options":["A. 每次重试间隔时间翻倍","B. 每次重试使用不同的 API","C. 失败后立即重试","D. 只重试一次"],"answer":[0],"explanation":"指数退避避免雪崩效应：第一次重试等1秒，第二次2秒，第三次4秒...给服务端恢复时间，同时避免客户端过度请求。","type":"single"},{"id":"ch02_q07","question":"Function Calling 的参数组装由谁完成？","options":["A. 开发者手动组装","B. AI 根据用户意图和 Schema 自动组装","C. 工具自己解析用户输入","D. 前端 JavaScript 组装"],"answer":[1],"explanation":"这是 Agent 的核心优势：AI 读 Schema，理解参数格式，从用户自然语言中提取参数值，自动组装成符合 Schema 的 JSON。","type":"single"},{"id":"ch02_q08","question":"Agent 循环中，工具结果如何返回给 AI？","options":["A. 通过新的 user 消息","B. 通过 role='tool' 的消息，携带 tool_call_id","C. 通过修改 system prompt","D. 通过全局变量"],"answer":[1],"explanation":"工具结果必须以 role='tool' 消息返回，且必须携带对应的 tool_call_id，AI 才能将结果与之前的工具调用请求对应起来。","type":"single"},{"id":"ch02_q09","question":"为什么 tools_schema 中的 parameters.required 字段很重要？","options":["A. 它决定了工具是否被调用","B. 它告诉 AI 哪些参数必须提供，缺少则调用可能失败","C. 它控制工具的返回格式","D. 它限制工具的调用频率"],"answer":[1],"explanation":"required 字段告诉 AI 必须组装哪些参数。如果 city 是 required 而 date 不是，AI 知道必须从用户输入中提取城市名，但日期可以省略。","type":"single"},{"id":"ch03_q06","type":"single","question":"天气查询助手中，Agent 判断需要调用天气 API 的依据是？","options":["用户输入包含'天气'关键词","LLM 根据工具 Schema 的 description 理解工具用途后自主决策","代码里写死 if 判断","随机选择"],"answer":[1],"explanation":"Agent 通过工具 Schema 的 description 让 LLM 理解每个工具的用途，LLM 根据用户意图自主决定是否调用及调用哪个工具，而非关键词匹配。"},{"id":"ch03_q07","type":"single","question":"天气 Agent 的一次完整调用流程，正确顺序是？","options":["直接回答→结束","理解意图→调用工具→观察结果→组织回答","调用工具→理解意图→回答","观察→调用→理解→回答"],"answer":[1],"explanation":"标准 Agent 循环：LLM 先理解意图判断需调用天气工具，执行后观察返回数据，最后组织自然语言回答用户。"},{"id":"ch03_q08","type":"multi","question":"构建天气 Agent 时，设计工具 Schema 需要注意？（多选）","options":["description 清晰描述工具用途和参数含义","parameters 中正确定义类型和 required","函数名要有语义（如 get_weather 而非 func1）","Schema 越复杂越好"],"answer":[0,1,2],"explanation":"好的 Schema：description 高信号低噪声、参数类型和 required 明确、命名有语义。Schema 应简洁精准，不是越复杂越好。"},{"id":"ch03_q09","type":"single","question":"天气 Agent 调用 API 失败（如网络超时）时，合理的处理是？","options":["直接崩溃退出","把错误信息作为观察结果反馈给 LLM，让其决定重试或告知用户","忽略错误继续","返回固定错误文案"],"answer":[1],"explanation":"Agent 的容错机制：工具执行异常应捕获并作为观察结果返回 LLM，由 LLM 决定重试、换方案或向用户说明，而非程序崩溃。"},{"id":"ch03_q10","type":"single","question":"为什么说天气查询助手是理解 Agent 循环的最佳入门案例？","options":["它最复杂","它完整覆盖意图理解、工具调用、观察反馈的最小闭环，且无多余干扰","它不需要 LLM","它能赚钱"],"answer":[1],"explanation":"天气助手用最小复杂度完整演示了 Agent 的核心闭环（理解→调用→观察→回答），剥离了记忆、规划等复杂模块，是理解 Agent 本质的理想起点。"},{"id":"ch03_q11","type":"single","question":"天气 Agent 中，工具的 description 字段写「获取指定城市的天气信息」，这主要影响什么？","options":["API 响应速度","AI 是否判断该调用此工具","参数校验逻辑","Token 消耗量"],"answer":[1],"explanation":"description 是 AI 判断是否需要调用这个工具的主要依据。写得好，AI 就聪明；写得差，AI 就困惑——它决定的是工具被选中的概率。"},{"id":"ch03_q12","type":"single","question":"天气 Agent 采用指数退避重试时，第二次重试的等待时间通常是第一次的多少？","options":["相同","2 倍","10 倍","随机不变"],"answer":[1],"explanation":"指数退避的核心是每次重试等待时间翻倍（如 1s→2s→4s），避免在服务恢复前密集重试加重负担，同时给服务恢复留出时间。"},{"id":"ch03_q13","type":"single","question":"当天气 API 返回的数据格式异常（如缺字段）时，Agent 的合理处理是？","options":["直接崩溃","静默忽略","告知 AI 数据异常，让 AI 决定换工具或道歉","无限重试"],"answer":[2],"explanation":"所有错误都应告诉 AI，让 AI 自己决定下一步（换工具？改参数？向用户道歉？）。直接崩溃或静默忽略都不符合 Agent 的容错设计。"},{"id":"ch03_q14","type":"multi","question":"天气 Agent 的多工具协作中，AI 自行编排调用顺序的优势是？（多选）","options":["无需硬编码流程","能根据上下文灵活调整","AI 一定比硬编码更快","适合不确定性高的任务"],"answer":[0,1,3],"explanation":"AI 自行编排的优势是灵活、无需硬编码、适合不确定任务。但 AI 一定比硬编码更快是错的——确定性任务中硬编码更高效，Agent 的优势是灵活性而非速度。"},{"id":"ch03_q15","type":"multi","question":"构建一个生产级天气 Agent，以下哪些是必要的工程能力？（多选）","options":["工具 Schema 定义","异常处理（重试 + 降级）","多轮对话上下文管理","模型微调"],"answer":[0,1,2],"explanation":"Schema 定义、异常处理、上下文管理都是必要工程能力。模型微调通常不需要——天气 Agent 用通用模型的 Function Calling 能力即可，微调是更高成本的手段。"}]}];
+const DATE_TEXT = (() => {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+})();
+
+/* ===== 状态 ===== */
+let S = { idx: 0, speed: 1, session: 0, seq: 0, msgs: [], questions: [], iv: null, index: 0,
+          selected: [], multiMode: false, awaiting: false, correct: 0, results: [], startTime: 0, finished: false };
+
+const app = document.getElementById('app');
+
+function el(tag, cls, html) {
+  const d = document.createElement(tag);
+  if (cls) d.className = cls;
+  if (html != null) d.innerHTML = html;
+  return d;
+}
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+function pickRandom(a) { return a[Math.floor(Math.random() * a.length)]; }
+const D = ms => Math.round(ms / S.speed);
+
+/* ===== 骨架 ===== */
+function renderShell() {
+  app.innerHTML = '';
+  const bar = el('div', 'iv-bar');
+  bar.appendChild(el('div', 'avatar', S.iv.initial)).style.background = S.iv.gradient;
+  const info = el('div', 'iv-info');
+  info.appendChild(el('div', 'iv-name', esc(S.iv.name) + '<span class="iv-online"></span>'));
+  info.appendChild(el('div', 'iv-title', esc(S.iv.title)));
+  bar.appendChild(info);
+  bar.appendChild(el('div', 'iv-progress', '第 ' + (S.index + 1) + ' / ' + S.questions.length + ' 题'));
+  app.appendChild(bar);
+
+  const chat = el('div', 'chat'); chat.id = 'chat';
+  chat.appendChild(el('div', 'day', DATE_TEXT));
+  app.appendChild(chat);
+
+  const bottom = el('div'); bottom.id = 'bottom';
+  app.appendChild(bottom);
+  return chat;
+}
+
+function bottomSlot() { return document.getElementById('bottom'); }
+
+function renderAnswerPanel() {
+  const slot = bottomSlot();
+  if (!S.awaiting) {
+    slot.innerHTML = '<div class="answer-hint"><span class="hint-dot"></span>面试中…</div>';
+    return;
+  }
+  const panel = el('div', 'answer-panel');
+  panel.appendChild(el('div', 'ap-tip', S.multiMode ? '这道题是多选 · 选好后点发送' : '点击选项即可作答'));
+  S.questions[S.index].options.forEach((text, i) => {
+    const o = el('div', 'ap-opt' + (S.selected.indexOf(i) !== -1 ? ' picked' : ''));
+    o.appendChild(el('div', 'ap-letter', LETTERS[i]));
+    o.appendChild(el('div', 'ap-text', esc(text)));
+    o.onclick = () => pickOption(i);
+    panel.appendChild(o);
+  });
+  if (S.multiMode) {
+    const btn = el('div', 'ap-send' + (S.selected.length ? ' on' : ''), '发送回答（已选 ' + S.selected.length + ' 项）');
+    btn.onclick = sendMulti;
+    panel.appendChild(btn);
+  }
+  slot.innerHTML = '';
+  slot.appendChild(panel);
+}
+
+/* ===== 消息 ===== */
+function appendMsg(m) {
+  const chat = document.getElementById('chat');
+  const row = el('div', 'row ' + (m.role === 'me' ? 'me' : 'iv'));
+  if (m.role === 'me') {
+    const b = el('div', 'bubble me answer');
+    b.appendChild(el('div', 'ans-tag', '我的回答'));
+    b.appendChild(el('div', '', esc(m.text)));
+    row.appendChild(b);
+    row.appendChild(el('div', 'me-avatar', '我'));
+  } else {
+    const av = el('div', 'avatar sm', S.iv.initial); av.style.background = S.iv.gradient;
+    row.appendChild(av);
+    if (m.kind === 'question') {
+      const b = el('div', 'bubble iv question');
+      b.appendChild(el('div', 'q-label', esc(m.label)));
+      b.appendChild(el('div', 'q-body', esc(m.text)));
+      row.appendChild(b);
+    } else if (m.kind === 'ok' || m.kind === 'bad') {
+      const b = el('div', 'bubble iv ' + m.kind);
+      b.appendChild(el('div', 'v-tag', m.kind === 'ok' ? '面试官点评' : '面试官纠正'));
+      b.appendChild(el('div', '', esc(m.text)));
+      row.appendChild(b);
+    } else if (m.kind === 'analysis') {
+      const b = el('div', 'bubble iv analysis');
+      b.appendChild(el('div', 'an-title', esc(m.title)));
+      if (m.answerText) b.appendChild(el('div', 'an-answer', esc(m.answerText)));
+      if (m.text) b.appendChild(el('div', 'an-body', esc(m.text)));
+      row.appendChild(b);
+    } else if (m.kind === 'note') {
+      row.appendChild(el('div', 'bubble iv note', esc(m.text)));
+    } else {
+      row.appendChild(el('div', 'bubble iv', esc(m.text)));
+    }
+  }
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  S.msgs.push(m);
+}
+
+function showTyping(on) {
+  const chat = document.getElementById('chat');
+  const old = document.getElementById('typingRow');
+  if (old) old.remove();
+  if (!on) return;
+  const row = el('div', 'row iv'); row.id = 'typingRow';
+  const av = el('div', 'avatar sm', S.iv.initial); av.style.background = S.iv.gradient;
+  row.appendChild(av);
+  const b = el('div', 'bubble iv typing');
+  b.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function say(list, done) {
+  const my = S.session;
+  let i = 0;
+  const step = () => {
+    if (my !== S.session) return;
+    if (i >= list.length) { if (done) done(); return; }
+    const msg = list[i];
+    showTyping(true);
+    const wait = Math.min(420 + (msg.text || '').length * 12, 1200);
+    setTimeout(() => {
+      if (my !== S.session) return;
+      showTyping(false);
+      appendMsg(msg);
+      i++;
+      setTimeout(step, D(240));
+    }, D(wait));
+  };
+  step();
+}
+
+/* ===== 出题 / 作答 ===== */
+function ask(i) {
+  const q = S.questions[i];
+  S.index = i;
+  S.awaiting = false;
+  S.selected = [];
+  S.multiMode = q.type === 'multi' || (Array.isArray(q.answer) && q.answer.length > 1);
+  renderShellProgress();
+  renderAnswerPanel();
+  say([{ role: 'iv', kind: 'question', label: '问题 ' + (i + 1) + ' / ' + S.questions.length, text: q.question }], () => {
+    if (i !== S.index) return;
+    S.awaiting = true;
+    renderAnswerPanel();
+  });
+}
+
+function renderShellProgress() {
+  const p = document.querySelector('.iv-progress');
+  if (p) p.textContent = '第 ' + (S.index + 1) + ' / ' + S.questions.length + ' 题';
+}
+
+function pickOption(i) {
+  if (!S.awaiting) return;
+  if (S.multiMode) {
+    const pos = S.selected.indexOf(i);
+    if (pos === -1) S.selected.push(i); else S.selected.splice(pos, 1);
+    renderAnswerPanel();
+    return;
+  }
+  send([i]);
+}
+
+function sendMulti() {
+  if (!S.selected.length) return;
+  send(S.selected.slice());
+}
+
+function send(sel) {
+  const q = S.questions[S.index];
+  const right = Array.isArray(q.answer) ? q.answer : [q.answer];
+  const ok = right.length === sel.length && right.every(a => sel.indexOf(a) !== -1) && sel.every(a => right.indexOf(a) !== -1);
+  S.results[S.index] = ok;
+  if (ok) S.correct++;
+  S.awaiting = false;
+  S.selected = [];
+  renderAnswerPanel();
+
+  appendMsg({
+    role: 'me', kind: 'answer',
+    text: sel.slice().sort((a, b) => a - b).map(i => LETTERS[i] + '. ' + q.options[i]).join('；'),
+  });
+
+  const lines = [{ role: 'iv', kind: ok ? 'ok' : 'bad', text: pickRandom(ok ? S.iv.praise : S.iv.push) }];
+  if (ok) {
+    if (q.explanation) lines.push({ role: 'iv', kind: 'analysis', title: '考点延伸', text: q.explanation });
+  } else {
+    lines.push({
+      role: 'iv', kind: 'analysis', title: '面试官给你的标准答案',
+      answerText: right.map(a => LETTERS[a] + '. ' + q.options[a]).join('；'),
+      text: q.explanation || '',
+    });
+  }
+
+  say(lines, () => {
+    const i = S.index;
+    if (i >= S.questions.length - 1) return finish();
+    const done = i + 1;
+    if (done % 5 === 0 && done < S.questions.length) {
+      const r = S.correct / done;
+      const note = r >= 0.8 ? '前面这几个问题答得都不错，我们保持这个节奏。'
+        : r >= 0.5 ? '嗯，中间有几处需要留意，我们接着往下。'
+        : '前面这部分基础还不太牢，后面的题我讲细一点。';
+      say([{ role: 'iv', kind: 'note', text: note }], () => ask(i + 1));
+      return;
+    }
+    ask(i + 1);
+  });
+}
+
+/* ===== 报告 ===== */
+function finish() {
+  const total = S.questions.length;
+  const correct = S.correct;
+  const ratio = total ? correct / total : 0;
+  const stars = store.calcStars(correct, total);
+  const g = IV.gradeOf(stars);
+  const score = correct * 10 + (ratio === 1 ? 20 : 0);
+  const secs = Math.max(1, Math.round((Date.now() - S.startTime) / 1000));
+  const duration = Math.floor(secs / 60) + ' 分 ' + (secs % 60) + ' 秒';
+
+  const wrongs = S.questions.map((q, i) => {
+    if (S.results[i]) return null;
+    const right = Array.isArray(q.answer) ? q.answer : [q.answer];
+    return { n: i + 1, q: q.question, a: right.map(x => LETTERS[x] + '. ' + q.options[x]).join('；'), e: q.explanation || '' };
+  }).filter(Boolean);
+
+  say([
+    { role: 'iv', kind: 'plain', text: '好，我这边的问题问完了。' },
+    { role: 'iv', kind: 'plain', text: IV.closingByRatio(ratio) },
+  ], () => {
+    S.finished = true;
+    renderReport({ stars, g, correct, total, ratio, score, duration, wrongs,
+      sheet: S.questions.map((q, i) => ({ n: i + 1, ok: !!S.results[i] })) });
+  });
+}
+
+function renderReport(r) {
+  app.innerHTML = '';
+  const wrap = el('div', 'report');
+  const hero = el('div', 'rp-hero');
+  hero.appendChild(el('div', 'rp-deco'));
+  const av = el('div', 'rp-avatar', S.iv.initial); av.style.background = S.iv.gradient;
+  hero.appendChild(av);
+  hero.appendChild(el('div', 'rp-from', esc(S.iv.name) + ' 的面试反馈'));
+  hero.appendChild(el('div', 'rp-grade g' + r.stars, r.g.grade));
+  hero.appendChild(el('div', 'rp-grade-label', r.g.label));
+  hero.appendChild(el('div', 'rp-remark', '“' + r.g.remark + '”'));
+  wrap.appendChild(hero);
+
+  const stats = el('div', 'rp-stats');
+  stats.innerHTML =
+    '<div class="rp-stat"><div class="rp-stat-num">' + r.correct + '<small>/' + r.total + '</small></div><div class="rp-stat-label">答对题数</div></div>' +
+    '<div class="rp-divider"></div>' +
+    '<div class="rp-stat"><div class="rp-stat-num">' + Math.round(r.ratio * 100) + '%</div><div class="rp-stat-label">正确率</div></div>' +
+    '<div class="rp-divider"></div>' +
+    '<div class="rp-stat"><div class="rp-stat-num">' + r.duration + '</div><div class="rp-stat-label">面试用时</div></div>';
+  wrap.appendChild(stats);
+
+  const sheetCard = el('div', 'rp-card');
+  sheetCard.appendChild(el('div', 'rp-card-title', '逐题表现'));
+  const grid = el('div', 'rp-sheet');
+  r.sheet.forEach(c => grid.appendChild(el('div', 'rp-cell ' + (c.ok ? 'right' : 'wrong'), c.n)));
+  sheetCard.appendChild(grid);
+  wrap.appendChild(sheetCard);
+
+  if (r.wrongs.length) {
+    const c = el('div', 'rp-card');
+    c.appendChild(el('div', 'rp-card-title', '面试官建议复习的点 <small>（' + r.wrongs.length + ' 题）</small>'));
+    r.wrongs.forEach(w => {
+      const item = el('div', 'rp-item');
+      item.appendChild(el('div', 'rp-q', w.n + '. ' + esc(w.q)));
+      item.appendChild(el('div', 'rp-a', '✅ ' + esc(w.a)));
+      if (w.e) item.appendChild(el('div', 'rp-e', esc(w.e)));
+      c.appendChild(item);
+    });
+    wrap.appendChild(c);
+  } else {
+    const c = el('div', 'rp-card rp-perfect');
+    c.innerHTML = '<div>🎊</div><div>全部答对，这一章的面试考点你已经完全掌握。</div>';
+    wrap.appendChild(c);
+  }
+
+  const acts = el('div', 'rp-actions');
+  const again = el('div', 'rp-btn ghost', '再面一次');
+  again.onclick = () => start(S.idx);
+  const next = el('div', 'rp-btn primary', '换一场面试 →');
+  next.onclick = () => start((S.idx + 1) % SESSIONS.length);
+  acts.appendChild(again); acts.appendChild(next);
+  wrap.appendChild(acts);
+  wrap.appendChild(el('div', 'rp-foot', '面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60%（通过）'));
+  app.appendChild(wrap);
+}
+
+/* ===== 启动 ===== */
+function start(idx) {
+  S.session++;
+  S.idx = idx;
+  const s = SESSIONS[idx];
+  S.iv = s.iv;
+  S.questions = s.questions;
+  const speedBtn = document.querySelector('[data-speed].active');
+  S.speed = speedBtn ? Number(speedBtn.dataset.speed) : 1;
+  S.index = 0; S.seq = 0; S.msgs = []; S.selected = []; S.multiMode = false;
+  S.awaiting = false; S.correct = 0; S.results = []; S.startTime = Date.now(); S.finished = false;
+  document.querySelectorAll('#chCtrl button').forEach((b, i) => b.classList.toggle('active', i === idx));
+  renderShell();
+  renderAnswerPanel();
+  // 与小程序同一套开场白（interview.js 的 open 模板）
+  const lines = s.iv.open.map(t => t.replace('{title}', s.title).replace('{n}', s.questions.length));
+  say(lines.map(text => ({ role: 'iv', kind: 'plain', text })), () => ask(0));
+}
+
+/* 场次按钮 */
+const chCtrl = document.getElementById('chCtrl');
+SESSIONS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = '第 ' + (i + 1) + ' 场 · ' + s.title.replace(/^第\d+章\s*/, '').slice(0, 8);
+  b.onclick = () => start(i);
+  chCtrl.appendChild(b);
+});
+
+/* 语速 */
+document.querySelectorAll('[data-speed]').forEach(b => {
+  b.onclick = () => {
+    S.speed = Number(b.dataset.speed);
+    document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('active', x === b));
+  };
+});
+
+/* 一键答完看报告 */
+document.getElementById('btnFast').onclick = function () {
+  if (S.finished) return;
+  const my = S.session;
+  const step = () => {
+    if (my !== S.session) return;
+    if (S.finished || S.index >= S.questions.length) return;
+    if (!S.awaiting) { setTimeout(step, 40); return; }
+    const q = S.questions[S.index];
+    const right = Array.isArray(q.answer) ? q.answer : [q.answer];
+    const wrongs = q.options.map((_, i) => i).filter(i => right.indexOf(i) === -1);
+    // 随机对错，让报告有内容可看
+    const ok = Math.random() > 0.35;
+    const sel = ok ? right.slice() : (wrongs.length ? [wrongs[0]] : right.slice());
+    S.speed = 64;
+    send(sel);
+    setTimeout(step, 60);
+  };
+  step();
+};
+
+document.getElementById('btnRestart').onclick = () => { start(S.idx); };
+
+start(0);
+</script>
+</body>
+</html>

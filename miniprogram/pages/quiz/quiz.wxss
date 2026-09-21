@@ -36,6 +36,30 @@
   box-shadow: 0 2rpx 14rpx rgba(15, 23, 42, 0.06);
 }
 .panel-title { font-size: 24rpx; font-weight: 700; color: #64748b; letter-spacing: 1rpx; margin-bottom: 20rpx; }
+.panel-tip { font-size: 20rpx; font-weight: 400; color: #b6bfcd; margin-left: 12rpx; }
+
+/* 风格选择卡 */
+.style-grid { display: flex; gap: 14rpx; }
+.style-card {
+  flex: 1; text-align: center; padding: 20rpx 8rpx 16rpx; border-radius: 18rpx;
+  background: #f8fafc; border: 2rpx solid transparent; position: relative;
+  transition: all .18s ease;
+}
+.style-card.active { background: #eef4ff; border-color: #2563eb; box-shadow: 0 6rpx 18rpx rgba(37, 99, 235, .16); }
+.sc-emoji { font-size: 34rpx; line-height: 1.2; }
+.sc-name { font-size: 24rpx; font-weight: 700; color: #1f2937; margin-top: 8rpx; }
+.style-card.active .sc-name { color: #2563eb; }
+.sc-desc { font-size: 18rpx; color: #9aa4b2; margin-top: 6rpx; line-height: 1.4; }
+.sc-tag {
+  display: inline-block; font-size: 17rpx; font-weight: 700; color: #64748b;
+  background: #eef1f5; border-radius: 99rpx; padding: 2rpx 14rpx; margin-top: 10rpx;
+}
+.style-card.active .sc-tag { background: #2563eb; color: #ffffff; }
+.boss-badge {
+  display: inline-block; font-size: 17rpx; font-weight: 800; color: #dc2626;
+  background: #fef2f2; border: 1rpx solid #fecaca; border-radius: 8rpx;
+  padding: 0 10rpx; margin-left: 10rpx; vertical-align: 2rpx;
+}
 .panel-row { display: flex; }
 .panel-iv { flex: 1; text-align: center; padding: 0 6rpx; }
 .pi-avatar {

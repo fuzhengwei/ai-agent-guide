@@ -27,5 +27,8 @@ module.exports = {
   'ch25': require('./ch25.js'),
   'ch26': require('./ch26.js'),
   'ch27': require('./ch27.js'),
-  index: [{"ch":"ch00","count":15},{"ch":"ch01","count":27},{"ch":"ch02","count":15},{"ch":"ch03","count":15},{"ch":"ch04","count":15},{"ch":"ch05","count":15},{"ch":"ch06","count":15},{"ch":"ch07","count":18},{"ch":"ch08","count":11},{"ch":"ch09","count":15},{"ch":"ch10","count":14},{"ch":"ch11","count":15},{"ch":"ch12","count":15},{"ch":"ch13","count":15},{"ch":"ch14","count":15},{"ch":"ch15","count":15},{"ch":"ch16","count":30},{"ch":"ch17","count":15},{"ch":"ch18","count":14},{"ch":"ch19","count":15},{"ch":"ch20","count":28},{"ch":"ch21","count":18},{"ch":"ch22","count":12},{"ch":"ch23","count":12},{"ch":"ch24","count":12},{"ch":"ch25","count":27},{"ch":"ch26","count":15},{"ch":"ch27","count":15}],
+  'bytedance': require('./bytedance.js'),
+  'meituan': require('./meituan.js'),
+  'jd': require('./jd.js'),
+  index: [{"ch":"ch00","count":15},{"ch":"ch01","count":27},{"ch":"ch02","count":15},{"ch":"ch03","count":15},{"ch":"ch04","count":15},{"ch":"ch05","count":15},{"ch":"ch06","count":15},{"ch":"ch07","count":18},{"ch":"ch08","count":11},{"ch":"ch09","count":15},{"ch":"ch10","count":14},{"ch":"ch11","count":15},{"ch":"ch12","count":15},{"ch":"ch13","count":15},{"ch":"ch14","count":15},{"ch":"ch15","count":15},{"ch":"ch16","count":30},{"ch":"ch17","count":15},{"ch":"ch18","count":14},{"ch":"ch19","count":15},{"ch":"ch20","count":28},{"ch":"ch21","count":18},{"ch":"ch22","count":12},{"ch":"ch23","count":12},{"ch":"ch24","count":12},{"ch":"ch25","count":27},{"ch":"ch26","count":15},{"ch":"ch27","count":15},{"ch":"bytedance","count":10},{"ch":"meituan","count":10},{"ch":"jd","count":10}],
 };

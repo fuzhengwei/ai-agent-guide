@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent 通识教程 · 小程序预览</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#e8ebf0; font-family:-apple-system,"PingFang SC",sans-serif; display:flex; flex-direction:column; align-items:center; padding:32px 16px; gap:16px; }
+.phone { width:390px; height:780px; background:#f6f7f9; border-radius:44px; border:10px solid #111827; overflow:hidden; display:flex; flex-direction:column; position:relative; box-shadow:0 24px 60px rgba(0,0,0,.25); }
+.statusbar { height:44px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#111; flex-shrink:0; }
+.navbar { height:44px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:#111; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
+.screen { flex:1; overflow-y:auto; padding:12px; }
+.screen::-webkit-scrollbar{display:none}
+.tabbar { height:56px; background:#fff; border-top:1px solid #eee; display:flex; flex-shrink:0; padding-bottom:10px; }
+.tab { flex:1; display:flex; align-items:center; justify-content:center; font-size:12px; color:#8a94a6; }
+.tab.active { color:#2563eb; font-weight:600; }
+.page { display:none; } .page.active { display:block; }
+.hero { background:linear-gradient(135deg,#1e3a8a,#2563eb); border-radius:10px; padding:20px 16px; color:#fff; margin-bottom:14px; }
+.hero h2 { font-size:20px; } .hero p { font-size:13px; opacity:.85; margin-top:5px; }
+.progress-bar { height:3px; background:#dbeafe; border-radius:2px; margin-top:14px; }
+.progress-fill { height:100%; width:18%; background:#fff; border-radius:2px; }
+.progress-text { font-size:12px; margin-top:6px; opacity:.9; }
+.chapter-item { display:flex; align-items:center; background:#fff; border-radius:8px; padding:12px; margin-bottom:8px; cursor:pointer; }
+.chapter-item:hover { background:#f0f6ff; }
+.chapter-badge { width:30px; height:30px; border-radius:7px; background:#eff6ff; color:#2563eb; font-size:13px; text-align:center; line-height:30px; margin-right:10px; font-weight:600; flex-shrink:0; }
+.chapter-info { flex:1; overflow:hidden; }
+.chapter-title { font-size:14px; font-weight:600; color:#111827; }
+.chapter-sub { font-size:12px; color:#9ca3af; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chapter-arrow { color:#d1d5db; font-size:20px; margin-left:8px; }
+.quiz-item { display:flex; align-items:center; background:#fff; border-radius:8px; padding:12px; margin-bottom:8px; }
+.quiz-btn { background:#2563eb; color:#fff; font-size:12px; padding:5px 14px; border-radius:99px; }
+.stats { display:flex; gap:8px; margin-bottom:14px; }
+.stat-card { flex:1; background:#fff; border-radius:8px; padding:14px 0; text-align:center; }
+.stat-num { font-size:18px; font-weight:700; color:#2563eb; }
+.stat-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+.menu { background:#fff; border-radius:8px; }
+.menu-item { display:flex; justify-content:space-between; padding:14px; border-bottom:1px solid #f3f4f6; font-size:14px; }
+.menu-item:last-child { border-bottom:none; }
+.footer { text-align:center; color:#9ca3af; font-size:12px; margin-top:24px; }
+/* 阅读页 */
+.reader-head { margin-bottom:12px; }
+.reader-title { font-size:22px; font-weight:700; color:#111827; line-height:1.35; }
+.reader-sub { font-size:13px; color:#6b7280; margin-top:5px; }
+.rich { font-size:15px; color:#374151; line-height:1.7; }
+.rich p { margin:10px 0; }
+.rich .ct { font-size:22px; font-weight:700; color:#111827; margin:4px 0 6px; }
+.rich .cs { font-size:14px; color:#6b7280; margin:0 0 12px; }
+.rich .sh { font-size:18px; font-weight:600; color:#1e3a8a; margin:20px 0 8px; padding-left:9px; border-left:4px solid #3b82f6; }
+.rich .mp-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; margin:12px 0; }
+.rich .mp-card-title { font-weight:700; font-size:15px; color:#1d4ed8; margin-bottom:6px; }
+.rich .mp-quote { background:#eff6ff; border-left:4px solid #60a5fa; color:#1e40af; border-radius:0 6px 6px 0; padding:10px 12px; margin:12px 0; font-weight:500; }
+.rich pre.code { background:#0f172a; color:#e2e8f0; border-radius:6px; padding:12px; margin:12px 0; font-family:Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; }
+.rich .mp-compare { display:flex; gap:8px; margin:12px 0; }
+.rich .mp-compare-side { flex:1; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:10px; }
+.rich .mp-compare-label { font-weight:700; text-align:center; color:#1d4ed8; margin-bottom:6px; font-size:14px; }
+.rich .mp-compare-line { font-size:12px; color:#475569; padding:4px 0; border-bottom:1px dashed #f1f5f9; }
+.rich .mp-flow { background:#fff; border:1px dashed #c7d2fe; border-radius:8px; padding:14px; margin:12px 0; display:flex; flex-direction:column; align-items:center; }
+.rich .mp-flow-node { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:6px; padding:6px 16px; font-size:13px; width:70%; text-align:center; }
+.rich .mp-flow-start { background:#dcfce7; border-color:#86efac; color:#166534; }
+.rich .mp-flow-end { background:#fef9c3; border-color:#fde047; color:#854d0e; }
+.rich .mp-flow-tool { background:#ffe4e6; border-color:#fda4af; color:#9f1239; }
+.rich .mp-flow-arrow { color:#94a3b8; font-size:12px; margin:4px 0; }
+.rich .mp-note { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:6px; padding:8px 10px; font-size:12px; margin:10px 0; }
+.reader-end { text-align:center; color:#c0c7d1; font-size:12px; margin:30px 0 15px; }
+.reader-nav { display:flex; align-items:center; gap:10px; }
+.nav-btn { flex:1; text-align:center; padding:11px 0; border-radius:99px; font-size:14px; font-weight:600; cursor:pointer; }
+.nav-btn.prev { background:#fff; color:#475569; border:1px solid #e2e8f0; }
+.nav-btn.next { background:#2563eb; color:#fff; }
+.nav-progress { font-size:12px; color:#9ca3af; flex-shrink:0; }
+/* 刷题页 */
+.quiz-header { display:flex; justify-content:space-between; font-size:13px; color:#6b7280; margin-bottom:10px; }
+.green { color:#16a34a; }
+.question-card { background:#fff; border-radius:10px; padding:16px 14px; }
+.q-type { display:inline-block; font-size:11px; color:#2563eb; background:#eff6ff; border-radius:4px; padding:2px 7px; margin-bottom:8px; }
+.q-text { font-size:15px; font-weight:600; color:#111827; line-height:1.6; margin-bottom:14px; }
+.option { display:flex; align-items:flex-start; padding:11px; border:1px solid #e5e7eb; border-radius:7px; margin-bottom:8px; }
+.option.right { border-color:#16a34a; background:#f0fdf4; }
+.option-mark { width:22px; height:22px; border-radius:50%; background:#f1f5f9; color:#475569; text-align:center; line-height:22px; font-size:12px; margin-right:9px; flex-shrink:0; }
+.option.right .option-mark { background:#16a34a; color:#fff; }
+.option-text { flex:1; font-size:14px; color:#374151; }
+.explanation { background:#fff; border-radius:10px; padding:14px; margin-top:10px; }
+.exp-title { font-size:13px; font-weight:700; color:#1d4ed8; margin-bottom:5px; }
+.exp-body { font-size:13px; color:#4b5563; line-height:1.7; }
+.action-btn { margin-top:18px; text-align:center; padding:12px 0; border-radius:99px; font-size:15px; font-weight:600; background:#2563eb; color:#fff; cursor:pointer; }
+.hint { max-width:430px; background:#fff; border-radius:12px; padding:16px 20px; font-size:13px; color:#475569; line-height:1.8; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+.hint b { color:#111827; }
+</style>
+</head>
+<body>
+<div class="hint"><b>小程序 UI 预览</b> — 左侧手机画面为 miniprogram/ 工程的实际效果（内嵌真实转换数据）。底部 Tab 可切换：课程 / 题库 / 我的；课程页点击章节可进入阅读页。上架需完成本页下方清单中的账号配置步骤。</div>
+<div class="phone">
+  <div class="statusbar">9:41</div>
+  <div class="navbar" id="navTitle">AI Agent 通识教程</div>
+  <div class="screen">
+    <!-- 课程 -->
+    <div class="page active" id="page-home">
+      <div class="hero">
+        <h2>AI Agent 通识教程</h2>
+        <p>从基础认知到面试通关 · 28 章渐进式教程</p>
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        <div class="progress-text">已读 5 / 28 章</div>
+      </div>
+      
+  <div class="chapter-item" data-ch="ch00-fundamentals">
+    <div class="chapter-badge">0</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第0章 Agent 能力全景展示</div>
+      <div class="chapter-sub">🎬 序章</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch01-llm-basics">
+    <div class="chapter-badge">1</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第1章 大模型与 Agent 基础概念</div>
+      <div class="chapter-sub">理解 LLM 的核心概念，把握从 ChatBot 到 Agent 的跃迁路径</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch02-what-is-agent">
+    <div class="chapter-badge">2</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第2章 什么是 AI Agent？</div>
+      <div class="chapter-sub">从 ChatBot 到 Agent，AI 应用的范式跃迁</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch03-weather-agent">
+    <div class="chapter-badge">3</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第3章 你的第一个 Agent：天气查询助手</div>
+      <div class="chapter-sub">第一篇：Agent 基础</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch04-prompt-engineering">
+    <div class="chapter-badge">4</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第4章 提示词工程：与 LLM 沟通的语言</div>
+      <div class="chapter-sub">从"会写 Prompt"到"工程化提示"——Agent 大脑的输入端</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch04b-context-engineering">
+    <div class="chapter-badge">5</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第5章 上下文工程：给 LLM 发送的内容</div>
+      <div class="chapter-sub">从"塞进去就行"到"精准投放"——Agent 大脑的输入管理</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch04-react-pattern">
+    <div class="chapter-badge">6</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第6章 ReAct：让 Agent 学会思考</div>
+      <div class="chapter-sub">让 Agent 学会"边想边做"的经典范式</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch05-memory">
+    <div class="chapter-badge">7</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第7章 Agent 的记忆系统</div>
+      <div class="chapter-sub">让 Agent 拥有短期的专注和长期的经验</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch06-brain-intent-router">
+    <div class="chapter-badge">8</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第8章 意图识别与决策中枢</div>
+      <div class="chapter-sub"></div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch21-loop-runtime-sandbox">
+    <div class="chapter-badge">9</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第9章 Agent 运行时：Loop 引擎与沙箱</div>
+      <div class="chapter-sub">从执行循环到安全沙箱——大脑的工程化基础设施</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch22-harness">
+    <div class="chapter-badge">10</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第10章 Harness 工程：大脑的工程化外壳</div>
+      <div class="chapter-sub">模型不动，只优化 Harness 就提升 10 倍——大脑的工程化体系</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch16-rag">
+    <div class="chapter-badge">11</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第11章 RAG：检索增强生成</div>
+      <div class="chapter-sub">第三篇：Agent 的知识 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch26-llm-wiki">
+    <div class="chapter-badge">12</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第12章 LLM-Wiki：知识编译与持久化</div>
+      <div class="chapter-sub">第三篇：Agent 的知识 — 从 Karpathy 方法论到工业级实现：让知识被编译一次、持续维护，而非每次从头检索</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch06-tools">
+    <div class="chapter-badge">13</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第13章 Function Calling 与工具设计</div>
+      <div class="chapter-sub">从单次调用到智能路由——工具系统的工程实践</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch07-mcp">
+    <div class="chapter-badge">14</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第14章 MCP：工具的标准化接口</div>
+      <div class="chapter-sub">Model Context Protocol — Agent 的 USB-C 接口</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch08-skills">
+    <div class="chapter-badge">15</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第15章 Skills：工具的组合与复用</div>
+      <div class="chapter-sub">第四篇：Agent 的手脚</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch09-cli-capability">
+    <div class="chapter-badge">16</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第16章 CLI 能力：Agent 操作本地工具</div>
+      <div class="chapter-sub">让 Agent 操控 Git、Docker、Maven……一切 CLI 工具皆为 Agent 的手脚</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch10-multi-agent">
+    <div class="chapter-badge">17</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第17章 多 Agent 系统架构</div>
+      <div class="chapter-sub">从一个 Agent 到一个 Agent 团队</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch11-langgraph">
+    <div class="chapter-badge">18</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第18章 LangGraph 与状态机</div>
+      <div class="chapter-sub">用图结构构建可控的 Agent 工作流</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch12-framework-comparison">
+    <div class="chapter-badge">19</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第19章 主流 Agent 框架对比</div>
+      <div class="chapter-sub">第六篇：框架与平台</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch13-dify-coze">
+    <div class="chapter-badge">20</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第20章 Dify、Coze 与可视化编排</div>
+      <div class="chapter-sub">低代码 Agent 构建平台的两种路线</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch14-cli-agent">
+    <div class="chapter-badge">21</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第21章 CLI Agent：命令行智能助手</div>
+      <div class="chapter-sub">第七篇：综合实战 — 终端里的智能助手：用自然语言驱动命令行</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch15-gui-agent">
+    <div class="chapter-badge">22</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第22章 GUI Agent：浏览器自动化</div>
+      <div class="chapter-sub">第七篇：综合实战 — 能操作图形界面的 AI Agent</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch17-evaluation">
+    <div class="chapter-badge">23</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第23章 Agent 评估与可观测性</div>
+      <div class="chapter-sub">第八篇：工程化 — 怎么知道你的 Agent 好不好？</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch18-security">
+    <div class="chapter-badge">24</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第24章 Agent 安全与防护</div>
+      <div class="chapter-sub">当 Agent 拥有了工具调用能力，安全就不再是可选项</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch19-deployment">
+    <div class="chapter-badge">25</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第25章 Agent 部署与运维</div>
+      <div class="chapter-sub">从 Demo 到生产——部署、监控、灰度、CI/CD 全流程</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch20-inference-framework">
+    <div class="chapter-badge">26</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第26章 推理框架与模型服务化</div>
+      <div class="chapter-sub">从开源模型到可用服务，Ollama/vLLM/SGLang 实战</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+  <div class="chapter-item" data-ch="ch23-future-summary">
+    <div class="chapter-badge">27</div>
+    <div class="chapter-info">
+      <div class="chapter-title">第27章 2026 Agent 技术展望</div>
+      <div class="chapter-sub">终章 — AI Agent 的未来与全课回顾</div>
+    </div>
+    <div class="chapter-arrow">›</div>
+  </div>
+      <div class="footer">配套 433 道面试题 · 切换「题库」开始刷题</div>
+    </div>
+    <!-- 题库 -->
+    <div class="page" id="page-quiz">
+      <div class="hero" style="background:linear-gradient(135deg,#312e81,#6d28d9)">
+        <h2>面试题库</h2>
+        <p>共 433 道题 · 覆盖 26 章</p>
+      </div>
+      
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第0章 Agent 能力全景展示</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第1章 大模型与 Agent 基础概念</div>
+      <div class="quiz-meta">27 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第2章 什么是 AI Agent？</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第3章 你的第一个 Agent：天气查询助手</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第4章 提示词工程：与 LLM 沟通的语言</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第5章 上下文工程：给 LLM 发送的内容</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第6章 ReAct：让 Agent 学会思考</div>
+      <div class="quiz-meta">15 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+  <div class="quiz-item">
+    <div class="quiz-info">
+      <div class="quiz-title">第7章 Agent 的记忆系统</div>
+      <div class="quiz-meta">18 题</div>
+    </div>
+    <div class="quiz-btn">开始</div>
+  </div>
+    </div>
+    <!-- 我的 -->
+    <div class="page" id="page-mine">
+      <div class="stats">
+        <div class="stat-card"><div class="stat-num">5/28</div><div class="stat-label">已读章节</div></div>
+        <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">刷题章节</div></div>
+        <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">练习次数</div></div>
+      </div>
+      <div class="menu">
+        <div class="menu-item"><span>关于本教程</span><span style="color:#d1d5db">›</span></div>
+        <div class="menu-item" style="color:#dc2626"><span>清除学习记录</span><span style="color:#d1d5db">›</span></div>
+      </div>
+      <div class="footer">AI Agent 通识教程 v1.0</div>
+    </div>
+    <!-- 阅读页 -->
+    <div class="page" id="page-reader">
+      <div class="reader-head">
+        <div class="reader-title">第2章 什么是 AI Agent？</div>
+        <div class="reader-sub">从 ChatBot 到 Agent，AI 应用的范式跃迁</div>
+      </div>
+      <div class="rich"><h1 class="ct">第2章 什么是 AI Agent？</h1>
+<p class="cs">从 ChatBot 到 Agent，AI 应用的范式跃迁</p>
+<h2 class="sh">2.1 一个问题引入</h2>
+<p>如果我问你：ChatGPT 是 AI Agent 吗？</p>
+<p>答案是：不是。ChatGPT 是一个出色的 ChatBot（聊天机器人），它能理解你的问题并生成回答。但它不会主动帮你查航班、订外卖、写代码到文件里。</p>
+<p>而 AI Agent 可以。</p>
+<p>这个区别看似微小，实则是 AI 应用的一次范式跃迁。ChatBot 时代的 AI 是一个"顾问"——你问它答，答案再好也需要你自己去执行。Agent 时代的 AI 是一个"员工"——你交代目标，它自己规划步骤、调用工具、交付结果。从"给你建议"到"替你完成"，中间隔着的是与真实世界交互的能力。理解这条分界线，是理解整本书的钥匙。</p>
+<div class="mp-quote">"ChatBot 回答问题，Agent 解决问题。"</div>
+<h2 class="sh">2.2 ChatBot vs Agent：核心区别</h2>
+<p>我们先通过一个动画来看两者的区别。同样的任务："帮我查一下明天北京的天气"</p>
+<p>注意两者的本质差异不在"回答得好不好"，而在闭环是否完整。ChatBot 的闭环止步于"生成文本"——它能告诉你该去查天气，但查的动作要你来做。Agent 的闭环延伸到了"改变外部状态"——它真的调用了天气 API、拿到了数据、甚至可以进一步帮你设提醒。这个"感知→决策→行动→观察"的循环，就是 Agent 区别于一切对话式 AI 的根本特征。</p>
+<div class="mp-compare"><div class="mp-compare-side"><div class="mp-compare-label">ChatBot</div><div class="mp-compare-line">用户：明天北京天气怎么样？</div><div class="mp-compare-line">ChatBot：我无法实时查询天气，但你可以...</div><div class="mp-compare-line">用户：那帮我订个提醒？</div><div class="mp-compare-line">ChatBot：抱歉，我没有这个能力。</div><div class="mp-compare-line">→ 只能对话，不能行动</div></div><div class="mp-compare-side"><div class="mp-compare-label">Agent</div><div class="mp-compare-line">用户：明天北京天气怎么样？</div><div class="mp-compare-line">Agent：[思考] 需要调用天气API</div><div class="mp-compare-line">Agent：[工具调用] weather_api("北京", "2026-07-02")</div><div class="mp-compare-line">Agent：[观察] 明天北京晴，28°C</div><div class="mp-compare-line">→ 明天北京晴，最高28°C。需要我设个提醒吗？</div></div></div>
+<p>看到了吗？ChatBot 只能"说"，Agent 能"做"。这个"做"的能力，来自于 Agent 独有的四个核心模块。</p>
+<h2 class="sh">2.3 AI Agent 的四大核心模块</h2>
+<p>一个完整的 AI Agent 由四个核心模块组成，缺一不可：</p>
+<div class="mp-card"><div class="mp-card-title">🧠 Agent 四模块</div><div>
+    <div>
+      <strong>1. LLM（大脑）</strong>
+      <p>负责理解、推理、决策。是 Agent 的"智力引擎"。</p>
+    </div>
+    <div>
+      <strong>2. 记忆（Memory）</strong>
+      <p>短期记忆（对话上下文）+ 长期记忆（向量数据库）。</p>
+    </div>
+    <div>
+      <strong>3. 规划（Planning）</strong>
+      <p>将复杂任务拆解为子任务，制定执行计划。</p>
+    </div>
+    <div>
+      <strong>4. 工具（Tools）</strong>
+      <p>调用外部 API、数据库、代码执行器等，实现"行动"。</p>
+    </div>
+  </div></div>
+<div class="mp-flow"><div class="mp-note">📌 此处原文为可交互动画流程图，小程序端暂以示意形式省略，完整动画请访问网页版。</div></div>
+<h2 class="sh">2.4 Agent 是怎么工作的？</h2>
+<p>我们来看 Agent 完成一个任务的完整流程。点击"下一步"逐步查看：</p>
+<div class="mp-steps"><div class="mp-step"><div class="mp-step-num">1</div><div class="mp-step-body"><div class="mp-step-title">感知（Perceive）</div><div class="mp-step-desc">用户输入"帮我分析一下最近的房价趋势"，Agent 通过 LLM 理解用户意图。</div></div></div></div>
+<h2 class="sh">2.5 Agent 的核心闭环</h2>
+<p>上面的五个步骤可以抽象为一个经典闭环：感知 → 决策 → 行动 → 反馈。这个闭环是所有 Agent 的基础运行模式。</p>
+<p>这个闭环并非凭空而来，它源自控制论中的 OODA 循环（Observe-Orient-Decide-Act）。关键在于"反馈回到感知"这条虚线——它让 Agent 从"一次性执行"变成"持续修正"。没有这条回边，Agent 就是一个单向流水线，遇到意外就会卡死；有了它，Agent 能在每次行动后观察结果、调整下一步，从而具备容错和自适应能力。这正是 Agent 能处理开放性任务的原因。</p>
+<div class="mp-flow"><div class="mp-note">📌 此处原文为可交互动画流程图，小程序端暂以示意形式省略，完整动画请访问网页版。</div></div>
+<p>这个闭环不断循环，让 Agent 能够处理多步骤、多轮交互的复杂任务。后续章节讲的 ReAct 模式、反思机制，都是在这个闭环基础上的演进。</p>
+<h2 class="sh">2.5b 操作可逆性与授权范围</h2>
+<p>Agent 闭环中“行动”这一步，在教学中往往被简化为“调用工具”。但工业级 Agent 必须回答一个问题：哪些操作可以自由执行，哪些需要用户确认？</p>
+<div class="mp-card"><div class="info-card-title">🔌 真实案例：Claude Code 的操作分级</div>
+<p>Claude Code（Anthropic 的 CLI Agent）将所有操作按<strong>可逆性</strong>分为三级，决定了是否需要用户确认。</p></div>
+<table class="mp-table">
+<thead>
+<tr><th>级别</th><th>定义</th><th>执行策略</th><th>示例</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>可逆操作</strong></td><td>可以通过撤销、回滚或自动修复恢复的操作</td><td>✅ 自由执行，不需确认</td><td>读文件、搜索代码、运行测试、创建临时文件</td></tr>
+<tr><td><strong>不可逆操作</strong></td><td>无法撤销或恢复代价极高的操作</td><td>⚠️ 需用户确认后执行</td><td>删除文件、Git push、发送邮件、修改配置文件</td></tr>
+<tr><td><strong>危险操作</strong></td><td>影响系统安全或造成不可控后果的操作</td><td>🚫 始终需要确认，且不能跳过</td><td><code>rm -rf /</code>、<code>git push --force</code>、修改 <code>settings.json</code></td></tr>
+</tbody>
+</table>
+<h3 class="sh">授权范围原则</h3>
+<p>比可逆性分级更重要的是授权范围原则。Claude Code 有一条核心规则：</p>
+<div class="mp-card"><div class="info-card-title">📜 单次授权 ≠ 全局授权</div>
+<p>用户批准“删除 <code>dist/</code> 目录”不意味着批准“删除任意目录”。每次不可逆操作都需要独立确认。授权的范围仅限于用户明确指定的操作对象和操作类型。</p>
+<p>这条原则防止了<strong>授权蔓延</strong>：用户一旦批准了一次操作，Agent 不能以此为依据自动执行同类操作。</p></div>
+<h3 class="sh">为什么可逆性比安全性更重要？</h3>
+<p>传统的安全模型按“危险等级”分级（低危/中危/高危）。但 Agent 场景下，可逆性是更实用的判断标准：</p>
+<ul class="mp-list"><li>运行测试是“安全的”但也“可逆”（失败了重跑即可），所以自由执行</li><li>修改文件是“中危的”但如果有 Git 可以回滚，仍可归为“可逆”</li><li>发送邮件是“安全的”（不损坏系统）但<strong>不可逆</strong>（发出去收不回来），所以需要确认</li></ul>
+<div class="mp-card"><div class="info-card-title">💡 面试加分点</div>
+<p>当被问“Agent 如何安全地执行操作”时，能说出<strong>可逆性分级</strong>而非简单的“危险等级分类”，并解释“单次授权 ≠ 全局授权”原则，能展现出对工业级 Agent 设计的深入理解。</p></div>
+<h2 class="sh">2.6 Agent vs ChatBot vs Copilot</h2>
+<p>面试中经常被问到这三者的区别，我们用一张表总结：</p>
+<p>三者代表了 AI 应用自主性的三个层级。ChatBot 是被动应答，Copilot 是人机协作（AI 给建议、人来执行），Agent 是自主执行（AI 定计划、AI 去落地）。越往后，AI 的自主性越强、人的参与度越低，但对系统的可靠性和安全性要求也越高。理解这个光谱，能帮你在面试中精准定位产品形态。</p>
+<div class="mp-card"><table>
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>ChatBot</th>
+        <th>Copilot</th>
+        <th>Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>核心能力</td>
+        <td>对话回答</td>
+        <td>辅助完成</td>
+        <td>自主完成</td>
+      </tr>
+      <tr>
+        <td>自主性</td>
+        <td>无</td>
+        <td>低（需人引导）</td>
+        <td>高（自主规划）</td>
+      </tr>
+      <tr>
+        <td>工具使用</td>
+        <td>✗</td>
+        <td>有限</td>
+        <td>✓ 完整</td>
+      </tr>
+      <tr>
+        <td>记忆能力</td>
+        <td>短期</td>
+        <td>短期</td>
+        <td>短期+长期</td>
+      </tr>
+      <tr>
+        <td>典型产品</td>
+        <td>ChatGPT</td>
+        <td>GitHub Copilot</td>
+        <td>Devin, AutoGPT</td>
+      </tr>
+    </tbody>
+  </table></div>
+<h2 class="sh">2.7 从用户输入到输出的完整链路</h2>
+<p>面试最高频的问题之一：整个 Agent 从用户发出消息到完成任务，中间经历了哪些步骤？ 很多面试官会要求你从接收消息开始，一步一步讲清楚每一步做了什么、为什么需要、哪些模块负责。本节把这条链路彻底拆透。</p>
+<div class="mp-quote">"能画出完整链路图，面试基本稳了。"</div>
+<h3 class="sh">🔗 完整 8 步链路</h3>
+<p>一条完整的 Agent 执行链路，从用户输入到最终输出，包含 8 个核心步骤：</p>
+<div class="mp-flow"><div class="mp-note">📌 此处原文为可交互动画流程图，小程序端暂以示意形式省略，完整动画请访问网页版。</div></div>
+<p>注意：Step 5 → Step 2 的回边表示 Agent 在执行调度后，可能发现需要重新理解意图（比如工具返回了新信息），进入迭代循环。这正是 Agent 与 ChatBot 的核心差异——Agent 不是一条直线，而是可以循环迭代的。</p>
+<div class="mp-card"><div class="mp-card-title">📌 每一步详细说明</div><div>
+    <div>
+      <strong>Step 1: 用户输入接收</strong>
+      <p>做什么：接收用户的原始消息（文本、图片、语音等），进行预处理（格式化、清洗噪声）。为什么需要：这是 Agent 与外部世界的接口，所有后续步骤都基于此输入。负责模块：输入处理模块 + 消息队列。</p>
+    </div>
+    <div>
+      <strong>Step 2: 意图识别</strong>
+      <p>做什么：理解用户想做什么——是简单问答？是代码修改？还是复杂的多步任务？为什么需要：不同的意图决定不同的执行路径。负责模块：LLM（语义理解）+ 规则引擎（关键词匹配）。</p>
+    </div>
+    <div>
+      <strong>Step 3: 任务分类</strong>
+      <p>做什么：判断任务类型和复杂度等级（简单问答 / 代码解释 / 代码修改 / 复杂开发）。为什么需要：复杂度决定是否需要拆解，类型决定调用哪些工具。负责模块：分类器（LLM 推理或规则引擎）。</p>
+    </div>
+    <div>
+      <strong>Step 4: 任务拆解</strong>
+      <p>做什么：将复杂任务分解为有序的子任务序列，并确定依赖关系和执行顺序。为什么需要：LLM 单次调用无法完成复杂目标，必须拆成可执行的小步骤。负责模块：规划模块（Planning）——详见 2.3 节。</p>
+    </div>
+    <div>
+      <strong>Step 5: 执行调度</strong>
+      <p>做什么：决定先做什么后做什么，何时调用模型推理、何时调用外部工具。为什么需要：资源有限，执行顺序影响效率和结果质量。负责模块：调度器（Scheduler）——详见 2.9 节。</p>
+    </div>
+    <div>
+      <strong>Step 6: 工具调用</strong>
+      <p>做什么：通过 Function Calling / MCP 协议调用外部工具（搜索引擎、数据库、代码执行器、API 等）。为什么需要：LLM 本身无法查天气、执行代码、读写文件，必须借助工具。负责模块：工具模块（Tools）+ Function Calling 接口。</p>
+    </div>
+    <div>
+      <strong>Step 7: 结果整合</strong>
+      <p>做什么：收集各子步骤的输出（模型推理结果 + 工具返回数据），整合为逻辑连贯的完整答案。为什么需要：多步执行的结果是碎片化的，必须缝合才能形成有意义的回复。负责模块：LLM（结果合成）+ 记忆模块（中间结果缓存）。</p>
+    </div>
+    <div>
+      <strong>Step 8: 输出返回</strong>
+      <p>做什么：格式化最终结果（文本、表格、代码块、图表等），返回给用户。同时将本次交互存入记忆。为什么需要：用户体验取决于输出质量；记忆存入为下次交互提供上下文。负责模块：格式化引擎 + 记忆写入模块。</p>
+    </div>
+  </div></div>
+<p>来看一段模拟完整链路执行的代码：</p>
+<p># 模拟 Agent 完整执行链路 class AgentChain: def __init__(self): self.llm = LLMEngine() # Step 2/5/7 的核心引擎 self.memory = MemoryStore() # 记忆模块 self.tools = ToolRegistry() # Step 6 的工具集 self.classifier = TaskClassifier() # Step 3 分类器 self.planner = TaskPlanner() # Step 4 规划器 def run(self, user_input): # Step 1: 用户输入接收 raw_msg = InputHandler.receive(user_input) print(f"[Step1] 收到原始消息: {raw_msg}") # Step 2: 意图识别 intent = self.llm.identify_intent(raw_msg) print(f"[Step2] 意图识别结果: {intent}") # e.g. "数据分析" # Step 3: 任务分类 task_type, complexity = self.classifier.classify(intent) print(f"[Step3] 任务类型={task_type}, 复杂度={complexity}") # Step 4: 任务拆解（仅复杂任务） if complexity == "complex": sub_tasks = self.planner.decompose(raw_msg, intent) print(f"[Step4] 拆解为 {len(sub_tasks)} 个子任务") else: sub_tasks = [raw_msg] # 简单任务无需拆解 print(f"[Step4] 简单任务，无需拆解") # Step 5: 执行调度 schedule = self.llm.schedule(sub_tasks, self.tools.available_tools()) print(f"[Step5] 调度计划: {schedule}") results = [] for task in schedule: # Step 6: 工具调用（需要时） if task.need_tool: tool_result = self.tools.call(task.tool_name, task.tool_args) print(f"[Step6] 工具 {task.tool_name} 返回: {tool_result}") results.append(tool_result) else: # 纯模型推理 model_result = self.llm.reason(task.prompt) print(f"[Step5→推理] 模型推理结果: {model_result}") results.append(model_result) # Step 7: 结果整合 final_answer = self.llm.synthesize(results, original_intent=intent) print(f"[Step7] 整合完成: {final_answer}") # Step 8: 输出返回 formatted = OutputFormatter.format(final_answer) self.memory.save_interaction(raw_msg, intent, formatted) print(f"[Step8] 输出返回给用户") return formatted # 执行示例 agent = AgentChain() result = agent.run("帮我分析最近北京房价趋势") # [Step1] 收到原始消息: 帮我分析最近北京房价趋势 # [Step2] 意图识别结果: 数据分析 # [Step3] 任务类型=complex, 复杂度=complex # [Step4] 拆解为 3 个子任务 # [Step5] 调度计划: [search_housing_data → analyze_trend → generate_report] # [Step6] 工具 search_api 返回: {...房价数据...} # [Step5→推理] 模型推理结果: 一线城市环比下降2% # [Step7] 整合完成: 北京房价分析报告 # [Step8] 输出返回给用户 // 模拟 Agent 完整执行链路 class AgentChain { private llm = new LLMEngine(); // Step 2/5/7 的核心引擎 private memory = new MemoryStore(); // 记忆模块 private tools = new ToolRegistry(); // Step 6 的工具集 private classifier = new TaskClassifier(); // Step 3 分类器 private planner = new TaskPlanner(); // Step 4 规划器 run(userInput: string): string { // Step 1: 用户输入接收 const rawMsg = InputHandler.receive(userInput); console.log(`[Step1] 收到原始消息: ${rawMsg}`); // Step 2: 意图识别 const intent = this.llm.identifyIntent(rawMsg); console.log(`[Step2] 意图识别结果: ${intent}`); // Step 3: 任务分类 const { taskType, complexity } = this.classifier.classify(intent); console.log(`[Step3] 任务类型=${taskType}, 复杂度=${complexity}`); // Step 4: 任务拆解（仅复杂任务） let subTasks: string[]; if (complexity === 'complex') { subTasks = this.planner.decompose(rawMsg, intent); console.log(`[Step4] 拆解为 ${subTasks.length} 个子任务`); } else { subTasks = [rawMsg]; console.log('[Step4] 简单任务，无需拆解'); } // Step 5: 执行调度 const schedule = this.llm.schedule(subTasks, this.tools.availableTools()); console.log(`[Step5] 调度计划: ${schedule}`); const results: any[] = []; for (const task of schedule) { // Step 6: 工具调用（需要时） if (task.needTool) { const toolResult = this.tools.call(task.toolName, task.toolArgs); console.log(`[Step6] 工具 ${task.toolName} 返回: ${toolResult}`); results.push(toolResult); } else { // 纯模型推理 const modelResult = this.llm.reason(task.prompt); console.log(`[Step5→推理] 模型推理结果: ${modelResult}`); results.push(modelResult); } } // Step 7: 结果整合 const finalAnswer = this.llm.synthesize(results, intent); console.log(`[Step7] 整合完成: ${finalAnswer}`); // Step 8: 输出返回 const formatted = OutputFormatter.format(finalAnswer); this.memory.saveInteraction(rawMsg, intent, formatted); console.log('[Step8] 输出返回给用户'); return formatted; } } // 执行示例 const agent = new AgentChain(); const result = agent.run('帮我分析最近北京房价趋势'); // 模拟 Agent 完整执行链路 package main import "fmt" // AgentChain Agent 执行链路 type AgentChain struct { llm *LLMEngine memory *MemoryStore tools *ToolRegistry classifier *TaskClassifier planner *TaskPlanner } func NewAgentChain() *AgentChain { return &amp;AgentChain{ llm: NewLLMEngine(), memory: NewMemoryStore(), tools: NewToolRegistry(), classifier: NewTaskClassifier(), planner: NewTaskPlanner(), } } func (a *AgentChain) Run(userInput string) string { // Step 1: 用户输入接收 rawMsg := InputHandlerReceive(userInput) fmt.Printf("[Step1] 收到原始消息: %s\n", rawMsg) // Step 2: 意图识别 intent := a.llm.IdentifyIntent(rawMsg) fmt.Printf("[Step2] 意图识别结果: %v\n", intent) // Step 3: 任务分类 taskType, complexity := a.classifier.Classify(intent) fmt.Printf("[Step3] 任务类型=%s, 复杂度=%s\n", taskType, complexity) // Step 4: 任务拆解 var subTasks []string if complexity == "complex" { subTasks = a.planner.Decompose(rawMsg, intent) fmt.Printf("[Step4] 拆解为 %d 个子任务\n", len(subTasks)) } else { subTasks = []string{rawMsg} fmt.Println("[Step4] 简单任务，无需拆解") } // Step 5: 执行调度 schedule := a.llm.Schedule(subTasks, a.tools.AvailableTools()) fmt.Printf("[Step5] 调度计划: %v\n", schedule) var results []interface{} for _, task := range schedule { // Step 6: 工具调用 if task.NeedTool { toolResult := a.tools.Call(task.ToolName, task.ToolArgs) fmt.Printf("[Step6] 工具 %s 返回: %v\n", task.ToolName, toolResult) results = append(results, toolResult) } else { modelResult := a.llm.Reason(task.Prompt) fmt.Printf("[Step5→推理] 模型推理结果: %v\n", modelResult) results = append(results, modelResult) } } // Step 7: 结果整合 finalAnswer := a.llm.Synthesize(results, intent) fmt.Printf("[Step7] 整合完成: %s\n", finalAnswer) // Step 8: 输出返回 formatted := OutputFormatterFormat(finalAnswer) a.memory.SaveInteraction(rawMsg, intent, formatted) fmt.Println("[Step8] 输出返回给用户") return formatted } func main() { agent := NewAgentChain() result := agent.Run("帮我分析最近北京房价趋势") fmt.Println(result) } // 模拟 Agent 完整执行链路 public class AgentChain { private LLMEngine llm = new LLMEngine(); // Step 2/5/7 的核心引擎 private MemoryStore memory = new MemoryStore(); // 记忆模块 private ToolRegistry tools = new ToolRegistry(); // Step 6 的工具集 private TaskClassifier classifier = new TaskClassifier(); // Step 3 分类器 private TaskPlanner planner = new TaskPlanner(); // Step 4 规划器 public String run(String userInput) { // Step 1: 用户输入接收 String rawMsg = InputHandler.receive(userInput); System.out.println("[Step1] 收到原始消息: " + rawMsg); // Step 2: 意图识别 Intent intent = llm.identifyIntent(rawMsg); System.out.println("[Step2] 意图识别结果: " + intent); // Step 3: 任务分类 ClassifyResult result = classifier.classify(intent); System.out.printf("[Step3] 任务类型=%s, 复杂度=%s%n", result.taskType, result.complexity); // Step 4: 任务拆解 List&lt;String&gt; subTasks; if ("complex".equals(result.complexity)) { subTasks = planner.decompose(rawMsg, intent); System.out.printf("[Step4] 拆解为 %d 个子任务%n", subTasks.size()); } else { subTasks = List.of(rawMsg); System.out.println("[Step4] 简单任务，无需拆解"); } // Step 5: 执行调度 List&lt;Task&gt; schedule = llm.schedule(subTasks, tools.availableTools()); System.out.println("[Step5] 调度计划: " + schedule); List&lt;Object&gt; results = new ArrayList&lt;&gt;(); for (Task task : schedule) { // Step 6: 工具调用 if (task.needTool) { Object toolResult = tools.call(task.toolName, task.toolArgs); System.out.printf("[Step6] 工具 %s 返回: %s%n", task.toolName, toolResult); results.add(toolResult); } else { // 纯模型推理 Object modelResult = llm.reason(task.prompt); System.out.printf("[Step5→推理] 模型推理结果: %s%n", modelResult); results.add(modelResult); } } // Step 7: 结果整合 String finalAnswer = llm.synthesize(results, intent); System.out.println("[Step7] 整合完成: " + finalAnswer); // Step 8: 输出返回 String formatted = OutputFormatter.format(finalAnswer); memory.saveInteraction(rawMsg, intent, formatted); System.out.println("[Step8] 输出返回给用户"); return formatted; } public static void main(String[] args) { AgentChain agent = new AgentChain(); String result = agent.run("帮我分析最近北京房价趋势"); } }</p>
+<p>代码中每一步都打印了日志，你可以清楚地看到一条消息从进入 Agent 到变成最终输出，走过了哪些节点。面试时，能讲出这 8 步并解释每步的作用，就是满分回答。</p>
+<h2 class="sh">2.8 意图识别与任务分类</h2>
+<p>Step 2（意图识别）和 Step 3（任务分类）是整条链路的分叉点——Agent 能否走上正确的执行路径，取决于这两步做得好不好。面试中经常追问：Agent 怎么理解用户意图？怎么判断任务复杂度？</p>
+<h3 class="sh">🎯 三种意图识别方法</h3>
+<div class="mp-card"><div class="mp-card-title">意图识别的三种方法对比</div><table>
+    <thead>
+      <tr>
+        <th>方法</th>
+        <th>原理</th>
+        <th>优点</th>
+        <th>缺点</th>
+        <th>适用场景</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>关键词匹配</td>
+        <td>匹配预设关键词，如"天气"→查询意图</td>
+        <td>速度快，成本低</td>
+        <td>粗粒度，误判率高</td>
+        <td>简单指令型交互</td>
+      </tr>
+      <tr>
+        <td>语义理解</td>
+        <td>通过 LLM 深层理解用户表达的真实意图</td>
+        <td>精准，能理解隐含意图</td>
+        <td>成本高，延迟大</td>
+        <td>复杂多意图场景</td>
+      </tr>
+      <tr>
+        <td>模式识别</td>
+        <td>基于历史对话模式匹配相似意图</td>
+        <td>利用经验，越用越准</td>
+        <td>依赖数据量，新意图难识别</td>
+        <td>高频重复场景</td>
+      </tr>
+    </tbody>
+  </table></div>
+<p>实际工程中，三者通常组合使用：先用关键词匹配快速筛选常见意图，命中后直接走快速路径；没命中则交给 LLM 做语义理解；长期积累的模式数据用于优化匹配规则。这就是分层意图识别策略。</p>
+<p># 分层意图识别：关键词 → 语义 → 模式 def identify_intent(user_input, context): # 第一层：关键词匹配（快路径） keyword_intent = match_keywords(user_input) if keyword_intent and keyword_intent.confidence &gt; 0.9: return keyword_intent # 高置信度，直接返回 # 第二层：语义理解（慢路径） semantic_intent = llm_understand_intent(user_input, context) if semantic_intent.confidence &gt; 0.7: # 记录新模式，丰富规则库 pattern_db.record(user_input, semantic_intent) return semantic_intent # 第三层：模式识别（兜底） pattern_intent = match_patterns(user_input, pattern_db) return pattern_intent or semantic_intent # 示例 print(identify_intent("明天天气咋样", [])) # → Intent(type="查询", sub_type="天气", confidence=0.95) # 关键词命中 print(identify_intent("我项目里这段代码跑不通，帮我看看", [])) # → Intent(type="代码修改", confidence=0.85) # 语义理解命中 // 分层意图识别：关键词 → 语义 → 模式 function identifyIntent(userInput: string, context: Context[]): Intent { // 第一层：关键词匹配（快路径） const keywordIntent = matchKeywords(userInput); if (keywordIntent &amp;&amp; keywordIntent.confidence &gt; 0.9) { return keywordIntent; // 高置信度，直接返回 } // 第二层：语义理解（慢路径） const semanticIntent = llmUnderstandIntent(userInput, context); if (semanticIntent.confidence &gt; 0.7) { // 记录新模式，丰富规则库 patternDB.record(userInput, semanticIntent); return semanticIntent; } // 第三层：模式识别（兜底） const patternIntent = matchPatterns(userInput, patternDB); return patternIntent || semanticIntent; } // 示例 console.log(identifyIntent('明天天气咋样', [])); // → Intent(type="查询", subType="天气", confidence=0.95) // 关键词命中 console.log(identifyIntent('我项目里这段代码跑不通，帮我看看', [])); // → Intent(type="代码修改", confidence=0.85) // 语义理解命中 // 分层意图识别：关键词 → 语义 → 模式 package main // Intent 意图 type Intent struct { Type string SubType string Confidence float64 } func identifyIntent(userInput string, context []Context) Intent { // 第一层：关键词匹配（快路径） keywordIntent := matchKeywords(userInput) if keywordIntent.Confidence &gt; 0.9 { return keywordIntent // 高置信度，直接返回 } // 第二层：语义理解（慢路径） semanticIntent := llmUnderstandIntent(userInput, context) if semanticIntent.Confidence &gt; 0.7 { // 记录新模式，丰富规则库 patternDB.Record(userInput, semanticIntent) return semanticIntent } // 第三层：模式识别（兜底） patternIntent := matchPatterns(userInput, patternDB) if patternIntent.Confidence &gt; 0 { return patternIntent } return semanticIntent } // 分层意图识别：关键词 → 语义 → 模式 public class IntentIdentifier { public Intent identifyIntent(String userInput, List&lt;Context&gt; context) { // 第一层：关键词匹配（快路径） Intent keywordIntent = matchKeywords(userInput); if (keywordIntent != null &amp;&amp; keywordIntent.getConfidence() &gt; 0.9) { return keywordIntent; // 高置信度，直接返回 } // 第二层：语义理解（慢路径） Intent semanticIntent = llmUnderstandIntent(userInput, context); if (semanticIntent.getConfidence() &gt; 0.7) { // 记录新模式，丰富规则库 patternDB.record(userInput, semanticIntent); return semanticIntent; } // 第三层：模式识别（兜底） Intent patternIntent = matchPatterns(userInput, patternDB); return patternIntent != null ? patternIntent : semanticIntent; } }</p>
+<h3 class="sh">📊 任务分类矩阵</h3>
+<p>意图识别之后，Agent 需要对任务进行分类，决定执行策略。不同的任务类型对应不同的处理路径：</p>
+<div class="mp-card"><div class="mp-card-title">任务分类矩阵：类型 → 策略 → 路径</div><table>
+    <thead>
+      <tr>
+        <th>任务类型</th>
+        <th>典型输入</th>
+        <th>执行策略</th>
+        <th>链路路径</th>
+        <th>复杂度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>简单问答</td>
+        <td>"Python 的 list 怎么排序？"</td>
+        <td>直接回答</td>
+        <td>Step 1→2→3→5→7→8</td>
+        <td>低</td>
+      </tr>
+      <tr>
+        <td>代码解释</td>
+        <td>"这段代码在做什么？"</td>
+        <td>分析 + 输出说明</td>
+        <td>Step 1→2→3→5→7→8</td>
+        <td>中</td>
+      </tr>
+      <tr>
+        <td>代码修改</td>
+        <td>"把这段代码改成异步版本"</td>
+        <td>理解+定位+修改</td>
+        <td>Step 1→2→3→4→5→6→7→8</td>
+        <td>中高</td>
+      </tr>
+      <tr>
+        <td>复杂开发</td>
+        <td>"帮我搭建一个 REST API 项目"</td>
+        <td>Step 1→2→3→4→5→6→7→8（多轮循环）</td>
+        <td>高</td>
+      </tr>
+    </tbody>
+  </table></div>
+<p>关键观察：简单问答可以跳过 Step 4（任务拆解）和 Step 6（工具调用），直接走快速路径。而复杂开发任务必须走完全部 8 步，且 Step 5→2 的迭代循环可能执行多轮。</p>
+<h3 class="sh">🔀 分类决策流程图</h3>
+<div class="mp-flow"><div class="mp-note">📌 此处原文为可交互动画流程图，小程序端暂以示意形式省略，完整动画请访问网页版。</div></div>
+<p># 任务分类器：判断复杂度并选择执行路径 class TaskClassifier: # 关键词 → 复杂度的映射规则 COMPLEXITY_RULES = { "简单问答": { "keywords": ["是什么", "怎么用", "区别", "概念"], "path": "direct_answer", "complexity": "low" }, "代码解释": { "keywords": ["这段代码", "什么意思", "解释一下"], "path": "analyze_explain", "complexity": "medium" }, "代码修改": { "keywords": ["修改", "改成", "优化", "修复", "重构"], "path": "locate_modify", "complexity": "medium_high" }, "复杂开发": { "keywords": ["搭建", "实现", "开发", "创建项目", "从零开始"], "path": "decompose_execute", "complexity": "high" } } def classify(self, intent): # 规则匹配 + LLM 兜底 for task_type, rule in self.COMPLEXITY_RULES.items(): if any(kw in intent.raw_input for kw in rule["keywords"]): return task_type, rule["complexity"], rule["path"] # 规则未命中，交给 LLM 判断 llm_result = self.llm_classify(intent) return llm_result.type, llm_result.complexity, llm_result.path # 示例 classifier = TaskClassifier() print(classifier.classify(Intent(raw_input="Python list 怎么排序？"))) # → ("简单问答", "low", "direct_answer") print(classifier.classify(Intent(raw_input="帮我搭建一个 REST API"))) # → ("复杂开发", "high", "decompose_execute") // 任务分类器：判断复杂度并选择执行路径 const COMPLEXITY_RULES: Record&lt;string, { keywords: string[]; path: string; complexity: string; }&gt; = { '简单问答': { keywords: ['是什么', '怎么用', '区别', '概念'], path: 'direct_answer', complexity: 'low' }, '代码解释': { keywords: ['这段代码', '什么意思', '解释一下'], path: 'analyze_explain', complexity: 'medium' }, '代码修改': { keywords: ['修改', '改成', '优化', '修复', '重构'], path: 'locate_modify', complexity: 'medium_high' }, '复杂开发': { keywords: ['搭建', '实现', '开发', '创建项目', '从零开始'], path: 'decompose_execute', complexity: 'high' } }; function classify(intent: Intent): ClassifyResult { // 规则匹配 for (const [taskType, rule] of Object.entries(COMPLEXITY_RULES)) { if (rule.keywords.some(kw =&gt; intent.rawInput.includes(kw))) { return { taskType, complexity: rule.complexity, path: rule.path }; } } // 规则未命中，交给 LLM 判断 return llmClassify(intent); } // 示例 console.log(classify({ rawInput: 'Python list 怎么排序？' })); // → { taskType: '简单问答', complexity: 'low', path: 'direct_answer' } console.log(classify({ rawInput: '帮我搭建一个 REST API' })); // → { taskType: '复杂开发', complexity: 'high', path: 'decompose_execute' } // 任务分类器：判断复杂度并选择执行路径 package main // ComplexityRule 复杂度规则 type ComplexityRule struct { Keywords []string Path string Complexity string } // TaskClassifier 任务分类器 type TaskClassifier struct { rules map[string]ComplexityRule } func NewTaskClassifier() *TaskClassifier { return &amp;TaskClassifier{ rules: map[string]ComplexityRule{ "简单问答": {Keywords: []string{"是什么", "怎么用", "区别", "概念"}, Path: "direct_answer", Complexity: "low"}, "代码解释": {Keywords: []string{"这段代码", "什么意思", "解释一下"}, Path: "analyze_explain", Complexity: "medium"}, "代码修改": {Keywords: []string{"修改", "改成", "优化", "修复", "重构"}, Path: "locate_modify", Complexity: "medium_high"}, "复杂开发": {Keywords: []string{"搭建", "实现", "开发", "创建项目", "从零开始"}, Path: "decompose_execute", Complexity: "high"}, }, } } func (c *TaskClassifier) Classify(intent Intent) (taskType, complexity, path string) { // 规则匹配 for name, rule := range c.rules { for _, kw := range rule.Keywords { if strings.Contains(intent.RawInput, kw) { return name, rule.Complexity, rule.Path } } } // 规则未命中，交给 LLM 判断 return llmClassify(intent) } // 任务分类器：判断复杂度并选择执行路径 import java.util.*; public class TaskClassifier { private static final Map&lt;String, ComplexityRule&gt; COMPLEXITY_RULES = new HashMap&lt;&gt;(); static { COMPLEXITY_RULES.put("简单问答", new ComplexityRule( Arrays.asList("是什么", "怎么用", "区别", "概念"), "direct_answer", "low")); COMPLEXITY_RULES.put("代码解释", new ComplexityRule( Arrays.asList("这段代码", "什么意思", "解释一下"), "analyze_explain", "medium")); COMPLEXITY_RULES.put("代码修改", new ComplexityRule( Arrays.asList("修改", "改成", "优化", "修复", "重构"), "locate_modify", "medium_high")); COMPLEXITY_RULES.put("复杂开发", new ComplexityRule( Arrays.asList("搭建", "实现", "开发", "创建项目", "从零开始"), "decompose_execute", "high")); } public ClassifyResult classify(Intent intent) { // 规则匹配 for (Map.Entry&lt;String, ComplexityRule&gt; entry : COMPLEXITY_RULES.entrySet()) { String taskType = entry.getKey(); ComplexityRule rule = entry.getValue(); for (String kw : rule.keywords) { if (intent.getRawInput().contains(kw)) { return new ClassifyResult(taskType, rule.complexity, rule.path); } } } // 规则未命中，交给 LLM 判断 return llmClassify(intent); } static class ComplexityRule { List&lt;String&gt; keywords; String path; String complexity; ComplexityRule(List&lt;String&gt; keywords, String path, String complexity) { this.keywords = keywords; this.path = path; this.complexity = complexity; } } }</p>
+<h2 class="sh">2.9 执行调度决策</h2>
+<p>Agent 拿到子任务列表后，下一步是执行调度——决定先做什么后做什么，什么时候该调用模型（推理/理解/生成文本），什么时候该调用工具（搜索/计算/文件操作）。这是 2.7 链路中 Step 5 的核心逻辑。</p>
+<div class="mp-quote">"调度器的质量，决定了 Agent 是'聪明地做事'还是'笨拙地乱撞'。"</div>
+<h3 class="sh">🌳 调度决策树</h3>
+<p>调度决策的核心逻辑可以用一棵决策树描述：</p>
+<div class="mp-flow"><div class="mp-note">📌 此处原文为可交互动画流程图，小程序端暂以示意形式省略，完整动画请访问网页版。</div></div>
+<div class="mp-card"><div class="mp-card-title">⚡ 模型 vs 工具：何时调用谁？</div><div>
+    <div>
+      <div>
+        <strong>调用模型（LLM）</strong>
+        <ul>
+          <li>理解用户意图和上下文</li>
+          <li>逻辑推理和因果分析</li>
+          <li>生成文本、代码、创意内容</li>
+          <li>结果整合与格式化</li>
+          <li>判断下一步做什么</li>
+        </ul>
+      </div>
+      <div>
+        <strong>调用工具（Tools）</strong>
+        <ul>
+          <li>搜索实时信息（天气、新闻）</li>
+          <li>执行代码（运行、测试）</li>
+          <li>读写文件（磁盘操作）</li>
+          <li>调用外部 API（支付、数据库）</li>
+          <li>数学计算（高精度运算）</li>
+        </ul>
+      </div>
+    </div>
+  </div></div>
+<p>一个关键原则：模型擅长"思考"，工具擅长"行动"。调度器的核心职责就是判断当前子任务属于哪一类，把任务分给最合适的执行者。</p>
+<p># 调度器实现：根据任务特征分配执行路径 class Scheduler: def __init__(self, llm, tools): self.llm = llm self.tools = tools def dispatch(self, sub_task): """根据子任务特征，决定调用模型还是工具""" # 判断1：是否需要外部数据？ if sub_task.requires_external_data: # 搜索、数据库查询、API调用 → 工具 tool_name = self._select_tool(sub_task) result = self.tools.call(tool_name, sub_task.params) print(f"[调度] 工具执行: {tool_name} → {result}") return result # 判断2：是否需要逻辑推理？ if sub_task.requires_reasoning: # 分析、推理、决策 → 模型 result = self.llm.reason(sub_task.prompt) print(f"[调度] 模型推理: {sub_task.prompt} → {result}") return result # 判断3：是否需要格式化输出？ if sub_task.requires_formatting: result = self.llm.format(sub_task.raw_output) print(f"[调度] 模型格式化 → {result}") return result # 判断4：是否需要验证结果？ if sub_task.requires_verification: # 交叉验证：先工具获取事实，再模型判断一致性 tool_result = self.tools.call("verify", sub_task.params) model_result = self.llm.reason( f"验证以下结果是否合理: {tool_result}" ) print(f"[调度] 交叉验证 → 工具:{tool_result}, 模型:{model_result}") return model_result # 默认：模型处理 return self.llm.reason(sub_task.prompt) def _select_tool(self, sub_task): """根据任务类型选择最合适的工具""" tool_map = { "search": "search_api", "database": "db_query", "code_execution": "code_runner", "file_operation": "file_handler", "calculation": "calculator" } return tool_map.get(sub_task.tool_type, "general_tool") # 执行示例 scheduler = Scheduler(LLMEngine(), ToolRegistry()) # 搜索类任务 → 调用工具 scheduler.dispatch(SubTask(type="search", requires_external_data=True)) # [调度] 工具执行: search_api → {"北京房价": ...} # 推理类任务 → 调用模型 scheduler.dispatch(SubTask(type="analyze", requires_reasoning=True)) # [调度] 模型推理: 分析房价趋势 → 一线城市环比下降2% # 验证类任务 → 工具+模型 scheduler.dispatch(SubTask(type="verify", requires_verification=True)) # [调度] 交叉验证 → 工具:数据查询结果, 模型:验证通过 // 调度器实现：根据任务特征分配执行路径 class Scheduler { constructor(private llm: LLMEngine, private tools: ToolRegistry) {} dispatch(subTask: SubTask): any { // 判断1：是否需要外部数据？ if (subTask.requiresExternalData) { const toolName = this.selectTool(subTask); const result = this.tools.call(toolName, subTask.params); console.log(`[调度] 工具执行: ${toolName} → ${result}`); return result; } // 判断2：是否需要逻辑推理？ if (subTask.requiresReasoning) { const result = this.llm.reason(subTask.prompt); console.log(`[调度] 模型推理: ${subTask.prompt} → ${result}`); return result; } // 判断3：是否需要格式化输出？ if (subTask.requiresFormatting) { const result = this.llm.format(subTask.rawOutput); console.log(`[调度] 模型格式化 → ${result}`); return result; } // 判断4：是否需要验证结果？ if (subTask.requiresVerification) { const toolResult = this.tools.call('verify', subTask.params); const modelResult = this.llm.reason(`验证以下结果是否合理: ${toolResult}`); console.log(`[调度] 交叉验证 → 工具:${toolResult}, 模型:${modelResult}`); return modelResult; } // 默认：模型处理 return this.llm.reason(subTask.prompt); } private selectTool(subTask: SubTask): string { const toolMap: Record&lt;string, string&gt; = { search: 'search_api', database: 'db_query', code_execution: 'code_runner', file_operation: 'file_handler', calculation: 'calculator' }; return toolMap[subTask.toolType] || 'general_tool'; } } // 调度器实现：根据任务特征分配执行路径 package main // Scheduler 调度器 type Scheduler struct { llm *LLMEngine tools *ToolRegistry } func (s *Scheduler) Dispatch(subTask *SubTask) interface{} { // 判断1：是否需要外部数据？ if subTask.RequiresExternalData { toolName := s.selectTool(subTask) result := s.tools.Call(toolName, subTask.Params) fmt.Printf("[调度] 工具执行: %s → %v\n", toolName, result) return result } // 判断2：是否需要逻辑推理？ if subTask.RequiresReasoning { result := s.llm.Reason(subTask.Prompt) fmt.Printf("[调度] 模型推理: %s → %v\n", subTask.Prompt, result) return result } // 判断3：是否需要格式化输出？ if subTask.RequiresFormatting { result := s.llm.Format(subTask.RawOutput) fmt.Printf("[调度] 模型格式化 → %v\n", result) return result } // 判断4：是否需要验证结果？ if subTask.RequiresVerification { toolResult := s.tools.Call("verify", subTask.Params) modelResult := s.llm.Reason(fmt.Sprintf("验证以下结果是否合理: %v", toolResult)) fmt.Printf("[调度] 交叉验证 → 工具:%v, 模型:%v\n", toolResult, modelResult) return modelResult } // 默认：模型处理 return s.llm.Reason(subTask.Prompt) } func (s *Scheduler) selectTool(subTask *SubTask) string { toolMap := map[string]string{ "search": "search_api", "database": "db_query", "code_execution": "code_runner", "file_operation": "file_handler", "calculation": "calculator", } if name, ok := toolMap[subTask.ToolType]; ok { return name } return "general_tool" } // 调度器实现：根据任务特征分配执行路径 public class Scheduler { private final LLMEngine llm; private final ToolRegistry tools; public Scheduler(LLMEngine llm, ToolRegistry tools) { this.llm = llm; this.tools = tools; } public Object dispatch(SubTask subTask) { // 判断1：是否需要外部数据？ if (subTask.requiresExternalData) { String toolName = selectTool(subTask); Object result = tools.call(toolName, subTask.params); System.out.printf("[调度] 工具执行: %s → %s%n", toolName, result); return result; } // 判断2：是否需要逻辑推理？ if (subTask.requiresReasoning) { Object result = llm.reason(subTask.prompt); System.out.printf("[调度] 模型推理: %s → %s%n", subTask.prompt, result); return result; } // 判断3：是否需要格式化输出？ if (subTask.requiresFormatting) { Object result = llm.format(subTask.rawOutput); System.out.printf("[调度] 模型格式化 → %s%n", result); return result; } // 判断4：是否需要验证结果？ if (subTask.requiresVerification) { Object toolResult = tools.call("verify", subTask.params); Object modelResult = llm.reason("验证以下结果是否合理: " + toolResult); System.out.printf("[调度] 交叉验证 → 工具:%s, 模型:%s%n", toolResult, modelResult); return modelResult; } // 默认：模型处理 return llm.reason(subTask.prompt); } private String selectTool(SubTask subTask) { return switch (subTask.toolType) { case "search" -&gt; "search_api"; case "database" -&gt; "db_query"; case "code_execution" -&gt; "code_runner"; case "file_operation" -&gt; "file_handler"; case "calculation" -&gt; "calculator"; default -&gt; "general_tool"; }; } }</p>
+<p>调度器的核心价值在于避免无谓的调用：如果用户只是问"Python 怎么排序"，不需要调用搜索工具，模型直接回答即可；如果用户问"北京明天天气"，模型无法知道实时数据，必须调用工具。调度器就是在做这个判断。</p>
+<p>📋 八股总结 — 面试高频考点 Q1: 什么是 AI Agent？它和 ChatBot 的本质区别是什么？ AI Agent 是一种能够感知环境、自主规划、使用工具、采取行动来完成目标的 AI 系统。 本质区别在于：自主性。ChatBot 只能被动回答问题（输入→输出），Agent 能主动拆解任务、调用工具、多步执行（感知→规划→行动→反馈）。ChatBot 是"嘴"，Agent 是"手+脑"。 Q2: AI Agent 的四大核心模块是什么？分别有什么作用？ ① LLM（大脑）：理解意图、推理决策、生成回答 ② 记忆（Memory）：短期记忆保存对话上下文，长期记忆通过向量库存储经验 ③ 规划（Planning）：将复杂目标拆解为可执行的子任务序列 ④ 工具（Tools）：调用外部 API、代码执行器、数据库等，实现"行动"能力 四者协同构成 Agent 的完整能力闭环。缺了 LLM 没有智力，缺了记忆没有连贯性，缺了规划只能做简单任务，缺了工具无法与外部世界交互。 Q3: Agent 的"感知-决策-行动-反馈"闭环是什么意思？ 这是 Agent 运行的基本范式： 感知：接收用户输入或环境变化 决策：LLM 推理分析，决定下一步做什么 行动：调用工具执行具体操作 反馈：观察行动结果，更新状态，决定是否继续循环 这个闭环可以多轮循环，使 Agent 能处理需要多个步骤才能完成的复杂任务。ReAct 模式（第6章）就是这个闭环的经典实现。 Q4: Agent、ChatBot、Copilot 三者的区别？面试怎么答？ ChatBot：被动对话，只能回答，不能行动。如 ChatGPT。 Copilot：辅助人类完成工作，人在主导，AI 是工具。如 GitHub Copilot。 Agent：自主完成目标，AI 主导，人可监督。能独立规划、决策、执行。 关键区别在于自主性程度：ChatBot 无自主性，Copilot 低自主性（人主导），Agent 高自主性（AI 主导）。 Q5: 为什么说 2025-2026 年是 Agent 元年？技术条件发生了什么变化？ 几个关键条件同时成熟： ① LLM 能力跃升：GPT-4o、Claude 3.5、Gemini 2.0 推理能力大幅提升，足以支撑复杂规划 ② Function Calling 标准化：OpenAI 等原生支持工具调用，不再需要 hack ③ MCP 协议：工具调用标准化，跨框架复用成为可能 ④ 框架成熟：LangGraph、CrewAI、Google ADK、Spring AI 等生产级框架涌现 ⑤ 成本下降：模型调用成本大幅降低，多轮 Agent 调用经济可行 Q6: 从用户输入到 Agent 输出，完整链路包含哪些步骤？每步的作用是什么？ 完整 8 步链路： ① 用户输入接收：接收原始消息，预处理清洗 ② 意图识别：理解用户想做什么（问答/修改/开发），决定执行路径 ③ 任务分类：判断任务类型和复杂度，决定是否需要拆解 ④ 任务拆解：将复杂任务分解为子任务序列（仅复杂任务需要） ⑤ 执行调度：决定何时调用模型、何时调用工具，安排执行顺序 ⑥ 工具调用：通过 Function Calling/MCP 调用外部工具获取数据或执行操作 ⑦ 结果整合：收集各步骤输出，缝合为完整答案 ⑧ 输出返回：格式化结果返回用户，同时存入记忆 关键：Step 5→2 的回边表示迭代循环，Agent 不是单程直线，而是可以循环调整的。 Q7: Agent 如何判断一个任务是简单问答还是需要多步执行？判断依据是什么？ 通过意图识别 + 任务分类两步判断： 意图识别有三种方法：关键词匹配（快但粗糙）、语义理解（精准但成本高）、模式识别（利用历史经验）。实际工程中三者组合使用，形成分层识别策略。 任务分类依据四个维度： ① 是否需要外部数据？（需要 → 至少涉及工具调用） ② 是否需要多步操作？（需要 → 必须任务拆解） ③ 输入的复杂度？（单句问答 → 简单，长文+多要求 → 复杂） ④ 是否有依赖关系？（步骤间有先后依赖 → 复杂调度） 简单问答：跳过拆解和工具调用，直接回答。复杂任务：走完 8 步链路，可能多轮迭代。 Q8: Agent 的调度器如何决定"调用模型"还是"调用工具"？ 调度决策的核心原则：模型擅长思考，工具擅长行动。 决策树的四个判断节点： ① 需要外部数据？→ 调用工具（搜索/数据库/API） ② 需要逻辑推理？→ 调用模型（理解/分析/生成） ③ 需要格式化输出？→ 调用模型（润色/排版） ④ 需要验证结果？→ 工具+模型交叉验证（工具获取事实，模型判断一致性） 实际工程中，调度器还考虑成本和延迟：简单意图先用关键词快速路由（低成本），复杂意图才走完整 LLM 推理链路（高成本但精准）。 Q9: Agent 的操作可逆性分级是什么？为什么可逆性比安全性更实用？ 三级分类：可逆操作（读文件、运行测试）自由执行；不可逆操作（删除文件、Git push、发邮件）需用户确认；危险操作（rm -rf /、git push --force）始终需确认且不可跳过。 可逆性优于安全性的原因：运行测试“安全”但可逆，自由执行；修改文件“中危”但有 Git 可回滚，仍可归为可逆；发邮件“安全”但不可逆，需要确认。关键标准是“能否撤销”而非“是否危险”。 授权范围原则：单次授权 ≠ 全局授权。用户批准“删除 dist/”不意味着批准“删除任意目录”。每次不可逆操作需独立确认，防止授权蔓延。 Q10: 什么是“单次授权 ≠ 全局授权”原则？它解决了什么问题？ 原则：用户对某一操作的授权仅限于该次执行、该操作对象和该操作类型。不能以此为依据自动执行同类操作。 解决的问题：授权蔓延——Agent 获得一次“删除文件”许可后，开始自动删除其他文件，超出用户预期。 实现要点：①每次不可逆操作前重新请求确认；②确认信息包含具体操作对象（如“删除 dist/build.js”而非“删除文件”）；③危险操作的确认不可“不再提示”。</p></div>
+      <div class="reader-end">— 本章完 · 已自动记录阅读进度 —</div>
+      <div class="reader-nav">
+        <div class="nav-btn prev" onclick="showPage('home')">返回目录</div>
+        <div class="nav-progress">3 / 28</div>
+        <div class="nav-btn next" onclick="alert('进入下一章（跨分包跳转）')">下一章</div>
+      </div>
+    </div>
+    <!-- 刷题运行页 -->
+    <div class="page" id="page-runner">
+      
+  <div class="quiz-header"><span>1 / 3</span><span class="green">已对 0</span></div>
+  <div class="question-card">
+    <div class="q-type">单选题</div>
+    <div class="q-text">Agent 循环（感知→决策→行动→观察）什么时候停止？</div>
+    
+      <div class="option ">
+        <div class="option-mark">A</div>
+        <div class="option-text">A. AI 调用工具后立即停止</div>
+      </div>
+      <div class="option right">
+        <div class="option-mark">B</div>
+        <div class="option-text">B. 当 AI 不再请求调用工具时（finish_reason 为 stop）</div>
+      </div>
+      <div class="option ">
+        <div class="option-mark">C</div>
+        <div class="option-text">C. 当用户说 'quit' 时</div>
+      </div>
+      <div class="option ">
+        <div class="option-mark">D</div>
+        <div class="option-text">D. 当达到最大循环次数时</div>
+      </div>
+  </div>
+  <div class="explanation"><div class="exp-title">解析</div><div class="exp-body">Agent 循环的核心是 AI 自主决定是否继续调工具。当 AI 不再请求 tool_calls 时，说明它已经有足够信息回答用户，循环自然结束。</div></div>
+      <div class="action-btn" onclick="alert('记录成绩并返回题库')">下一题</div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <div class="tab active" data-page="home" onclick="showPage('home', this, 'AI Agent 通识教程')">📚<br>课程</div>
+    <div class="tab" data-page="quiz" onclick="showPage('quiz', this, '面试题库')">📝<br>题库</div>
+    <div class="tab" data-page="mine" onclick="showPage('mine', this, '我的')">👤<br>我的</div>
+  </div>
+</div>
+<script>
+function showPage(id, tab, title) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (tab) tab.classList.add('active');
+  document.getElementById('navTitle').textContent = title || 'AI Agent 通识教程';
+  document.querySelector('.screen').scrollTop = 0;
+}
+document.querySelectorAll('.chapter-item').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-reader').classList.add('active');
+    document.getElementById('navTitle').textContent = '章节阅读';
+    document.querySelector('.screen').scrollTop = 0;
+  });
+});
+</script>
+</body>
+</html>

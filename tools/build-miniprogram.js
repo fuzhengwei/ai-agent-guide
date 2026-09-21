@@ -181,11 +181,14 @@ function escapeHtml(s) {
 // 关键字集合（按语言家族粗分：通用 / Python / JS/TS / Shell / JSON）
 const KW_COMMON = new Set(['if', 'else', 'elif', 'for', 'while', 'return', 'break', 'continue', 'def', 'class', 'import', 'from', 'as', 'with', 'try', 'except', 'finally', 'raise', 'yield', 'lambda', 'pass', 'in', 'is', 'not', 'and', 'or', 'None', 'True', 'False', 'await', 'async', 'global', 'nonlocal', 'assert', 'del']);
 const KW_JS = new Set(['const', 'let', 'var', 'function', 'new', 'this', 'typeof', 'instanceof', 'extends', 'super', 'export', 'default', 'null', 'undefined', 'true', 'false', 'switch', 'case', 'do', 'throw', 'catch', 'static', 'get', 'set', 'of', 'delete', 'void']);
+// Go / Java 家族（按 token 出现频率合并一个集合即可，关键字交集安全）
+const KW_GO_JAVA = new Set(['func', 'package', 'defer', 'chan', 'go', 'range', 'map', 'struct', 'interface', 'select', 'fallthrough', 'var', 'string', 'int', 'int64', 'float64', 'bool', 'byte', 'error', 'public', 'private', 'protected', 'void', 'final', 'extends', 'implements', 'package', 'interface', 'throws', 'synchronized', 'volatile', 'boolean', 'double', 'float', 'long', 'short', 'char', 'byte', 'String', 'Integer', 'List', 'Map', 'ArrayList', 'HashMap']);
 const KW_SHELL = new Set(['export', 'echo', 'cd', 'pip', 'npm', 'npx', 'node', 'python', 'python3', 'git', 'curl', 'source', 'sudo', 'apt', 'brew', 'ls', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'docker', 'kubectl', 'uv', 'which', 'set']);
 
 function highlightCode(code, langHint) {
   const lang = (langHint || '').toLowerCase();
   const isJsLike = /js|ts|javascript|typescript/.test(lang);
+  const isGoJava = /go|golang|java|kotlin|c#|cs|cpp|c\+\+|rust/.test(lang);
   const isShell = /sh|shell|bash|zsh|console|terminal/.test(lang) || !langHint;
   const isJson = /json/.test(lang);
 
@@ -200,6 +203,11 @@ function highlightCode(code, langHint) {
       out.push(`<span class="tok-c">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
     }
     if (ch === '/' && code[i + 1] === '/') {
+      // URL 协议头（http:// https:// ws:// file://）不算注释
+      const prev = code.slice(Math.max(0, i - 8), i);
+      if (/https?:$|wss?:$|file:$/.test(prev)) {
+        out.push(escapeHtml('//')); i += 2; continue;
+      }
       let j = i; while (j < n && code[j] !== '\n') j++;
       out.push(`<span class="tok-c">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
     }
@@ -207,6 +215,28 @@ function highlightCode(code, langHint) {
       let j = i + 2; while (j < n && !(code[j] === '*' && code[j + 1] === '/')) j++;
       j = Math.min(j + 2, n);
       out.push(`<span class="tok-c">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
+    }
+    // Python 三引号字符串（""" 或 '''），避免被切成三段高亮碎片
+    if ((ch === '"' || ch === "'") && code[i + 1] === ch && code[i + 2] === ch) {
+      let j = i + 3;
+      while (j < n) {
+        if (code[j] === '\\') { j += 2; continue; }
+        if (code[j] === ch && code[j + 1] === ch && code[j + 2] === ch) { j += 3; break; }
+        j++;
+      }
+      out.push(`<span class="tok-s">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
+    }
+    // 装饰器 @xxx（Python）
+    if (ch === '@' && /[A-Za-z_]/.test(code[i + 1] || '')) {
+      let j = i + 1; while (j < n && /[A-Za-z0-9_.]/.test(code[j])) j++;
+      out.push(`<span class="tok-t">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
+    }
+    // Shell 变量 $VAR / ${VAR}
+    if (ch === '$' && (/[A-Za-z_{]/.test(code[i + 1] || ''))) {
+      let j = i + 1;
+      if (code[j] === '{') { j++; while (j < n && code[j] !== '}') j++; j++; }
+      else while (j < n && /[A-Za-z0-9_]/.test(code[j])) j++;
+      out.push(`<span class="tok-t">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
     }
     // 字符串（含模板串、三引号）
     if (ch === '"' || ch === "'" || ch === '`') {
@@ -216,6 +246,11 @@ function highlightCode(code, langHint) {
         if (code[j] === ch) { j++; break; }
         if (code[j] === '\n' && ch !== '`') break; // 未闭合按行断（容错）
         j++;
+      }
+      // Shell 里 '-d '{...}' 整段 JSON 包在单引号里：起始后紧跟 { 时跨行吃引号体
+      if (/sh|shell|bash|zsh|console/.test(lang) && ch === "'" && code[i + 1] === '{') {
+        const close = code.indexOf("'", i + 1);
+        j = close === -1 ? n : close + 1;
       }
       out.push(`<span class="tok-s">${escapeHtml(code.slice(i, j))}</span>`); i = j; continue;
     }
@@ -235,10 +270,12 @@ function highlightCode(code, langHint) {
       // 后面紧跟 ( → 函数名
       let k = j; while (k < n && /\s/.test(code[k])) k++;
       let cls = null;
-      if (KW_COMMON.has(word) || (isJsLike && KW_JS.has(word)) || (isShell && KW_SHELL.has(word))) cls = 'tok-k';
+      if (KW_COMMON.has(word) || (isJsLike && KW_JS.has(word)) || (isGoJava && KW_GO_JAVA.has(word)) || (isShell && KW_SHELL.has(word))) cls = 'tok-k';
       else if (code[k] === '(') cls = 'tok-f';
       else if (/^[A-Z][A-Za-z0-9_]*$/.test(word) && !isJson) cls = 'tok-t'; // 类名/类型
-      out.push(cls ? `<span class="${cls}">${escapeHtml(word)}</span>` : escapeHtml(word));
+      if (isJson && code[k] === ':') cls = 'tok-t';           // JSON key
+      if (cls) out.push(`<span class="${cls}">${escapeHtml(word)}</span>`);
+      else out.push(escapeHtml(word));
       i = j; continue;
     }
     // JSON key（"xxx": 模式已作为字符串着色，够用）
@@ -539,6 +576,11 @@ function codeBlockHtml($, el) {
     const codeEl = (pre.length ? pre : el).find('code').first();
     const cls = codeEl.attr('class') || '';
     langHint = (/language-([\w+#-]+)/.exec(cls) || /lang-([\w+#-]+)/.exec(cls) || [])[1] || '';
+    // 无显式语言时，从标签文本推断（"Shell — vLLM 安装" → shell）
+    if (!langHint && label) {
+      const lm = /^(python|shell|bash|typescript|javascript|go|java|json|yaml|markdown|prompt|modelfile|dockerfile)/i.exec(label);
+      if (lm) langHint = lm[1];
+    }
   }
   if (!label) label = langHint;
   const body = highlightCode(String(code).replace(/^\n+/, '').replace(/\n+$/, ''), langHint);
@@ -764,6 +806,13 @@ function main() {
     return (na ? +na : 999) - (nb ? +nb : 999);
   });
 
+  // 大厂真题场景题库（无对应章节，作为独立面试场次进入注册表）
+  const BOSS_QUIZZES = [
+    { key: 'bytedance', title: '字节跳动 · AI 算法真题场', subtitle: 'Transformer / RLHF / Agent 记忆与场景设计（源自字节 2025-2026 真实面经）' },
+    { key: 'meituan',   title: '美团 · Agent 落地真题场',   subtitle: 'RAG 排查 / 工具容错 / 场景设计（源自美团 Agent 岗真实面经）' },
+    { key: 'jd',        title: '京东 · 电商 AI 真题场',     subtitle: '注意力变体 / 电商场景 / 资源调度（源自京东 AI 岗真实面经）' },
+  ];
+
   // 题库分包
   const quizPkg = path.join(PKG_DIR, 'quiz');
   const quizDataDir = path.join(quizPkg, 'data');
@@ -785,6 +834,16 @@ function main() {
     fs.copyFileSync(path.join(quizTpl, f), path.join(quizRunnerDir, f));
   });
   subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner'] });
+
+  // 大厂真题场次追加到主包章节注册表（排在教程章节之后，复用同一套面试 runner）
+  BOSS_QUIZZES.forEach(b => {
+    if (quizBank[b.key] && quizBank[b.key].length) {
+      registry.push({
+        key: 'boss_' + b.key, slug: b.key, pkg: 'quiz', title: b.title, subtitle: b.subtitle,
+        num: null, quizKey: b.key, isBoss: true,
+      });
+    }
+  });
 
   // 主包章节注册表
   fs.mkdirSync(path.join(MP_DIR, 'data'), { recursive: true });

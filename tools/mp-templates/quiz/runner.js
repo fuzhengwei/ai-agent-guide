@@ -47,7 +47,9 @@ Page({
     const quizList = chapters.filter(c => c.quizKey);
     const pos = quizList.findIndex(c => c.quizKey === chKey);
     const next = pos !== -1 && pos < quizList.length - 1 ? quizList[pos + 1] : null;
-    const iv = IV.pick(pos < 0 ? 0 : pos);
+    const iv = query.style
+      ? IV.pickByStyle(query.style, pos < 0 ? 0 : pos)
+      : IV.pick(pos < 0 ? 0 : pos);
 
     this._questions = questions;
     this._results = [];

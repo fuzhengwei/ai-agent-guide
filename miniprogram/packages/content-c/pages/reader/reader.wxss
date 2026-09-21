@@ -40,10 +40,31 @@
   color: var(--fg-body);
 }
 
-/* ===== 字号三档 ===== */
-.reader-wrap.fs-s .rich, .reader-wrap.fs-s .rich p { font-size: 26rpx; }
-.reader-wrap.fs-m .rich, .reader-wrap.fs-m .rich p { font-size: 28rpx; }
-.reader-wrap.fs-l .rich, .reader-wrap.fs-l .rich p { font-size: 31rpx; }
+/* ===== 字号三档（作用于全部正文元素，卡片/列表/引用同步缩放） ===== */
+.reader-wrap.fs-s { font-size: 25rpx; }
+.reader-wrap.fs-m { font-size: 28rpx; }
+.reader-wrap.fs-l { font-size: 31rpx; }
+.reader-wrap.fs-s .rich p,
+.reader-wrap.fs-s .rich .mp-list li,
+.reader-wrap.fs-s .rich .mp-quote,
+.reader-wrap.fs-s .rich .mp-qa-q,
+.reader-wrap.fs-s .rich .mp-card p,
+.reader-wrap.fs-s .rich .mp-compare-line,
+.reader-wrap.fs-s .rich .mp-step-desc { font-size: 25rpx; }
+.reader-wrap.fs-m .rich p,
+.reader-wrap.fs-m .rich .mp-list li,
+.reader-wrap.fs-m .rich .mp-quote,
+.reader-wrap.fs-m .rich .mp-qa-q,
+.reader-wrap.fs-m .rich .mp-card p,
+.reader-wrap.fs-m .rich .mp-compare-line,
+.reader-wrap.fs-m .rich .mp-step-desc { font-size: 28rpx; }
+.reader-wrap.fs-l .rich p,
+.reader-wrap.fs-l .rich .mp-list li,
+.reader-wrap.fs-l .rich .mp-quote,
+.reader-wrap.fs-l .rich .mp-qa-q,
+.reader-wrap.fs-l .rich .mp-card p,
+.reader-wrap.fs-l .rich .mp-compare-line,
+.reader-wrap.fs-l .rich .mp-step-desc { font-size: 31rpx; }
 
 /* 顶部阅读进度条 */
 .read-progress { position: fixed; top: 0; left: 0; right: 0; height: 5rpx; background: transparent; z-index: 9; }
@@ -117,12 +138,15 @@
 }
 .rich h3.sh { font-size: 29rpx; font-weight: 600; color: var(--fg-body); border-left: 5rpx solid #b9c6f9; margin: 54rpx 0 22rpx; padding-left: 18rpx; }
 .rich h4.sh { font-size: 27rpx; font-weight: 600; color: var(--fg-body); border-left: 5rpx solid #d5dcfc; margin: 46rpx 0 20rpx; padding-left: 16rpx; }
-.rich p { line-height: 2.05; margin: 26rpx 0; color: var(--fg-body); letter-spacing: 0.4rpx; text-align: justify; }
+.night .rich h3.sh, .night .rich h4.sh { color: #d3dced; }
+/* 长标题避免奇怪断行 */
+.rich .ct, .rich .sh { word-break: break-word; }
+.rich p { line-height: 2.05; margin: 26rpx 0; color: var(--fg-body); letter-spacing: 0.4rpx; text-align: justify; word-break: break-word; }
 .rich strong { font-weight: 600; color: var(--fg-title); }
 
 /* 代码块：深色圆角卡 + 语言标签（更透气） */
 .rich .mp-codeblock {
-  position: relative; margin: 32rpx 0; border-radius: 16rpx;
+  position: relative; margin: 34rpx 0; border-radius: 16rpx;
   background: #1c2230; overflow: hidden;
 }
 .night .rich .mp-codeblock { background: #0d1017; border: 1rpx solid #262c3a; }
@@ -133,11 +157,12 @@
 }
 .rich pre.code {
   display: block; background: transparent; color: #d6deeb;
-  padding: 30rpx 28rpx; margin: 0; overflow: hidden;
+  padding: 30rpx 28rpx; margin: 0; overflow-x: auto;
   font-family: "SF Mono", Menlo, Consolas, "JetBrains Mono", monospace;
-  font-size: 23rpx; line-height: 1.8; white-space: pre-wrap; word-break: break-all;
+  font-size: 22rpx; line-height: 1.75; white-space: pre;
+  -webkit-overflow-scrolling: touch;
 }
-.reader-wrap.fs-l .rich pre.code { font-size: 25rpx; }
+.reader-wrap.fs-l .rich pre.code { font-size: 24rpx; }
 /* ===== 语法高亮 token 配色（深色卡） ===== */
 .rich .tok-k { color: #c792ea; font-weight: 600; }   /* 关键字：紫 */
 .rich .tok-s { color: #a5d6a7; }                      /* 字符串：绿 */
@@ -145,13 +170,14 @@
 .rich .tok-c { color: #7d8799; font-style: italic; }  /* 注释：灰斜体 */
 .rich .tok-f { color: #82aaff; }                      /* 函数名：蓝 */
 .rich .tok-t { color: #ffcb6b; }                      /* 类/类型：黄 */
-/* 行内代码：浅灰胶囊 */
+/* 行内代码：与蓝紫主题呼应的浅蓝紫胶囊（小一号、垂直对齐居中） */
 .rich code {
   font-family: "SF Mono", Menlo, Consolas, "JetBrains Mono", monospace;
-  font-size: 24rpx; color: #a05a10; background: #f5f1e8;
-  padding: 3rpx 12rpx; border-radius: 8rpx;
+  font-size: 0.86em; color: #4353c9; background: #eef1fb;
+  padding: 2rpx 12rpx; border-radius: 8rpx;
+  word-break: break-all;
 }
-.night .rich code { color: #e8b878; background: #262c3a; }
+.night .rich code { color: #a5b4fc; background: #262c3a; }
 .rich pre.code code { color: inherit; background: transparent; padding: 0; border-radius: 0; font-size: inherit; }
 
 /* 引用：留白更足 */
@@ -163,7 +189,10 @@
 
 /* 列表：统一缩进 + 更松的行距 */
 .rich .mp-list { margin: 24rpx 0; padding-left: 38rpx; }
-.rich .mp-list li { line-height: 1.95; color: var(--fg-body); margin: 16rpx 0; }
+.rich .mp-list li { line-height: 1.95; color: var(--fg-body); margin: 16rpx 0; word-break: break-word; }
+.rich .mp-list li strong { color: var(--fg-title); }
+/* 列表内行内代码略小 */
+.rich .mp-list li code, .rich .mp-quote code { font-size: 0.82em; }
 
 /* 表格 → 横滑 + 斑马纹 + 紧凑布局 */
 .rich .mp-table {
@@ -219,8 +248,8 @@
 .rich .mp-card .mp-table { font-size: 23rpx; margin: 14rpx 0 4rpx; }
 .rich .mp-card .mp-table th { padding: 12rpx 18rpx; font-size: 23rpx; }
 .rich .mp-card .mp-table td { padding: 11rpx 18rpx; min-width: 100rpx; }
-.rich .mp-card code { background: rgba(148, 163, 184, 0.18); color: #a05a10; }
-.night .rich .mp-card code { color: #e8b878; }
+.rich .mp-card code { background: rgba(99, 102, 241, 0.10); color: #4353c9; }
+.night .rich .mp-card code { color: #a5b4fc; background: rgba(99, 102, 241, 0.16); }
 
 /* ===== 流程图（竖向流程卡，手机友好） ===== */
 .rich .mp-flow {
