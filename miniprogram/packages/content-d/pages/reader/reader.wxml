@@ -1,4 +1,4 @@
-<view class="reader-wrap {{nightMode ? 'night' : ''}}" style="--fs: {{fontSize}}rpx;">
+<view class="reader-wrap {{nightMode ? 'night' : ''}}">
 
   <!-- 顶部阅读进度条 -->
   <view class="read-progress">
@@ -97,11 +97,11 @@
       <view class="tts-status" wx:if="{{ttsState !== 'idle'}}">
         {{ttsState === 'synthesizing' ? '合成中…' : '正在朗读 ' + (ttsIndex + 1) + ' / ' + ttsTotal + ' 段'}}
       </view>
-      <view class="tts-hint">朗读时当前段落会高亮并自动滚动；离开本章自动停止</view>
+      <view class="tts-hint">朗读时自动滚动跟随当前段落；离开本章自动停止</view>
     </view>
     <view class="tts-body" wx:else>
       <view class="tts-unsupported">
-        朗读服务暂不可用。<br/>请升级微信版本，或在小程序后台开启「同声传译」插件。
+        朗读服务需要云开发环境。<br/>请确认已开通云开发并部署 tts 云函数。
       </view>
     </view>
   </view>
@@ -113,8 +113,112 @@
     <view class="reader-sub" wx:if="{{subtitle}}">{{subtitle}}</view>
   </view>
 
-  <!-- 正文：selectable 允许长按选中文字；catchtouchmove 让代码块/表格可独立横滑 -->
-  <rich-text class="rich" nodes="{{html}}" selectable="{{true}}" catchtouchmove="onRichTouch"></rich-text>
+  <!--
+    正文渲染（不再用 rich-text，改用节点树 + WXML 递归模板）：
+    - 页面原生纵向滚动不再被拦截（原 rich-text catchtouchmove 会吃掉竖滑）
+    - 字号用 WXML 样式优先级规则控制：构建期不再给正文标签写死字号，
+      下面 .fs-c 的选择器优先级高于 WXML 模板里的固定字号，自然随 --fs 缩放
+    - 标题锚点是真实 view 节点，目录点击可 createSelectorQuery 定位跳转
+    - 代码块/表格是独立 scroll-view，可各自横滑，互不干扰
+  -->
+  <view class="fs-c" style="--fs: {{fontSize}}rpx;">
+    <block wx:for="{{nodes}}" wx:key="index">
+      <!-- 段落 -->
+      <view wx:if="{{item.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
+      <!-- 章内大标题 -->
+      <view wx:elif="{{item.type === 'h1'}}" class="nd-h1">{{item.text}}</view>
+      <!-- 小节标题（目录锚点：真实节点 id，可 scroll 定位） -->
+      <view wx:elif="{{item.type === 'h'}}" id="{{item.anchor}}" class="nd-h lv{{item.level}}">{{item.text}}</view>
+      <!-- 引用 -->
+      <view wx:elif="{{item.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
+      <!-- 列表 -->
+      <view wx:elif="{{item.type === 'list'}}" class="nd-list">
+        <view wx:for="{{item.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z" data-tts-idx="{{li.tts}}">
+          <text class="nd-li-dot">{{item.ordered ? (index + 1) + '.' : '•'}}</text>
+          <text class="nd-li-txt">{{li.text}}</text>
+        </view>
+      </view>
+      <!-- 代码块（独立横滑） -->
+      <view wx:elif="{{item.type === 'code'}}" class="nd-codeblock">
+        <view class="nd-code-head">
+          <view class="nd-code-dots">
+            <view class="nd-code-dot d1"></view>
+            <view class="nd-code-dot d2"></view>
+            <view class="nd-code-dot d3"></view>
+          </view>
+          <view class="nd-code-lang" wx:if="{{item.lang}}">{{item.lang}}</view>
+          <view class="nd-code-hint">‹ 左右滑动 ›</view>
+        </view>
+        <scroll-view scroll-x class="nd-code-scroll" enhanced show-scrollbar="{{false}}">
+          <view class="nd-code-body">{{item.code}}</view>
+        </scroll-view>
+      </view>
+      <!-- 表格（独立横滑） -->
+      <scroll-view wx:elif="{{item.type === 'table'}}" scroll-x class="nd-table-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="nd-table">
+          <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="index" class="nd-tr {{row.head ? 'nd-tr-head' : ''}}">
+            <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="index" class="nd-td">{{cell}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <!-- 信息卡 -->
+      <view wx:elif="{{item.type === 'card'}}" class="nd-card {{item.accent}}">
+        <view class="nd-card-title" wx:if="{{item.title}}">{{item.title}}</view>
+        <block wx:for="{{item.children}}" wx:for-item="c" wx:key="index">
+          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
+          <view wx:elif="{{c.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
+          <view wx:elif="{{c.type === 'list'}}" class="nd-list">
+            <view wx:for="{{c.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z">
+              <text class="nd-li-dot">{{c.ordered ? (index + 1) + '.' : '•'}}</text>
+              <text class="nd-li-txt">{{li.text}}</text>
+            </view>
+          </view>
+        </block>
+      </view>
+      <!-- 对话模拟气泡 -->
+      <view wx:elif="{{item.type === 'chat'}}" class="nd-chat {{item.tone}}">
+        <view class="nd-chat-label" wx:if="{{item.label}}">{{item.label}}</view>
+        <block wx:for="{{item.children}}" wx:for-item="c" wx:key="index">
+          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
+          <view wx:elif="{{c.type === 'list'}}" class="nd-list">
+            <view wx:for="{{c.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z">
+              <text class="nd-li-dot">{{c.ordered ? (index + 1) + '.' : '•'}}</text>
+              <text class="nd-li-txt">{{li.text}}</text>
+            </view>
+          </view>
+        </block>
+      </view>
+      <!-- 竖向流程卡 -->
+      <view wx:elif="{{item.type === 'flow'}}" class="nd-flow">
+        <block wx:for="{{item.steps}}" wx:for-item="s" wx:key="index">
+          <view wx:if="{{index > 0}}" class="nd-flow-link">
+            <view class="nd-flow-link-label" wx:if="{{s.edge}}">{{s.edge}}</view>
+            <view class="nd-flow-link-arrow">↓</view>
+          </view>
+          <view class="nd-flow-card nd-flow-{{s.kind}} {{s.branch ? 'nd-flow-branch' : ''}}">{{s.label}}</view>
+        </block>
+      </view>
+      <!-- 步骤列表 -->
+      <view wx:elif="{{item.type === 'steps'}}" class="nd-steps">
+        <view wx:for="{{item.items}}" wx:for-item="s" wx:key="index" class="nd-step">
+          <view class="nd-step-num">{{s.num}}</view>
+          <view class="nd-step-body">
+            <view class="nd-step-title">{{s.title}}</view>
+            <view class="nd-step-desc" wx:if="{{s.desc}}">{{s.desc}}</view>
+          </view>
+        </view>
+      </view>
+      <!-- 左右对比卡 -->
+      <view wx:elif="{{item.type === 'compare'}}" class="nd-compare">
+        <view wx:for="{{item.sides}}" wx:for-item="side" wx:key="index" class="nd-compare-side">
+          <view class="nd-compare-label">{{side.label}}</view>
+          <view wx:for="{{side.lines}}" wx:for-item="ln" wx:key="index" class="nd-compare-line">{{ln}}</view>
+        </view>
+      </view>
+      <!-- 占位提示 -->
+      <view wx:elif="{{item.type === 'note'}}" class="nd-note">{{item.text}}</view>
+    </block>
+  </view>
 
   <!-- 收藏/笔记输入弹窗 -->
   <view class="fav-mask" wx:if="{{favModal}}" bindtap="closeFavModal"></view>

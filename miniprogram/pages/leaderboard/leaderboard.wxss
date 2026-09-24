@@ -1,0 +1,36 @@
+.page { min-height: 100vh; background: #f6f7f9; padding: 20rpx; box-sizing: border-box; }
+
+.me-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #5a7cf7, #4353c9); color: #fff;
+  border-radius: 18rpx; padding: 28rpx; margin-bottom: 20rpx;
+}
+.me-name { font-size: 30rpx; font-weight: 700; }
+.me-sub { font-size: 22rpx; opacity: .8; margin-top: 6rpx; }
+.me-rank { font-size: 26rpx; font-weight: 700; background: rgba(255,255,255,.2); padding: 8rpx 22rpx; border-radius: 999rpx; }
+
+.tabs { display: flex; gap: 14rpx; margin-bottom: 20rpx; }
+.tab {
+  flex: 1; text-align: center; padding: 16rpx 0; border-radius: 12rpx;
+  background: #fff; font-size: 26rpx; color: #666; border: 2rpx solid #e5e7eb;
+}
+.tab.on { background: #2563eb; color: #fff; border-color: transparent; font-weight: 600; }
+
+.empty { text-align: center; padding: 100rpx 40rpx; }
+.empty-icon { font-size: 72rpx; margin-bottom: 16rpx; }
+.empty-text { font-size: 30rpx; color: #374151; font-weight: 600; }
+.empty-sub { font-size: 24rpx; color: #9aa3b1; margin-top: 10rpx; }
+
+.row {
+  display: flex; align-items: center; gap: 18rpx;
+  background: #fff; border-radius: 14rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx;
+}
+.row.me { border: 2rpx solid #2563eb; }
+.medal { width: 56rpx; text-align: center; font-size: 30rpx; flex-shrink: 0; }
+.name { flex: 1; font-size: 27rpx; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.val { font-size: 26rpx; font-weight: 700; color: #2563eb; white-space: nowrap; }
+
+.nick-btn {
+  margin: 24rpx 0 40rpx; background: #fff; color: #5a7cf7;
+  border: 2rpx dashed #c3ccf5; border-radius: 12rpx; font-size: 26rpx;
+}

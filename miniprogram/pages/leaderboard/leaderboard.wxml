@@ -1,0 +1,42 @@
+<view class="page">
+  <!-- 我的数据卡 -->
+  <view class="me-card" wx:if="{{me}}">
+    <view class="me-left">
+      <view class="me-name">👤 {{me.nickname}}</view>
+      <view class="me-sub">本地累计学习 {{studyText}}</view>
+    </view>
+    <view class="me-rank" wx:if="{{myRank}}">第 {{myRank}} 名</view>
+  </view>
+  <view class="me-card" wx:elif="{{online && !loading}}">
+    <view class="me-left">
+      <view class="me-name">👤 未登录</view>
+      <view class="me-sub">打开小程序即自动登录</view>
+    </view>
+  </view>
+
+  <!-- 榜单切换 -->
+  <view class="tabs">
+    <view class="tab {{board === 'study' ? 'on' : ''}}" data-board="study" bindtap="switchBoard">⏱ 学习时长</view>
+    <view class="tab {{board === 'score' ? 'on' : ''}}" data-board="score" bindtap="switchBoard">📝 积分榜</view>
+  </view>
+
+  <view class="empty" wx:if="{{!online}}">
+    <view class="empty-icon">☁️</view>
+    <view class="empty-text">云功能未开通或网络异常</view>
+    <view class="empty-sub">请在微信开发者工具中开通云开发并部署云函数</view>
+  </view>
+  <view class="empty" wx:elif="{{loading}}"><view class="empty-text">加载中…</view></view>
+  <view class="empty" wx:elif="{{!list.length}}">
+    <view class="empty-icon">🏆</view>
+    <view class="empty-text">虚位以待</view>
+    <view class="empty-sub">快去学习和答题，抢占第一名！</view>
+  </view>
+
+  <view class="row {{item.isMe ? 'me' : ''}}" wx:for="{{list}}" wx:key="rank">
+    <view class="medal">{{item.medal}}</view>
+    <view class="name">{{item.nickname}}</view>
+    <view class="val">{{item.valueText}}</view>
+  </view>
+
+  <button class="nick-btn" bindtap="setNick">✏️ 设置我的昵称</button>
+</view>

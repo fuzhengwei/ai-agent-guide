@@ -1,0 +1,28 @@
+<view class="page">
+  <view class="empty" wx:if="{{!online}}">
+    <view class="empty-icon">☁️</view>
+    <view class="empty-text">云功能未开通或网络异常</view>
+    <view class="empty-sub">请在微信开发者工具中开通云开发并部署云函数</view>
+  </view>
+  <view class="empty" wx:elif="{{loading}}">
+    <view class="empty-text">加载中…</view>
+  </view>
+  <view class="empty" wx:elif="{{!list.length}}">
+    <view class="empty-icon">📖</view>
+    <view class="empty-text">还没有收藏</view>
+    <view class="empty-sub">阅读章节时长按选中文字 → 复制 → 点 ☆ 即可收藏</view>
+  </view>
+
+  <view class="note-card" wx:for="{{list}}" wx:key="_id">
+    <view class="note-ch">{{item.chapterTitle || item.chapterId}}</view>
+    <view class="note-text {{item.type === 'note' ? 'is-note' : ''}}">{{item.preview}}</view>
+    <view class="note-mine" wx:if="{{item.noteText}}">📝 {{item.noteText}}</view>
+    <view class="note-meta">
+      <text class="note-time">{{item.timeText}}</text>
+      <view class="note-ops">
+        <text class="note-op" data-id="{{item._id}}" data-note="{{item.noteText}}" bindtap="editNote">✏️ 笔记</text>
+        <text class="note-op danger" data-id="{{item._id}}" bindtap="removeNote">删除</text>
+      </view>
+    </view>
+  </view>
+</view>

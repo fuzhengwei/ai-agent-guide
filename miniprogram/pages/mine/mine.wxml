@@ -14,6 +14,23 @@
     </view>
   </view>
 
+  <!-- 学习时长 -->
+  <view class="study-time-card">
+    <view class="st-main">⏱ {{studyTimeText}}</view>
+    <view class="st-sub" wx:if="{{studyDays > 0}}">已连续学习 {{studyDays}} 天</view>
+  </view>
+
+  <view class="menu">
+    <view class="menu-item" bindtap="goNotes">
+      <view>⭐ 我的收藏与笔记</view>
+      <view class="arrow">›</view>
+    </view>
+    <view class="menu-item" bindtap="goLeaderboard">
+      <view>🏆 排行榜</view>
+      <view class="arrow">›</view>
+    </view>
+  </view>
+
   <view class="menu" wx:if="{{payEnabled}}">
     <view class="menu-item" bindtap="toggleUnlock">
       <view>{{unlocked ? '已解锁全部章节 ✓' : '解锁全部章节'}}</view>
@@ -22,6 +39,10 @@
   </view>
 
   <view class="menu">
+    <button class="menu-item share-item" open-type="share">
+      <view>推荐给朋友</view>
+      <view class="arrow">›</view>
+    </button>
     <view class="menu-item" bindtap="about">
       <view>关于本教程</view>
       <view class="arrow">›</view>

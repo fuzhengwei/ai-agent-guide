@@ -10,6 +10,7 @@
 const store = require('../../../../utils/store.js');
 const IV = require('../../../../utils/interview.js');
 const MIX = require('../../../../utils/mix.js');
+const share = require('../../../../utils/share.js');
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -93,6 +94,7 @@ Page({
     this._iv = iv;
     this._isMix = isMix;
     this._modeId = query.mix || '';
+    this._styleParam = query.style || '';
 
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -122,6 +124,23 @@ Page({
     const pos = quizList.findIndex(c => c.quizKey === chKey);
     return pos >= 0 ? pos : 0;
   },
+
+  // 分享/转发：转发文案随面试场次与成绩动态变化（含朋友圈入口）
+  ...share.attach(
+    function () {
+      const r = this.data.report;
+      if (this.data.finished && r) {
+        return `我刚通过了一场 AI Agent 模拟面试，${r.total} 题答对 ${r.correct} 题，评级 ${r.grade}，你也来试试？`;
+      }
+      return 'AI Agent 模拟面试 · 大厂面试官现场点评';
+    },
+    function () {
+      const style = this._styleParam ? '&style=' + this._styleParam : '';
+      return this._isMix
+        ? '/packages/quiz/pages/runner/runner?mix=' + this._modeId + style
+        : '/packages/quiz/pages/runner/runner?ch=' + this.data.chKey + style;
+    }
+  ),
 
   onUnload() {
     this._gone = true;
@@ -161,10 +180,17 @@ Page({
     this._bottom();
   },
 
-  // 滚到底部：id 每次变化才会触发 scroll-into-view
+  // 滚到底部：scroll-into-view 只有值变化才触发。
+  // 但 scroll-view 内容高度尚未铺好时立即 setData 会被忽略，
+  // 这里先清空、等下一帧内容渲染完成后再设置目标锚点，保证每次必滚。
   _bottom() {
     const tick = this.data.tick + 1;
-    this.setData({ tick, scrollInto: 'bt' + tick });
+    const target = 'bt' + tick;
+    this.setData({ tick, scrollInto: '' });
+    setTimeout(() => {
+      if (this._gone) return;
+      this.setData({ scrollInto: target });
+    }, 60);
   },
 
   _random(arr) {

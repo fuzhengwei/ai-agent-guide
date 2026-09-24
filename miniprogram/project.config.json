@@ -19,6 +19,7 @@
   "libVersion": "3.7.12",
   "appid": "wxac8460f0126d22a2",
   "projectname": "ai-agent-guide-mp",
+  "cloudfunctionRoot": "cloudfunctions/",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",

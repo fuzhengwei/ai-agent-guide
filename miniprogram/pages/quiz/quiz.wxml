@@ -1,180 +1,136 @@
-<view class="wrap">
+<view class="map-page" style="background: {{bgGrad}};">
 
-  <!-- 顶部 Hero：面试战绩 -->
-  <view class="hero">
-    <view class="hero-deco d1"></view>
-    <view class="hero-deco d2"></view>
-    <view class="hero-badge">🎤 模拟面试</view>
-    <view class="hero-title">AI Agent 岗位 · 一对一面试</view>
-    <view class="hero-sub">{{tab === 'mix' ? '跨章节混合抽题 · 自由选择面试方式' : '每章一场面试 · ' + totalQuestions + ' 道真题 · 面试官现场点评'}}</view>
+  <!-- 顶部状态条 -->
+  <view class="topbar">
+    <view class="topbar-left">
+      <text class="topbar-title">🏝️ 勇者冒险岛</text>
+      <text class="topbar-sub">已通关 {{cleared}} / 28 关</text>
+    </view>
+    <view class="topbar-right">
+      <view class="topbar-btn" bindtap="resetSave" hover-class="btn-press">🔄</view>
+    </view>
+  </view>
 
-    <view class="hero-stats">
-      <view class="stat">
-        <view class="stat-num">{{doneCount}}<text class="stat-max">/{{total}}</text></view>
-        <view class="stat-label">已面试场次</view>
+  <!-- 地图长卷 -->
+  <scroll-view
+    class="map-scroll"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    scroll-top="{{scrollTopV}}"
+    scroll-with-animation
+  >
+    <view class="map-canvas" style="height: {{mapH * 1.5}}rpx;">
+
+      <!-- 区域背景色带（7 段纵向过渡） -->
+      <view class="band" wx:for="{{7}}" wx:key="*this" style="top: {{index * (mapH * 1.5 / 7)}}rpx; height: {{mapH * 1.5 / 7 + 4}}rpx;"></view>
+
+      <!-- 漂浮云朵 -->
+      <view
+        wx:for="{{clouds}}"
+        wx:key="index"
+        class="cloud c{{item.d}}"
+        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; font-size: {{52 * item.s}}rpx;"
+      >☁️</view>
+
+      <!-- 山路 SVG -->
+      <svg class="map-path" viewBox="0 0 100 {{mapH}}" preserveAspectRatio="none">
+        <!-- 土黄色路基 -->
+        <path d="{{pathD}}" fill="none" stroke="#e8c97f" stroke-width="7" stroke-linecap="round" />
+        <!-- 白色虚线车道线 -->
+        <path d="{{pathD}}" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="3,4" opacity="0.85" />
+      </svg>
+
+      <!-- 路边装饰 -->
+      <view
+        wx:for="{{decors}}"
+        wx:key="index"
+        class="decor"
+        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; font-size: {{item.s ? 44 * item.s : 44}}rpx;"
+      >{{item.icon}}</view>
+
+      <!-- 终点王冠 -->
+      <view
+        class="crown {{crown.lit ? 'lit' : ''}}"
+        style="left: {{crown.px}}%; top: {{crown.py * 1.5}}rpx;"
+      >👑</view>
+
+      <!-- 宝箱 -->
+      <view
+        wx:for="{{chests}}"
+        wx:key="index"
+        class="chest {{item.opened ? 'opened' : ''}}"
+        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx;"
+        data-i="{{index}}"
+        bindtap="tapChest"
+        hover-class="node-press"
+      >{{item.opened ? '🎁' : '📦'}}</view>
+
+      <!-- 关卡节点 -->
+      <view
+        wx:for="{{levels}}"
+        wx:key="idx"
+        class="node {{item.state}}"
+        style="left: {{item.px}}%; top: {{item.py * 1.5}}rpx;"
+        data-idx="{{item.idx}}"
+        bindtap="tapLevel"
+        hover-class="node-press"
+      >
+        <view class="node-bubble">
+          <text wx:if="{{item.state === 'locked'}}" class="node-lock">🔒</text>
+          <text wx:elif="{{item.state === 'cleared'}}" class="node-star">⭐</text>
+          <text wx:else class="node-num">{{item.num}}</text>
+        </view>
+        <view class="node-flag">{{item.icon}}</view>
+        <view class="node-name {{item.state}}">{{item.name}}</view>
+        <view wx:if="{{item.state === 'current'}}" class="node-pulse"></view>
       </view>
-      <view class="stat-divider"></view>
-      <view class="stat">
-        <view class="stat-num hl">{{passedCount}}</view>
-        <view class="stat-label">通过场次</view>
+
+      <!-- 小狐狸勇者 -->
+      <view class="fox" style="left: {{fox.x}}%; top: {{fox.y * 1.5}}rpx;">🦊</view>
+
+      <!-- 底部起点留白 -->
+      <view class="map-tail"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 全部通关横幅 -->
+  <view wx:if="{{isAllClear}}" class="allclear">
+    🎉 你已登顶雪山王城，全部 28 关通关！
+  </view>
+
+  <!-- 关卡详情弹窗 -->
+  <view wx:if="{{popup}}" class="popup-mask" bindtap="closePopup">
+    <view class="popup-card" catchtap="noop">
+      <view class="popup-head" style="background: linear-gradient(135deg, {{popup.zoneLine}}, #ffb347);">
+        <text class="popup-icon">{{popup.icon}}</text>
+        <view class="popup-head-text">
+          <text class="popup-name">第 {{popup.num}} 关 · {{popup.name}}</text>
+          <text class="popup-monster">守关小怪 {{popup.monster}} 出没</text>
+        </view>
       </view>
-      <view class="stat-divider"></view>
-      <view class="stat">
-        <view class="stat-num">{{xp}}</view>
-        <view class="stat-label">表现分</view>
+
+      <view class="popup-body">
+        <view class="popup-meta">
+          <view class="meta-chip">📝 {{popup.poolCount}} 题池 · 抽 10 题</view>
+          <view class="meta-chip">{{popup.cleared ? '⭐ 已通关 · 自由练习' : '🎯 全对才能过关'}}</view>
+          <view wx:if="{{popup.bestScore}}" class="meta-chip gold">🏅 最佳 {{popup.bestScore}} 分</view>
+        </view>
+
+        <view wx:if="{{popup.tip}}" class="popup-tip">
+          <view class="popup-tip-label">💡 本关小贴士（来自题库真题）</view>
+          <view class="popup-tip-q">{{popup.tip.question}}</view>
+          <view class="popup-tip-a">{{popup.tip.answer}}</view>
+        </view>
+
+        <view class="popup-btns">
+          <button class="btn ghost" hover-class="btn-hover" bindtap="closePopup">再逛逛</button>
+          <button class="btn primary" hover-class="btn-hover" bindtap="startLevel">
+            {{popup.cleared ? '🎮 再玩一次' : '⚔️ 开始挑战'}}
+          </button>
+        </view>
       </view>
     </view>
   </view>
 
-  <!-- 面试方式切换页签 -->
-  <view class="tab-bar">
-    <view class="tab-item {{tab === 'chapter' ? 'on' : ''}}" data-tab="chapter" bindtap="switchTab">
-      章节面试
-    </view>
-    <view class="tab-item {{tab === 'mix' ? 'on' : ''}}" data-tab="mix" bindtap="switchTab">
-      混合抽题<text wx:if="{{wrongCount}}" class="tab-dot"></text>
-    </view>
-  </view>
-
-  <!-- ================= 混合面试面板 ================= -->
-  <block wx:if="{{tab === 'mix'}}">
-
-    <!-- 面试方式选择 -->
-    <view class="panel-card">
-      <view class="panel-title">选择面试方式<text class="panel-tip">进入后直接开考，题目随机混抽</text></view>
-      <view class="mode-grid">
-        <view
-          wx:for="{{mixModes}}"
-          wx:key="id"
-          class="mode-card {{item.empty ? 'empty' : ''}}"
-          data-id="{{item.id}}"
-          bindtap="startMix"
-        >
-          <view wx:if="{{item.hot}}" class="mode-hot">热门</view>
-          <view class="mo-emoji">{{item.emoji}}</view>
-          <view class="mo-name">{{item.name}}</view>
-          <view class="mo-desc">{{item.desc}}</view>
-          <view class="mo-count">{{item.empty ? '暂无错题' : item.count + ' 题'}}</view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 面试官风格选择 -->
-    <view class="panel-card">
-      <view class="panel-title">面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则随机安排'}}</text></view>
-      <view class="style-grid">
-        <view
-          wx:for="{{styleCards}}"
-          wx:key="id"
-          class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
-          data-id="{{item.id}}"
-          bindtap="pickStyle"
-        >
-          <view class="sc-emoji">{{item.emoji}}</view>
-          <view class="sc-name">{{item.name}}</view>
-          <view class="sc-desc">{{item.desc}}</view>
-          <view class="sc-tag">{{item.tag}}</view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 面试官阵容 -->
-    <view class="panel-card">
-      <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
-      <view class="panel-row">
-        <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
-          <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
-          <view class="pi-name">{{item.name}}</view>
-          <view class="pi-title">{{item.title}}</view>
-        </view>
-      </view>
-    </view>
-
-    <view class="footer">混合面试不计入章节解锁链 · 答对错题自动移出错题本</view>
-  </block>
-
-  <!-- ================= 章节面试列表 ================= -->
-  <block wx:else>
-
-    <!-- 面试官风格选择 -->
-    <view class="panel-card">
-      <view class="panel-title">选择面试官风格<text class="panel-tip">{{selectedStyle ? '点同风格可取消' : '不选则按场次自动轮换'}}</text></view>
-      <view class="style-grid">
-        <view
-          wx:for="{{styleCards}}"
-          wx:key="id"
-          class="style-card {{selectedStyle === item.id ? 'active' : ''}}"
-          data-id="{{item.id}}"
-          bindtap="pickStyle"
-        >
-          <view class="sc-emoji">{{item.emoji}}</view>
-          <view class="sc-name">{{item.name}}</view>
-          <view class="sc-desc">{{item.desc}}</view>
-          <view class="sc-tag">{{item.tag}}</view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 面试官阵容 -->
-    <view class="panel-card">
-      <view class="panel-title">{{selectedStyle ? '当前风格面试官' : '本栏目面试官'}}</view>
-      <view class="panel-row">
-        <view class="panel-iv" wx:for="{{panel}}" wx:key="name">
-          <view class="pi-avatar" style="background: {{item.gradient}}">{{item.initial}}</view>
-          <view class="pi-name">{{item.name}}</view>
-          <view class="pi-title">{{item.title}}</view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 场次列表 -->
-    <view class="list-head">
-      <text class="lh-title">面试场次</text>
-      <text class="lh-tip">通过一场，解锁下一场</text>
-    </view>
-
-    <view
-      wx:for="{{sessions}}"
-      wx:key="key"
-      class="session {{item.unlocked ? '' : 'is-locked'}}"
-      data-key="{{item.key}}"
-      data-unlocked="{{item.unlocked}}"
-      bindtap="startSession"
-      style="animation-delay: {{index * 30}}ms"
-    >
-      <!-- 场次号 -->
-      <view class="s-no {{item.passed ? 'done' : (item.unlocked ? 'open' : 'lock')}}">
-        <text wx:if="{{item.unlocked}}">{{item.no}}</text>
-        <text wx:else>🔒</text>
-      </view>
-
-      <!-- 场次信息 -->
-      <view class="s-main">
-        <view class="s-title">{{item.title}}<text wx:if="{{item.isBoss}}" class="boss-badge">真题</text></view>
-        <view class="s-meta">
-          <view class="s-iv">
-            <view class="s-iv-avatar" style="background: {{item.ivGradient}}">{{item.ivInitial}}</view>
-            <text>{{item.ivName}} 面试 · {{item.ivStyle}}</text>
-          </view>
-          <text class="s-sep">·</text>
-          <text>{{item.count}} 题</text>
-          <text class="s-sep">·</text>
-          <text>约 {{item.minutes}} 分钟</text>
-        </view>
-        <view class="s-note warn" wx:if="{{item.done && !item.passed}}">上次未通过 · 建议再面一次</view>
-        <view class="s-note" wx:elif="{{item.passed && item.bestScore}}">最佳表现 {{item.bestScore}} 分 · {{item.gradeLabel}}</view>
-      </view>
-
-      <!-- 评级 + 入口 -->
-      <view class="s-right">
-        <view wx:if="{{item.grade}}" class="s-grade g{{item.stars}}">{{item.grade}}</view>
-        <view wx:else class="s-grade none">未面试</view>
-        <view class="s-btn {{item.unlocked ? (item.done ? 'again' : 'go') : 'lock'}}">
-          {{item.unlocked ? (item.done ? '再面一次' : '开始面试') : '未解锁'}}
-        </view>
-      </view>
-    </view>
-
-    <view class="footer">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60% 通过 · 大厂真题场常驻开放</view>
-  </block>
 </view>

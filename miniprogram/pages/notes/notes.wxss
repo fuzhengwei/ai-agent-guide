@@ -1,0 +1,25 @@
+.page { min-height: 100vh; background: #f6f7f9; padding: 20rpx; box-sizing: border-box; }
+.empty { text-align: center; padding: 120rpx 40rpx; }
+.empty-icon { font-size: 72rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 30rpx; color: #374151; font-weight: 600; }
+.empty-sub { font-size: 24rpx; color: #9aa3b1; margin-top: 12rpx; line-height: 1.7; }
+
+.note-card {
+  background: #fff; border-radius: 18rpx; padding: 24rpx; margin-bottom: 18rpx;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, .05);
+}
+.note-ch { font-size: 22rpx; color: #9aa3b1; margin-bottom: 10rpx; }
+.note-text {
+  font-size: 27rpx; color: #1f2937; line-height: 1.65;
+  border-left: 6rpx solid #eab308; padding-left: 14rpx;
+}
+.note-text.is-note { border-left-color: #f97316; }
+.note-mine {
+  font-size: 24rpx; color: #555; background: #f9fafb; border-radius: 10rpx;
+  padding: 12rpx 16rpx; margin-top: 12rpx; line-height: 1.6;
+}
+.note-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 14rpx; }
+.note-time { font-size: 21rpx; color: #b0b7c3; }
+.note-ops { display: flex; gap: 24rpx; }
+.note-op { font-size: 23rpx; color: #5a7cf7; }
+.note-op.danger { color: #dc2626; }

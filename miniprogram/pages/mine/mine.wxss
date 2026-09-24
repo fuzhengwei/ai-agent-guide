@@ -15,6 +15,12 @@
 .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 28rpx; border-bottom: 2rpx solid #f3f4f6; font-size: 29rpx; }
 .menu-item:last-child { border-bottom: none; }
 .menu-item.danger { color: #dc2626; }
+/* button 版菜单项（分享给朋友）：清掉微信 button 默认样式 */
+.menu-item.share-item {
+  width: 100%; background: transparent; border-radius: 0; margin: 0;
+  line-height: 1.4; text-align: left; font-weight: normal;
+}
+.menu-item.share-item::after { border: none; }
 .arrow { color: #d1d5db; font-size: 36rpx; }
 
 .footer { text-align: center; color: #9ca3af; font-size: 24rpx; margin-top: 48rpx; }

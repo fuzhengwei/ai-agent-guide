@@ -2,5 +2,5 @@
   "navigationBarTitleText": "勇者冒险岛",
   "navigationBarTextStyle": "black",
   "navigationBarBackgroundColor": "#a8e6ff",
-  "disableScroll": true
+  "backgroundColor": "#a8e6ff"
 }

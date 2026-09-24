@@ -1,5 +1,19 @@
 App({
+  globalData: {
+    openid: '',
+    profile: null,   // { nickname, totalStudyMs, readCount, xp, stars }
+  },
+
   onLaunch() {
+    // 初始化微信云开发
+    if (wx.cloud) {
+      wx.cloud.init({ traceUser: true });
+      this.cloudReady = true;
+      this.silentLogin();
+    } else {
+      this.cloudReady = false;
+    }
+
     // 版本更新检测
     if (wx.canIUse('getUpdateManager')) {
       const um = wx.getUpdateManager();
@@ -11,5 +25,28 @@ App({
         });
       });
     }
+  },
+
+  // 静默登录：换取 openid 与档案（无感，不需要用户点授权）
+  silentLogin() {
+    wx.cloud.callFunction({
+      name: 'login',
+      data: {},
+      success: (res) => {
+        if (res.result && res.result.ok) {
+          this.globalData.openid = res.result.openid;
+          this.globalData.profile = res.result.profile;
+          if (this._loginCbs) { this._loginCbs.forEach(cb => cb(res.result)); this._loginCbs = []; }
+        }
+      },
+      fail: () => {},
+    });
+  },
+
+  // 页面等待登录完成
+  onLoginReady(cb) {
+    if (this.globalData.openid) return cb({ openid: this.globalData.openid, profile: this.globalData.profile });
+    this._loginCbs = this._loginCbs || [];
+    this._loginCbs.push(cb);
   },
 });

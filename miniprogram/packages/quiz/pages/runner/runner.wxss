@@ -199,5 +199,12 @@ page { height: 100%; background: #eef0f5; }
 .rp-btn { flex: 1; text-align: center; padding: 26rpx 0; border-radius: 99rpx; font-size: 29rpx; font-weight: 700; }
 .rp-btn.ghost { background: #ffffff; color: #475569; border: 2rpx solid #e2e8f0; }
 .rp-btn.primary { background: linear-gradient(135deg, #2563eb, #6d28d9); color: #ffffff; box-shadow: 0 10rpx 24rpx rgba(37, 99, 235, 0.28); }
+/* 分享战绩按钮：清掉微信 button 默认样式 */
+.rp-btn.share {
+  margin: 20rpx 0 0; padding: 26rpx 0; line-height: 1.4;
+  background: #ffffff; color: #2563eb; border: 2rpx solid #c7d6fb;
+  border-radius: 99rpx; font-size: 29rpx; font-weight: 700;
+}
+.rp-btn.share::after { border: none; }
 
 .rp-foot { text-align: center; font-size: 21rpx; color: #a3adbd; margin: 26rpx 0 40rpx; }
