@@ -577,6 +577,10 @@ const App = {
   goHome() {
     // 显示封面
     this.showCover();
+
+    // 停止朗读、关闭阅读弹层；结算学习时长
+    Reader.onChapterChange();
+    ProgressPlus.onGoHome();
     
     // 更新导航状态
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -893,6 +897,9 @@ const App = {
     this.currentChapter = chapterId;
     document.body.dataset.chapter = chapterId;
     document.body.dataset.chapterTitle = chapter.title;
+
+    // 章节切换：停止朗读、关闭阅读弹层
+    Reader.onChapterChange();
 
     Progress.markLearning(chapterId);
 
