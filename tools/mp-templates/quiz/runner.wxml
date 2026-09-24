@@ -155,6 +155,9 @@
       <view class="rp-btn primary" wx:else bindtap="goBack">返回面试大厅</view>
     </view>
 
+    <!-- 分享战绩：open-type=share 触发转发面板，文案在 JS 里带成绩 -->
+    <button class="rp-btn share" open-type="share">📤 分享我的战绩</button>
+
     <view class="rp-foot">面试评级：S ≥ 90% · A ≥ 70% · B ≥ 60%（通过）</view>
   </scroll-view>
 </view>

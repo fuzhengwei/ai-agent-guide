@@ -24,7 +24,7 @@ Page({
   data: {
     title: '',
     subtitle: '',
-    html: '',
+    nodes: [],          // 章节内容节点树（替代原 rich-text 的 html 字符串）
     chapterNum: '',
     quizKey: '',
     currentIndex: 0,
@@ -130,10 +130,11 @@ Page({
     // 记录最近打开的章节（首页「继续上次阅读」提示用）
     store.setLastChapter({ key: meta.key, slug: meta.slug, pkg: meta.pkg, title: meta.title });
     wx.setNavigationBarTitle({ title: meta.title });
+    this._ttsSegs = Array.isArray(ch.ttsSegs) ? ch.ttsSegs : [];
     this.setData({
       title: ch.title,
       subtitle: ch.subtitle || '',
-      html: ch.html,
+      nodes: Array.isArray(ch.nodes) ? ch.nodes : [],
       toc: Array.isArray(ch.toc) ? ch.toc : [],
       tocOpen: false,
       tocAnchor: '',
@@ -149,6 +150,7 @@ Page({
     });
     this._tocStamp = Date.now();
     this._resumeDone = false;
+    this._docHeight = 0;
     this.setData({ tocStamp: this._tocStamp });
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     this._restorePos(meta.key);
@@ -163,14 +165,11 @@ Page({
     }
   ),
 
-  // rich-text 内部横向滑动手势兜底：阻止冒泡到页面，让代码块/表格自己横滑
-  onRichTouch() { return true; },
-
   // 微信文章式阅读位置：进入时若上次读到中段，提示并自动滚回
   _restorePos(key) {
     const rec = store.getReadPos(key);
     if (!rec || rec.top < 300) return;   // 只看了个开头就不打扰
-    // 等 rich-text 渲染一帧后再滚动，避免内容未铺好导致滚动失败
+    // 等内容渲染一帧后再滚动，避免内容未铺好导致滚动失败
     setTimeout(() => {
       if (this._resumeDone) return;
       this._resumeDone = true;
@@ -312,7 +311,8 @@ Page({
     const anchor = e.currentTarget.dataset.anchor;
     if (!anchor) return;
     this.setData({ tocOpen: false });
-    // 等抽屉收起动画后再跳转，避免同帧布局抖动
+    // 等抽屉收起动画后再跳转，避免同帧布局抖动。
+    // 标题现在是真实 view 节点（id=h-N），createSelectorQuery 可直接定位。
     setTimeout(() => {
       wx.createSelectorQuery()
         .select('#' + anchor)
@@ -351,6 +351,8 @@ Page({
     if (next === this.data.fontSize) return;
     this._pref = savePref({ fontSize: next }, this._pref || {});
     this.setData({ fontSize: next, fontPercent: Math.round(next / 28 * 100) });
+    // 字号变化后文档高度失效，重新测量以保证进度条准确
+    this._docHeight = 0;
   },
 
   /* ===== 语音朗读 ===== */
@@ -393,11 +395,9 @@ Page({
         if (s.state === 'finished') {
           wx.showToast({ title: '✅ 本章朗读完成', icon: 'none' });
         }
-        // 高亮当前朗读段落并滚动
+        // 滚动跟随当前朗读段落
         if ((s.state === 'playing' || s.state === 'synthesizing') && s.index >= 0) {
-          this._highlightTts(s.index);
-        } else if (s.state === 'idle') {
-          this._highlightTts(-1);
+          this._scrollToTts(s.index);
         }
       },
     });
@@ -407,35 +407,12 @@ Page({
   },
 
   /**
-   * 收集可朗读段落：查 rich-text 中带 data-tts-idx 的节点
-   * rich-text 不支持在节点上挂监听，但 wx.createSelectorQuery 可以按 attr 定位
+   * 朗读滚动跟随：tts 索引现在直接对应 data-tts-idx 属性的真实 view 节点，
+   * 用 SelectorQuery 定位后滚动到视口 1/3 处。
    */
-  _collectSegments(cb) {
+  _scrollToTts(idx) {
     wx.createSelectorQuery()
-      .selectAll('.rich [data-tts-idx]')
-      .fields({ dataset: true, size: false }, (nodes) => {
-        // nodes 拿不到文本内容；从 html 字符串里解析
-        const html = this.data.html || '';
-        const segs = [];
-        const re = /data-tts-idx="(\d+)"[^>]*>([\s\S]*?)<\/(?:p|li|h\d|div)>/g;
-        let m;
-        while ((m = re.exec(html)) !== null) {
-          const text = m[2].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-          if (text.length >= 2) segs.push({ idx: +m[1], text });
-        }
-        segs.sort((a, b) => a.idx - b.idx);
-        cb(segs);
-      })
-      .exec();
-  },
-
-  _highlightTts(idx) {
-    // 通过 setData 注入 ttsActiveIdx，wxml 给对应类；但 rich-text 内部节点无法直接加类。
-    // 用 SelectorQuery 滚动到目标位置，高亮通过 CSS 无法实现（rich-text 内部不可操作）。
-    // 简化：只滚动跟随，不做高亮
-    if (idx < 0) return;
-    wx.createSelectorQuery()
-      .select(`.rich [data-tts-idx="${idx}"]`)
+      .select(`[data-tts-idx="${idx}"]`)
       .boundingClientRect(rect => {
         if (!rect) return;
         const vh = wx.getWindowInfo().windowHeight;
@@ -462,18 +439,15 @@ Page({
       engine.resume();
       return;
     }
-    wx.showLoading({ title: '准备朗读…', mask: true });
-    this._collectSegments((segs) => {
-      wx.hideLoading();
-      if (!segs.length) {
-        wx.showToast({ title: '本章没有可朗读内容', icon: 'none' });
-        return;
-      }
-      engine.setSegments(segs);
-      engine.setVoice(this.data.ttsVoice);
-      engine.setRate(this.data.ttsRate);
-      engine.play(0);
-    });
+    const segs = this._ttsSegs || [];
+    if (!segs.length) {
+      wx.showToast({ title: '本章没有可朗读内容', icon: 'none' });
+      return;
+    }
+    engine.setSegments(segs);
+    engine.setVoice(this.data.ttsVoice);
+    engine.setRate(this.data.ttsRate);
+    engine.play(0);
   },
 
   ttsPause() { if (this._ttsEngine) this._ttsEngine.pause(); },

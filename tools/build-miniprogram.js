@@ -174,8 +174,9 @@ function escapeHtml(s) {
 }
 
 /* ---------------- 构建期语法高亮 ----------------
- * rich-text 无法运行 JS 高亮库，这里在构建期把代码 tokenize 成带 class 的 span。
- * 颜色由 reader.wxss 的 .tok-* 类渲染（深色代码卡配色）。
+ * 已改为纯文本行切分的高亮（行首加 "> " 前缀着色标记，阅读页 nd-code-line 渲染）。
+ * 不再输出 span token：节点树模式下代码是 scroll-view 里的纯文本，
+ * 行级着色即可满足可读性，且避免 token 标签破坏节点结构。
  */
 
 // 关键字集合（按语言家族粗分：通用 / Python / JS/TS / Shell / JSON）
@@ -287,23 +288,23 @@ function highlightCode(code, langHint) {
 
 /* ---------------- 动画块转换 ---------------- */
 
-// compare-animation → 静态双栏卡片
+// compare-animation → 静态双栏卡片节点
 function convertCompare($, el) {
   const sides = [];
   $(el).find('.compare-side').each((_, side) => {
     const label = $(side).find('.side-label').first().text().trim();
     const lines = [];
-    $(side).find('.highlight-line').each((__, ln) => lines.push($(ln).text().trim()));
+    $(side).find('.highlight-line').each((__, ln) => lines.push(cleanText($(ln).text())));
     sides.push({ label, lines });
   });
-  let html = '<div class="mp-compare">';
-  sides.forEach(s => {
-    html += `<div class="mp-compare-side"><div class="mp-compare-label">${escapeHtml(s.label)}</div>`;
-    s.lines.forEach(l => { html += `<div class="mp-compare-line">${escapeHtml(l)}</div>`; });
-    html += '</div>';
-  });
-  html += '</div>';
-  return html;
+  return { type: 'compare', sides };
+}
+
+// 把「节点对象」序列化成带 mp- 前缀 class 的占位 DOM，方便 replaceWith 后由渲染器识别。
+// 渲染器遇到 mp-json 类会把 data-json 里的节点还原出来。用 html 实体编码存 JSON。
+function nodeToPlaceholder(node) {
+  const json = JSON.stringify(node).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return `<div class="mp-json" data-json="${json}"></div>`;
 }
 
 // flowchart-container → 移动端友好的竖向流程卡（从内联脚本提取节点/边）
@@ -348,19 +349,10 @@ function convertFlowchart($, el, scriptAll) {
         if (t) cards.push({ title: t, desc: d });
       }
       if (cards.length) {
-        let sh = '<div class="mp-steps">';
-        cards.forEach((c, i) => {
-          sh += `<div class="mp-step"><div class="mp-step-num">${i + 1}</div><div class="mp-step-body">`
-            + `<div class="mp-step-title">${escapeHtml(c.title)}</div>`
-            + (c.desc ? `<div class="mp-step-desc">${escapeHtml(c.desc)}</div>` : '')
-            + '</div></div>';
-        });
-        sh += '</div>';
-        return sh;
+        return { type: 'steps', items: cards.map((c, i) => ({ num: i + 1, title: c.title, desc: c.desc })) };
       }
     }
   }
-  let html = '<div class="mp-flow">';
   if (cfg && Array.isArray(cfg.nodes) && cfg.nodes.length) {
     const edgeLabel = (from, to) => {
       if (!Array.isArray(cfg.edges)) return '';
@@ -393,26 +385,21 @@ function convertFlowchart($, el, scriptAll) {
     const chainSet = new Set(chain);
     const rest = cfg.nodes.filter(n => !chainSet.has(n.id));
 
+    const steps = [];
     chain.forEach((nid, i) => {
       const n = nodesById[nid];
       if (!n) return;
-      if (i > 0) {
-        const lbl = edgeLabel(chain[i - 1], nid);
-        html += `<div class="mp-flow-link">${lbl ? '<span class="mp-flow-link-label">' + escapeHtml(lbl) + '</span>' : ''}<span class="mp-flow-link-arrow">↓</span></div>`;
-      }
-      const label = String(n.label || '').split('\n').map(s => escapeHtml(s.trim())).filter(Boolean).join('<br/>');
-      html += `<div class="mp-flow-card mp-flow-${escapeHtml(n.type || 'process')}">${label}</div>`;
+      const lbl = i > 0 ? edgeLabel(chain[i - 1], nid) : '';
+      const label = String(n.label || '').split('\n').map(s => s.trim()).filter(Boolean).join(' / ');
+      steps.push({ kind: String(n.type || 'process'), label, edge: lbl, branch: false });
     });
     rest.forEach(n => {
-      html += `<div class="mp-flow-link"><span class="mp-flow-link-arrow">↓</span></div>`;
-      const label = String(n.label || '').split('\n').map(s => escapeHtml(s.trim())).filter(Boolean).join('<br/>');
-      html += `<div class="mp-flow-card mp-flow-${escapeHtml(n.type || 'process')} mp-flow-branch">${label}</div>`;
+      const label = String(n.label || '').split('\n').map(s => s.trim()).filter(Boolean).join(' / ');
+      steps.push({ kind: String(n.type || 'process'), label, edge: '', branch: true });
     });
-  } else {
-    html += '<div class="mp-note">📌 此处原文为可交互动画流程图，完整动画请访问网页版。</div>';
+    return { type: 'flow', steps };
   }
-  html += '</div>';
-  return html;
+  return { type: 'note', text: '📌 此处原文为可交互动画流程图，完整动画请访问网页版。' };
 }
 
 // step-animation → 静态步骤列表（提取顺序：DOM 兜底 → steps 数组配置）
@@ -464,18 +451,12 @@ function convertStep($, el, scriptAll) {
     if (title) steps = [{ title, desc }];
   }
   if (!steps || !steps.length) {
-    return '<div class="mp-note">📌 此处原文为可交互动画演示，完整动画请访问网页版。</div>';
+    return { type: 'note', text: '📌 此处原文为可交互动画演示，完整动画请访问网页版。' };
   }
-  let html = '<div class="mp-steps">';
-  (steps || []).forEach((st, i) => {
-    const num = st.num || i + 1;
-    html += `<div class="mp-step"><div class="mp-step-num">${num}</div><div class="mp-step-body">`
-      + `<div class="mp-step-title">${escapeHtml(st.title || '')}</div>`
-      + (st.desc ? `<div class="mp-step-desc">${escapeHtml(st.desc)}</div>` : '')
-      + '</div></div>';
-  });
-  html += '</div>';
-  return html;
+  return {
+    type: 'steps',
+    items: steps.map((st, i) => ({ num: st.num || i + 1, title: st.title || '', desc: st.desc || '' })),
+  };
 }
 
 /* ---------------- 主体转换 ----------------
@@ -518,7 +499,7 @@ const ACCENT_MAP = {
   primary: 'mp-accent-accent',
 };
 
-// 清洗行内片段：去掉行内样式/事件，解包 rich-text 不认识的自定义标签
+// 清洗行内片段：去掉行内样式/事件，解包不认识的自定义标签（纯文本化前的预处理）
 function sanitizeFragment($, html) {
   if (!html) return '';
   const $frag = cheerio.load('<div id="__frag__"></div>', { decodeEntities: false });
@@ -535,6 +516,11 @@ function sanitizeFragment($, html) {
     if (!BLOCK_TAGS.has(n.tagName) && !INLINE_TAGS.has(n.tagName)) $n.replaceWith($n.contents());
   });
   return $root.html().trim();
+}
+
+// 取元素的纯文本（多空白归一化）。节点树模式下正文都是纯文本 view。
+function cleanText(s) {
+  return String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function textOnly(html) {
@@ -554,9 +540,11 @@ function normalizeTables($) {
   });
 }
 
-// 代码块：兼容 code-block（.code-lang-pane）与 multi-lang（.lang-pane + .lang-tabs）两种标记，
-// 取当前语言的 pane（没有 active 就取第一个），构建期做语法高亮。
-function codeBlockHtml($, el) {
+// 代码块 → 节点 { type:'code', lang, code }：正文是 scroll-view 里的纯文本 view，
+// 不再依赖 rich-text 的 catchtouchmove（那会把整个页面竖滑也吃掉）。
+// 兼容 code-block（.code-lang-pane）与 multi-lang（.lang-pane + .lang-tabs）两种标记，
+// 取当前语言的 pane（没有 active 就取第一个）。
+function codeBlockNode($, el) {
   const panes = el.find('.code-lang-pane, .lang-pane');
   let target = null;
   if (panes.length) {
@@ -576,27 +564,38 @@ function codeBlockHtml($, el) {
     const codeEl = (pre.length ? pre : el).find('code').first();
     const cls = codeEl.attr('class') || '';
     langHint = (/language-([\w+#-]+)/.exec(cls) || /lang-([\w+#-]+)/.exec(cls) || [])[1] || '';
-    // 无显式语言时，从标签文本推断（"Shell — vLLM 安装" → shell）
     if (!langHint && label) {
       const lm = /^(python|shell|bash|typescript|javascript|go|java|json|yaml|markdown|prompt|modelfile|dockerfile)/i.exec(label);
       if (lm) langHint = lm[1];
     }
   }
   if (!label) label = langHint;
-  const body = highlightCode(String(code).replace(/^\n+/, '').replace(/\n+$/, ''), langHint);
-  // 注意：rich-text 只认受信任标签，这里必须用 span 而不是 view。
-  // 结构：头部（三色点+语言标签+横滑提示）+ pre 代码区。
-  // 横滑能力依赖阅读页 rich-text 上的 catchtouchmove（阻止冒泡到页面滚动）。
-  const langTag = label ? `<span class="mp-code-lang">${escapeHtml(label)}</span>` : '';
-  return `<div class="mp-codeblock"><div class="mp-code-head"><span class="mp-code-dots"><span class="mp-code-dot"></span><span class="mp-code-dot"></span><span class="mp-code-dot"></span></span>${langTag}<span class="mp-code-hint">‹ 左右滑动 ›</span></div><pre class="code">${body}</pre></div>`;
+  // 保留原始换行（scroll-view 里 white-space:pre 渲染），只去掉首尾空行
+  code = String(code).replace(/^\n+/, '').replace(/\n+$/, '');
+  return { type: 'code', lang: label || '', code };
 }
 
-// 行内/块级混排：连续的行内内容聚合为一个 <p>，遇到块级元素先冲刷缓冲区
+// 表格 → 节点 { type:'table', rows:[{head, cells:[..]}] }
+function tableNode($, el) {
+  const rows = [];
+  el.find('tr').each((_, tr) => {
+    const $tr = $(tr);
+    const head = $tr.find('th').length > 0;
+    const cells = [];
+    $tr.find('th, td').each((__, c) => cells.push(cleanText($(c).text())));
+    if (cells.length) rows.push({ head, cells });
+  });
+  return rows.length ? { type: 'table', rows } : null;
+}
+
+// 行内/块级混排：连续的行内内容聚合为一个段落节点，遇到块级元素先冲刷缓冲区。
+// out 是「节点数组」（不再是 HTML 字符串），阅读页用 WXML 递归渲染。
 function renderFlow($, container, out, toc) {
   let buf = '';
   const flush = () => {
     const html = sanitizeFragment($, buf);
-    if (textOnly(html)) out.push(`<p>${html}</p>`);
+    const t = textOnly(html);
+    if (t) out.push({ type: 'p', text: cleanText(t) });
     buf = '';
   };
   $(container).contents().each((_, n) => {
@@ -616,20 +615,20 @@ function renderFlow($, container, out, toc) {
 
 function renderContainer($, el, cls, out, toc) {
   if (DROP_BOX_RE.test(cls)) return;                       // 装饰容器整块丢弃
-  if (CODE_RE.test(cls)) { out.push(codeBlockHtml($, el)); return; }
+  if (CODE_RE.test(cls)) { out.push(codeBlockNode($, el)); return; }
 
   if (QA_Q_RE.test(cls)) {                                 // 问答：问句行
-    const html = sanitizeFragment($, el.html());
-    if (textOnly(html)) out.push(`<p class="mp-qa-q">${html}</p>`);
+    const t = cleanText(textOnly(sanitizeFragment($, el.html())));
+    if (t) out.push({ type: 'qaq', text: t });
     return;
   }
 
   if (/\bchat-line\b/.test(cls)) {                         // 对话模拟行：标签胶囊 + 正文气泡
     const $label = el.find('.chat-label').first();
-    const label = $label.length ? $label.text().replace(/\s+/g, ' ').trim() : '';
+    const label = $label.length ? cleanText($label.text()) : '';
     if ($label.length) $label.remove();
-    const body = renderFlow($, el, [], toc).join('');
-    if (!body && !label) return;
+    const children = renderFlow($, el, [], toc);
+    if (!children.length && !label) return;
     // 类型色：thought 思考/observe 观察/action 行动/reply 回答/user 用户
     let tone = 'chat-user';
     if (/chat-thought/.test(cls)) tone = 'chat-thought';
@@ -637,25 +636,20 @@ function renderContainer($, el, cls, out, toc) {
     else if (/chat-action/.test(cls)) tone = 'chat-action';
     else if (/chat-reply/.test(cls)) tone = 'chat-reply';
     else if (/chat-user/.test(cls)) tone = 'chat-user';
-    out.push(`<div class="mp-chat ${tone}">`
-      + (label ? `<span class="mp-chat-label">${escapeHtml(label)}</span>` : '')
-      + `<div class="mp-chat-body">${body}</div></div>`);
+    out.push({ type: 'chat', tone, label, children });
     return;
   }
 
   if (CARD_RE.test(cls)) {                                 // 卡片：浅底壳 + 标题 + 递归内容
     const $title = el.find(CARD_TITLE_SEL).first();
-    const title = $title.length ? $title.text().replace(/\s+/g, ' ').trim() : '';
+    const title = $title.length ? cleanText($title.text()) : '';
     const accentKey = ((el.attr('style') || '').match(/--color-([a-z]+)/) || [])[1] || '';
     const accent = BANNER_ACCENT[cls.trim()] || ACCENT_MAP[accentKey] || '';
     if ($title.length) $title.remove();
-    const body = renderFlow($, el, [], toc);
-    const inner = body.join('');
-    if (!inner && !title) return;
-    const extra = (/qa-item/.test(cls) ? ' mp-qa' : '') + (accent ? ' ' + accent : '');
-    out.push(`<div class="mp-card${extra}">`
-      + (title ? `<div class="mp-card-title">${escapeHtml(title)}</div>` : '')
-      + inner + '</div>');
+    const children = renderFlow($, el, [], toc);
+    if (!children.length && !title) return;
+    // accent 映射为节点修饰类（mp-accent-* → 保留给 wxss 配色用）
+    out.push({ type: 'card', title, accent, children, qa: /qa-item/.test(cls) });
     return;
   }
 
@@ -667,54 +661,63 @@ function renderNode($, node, out, toc) {
   const tag = node.tagName;
   const cls = el.attr('class') || '';
 
-  if (/^mp-/.test(cls)) { out.push($.html(el)); return; }   // 已生成的小程序块原样保留
+  // 动画块转换期埋下的占位节点：还原 data-json 里的节点对象
+  if (/^mp-json/.test(cls)) {
+    try {
+      const json = (el.attr('data-json') || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+      const n = JSON.parse(json);
+      if (n && n.type) out.push(n);
+    } catch (_) {}
+    return;
+  }
 
   if (tag === 'h1') {
-    const html = sanitizeFragment($, el.html());
-    if (textOnly(html)) out.push(`<h1 class="ct">${html}</h1>`);
+    const t = cleanText(textOnly(sanitizeFragment($, el.html())));
+    if (t) out.push({ type: 'h1', text: t });
     return;
   }
   if (/^h[2-6]$/.test(tag)) {
-    const html = sanitizeFragment($, el.html());
-    const text = textOnly(html);
-    if (!text) return;
-    // h2/h3 纳入章节目录：输出带锚点 id 的标题，供阅读页目录抽屉 scroll-into-view 跳转
+    const t = cleanText(textOnly(sanitizeFragment($, el.html())));
+    if (!t) return;
+    const level = +tag[1];
+    // h2/h3 纳入章节目录：锚点是真实节点 id，阅读页目录点击可 scroll 定位
     if (toc && (tag === 'h2' || tag === 'h3')) {
       const anchor = 'h-' + toc.length;
-      toc.push({ level: tag === 'h2' ? 2 : 3, text, anchor });
-      out.push(`<${tag} class="sh" id="${anchor}">${html}</${tag}>`);
+      toc.push({ level, text: t, anchor });
+      out.push({ type: 'h', level, text: t, anchor });
       return;
     }
-    out.push(`<${tag} class="sh">${html}</${tag}>`);
+    out.push({ type: 'h', level, text: t, anchor: '' });
     return;
   }
   if (tag === 'p') {
-    const html = sanitizeFragment($, el.html());
-    if (!textOnly(html)) return;
-    out.push(/chapter-subtitle/.test(cls) ? `<p class="cs">${html}</p>` : `<p>${html}</p>`);
+    const t = cleanText(textOnly(sanitizeFragment($, el.html())));
+    if (!t) return;
+    out.push({ type: 'p', text: t, sub: /chapter-subtitle/.test(cls) });
     return;
   }
-  if (tag === 'pre') { out.push(codeBlockHtml($, el)); return; }
-  if (tag === 'table') { out.push(`<div class="mp-table-wrap">${$.html(el)}</div>`); return; }
+  if (tag === 'pre') { out.push(codeBlockNode($, el)); return; }
+  if (tag === 'table') { const tn = tableNode($, el); if (tn) out.push(tn); return; }
   if (tag === 'ul' || tag === 'ol') {
     const items = [];
     el.children('li').each((_, li) => {
-      const html = sanitizeFragment($, $(li).html());
-      if (textOnly(html)) items.push(`<li>${html}</li>`);
+      const t = cleanText(textOnly(sanitizeFragment($, $(li).html())));
+      if (t) items.push({ text: t });
     });
-    if (items.length) out.push(`<${tag} class="mp-list">${items.join('')}</${tag}>`);
+    if (items.length) out.push({ type: 'list', ordered: tag === 'ol', items });
     return;
   }
   if (tag === 'blockquote' || QUOTE_RE.test(cls)) {
     const inner = renderFlow($, el, [], toc);
-    if (inner.length) out.push(`<div class="mp-quote">${inner.join('')}</div>`);
+    const text = cleanText(inner.map(n => n.text || '').filter(Boolean).join(' '));
+    if (text) out.push({ type: 'quote', text });
     return;
   }
   if (tag === 'hr' || tag === 'img' || tag === 'tr' || tag === 'td' || tag === 'th') return;
   if (BLOCK_TAGS.has(tag)) { renderContainer($, el, cls, out, toc); return; }
 
-  const html = sanitizeFragment($, $.html(el));
-  if (textOnly(html)) out.push(`<p>${html}</p>`);
+  const t = cleanText(textOnly(sanitizeFragment($, $.html(el))));
+  if (t) out.push({ type: 'p', text: t });
 }
 
 /* ---------------- 主体转换 ---------------- */
@@ -725,11 +728,11 @@ function convertChapterHtml(rawHtml) {
   const title = $('h1.chapter-title').first().text().trim();
   const subtitle = $('p.chapter-subtitle').first().text().trim();
 
-  // 先处理动画类容器（需要读取 script 配置）
+  // 先处理动画类容器（需要读取 script 配置），转成 mp-json 占位节点
   const scriptAll = $('script');
-  $('div.compare-animation').each((_, el) => $(el).replaceWith(convertCompare($, el)));
-  $('div.flowchart-container').each((_, el) => $(el).replaceWith(convertFlowchart($, el, scriptAll)));
-  $('div.step-animation').each((_, el) => $(el).replaceWith(convertStep($, el, scriptAll)));
+  $('div.compare-animation').each((_, el) => $(el).replaceWith(nodeToPlaceholder(convertCompare($, el))));
+  $('div.flowchart-container').each((_, el) => $(el).replaceWith(nodeToPlaceholder(convertFlowchart($, el, scriptAll))));
+  $('div.step-animation').each((_, el) => $(el).replaceWith(nodeToPlaceholder(convertStep($, el, scriptAll))));
   // 兜底：容器内含 innerHTML 自绘内容（脚本以 container.innerHTML = `...` 注入）
   // 此时脚本移除后容器是空的 → 从脚本提取 innerHTML 模板中的标题/描述对，转为信息卡组
   $('div.flowchart-container:empty').each((_, el) => {
@@ -754,63 +757,65 @@ function convertChapterHtml(rawHtml) {
       if (t) cards.push({ title: t, desc: d });
     }
     if (cards.length) {
-      let html = '<div class="mp-steps">';
-      cards.forEach((c, i) => {
-        html += `<div class="mp-step"><div class="mp-step-num">${i + 1}</div><div class="mp-step-body">`
-          + `<div class="mp-step-title">${escapeHtml(c.title)}</div>`
-          + (c.desc ? `<div class="mp-step-desc">${escapeHtml(c.desc)}</div>` : '')
-          + '</div></div>';
-      });
-      html += '</div>';
-      $(el).replaceWith(html);
+      $(el).replaceWith(nodeToPlaceholder({
+        type: 'steps',
+        items: cards.map((c, i) => ({ num: i + 1, title: c.title, desc: c.desc })),
+      }));
     }
   });
 
   // 移除网页版专有的装饰/交互节点
   $(DROP_SELECTOR).remove();
 
-  // 表格全局规整：顶层、卡片内、comparison-table 内都要走一遍
+  // 表格全局规整：顶层、卡片内、comparison-table 内都要走一遍（清行内样式）
   normalizeTables($);
 
-  const out = [];
+  const nodes = [];
   const toc = [];          // 章节目录：{ level, text, anchor }，阅读页目录抽屉用
-  renderFlow($, $('body'), out, toc);
+  renderFlow($, $('body'), nodes, toc);
 
-  // 语音朗读：为可朗读段落注入 data-tts-idx（阅读页按索引定位+收集文本）
-  const html = injectTtsSpans(out.join('\n'));
+  // 语音朗读：为可朗读段落分配 tts 索引（阅读页按索引收集文本/定位）
+  assignTts(nodes);
 
-  return { title, subtitle, html, toc };
+  return { title, subtitle, nodes, toc };
 }
 
 /**
- * 为生成的 mp HTML 中可朗读段落注入 data-tts-idx
- * 目标：顶层/卡片/问答中的 p、mp-quote、sh(h2-h4) 标题，跳过代码块内部
+ * 为可朗读段落分配 tts 序号（替代原 injectTtsSpans 的 data-tts-idx 属性注入）。
+ * 目标：p / quote / list 的项 / 标题 h，跳过代码块与表格。
  */
-function injectTtsSpans(html) {
-  const $ = cheerio.load('<div id="__tts__">' + html + '</div>', { decodeEntities: false });
-  const $root = $('#__tts__');
+function assignTts(nodes) {
   let idx = 0;
-  const mark = (_, el) => {
-    const $el = $(el);
-    // 跳过代码块/表格内部
-    if ($el.closest('.mp-codeblock, .mp-table, .mp-table-wrap, pre, code').length) return;
-    const text = $el.text().replace(/\s+/g, ' ').trim();
-    if (!text || text.length < 2) return;
-    // 跳过已含可朗读子节点的容器（避免重复）
-    if ($el.find('p, li, .mp-quote, h2.sh, h3.sh, h4.sh').length) return;
-    $el.attr('data-tts-idx', String(idx++));
+  const visit = (list) => {
+    list.forEach(n => {
+      if (!n || !n.type) return;
+      if (n.type === 'p' || n.type === 'quote' || n.type === 'qaq' || n.type === 'h') {
+        if (n.text && n.text.length >= 2) n.tts = idx++;
+      } else if (n.type === 'list') {
+        (n.items || []).forEach(li => { if (li.text && li.text.length >= 2) li.tts = idx++; });
+      } else if (n.children) {
+        visit(n.children);
+      }
+    });
   };
-  // 段落
-  $root.find('p').each(mark);
-  // 列表项
-  $root.find('.mp-list li').each(mark);
-  // 标题（sh 类已挂在 h2/h3/h4 上）
-  $root.find('.sh').each(mark);
-  // 引用块（不含子段落的）
-  $root.find('.mp-quote').each(mark);
-  // 问答（问题/答案）
-  $root.find('.mp-qa-q, .mp-qa-a').each(mark);
-  return $root.html();
+  visit(nodes);
+}
+
+/**
+ * 把节点树展平成朗读段落数组 [{idx, text}]（供阅读页 _collectSegments 直接用）。
+ * 顺序与 assignTts 一致。
+ */
+function flattenTts(nodes, out) {
+  out = out || [];
+  nodes.forEach(n => {
+    if (!n || !n.type) return;
+    if (n.tts !== undefined && n.tts !== null && n.text) out.push({ idx: n.tts, text: n.text });
+    if (n.type === 'list') (n.items || []).forEach(li => {
+      if (li.tts !== undefined && li.tts !== null && li.text) out.push({ idx: li.tts, text: li.text });
+    });
+    if (n.children) flattenTts(n.children, out);
+  });
+  return out;
 }
 
 /* ---------------- 执行 ---------------- */
@@ -837,7 +842,8 @@ function main() {
       const chKey = `c${String(registry.length).padStart(2, '0')}`;
       const dataFile = `${slug}.js`; // 小程序 require 不支持 .json，数据必须以 .js 模块提供
       fs.writeFileSync(path.join(dataDir, dataFile), 'module.exports = ' + JSON.stringify({
-        key: chKey, slug, title: conv.title, subtitle: conv.subtitle, html: conv.html, toc: conv.toc,
+        key: chKey, slug, title: conv.title, subtitle: conv.subtitle,
+        nodes: conv.nodes, ttsSegs: flattenTts(conv.nodes), toc: conv.toc,
       }) + ';\n', 'utf8');
       const chNum = (conv.title.match(/第(\d+)章/) || [])[1];
       const quizKey = QUIZ_KEY_BY_SLUG[slug] || (chNum ? `ch${String(+chNum).padStart(2, '0')}` : null);

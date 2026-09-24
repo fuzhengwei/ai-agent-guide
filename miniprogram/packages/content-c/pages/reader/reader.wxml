@@ -162,7 +162,7 @@
         </view>
       </scroll-view>
       <!-- 信息卡 -->
-      <view wx:elif="{{item.type === 'card'}}" class="nd-card {{item.accent}}">
+      <view wx:elif="{{item.type === 'card'}}" class="nd-card {{item.accent}} {{item.qa ? 'nd-qa' : ''}}">
         <view class="nd-card-title" wx:if="{{item.title}}">{{item.title}}</view>
         <block wx:for="{{item.children}}" wx:for-item="c" wx:key="index">
           <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
@@ -175,6 +175,8 @@
           </view>
         </block>
       </view>
+      <!-- 问答问句行 -->
+      <view wx:elif="{{item.type === 'qaq'}}" class="nd-qaq fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
       <!-- 对话模拟气泡 -->
       <view wx:elif="{{item.type === 'chat'}}" class="nd-chat {{item.tone}}">
         <view class="nd-chat-label" wx:if="{{item.label}}">{{item.label}}</view>
