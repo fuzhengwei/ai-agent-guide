@@ -27,7 +27,7 @@
       },
       {
         "pagePath": "pages/quiz/quiz",
-        "text": "题库",
+        "text": "面试",
         "iconPath": "assets/tab/quiz.png",
         "selectedIconPath": "assets/tab/quiz-active.png"
       },

@@ -2,6 +2,12 @@
 
   <!-- 顶部 Hero -->
   <view class="hero">
+    <!-- 用户头像入口（右上角） -->
+    <view class="user-chip" bindtap="onUserTap">
+      <image wx:if="{{userAvatar}}" class="user-avatar" src="{{userAvatar}}" mode="aspectFill" />
+      <view wx:else class="user-avatar-placeholder">👤</view>
+      <view class="user-name">{{userName || '点击登录'}}</view>
+    </view>
     <image class="hero-logo" src="/assets/tab/course-active.png" mode="aspectFit" />
     <view class="hero-deco d1"></view>
     <view class="hero-deco d2"></view>

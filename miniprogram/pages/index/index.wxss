@@ -138,3 +138,25 @@
 .chapter-progress.done .done-text { color: #16a34a; }
 .chapter-item.read .chapter-progress-track { background: #e8f5e9; }
 .chapter-item.read .chapter-progress-fill { background: linear-gradient(90deg, #4ade80, #22c55e); }
+
+/* ===== 用户头像入口（Hero 右上角） ===== */
+.user-chip {
+  position: absolute; top: 32rpx; right: 32rpx; z-index: 5;
+  display: flex; align-items: center; gap: 12rpx;
+  background: rgba(255, 255, 255, 0.16); backdrop-filter: blur(8px);
+  border: 1rpx solid rgba(255, 255, 255, 0.28); border-radius: 999rpx;
+  padding: 8rpx 20rpx 8rpx 10rpx;
+}
+.user-avatar {
+  width: 52rpx; height: 52rpx; border-radius: 14rpx;
+  background: rgba(255,255,255,0.2);
+}
+.user-avatar-placeholder {
+  width: 52rpx; height: 52rpx; border-radius: 14rpx;
+  background: rgba(255,255,255,0.2); text-align: center; line-height: 52rpx;
+  font-size: 28rpx;
+}
+.user-name {
+  font-size: 24rpx; color: rgba(255, 255, 255, 0.92); font-weight: 600;
+  max-width: 160rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

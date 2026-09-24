@@ -1,7 +1,8 @@
-/* 勇者冒险岛 · 地图页 */
+/* 勇者冒险岛 · 地图页 · 保卫萝卜式深色星空立体风 */
 page {
   height: 100%;
   overflow: hidden;
+  background: #0b1530;
 }
 
 .map-page {
@@ -9,6 +10,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: linear-gradient(180deg, #05091a 0%, #0b1530 30%, #152248 65%, #1d2f5e 100%);
 }
 
 /* ---------- 顶部状态条 ---------- */
@@ -17,83 +19,126 @@ page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18rpx 28rpx;
-  background: rgba(255, 255, 255, 0.55);
-  border-bottom: 2rpx solid rgba(255, 255, 255, 0.6);
+  padding: 22rpx 30rpx;
+  background: linear-gradient(180deg, rgba(8, 14, 34, 0.85), rgba(8, 14, 34, 0.4));
+  border-bottom: 1rpx solid rgba(120, 160, 255, 0.15);
   z-index: 10;
 }
 .topbar-left { display: flex; flex-direction: column; }
-.topbar-title { font-size: 32rpx; font-weight: 900; color: #2e3a52; }
-.topbar-sub { font-size: 20rpx; color: #7a8aa0; margin-top: 2rpx; }
+.topbar-title {
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #ffd97a;
+  letter-spacing: 2rpx;
+  text-shadow: 0 0 20rpx rgba(255, 200, 100, 0.5);
+}
+.topbar-sub {
+  font-size: 20rpx;
+  color: #7f92c0;
+  margin-top: 4rpx;
+  letter-spacing: 1rpx;
+}
 .topbar-btn {
-  width: 64rpx;
-  height: 64rpx;
-  line-height: 64rpx;
+  width: 68rpx;
+  height: 68rpx;
+  line-height: 68rpx;
   text-align: center;
   font-size: 32rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(160deg, #2a3a6e, #1a2450);
+  border: 1rpx solid rgba(140, 170, 255, 0.3);
   border-radius: 50%;
-  box-shadow: 0 4rpx 12rpx rgba(90, 120, 170, 0.2);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.4), inset 0 2rpx 4rpx rgba(160, 190, 255, 0.2);
+  color: #cfe0ff;
 }
 .btn-press { transform: scale(0.88); }
 
 /* ---------- 地图长卷 ---------- */
 .map-scroll { flex: 1; }
 .map-canvas { position: relative; width: 100%; }
-.map-tail { height: 160rpx; }
+.map-tail { height: 200rpx; }
 
-/* 区域色带：7 段从下到上由暖到冷 */
-.band {
+/* 星空背景：随机星点闪烁 */
+.star {
   position: absolute;
-  left: 0;
-  right: 0;
+  border-radius: 50%;
+  background: #fff;
   pointer-events: none;
+  animation: twinkle 3s ease-in-out infinite;
 }
-.band:nth-child(1) { background: linear-gradient(180deg, rgba(207,226,255,0.5), rgba(240,246,255,0.35)); }
-.band:nth-child(2) { background: linear-gradient(180deg, rgba(159,200,255,0.35), rgba(220,234,255,0.22)); }
-.band:nth-child(3) { background: linear-gradient(180deg, rgba(255,196,214,0.28), rgba(255,233,240,0.18)); }
-.band:nth-child(4) { background: linear-gradient(180deg, rgba(201,184,255,0.26), rgba(236,229,255,0.16)); }
-.band:nth-child(5) { background: linear-gradient(180deg, rgba(174,232,255,0.3), rgba(224,245,255,0.18)); }
-.band:nth-child(6) { background: linear-gradient(180deg, rgba(255,217,168,0.32), rgba(255,239,214,0.2)); }
-.band:nth-child(7) { background: linear-gradient(180deg, rgba(168,230,255,0.4), rgba(227,248,255,0.25)); }
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
 
-/* ---------- 云朵 ---------- */
+/* 区域标题牌：悬浮横幅 */
+.zone-banner {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8rpx 24rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #ffd97a;
+  letter-spacing: 4rpx;
+  background: linear-gradient(90deg, transparent, rgba(60, 80, 160, 0.5), transparent);
+  border-top: 1rpx solid rgba(255, 220, 140, 0.4);
+  border-bottom: 1rpx solid rgba(255, 220, 140, 0.4);
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* 漂浮云朵：暗夜发光 */
 .cloud {
   position: absolute;
-  opacity: 0.85;
-  animation: drift 7s ease-in-out infinite;
+  opacity: 0.4;
+  filter: brightness(1.3) drop-shadow(0 0 20rpx rgba(160, 200, 255, 0.5));
+  animation: drift 8s ease-in-out infinite;
   pointer-events: none;
 }
-.cloud.c1 { animation-duration: 9s; animation-delay: 1.2s; }
-.cloud.c2 { animation-duration: 11s; animation-delay: 2.4s; }
+.cloud.c1 { animation-duration: 10s; animation-delay: 1.2s; }
+.cloud.c2 { animation-duration: 12s; animation-delay: 2.4s; }
 @keyframes drift {
   0%, 100% { margin-left: 0; }
-  50% { margin-left: 24rpx; }
+  50% { margin-left: 30rpx; }
 }
 
-/* ---------- 山路 ---------- */
-.map-path {
+/* ---------- 山路（view 段拼成，发光效果） ---------- */
+.path-seg {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #d4a04a, #ffd97a 50%, #d4a04a);
+  box-shadow:
+    0 0 12rpx rgba(255, 210, 120, 0.6),
+    0 0 24rpx rgba(255, 180, 80, 0.3),
+    inset 0 1rpx 2rpx rgba(255, 240, 200, 0.6);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+.path-seg.dash {
+  background: rgba(255, 250, 220, 0.95);
+  box-shadow: 0 0 8rpx rgba(255, 240, 200, 0.8);
+  z-index: 2;
 }
 
 /* ---------- 路边装饰 ---------- */
 .decor {
   position: absolute;
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 3rpx 3rpx rgba(60, 80, 40, 0.18));
+  filter: drop-shadow(0 0 12rpx rgba(255, 220, 160, 0.4)) brightness(1.1);
   pointer-events: none;
+  z-index: 1;
 }
 
 /* ---------- 王冠 ---------- */
 .crown {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: 68rpx;
-  opacity: 0.35;
-  filter: grayscale(1);
+  font-size: 84rpx;
+  opacity: 0.5;
+  filter: grayscale(0.8) brightness(0.7);
+  z-index: 3;
 }
 .crown.lit {
   opacity: 1;
@@ -101,29 +146,36 @@ page {
   animation: crownGlow 1.6s ease-in-out infinite;
 }
 @keyframes crownGlow {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -56%) scale(1.12); }
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    filter: drop-shadow(0 0 20rpx rgba(255, 220, 140, 0.8));
+  }
+  50% {
+    transform: translate(-50%, -56%) scale(1.15);
+    filter: drop-shadow(0 0 40rpx rgba(255, 220, 140, 1));
+  }
 }
 
 /* ---------- 宝箱 ---------- */
 .chest {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: 48rpx;
-  opacity: 0.55;
-  filter: grayscale(0.6);
+  font-size: 56rpx;
+  opacity: 0.6;
+  filter: grayscale(0.6) brightness(0.7);
+  z-index: 2;
 }
 .chest.opened {
   opacity: 1;
-  filter: none;
+  filter: drop-shadow(0 0 16rpx rgba(255, 200, 100, 0.8));
   animation: chestBounce 1.8s ease-in-out infinite;
 }
 @keyframes chestBounce {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -58%) scale(1.1); }
+  50% { transform: translate(-50%, -58%) scale(1.15); }
 }
 
-/* ---------- 关卡节点 ---------- */
+/* ---------- 关卡节点（保卫萝卜式立体发光节点） ---------- */
 .node {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -132,124 +184,157 @@ page {
   align-items: center;
   z-index: 3;
 }
-.node-press { transform: translate(-50%, -50%) scale(0.9); }
+.node-press { transform: translate(-50%, -50%) scale(0.88); }
 
 .node-bubble {
-  width: 84rpx;
-  height: 84rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  border: 5rpx solid #d5e0ec;
-  box-shadow: 0 6rpx 0 rgba(160, 180, 205, 0.6), 0 10rpx 20rpx rgba(90, 120, 170, 0.18);
+  position: relative;
+  /* 立体凸起：顶部高光 + 底部深影 */
+  background: radial-gradient(circle at 30% 30%, #4a5c8e, #1e2848 70%);
+  border: 3rpx solid rgba(140, 170, 255, 0.4);
+  box-shadow:
+    0 8rpx 0 rgba(0, 0, 0, 0.4),
+    0 12rpx 24rpx rgba(0, 0, 0, 0.5),
+    inset 0 2rpx 4rpx rgba(200, 220, 255, 0.3),
+    inset 0 -4rpx 8rpx rgba(0, 0, 0, 0.4);
 }
-.node-lock { font-size: 34rpx; opacity: 0.7; }
-.node-num { font-size: 32rpx; font-weight: 900; color: #fff; }
-.node-star { font-size: 36rpx; }
+.node-lock { font-size: 38rpx; opacity: 0.6; }
+.node-num {
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.5);
+}
+.node-star { font-size: 40rpx; }
 
-/* 当前关：橙色活力 */
+/* 当前关：炽橙色发光 */
 .node.current .node-bubble {
-  background: linear-gradient(160deg, #ffb347, #ff8c42);
-  border-color: #fff;
-  box-shadow: 0 6rpx 0 #d96a1a, 0 12rpx 26rpx rgba(255, 140, 66, 0.5);
-  animation: nodeBob 1.6s ease-in-out infinite;
+  background: radial-gradient(circle at 30% 30%, #ffc375, #ff7a2c 60%, #d94a0a);
+  border-color: #ffe6b8;
+  box-shadow:
+    0 8rpx 0 #a63a08,
+    0 0 30rpx rgba(255, 150, 60, 0.8),
+    0 0 60rpx rgba(255, 120, 40, 0.4),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.5),
+    inset 0 -4rpx 8rpx rgba(160, 40, 0, 0.4);
+  animation: nodeBob 1.4s ease-in-out infinite;
 }
 @keyframes nodeBob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10rpx); }
+  50% { transform: translateY(-12rpx); }
 }
 
-/* 已通关：绿色+金边 */
+/* 已通关：翠绿色发光 */
 .node.cleared .node-bubble {
-  background: linear-gradient(160deg, #7dd069, #4cb944);
-  border-color: #ffe49a;
-  box-shadow: 0 6rpx 0 #359835, 0 10rpx 20rpx rgba(76, 185, 68, 0.35);
+  background: radial-gradient(circle at 30% 30%, #a4e887, #4cb944 60%, #258022);
+  border-color: #d8f7c0;
+  box-shadow:
+    0 8rpx 0 #1a5a18,
+    0 0 24rpx rgba(120, 220, 100, 0.6),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.4),
+    inset 0 -4rpx 8rpx rgba(20, 80, 20, 0.4);
 }
 
-/* 未解锁：灰白 */
+/* 未解锁：深蓝灰消光 */
 .node.locked .node-bubble {
-  background: #eef2f7;
-  border-color: #dde5ee;
-  box-shadow: 0 5rpx 0 rgba(180, 195, 215, 0.5);
+  background: radial-gradient(circle at 30% 30%, #2a3454, #161e3a 70%);
+  border-color: rgba(100, 130, 200, 0.25);
+  box-shadow:
+    0 6rpx 0 rgba(0, 0, 0, 0.4),
+    inset 0 2rpx 4rpx rgba(140, 170, 255, 0.15),
+    inset 0 -4rpx 8rpx rgba(0, 0, 0, 0.4);
 }
 
+/* 关卡图标旗 */
 .node-flag {
   position: absolute;
-  top: -52rpx;
-  right: -34rpx;
-  font-size: 36rpx;
-  filter: drop-shadow(0 2rpx 2rpx rgba(0,0,0,0.15));
-  animation: flagWave 2.2s ease-in-out infinite;
+  top: -56rpx;
+  right: -36rpx;
+  font-size: 40rpx;
+  filter: drop-shadow(0 0 12rpx rgba(255, 220, 160, 0.6));
+  animation: flagWave 2.4s ease-in-out infinite;
 }
-.node.locked .node-flag { opacity: 0.4; filter: grayscale(1); animation: none; }
+.node.locked .node-flag { opacity: 0.35; filter: grayscale(1) brightness(0.6); animation: none; }
 @keyframes flagWave {
-  0%, 100% { transform: rotate(-6deg); }
-  50% { transform: rotate(8deg); }
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(10deg); }
 }
 
+/* 关卡名 */
 .node-name {
-  margin-top: 10rpx;
-  font-size: 20rpx;
-  font-weight: 700;
-  color: #4a5a75;
-  background: rgba(255, 255, 255, 0.88);
-  padding: 3rpx 16rpx;
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #cfe0ff;
+  background: linear-gradient(160deg, rgba(30, 42, 84, 0.9), rgba(18, 26, 56, 0.9));
+  border: 1rpx solid rgba(140, 170, 255, 0.3);
+  padding: 4rpx 18rpx;
   border-radius: 999rpx;
-  box-shadow: 0 3rpx 8rpx rgba(90, 120, 170, 0.15);
+  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.4), inset 0 1rpx 2rpx rgba(160, 190, 255, 0.2);
   white-space: nowrap;
+  letter-spacing: 1rpx;
 }
-.node-name.locked { color: #a5b2c4; }
-.node-name.current { color: #e07020; }
+.node-name.locked { color: #6a7a9e; }
+.node-name.current {
+  color: #ffd97a;
+  border-color: rgba(255, 200, 120, 0.5);
+  background: linear-gradient(160deg, rgba(120, 60, 20, 0.85), rgba(80, 36, 8, 0.85));
+  box-shadow: 0 4rpx 12rpx rgba(255, 140, 60, 0.4), inset 0 1rpx 2rpx rgba(255, 220, 160, 0.3);
+}
 
-/* 当前关的扩散光圈 */
+/* 当前关扩散光圈 */
 .node-pulse {
   position: absolute;
-  top: 42rpx;
+  top: 48rpx;
   left: 50%;
-  width: 84rpx;
-  height: 84rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(255, 140, 66, 0.55);
+  border: 3rpx solid rgba(255, 170, 80, 0.7);
   transform: translate(-50%, -50%);
   animation: pulse 1.6s ease-out infinite;
   pointer-events: none;
 }
 @keyframes pulse {
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
-  100% { transform: translate(-50%, -50%) scale(2.1); opacity: 0; }
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
 }
 
 /* ---------- 小狐狸 ---------- */
 .fox {
   position: absolute;
   transform: translate(-50%, -96%);
-  font-size: 54rpx;
+  font-size: 64rpx;
   z-index: 4;
-  filter: drop-shadow(0 4rpx 4rpx rgba(60, 60, 20, 0.25));
+  filter: drop-shadow(0 0 16rpx rgba(255, 180, 100, 0.7)) brightness(1.15);
   transition: left 0.8s cubic-bezier(0.34, 1.3, 0.64, 1), top 0.8s cubic-bezier(0.34, 1.3, 0.64, 1);
   animation: foxBob 1.1s ease-in-out infinite;
   pointer-events: none;
 }
 @keyframes foxBob {
   0%, 100% { margin-top: 0; }
-  50% { margin-top: -10rpx; }
+  50% { margin-top: -14rpx; }
 }
 
 /* ---------- 全通关横幅 ---------- */
 .allclear {
   position: fixed;
   left: 50%;
-  bottom: 60rpx;
+  bottom: 70rpx;
   transform: translateX(-50%);
-  background: linear-gradient(90deg, #fff3c9, #ffe49a);
-  color: #8a6a10;
-  font-size: 25rpx;
-  font-weight: 800;
-  padding: 16rpx 36rpx;
+  background: linear-gradient(90deg, #ffd97a, #ff9d5c);
+  color: #4a2400;
+  font-size: 26rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+  padding: 18rpx 40rpx;
   border-radius: 999rpx;
-  box-shadow: 0 10rpx 30rpx rgba(200, 160, 40, 0.35);
+  box-shadow: 0 0 40rpx rgba(255, 180, 80, 0.6), 0 12rpx 30rpx rgba(0, 0, 0, 0.5);
   animation: bannerIn 0.6s cubic-bezier(0.34, 1.5, 0.64, 1);
   z-index: 20;
   white-space: nowrap;
@@ -259,11 +344,11 @@ page {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ---------- 关卡弹窗 ---------- */
+/* ---------- 关卡弹窗（深色玻璃拟态） ---------- */
 .popup-mask {
   position: fixed;
   inset: 0;
-  background: rgba(40, 52, 80, 0.48);
+  background: rgba(4, 8, 20, 0.7);
   z-index: 50;
   display: flex;
   align-items: flex-end;
@@ -274,10 +359,11 @@ page {
 
 .popup-card {
   width: 100%;
-  background: #fff;
+  background: linear-gradient(180deg, #1a2450 0%, #0e1532 100%);
   border-radius: 44rpx 44rpx 0 0;
+  border-top: 1rpx solid rgba(140, 170, 255, 0.3);
   overflow: hidden;
-  box-shadow: 0 -16rpx 60rpx rgba(30, 40, 70, 0.3);
+  box-shadow: 0 -20rpx 60rpx rgba(0, 0, 0, 0.6), inset 0 1rpx 0 rgba(200, 220, 255, 0.2);
   animation: sheetIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -289,69 +375,91 @@ page {
 .popup-head {
   display: flex;
   align-items: center;
-  gap: 22rpx;
-  padding: 36rpx 36rpx 30rpx;
+  gap: 24rpx;
+  padding: 40rpx 38rpx 32rpx;
 }
 .popup-icon {
-  font-size: 64rpx;
-  width: 108rpx;
-  height: 108rpx;
-  line-height: 108rpx;
+  font-size: 72rpx;
+  width: 120rpx;
+  height: 120rpx;
+  line-height: 120rpx;
   text-align: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: radial-gradient(circle at 30% 30%, #4a5c8e, #1e2848);
+  border: 2rpx solid rgba(160, 190, 255, 0.4);
   border-radius: 32rpx;
-  box-shadow: 0 6rpx 0 rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.5), inset 0 2rpx 4rpx rgba(200, 220, 255, 0.3);
 }
-.popup-head-text { display: flex; flex-direction: column; gap: 6rpx; }
-.popup-name { font-size: 36rpx; font-weight: 900; color: #fff; text-shadow: 0 2rpx 6rpx rgba(0,0,0,0.18); }
-.popup-monster { font-size: 23rpx; color: rgba(255, 255, 255, 0.92); }
+.popup-head-text { display: flex; flex-direction: column; gap: 8rpx; }
+.popup-name {
+  font-size: 38rpx;
+  font-weight: 900;
+  color: #ffd97a;
+  letter-spacing: 2rpx;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
+}
+.popup-monster { font-size: 24rpx; color: #9db0d8; letter-spacing: 1rpx; }
 
-.popup-body { padding: 28rpx 36rpx 40rpx; }
+.popup-body { padding: 32rpx 38rpx 44rpx; }
 
-.popup-meta { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 24rpx; }
+.popup-meta { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 28rpx; }
 .meta-chip {
-  font-size: 22rpx;
+  font-size: 23rpx;
   font-weight: 700;
-  color: #5a6b85;
-  background: #f1f5fa;
-  padding: 8rpx 22rpx;
+  color: #cfe0ff;
+  background: rgba(60, 80, 160, 0.35);
+  border: 1rpx solid rgba(140, 170, 255, 0.25);
+  padding: 10rpx 24rpx;
   border-radius: 999rpx;
+  letter-spacing: 1rpx;
 }
-.meta-chip.gold { color: #b8860b; background: #fff3c9; }
+.meta-chip.gold {
+  color: #ffd97a;
+  background: rgba(160, 110, 30, 0.3);
+  border-color: rgba(255, 200, 120, 0.4);
+}
 
 .popup-tip {
-  background: #f7fafd;
-  border: 2rpx dashed #c9d8ea;
-  border-radius: 22rpx;
-  padding: 20rpx 24rpx;
-  margin-bottom: 30rpx;
+  background: rgba(20, 30, 64, 0.5);
+  border: 1rpx dashed rgba(140, 170, 255, 0.3);
+  border-radius: 24rpx;
+  padding: 22rpx 26rpx;
+  margin-bottom: 34rpx;
 }
-.popup-tip-label { font-size: 22rpx; font-weight: 800; color: #5ea8f5; margin-bottom: 10rpx; }
-.popup-tip-q { font-size: 26rpx; font-weight: 700; color: #2e3a52; line-height: 1.5; margin-bottom: 8rpx; }
-.popup-tip-a { font-size: 24rpx; color: #6b7d99; line-height: 1.5; }
+.popup-tip-label { font-size: 23rpx; font-weight: 800; color: #7fb2ff; margin-bottom: 12rpx; letter-spacing: 1rpx; }
+.popup-tip-q { font-size: 27rpx; font-weight: 700; color: #e8efff; line-height: 1.55; margin-bottom: 10rpx; }
+.popup-tip-a { font-size: 25rpx; color: #9db0d8; line-height: 1.55; }
 
-.popup-btns { display: flex; gap: 22rpx; }
+.popup-btns { display: flex; gap: 24rpx; }
 .popup-btns .btn { flex: 1; }
 
-/* ---------- 按钮（与答题页一致的卡通按钮） ---------- */
+/* ---------- 按钮（保卫萝卜式立体按钮） ---------- */
 .btn {
   border: none;
   border-radius: 999rpx;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 30rpx;
   line-height: 2.6;
   padding: 0 40rpx;
   margin: 0;
+  letter-spacing: 2rpx;
 }
 .btn::after { border: none; }
 .btn.primary {
-  background: linear-gradient(135deg, #ffb347, #ff8c42);
+  background: linear-gradient(160deg, #ffc375, #ff7a2c 60%, #e55a10);
   color: #fff;
-  box-shadow: 0 8rpx 0 #e07020, 0 14rpx 24rpx rgba(255, 140, 66, 0.35);
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 8rpx 0 #a63a08,
+    0 0 24rpx rgba(255, 150, 60, 0.5),
+    0 14rpx 24rpx rgba(0, 0, 0, 0.4),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.4);
 }
 .btn.ghost {
-  background: #f1f5fa;
-  color: #5a6b85;
-  box-shadow: 0 6rpx 0 #d5e0ec;
+  background: linear-gradient(160deg, #2a3a6e, #1a2450);
+  color: #cfe0ff;
+  border: 1rpx solid rgba(140, 170, 255, 0.3);
+  box-shadow:
+    0 6rpx 0 rgba(0, 0, 0, 0.4),
+    inset 0 2rpx 4rpx rgba(160, 190, 255, 0.2);
 }
-.btn-hover { transform: translateY(4rpx) scale(0.98); filter: brightness(0.96); }
+.btn-hover { transform: translateY(4rpx) scale(0.97); filter: brightness(1.1); }

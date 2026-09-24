@@ -2,6 +2,9 @@ const chapters = require('../../data/chapters.js');
 const store = require('../../utils/store.js');
 const pay = require('../../utils/pay.js');
 const share = require('../../utils/share.js');
+const cloud = require('../../utils/cloud.js');
+
+const app = getApp();
 
 // 阶段划分（按章节显示序号 num 分组）
 const STAGES = [
@@ -24,9 +27,12 @@ Page({
     payEnabled: pay.CONFIG.PAY_ENABLED,
     priceLabel: pay.CONFIG.PRICE_LABEL,
     freeCount: pay.CONFIG.FREE_CHAPTER_COUNT,
+    userAvatar: '',
+    userName: '',
   },
 
   onShow() {
+    this._refreshUser();
     const readMap = store.getReadMap();
     const enriched = chapters.map((c, i) => {
       const pos = store.getReadPos(c.key);
@@ -135,4 +141,59 @@ Page({
     'AI Agent 通识教程：28 章学会 Agent 开发，配 463 道大厂面试题',
     '/pages/index/index'
   ),
+
+  /* ===== 用户登录/头像 ===== */
+
+  _refreshUser() {
+    // 优先读全局缓存（静默登录已写入）
+    const p = (app.globalData && app.globalData.profile) || null;
+    if (p && p.avatarUrl) {
+      this.setData({ userAvatar: p.avatarUrl, userName: p.nickname || '' });
+      return;
+    }
+    // 本地缓存兜底
+    const cached = store.getUserProfile();
+    if (cached && cached.avatarUrl) {
+      this.setData({ userAvatar: cached.avatarUrl, userName: cached.nickname || '' });
+      return;
+    }
+    // 静默登录完成后回填
+    if (app && app.onLoginReady) {
+      app.onLoginReady((res) => {
+        const prof = res && res.profile;
+        if (prof && prof.avatarUrl) {
+          this.setData({ userAvatar: prof.avatarUrl, userName: prof.nickname || '' });
+        }
+      });
+    }
+  },
+
+  onUserTap() {
+    // 已登录：跳转到「我的」页
+    if (this.data.userAvatar) {
+      wx.switchTab({ url: '/pages/mine/mine' });
+      return;
+    }
+    // 未登录：拉起微信头像昵称授权
+    wx.getUserProfile({
+      desc: '用于展示头像和学习数据',
+      success: (res) => {
+        const info = res.userInfo || {};
+        const profile = { nickname: info.nickName || '', avatarUrl: info.avatarUrl || '' };
+        store.setUserProfile(profile);
+        this.setData({ userAvatar: profile.avatarUrl, userName: profile.nickname });
+        // 同步到云端
+        if (cloud.ready()) {
+          cloud.saveProfile(profile).then(() => {
+            // 更新全局档案
+            if (app.globalData) app.globalData.profile = Object.assign({}, app.globalData.profile, profile);
+          });
+        }
+        wx.showToast({ title: '登录成功', icon: 'success' });
+      },
+      fail: () => {
+        wx.showToast({ title: '已取消', icon: 'none' });
+      },
+    });
+  },
 });

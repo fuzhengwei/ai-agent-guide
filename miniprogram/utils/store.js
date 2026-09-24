@@ -7,6 +7,7 @@ const KEYS = {
   READ_POS: 'dsh_read_pos',        // 各章节阅读位置 { key: { top, time } }
   LAST_CHAPTER: 'dsh_last_chapter',// 最近打开的章节 { key, slug, pkg, title, time }
   STUDY_TIME: 'dsh_study_time',    // { total: ms, days: { 'YYYY-MM-DD': ms } }
+  USER_PROFILE: 'dsh_user_profile',// 微信授权的头像/昵称缓存
 };
 
 // 星级规则：正确率 >=90% 三星 / >=70% 两星 / >=60% 一星（通关）
@@ -119,6 +120,17 @@ function clearAll() {
   wx.removeStorageSync(KEYS.READ_POS);
   wx.removeStorageSync(KEYS.LAST_CHAPTER);
   wx.removeStorageSync(KEYS.STUDY_TIME);
+  wx.removeStorageSync(KEYS.USER_PROFILE);
+}
+
+/* ===== 用户头像/昵称本地缓存 ===== */
+
+function getUserProfile() {
+  try { return wx.getStorageSync(KEYS.USER_PROFILE) || null; } catch (e) { return null; }
+}
+
+function setUserProfile(profile) {
+  try { wx.setStorageSync(KEYS.USER_PROFILE, profile); } catch (e) {}
 }
 
 /* ===== 学习时长统计 ===== */
@@ -158,5 +170,6 @@ module.exports = {
   getQuizRecords, saveQuizResult, calcStars, isPassed, getGameStats,
   removeWrongIds,
   addStudyTime, getStudyTime,
+  getUserProfile, setUserProfile,
   clearAll,
 };

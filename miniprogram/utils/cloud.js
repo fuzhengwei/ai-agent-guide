@@ -52,8 +52,13 @@ function setNickname(nickname) {
   return call('login', { action: 'setNickname', nickname });
 }
 
+// 保存微信授权的头像/昵称到云端档案
+function saveProfile(profile) {
+  return call('login', { action: 'saveProfile', nickname: profile.nickname, avatarUrl: profile.avatarUrl });
+}
+
 module.exports = {
   ready,
   addNote, listNotes, updateNoteText, removeNote,
-  reportStats, getLeaderboard, setNickname,
+  reportStats, getLeaderboard, setNickname, saveProfile,
 };

@@ -22,8 +22,21 @@
   >
     <view class="map-canvas" style="height: {{mapH * 1.5}}rpx;">
 
-      <!-- 区域背景色带（7 段纵向过渡） -->
-      <view class="band" wx:for="{{7}}" wx:key="*this" style="top: {{index * (mapH * 1.5 / 7)}}rpx; height: {{mapH * 1.5 / 7 + 4}}rpx;"></view>
+      <!-- 星空背景 -->
+      <view
+        wx:for="{{stars}}"
+        wx:key="index"
+        class="star"
+        style="left: {{item.x}}%; top: {{item.y}}rpx; width: {{item.s}}rpx; height: {{item.s}}rpx; opacity: {{item.opacity}}; animation-delay: {{item.delay}}s;"
+      ></view>
+
+      <!-- 区域标题横幅 -->
+      <view
+        wx:for="{{zoneBanners}}"
+        wx:key="name"
+        class="zone-banner"
+        style="top: {{item.y * 1.5}}rpx;"
+      >✦ {{item.name}} ✦</view>
 
       <!-- 漂浮云朵 -->
       <view
@@ -33,13 +46,13 @@
         style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; font-size: {{52 * item.s}}rpx;"
       >☁️</view>
 
-      <!-- 山路 SVG -->
-      <svg class="map-path" viewBox="0 0 100 {{mapH}}" preserveAspectRatio="none">
-        <!-- 土黄色路基 -->
-        <path d="{{pathD}}" fill="none" stroke="#e8c97f" stroke-width="7" stroke-linecap="round" />
-        <!-- 白色虚线车道线 -->
-        <path d="{{pathD}}" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="3,4" opacity="0.85" />
-      </svg>
+      <!-- 山路：用一系列圆角小段拼出弯曲路径（兼容小程序真机，不用 SVG） -->
+      <view
+        wx:for="{{pathSegs}}"
+        wx:key="index"
+        class="path-seg {{item.kind === 'dash' ? 'dash' : ''}}"
+        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; width: {{item.w}}rpx; height: {{item.h}}rpx; transform: translate(-50%, -50%) rotate({{item.rot}}deg);"
+      ></view>
 
       <!-- 路边装饰 -->
       <view

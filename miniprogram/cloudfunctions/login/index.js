@@ -1,4 +1,4 @@
-// login：微信一键登录，返回 openid 与档案；支持设置昵称
+// login：微信一键登录，返回 openid 与档案；支持设置昵称/头像
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -22,11 +22,36 @@ exports.main = async (event) => {
     return { ok: true, nickname };
   }
 
+  // 保存微信授权的头像/昵称（用户主动点击头像授权后调用）
+  if (event.action === 'saveProfile') {
+    const nickname = String(event.nickname || '').trim().slice(0, 20);
+    const avatarUrl = String(event.avatarUrl || '').trim().slice(0, 500);
+    const patch = { updatedAt: db.serverDate() };
+    if (nickname) patch.nickname = nickname;
+    if (avatarUrl) patch.avatarUrl = avatarUrl;
+    if (profile) {
+      await profiles.doc(profile._id).update({ data: patch });
+      profile = Object.assign({}, profile, patch);
+    } else {
+      const init = Object.assign({
+        _openid: OPENID,
+        nickname: nickname || ('学习者' + OPENID.slice(-4)),
+        avatarUrl: avatarUrl || '',
+        totalStudyMs: 0, readCount: 0, xp: 0, stars: 0,
+        createdAt: db.serverDate(),
+      }, patch);
+      const res = await profiles.add({ data: init });
+      profile = Object.assign({ _id: res._id }, init);
+    }
+    return { ok: true, profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || '' } };
+  }
+
   if (!profile) {
     const res = await profiles.add({
       data: {
         _openid: OPENID,
         nickname: '学习者' + OPENID.slice(-4),
+        avatarUrl: '',
         totalStudyMs: 0,
         readCount: 0,
         xp: 0,
@@ -35,7 +60,7 @@ exports.main = async (event) => {
         updatedAt: db.serverDate(),
       },
     });
-    profile = { _id: res._id, nickname: '学习者' + OPENID.slice(-4), totalStudyMs: 0, readCount: 0, xp: 0, stars: 0 };
+    profile = { _id: res._id, nickname: '学习者' + OPENID.slice(-4), avatarUrl: '', totalStudyMs: 0, readCount: 0, xp: 0, stars: 0 };
   }
 
   return { ok: true, openid: OPENID, profile };
