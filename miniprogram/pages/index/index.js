@@ -147,22 +147,24 @@ Page({
   _refreshUser() {
     // 优先读全局缓存（静默登录已写入）
     const p = (app.globalData && app.globalData.profile) || null;
-    if (p && p.avatarUrl) {
-      this.setData({ userAvatar: p.avatarUrl, userName: p.nickname || '' });
+    // 「微信用户」是旧版 wx.getUserProfile 的默认昵称，视为未登录，强制重新授权
+    const isLegacyDefault = (n) => !n || n === '微信用户' || n === '微信用户 ';
+    if (p && p.avatarUrl && !isLegacyDefault(p.nickname)) {
+      this.setData({ userAvatar: p.avatarUrl, userName: p.nickname });
       return;
     }
-    // 本地缓存兜底
+    // 本地缓存兜底（同样过滤旧版默认昵称）
     const cached = store.getUserProfile();
-    if (cached && cached.avatarUrl) {
-      this.setData({ userAvatar: cached.avatarUrl, userName: cached.nickname || '' });
+    if (cached && cached.avatarUrl && !isLegacyDefault(cached.nickname)) {
+      this.setData({ userAvatar: cached.avatarUrl, userName: cached.nickname });
       return;
     }
     // 静默登录完成后回填
     if (app && app.onLoginReady) {
       app.onLoginReady((res) => {
         const prof = res && res.profile;
-        if (prof && prof.avatarUrl) {
-          this.setData({ userAvatar: prof.avatarUrl, userName: prof.nickname || '' });
+        if (prof && prof.avatarUrl && !isLegacyDefault(prof.nickname)) {
+          this.setData({ userAvatar: prof.avatarUrl, userName: prof.nickname });
         }
       });
     }
@@ -174,8 +176,9 @@ Page({
       wx.switchTab({ url: '/pages/mine/mine' });
       return;
     }
-    // 未登录：头像选择由 button[open-type=chooseAvatar] 触发，这里只做提示
-    // 昵称通过下面的输入框获取
+    // 未登录：清掉旧缓存，走 chooseAvatar 授权
+    store.setUserProfile(null);
+    this.setData({ userAvatar: '', userName: '' });
   },
 
   // 微信新授权流程：chooseAvatar 返回头像临时路径
