@@ -9,19 +9,26 @@
  * - wechatsi 单次 textToSpeech 有字数与频率限制，逐段合成；
  * - 页内无原生 TTS 音色选择，音色通过 lang + 不同发音风格模拟（见 VOICES）。
  * - 合成音频是临时文件路径，用 InnerAudioContext 播放。
+ * - 插件未添加时（requirePlugin 抛错或返回 undefined），isSupported() 返回 false，页面降级提示。
  */
 
-const PLUGIN_OK = (() => {
-  try { return !!requirePlugin('WechatSI'); } catch (e) { return false; }
-})();
-
+// 模块顶层不做 requirePlugin（未添加插件时整个模块会加载失败，影响阅读页）
 let _si = null;
+let _siChecked = false;
 function si() {
-  if (!_si) {
-    try { _si = requirePlugin('WechatSI'); } catch (e) { _si = null; }
+  if (!_siChecked) {
+    _siChecked = true;
+    try {
+      const p = requirePlugin('WechatSI');
+      _si = (p && typeof p.textToSpeech === 'function') ? p : null;
+    } catch (e) {
+      _si = null;
+    }
   }
   return _si;
 }
+
+function isSupported() { return si() !== null; }
 
 // 音色选项：wechatsi 只有 zh_CN 一种女声合成，音调用 playbackRate 微调模拟不同声色
 const VOICES = [
@@ -31,8 +38,6 @@ const VOICES = [
 ];
 
 function getVoices() { return VOICES; }
-
-function isSupported() { return PLUGIN_OK; }
 
 /**
  * 创建朗读引擎
