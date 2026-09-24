@@ -88,6 +88,19 @@
         <slider min="0.6" max="1.8" step="0.1" value="{{ttsRate}}" activeColor="#5a7cf7" block-size="18" bindchanging="onRateChanging" bindchange="onRateChange" />
         <view class="tts-rate-val">{{ttsRate}}x</view>
       </view>
+      <view class="tts-row">
+        <view class="tts-label">定时停止</view>
+        <view class="tts-timer-opts">
+          <view
+            wx:for="{{timerOptions}}"
+            wx:key="id"
+            class="timer-opt {{ttsTimer === item.id ? 'on' : ''}}"
+            data-id="{{item.id}}"
+            bindtap="setTimer"
+          >{{item.label}}</view>
+        </view>
+      </view>
+      <view class="tts-timer-info" wx:if="{{ttsTimer !== 'none' && timerCountdownText}}">⏰ {{timerCountdownText}}</view>
       <view class="tts-controls">
         <view class="tts-ctl-btn primary" bindtap="ttsPlay" wx:if="{{ttsState === 'idle'}}">▶ 朗读本章</view>
         <view class="tts-ctl-btn" bindtap="ttsPause" wx:if="{{ttsState === 'playing' || ttsState === 'synthesizing'}}">⏸ 暂停</view>

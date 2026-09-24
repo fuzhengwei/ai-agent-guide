@@ -8,6 +8,7 @@ const KEYS = {
   LAST_CHAPTER: 'dsh_last_chapter',// 最近打开的章节 { key, slug, pkg, title, time }
   STUDY_TIME: 'dsh_study_time',    // { total: ms, days: { 'YYYY-MM-DD': ms } }
   USER_PROFILE: 'dsh_user_profile',// 微信授权的头像/昵称缓存
+  TTS_POS: 'dsh_tts_pos',          // 各章节朗读位置 { key: { idx, time } }
 };
 
 // 星级规则：正确率 >=90% 三星 / >=70% 两星 / >=60% 一星（通关）
@@ -48,6 +49,34 @@ function getLastChapter() {
   try {
     return wx.getStorageSync(KEYS.LAST_CHAPTER) || null;
   } catch (e) { return null; }
+}
+
+/* ===== 朗读位置记忆（每章独立，读完本章自动清空） ===== */
+
+function saveTtsPos(chKey, idx) {
+  if (!chKey || typeof idx !== 'number') return;
+  try {
+    const map = wx.getStorageSync(KEYS.TTS_POS) || {};
+    map[chKey] = { idx: Math.max(0, Math.round(idx)), time: Date.now() };
+    wx.setStorageSync(KEYS.TTS_POS, map);
+  } catch (e) {}
+}
+
+function getTtsPos(chKey) {
+  try {
+    const map = wx.getStorageSync(KEYS.TTS_POS) || {};
+    const rec = map[chKey];
+    return rec && typeof rec.idx === 'number' && rec.idx > 0 ? rec : null;
+  } catch (e) { return null; }
+}
+
+function clearTtsPos(chKey) {
+  if (!chKey) return;
+  try {
+    const map = wx.getStorageSync(KEYS.TTS_POS) || {};
+    delete map[chKey];
+    wx.setStorageSync(KEYS.TTS_POS, map);
+  } catch (e) {}
 }
 
 function markRead(chKey) {
@@ -167,6 +196,7 @@ function _today() {
 module.exports = {
   getReadMap, markRead,
   saveReadPos, getReadPos, setLastChapter, getLastChapter,
+  saveTtsPos, getTtsPos, clearTtsPos,
   getQuizRecords, saveQuizResult, calcStars, isPassed, getGameStats,
   removeWrongIds,
   addStudyTime, getStudyTime,

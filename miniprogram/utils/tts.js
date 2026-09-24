@@ -15,11 +15,20 @@
 
 const app = getApp();
 
-// 音色选项：腾讯云 TTS VoiceType（中文女声为主，后续可扩男声 101004 智云等）
+// 音色选项：腾讯云 TTS VoiceType
+// 完整列表 https://cloud.tencent.com/document/api/1073/37995
+// 1010xx 系列属于通用语音合成，按字符计费；精品音色（1051xxxx 等）价格更高，暂不提供
 const VOICES = [
-  { id: 'standard', label: '智瑜 · 女声', desc: '默认，清晰自然', voiceType: 101001 },
-  { id: 'bright',   label: '智聆 · 清亮', desc: '音调偏高，偏活泼', voiceType: 101002 },
-  { id: 'deep',     label: '智美 · 沉稳', desc: '音调偏低，偏磁性', voiceType: 101003 },
+  // 女声
+  { id: 'standard',  label: '智瑜 · 女声',     desc: '默认，清晰自然',      voiceType: 101001 },
+  { id: 'bright',    label: '智聆 · 清亮',     desc: '音调偏高，偏活泼',    voiceType: 101002 },
+  { id: 'deep',      label: '智美 · 沉稳',     desc: '音调偏低，偏磁性',    voiceType: 101003 },
+  { id: 'soft',      label: '智琪 · 温柔',     desc: '柔和亲切，适合睡前',  voiceType: 101005 },
+  { id: 'sweet',     label: '智芸 · 甜妹',     desc: '年轻甜美，活力感',    voiceType: 101006 },
+  { id: 'mature',    label: '智华 · 知性',     desc: '成熟稳重，播音腔',    voiceType: 101007 },
+  // 男声
+  { id: 'male',      label: '智云 · 男声',     desc: '标准男声，沉稳清晰',  voiceType: 101004 },
+  { id: 'male_young',label: '智书 · 青年',     desc: '年轻男声，清爽干净',  voiceType: 101008 },
 ];
 
 function getVoices() { return VOICES; }

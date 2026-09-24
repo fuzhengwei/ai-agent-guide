@@ -45,6 +45,17 @@ Page({
     ttsState: 'idle',    // idle | playing | paused | synthesizing | finished
     ttsIndex: 0,
     ttsTotal: 0,
+    // 朗读定时停止
+    ttsTimer: 'none',    // none | 15 | 30 | 45 | 60（分钟）| time:HH:mm（具体时刻）
+    timerOptions: [
+      { id: 'none',  label: '不限时' },
+      { id: '15',    label: '15 分钟' },
+      { id: '30',    label: '30 分钟' },
+      { id: '45',    label: '45 分钟' },
+      { id: '60',    label: '1 小时' },
+      { id: 'chapter', label: '读完本章' },
+    ],
+    timerCountdownText: '',
     // 章节目录
     toc: [],
     tocOpen: false,
@@ -219,6 +230,7 @@ Page({
   onHide() {
     clearTimeout(this._posT);
     clearInterval(this._studyTick);
+    this._clearTtsTimer();
     // 页面隐藏时暂停朗读（保留位置，回来可继续）
     if (this._ttsEngine && this._ttsEngine.getState() === 'playing') {
       this._ttsEngine.pause();
@@ -373,6 +385,50 @@ Page({
     if (this._ttsEngine) this._ttsEngine.setVoice(id);
   },
 
+  setTimer(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ ttsTimer: id });
+    this._clearTtsTimer();
+    // 若正在朗读且选了新定时，立即生效
+    if (this.data.ttsState === 'playing' || this.data.ttsState === 'paused' || this.data.ttsState === 'synthesizing') {
+      this._armTtsTimer();
+    }
+  },
+
+  // 配置定时器：倒计时（分钟数）/ 读完本章（由 engine 'finished' 触发兜底）
+  _armTtsTimer() {
+    this._clearTtsTimer();
+    const t = this.data.ttsTimer;
+    if (t === 'none' || t === 'chapter') {
+      if (t === 'chapter') this.setData({ timerCountdownText: '本章读完自动停止' });
+      else this.setData({ timerCountdownText: '' });
+      return;
+    }
+    const mins = parseInt(t, 10);
+    if (!mins || mins <= 0) return;
+    const endAt = Date.now() + mins * 60000;
+    this._ttsTimerEndAt = endAt;
+    const tick = () => {
+      const remain = endAt - Date.now();
+      if (remain <= 0) {
+        this._clearTtsTimer();
+        this.setData({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
+        this._stopTts();
+        return;
+      }
+      const m = Math.floor(remain / 60000);
+      const s = Math.floor((remain % 60000) / 1000);
+      this.setData({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
+    };
+    tick();
+    this._ttsTimer = setInterval(tick, 1000);
+  },
+
+  _clearTtsTimer() {
+    if (this._ttsTimer) { clearInterval(this._ttsTimer); this._ttsTimer = null; }
+    this._ttsTimerEndAt = 0;
+  },
+
   onRateChanging(e) {
     const v = Math.round(e.detail.value * 10) / 10;
     this.setData({ ttsRate: v });
@@ -396,6 +452,15 @@ Page({
           ttsTotal: s.total,
         };
         this.setData(patch);
+        const chKey = (chapters[this.data.currentIndex] || {}).key;
+        // 朗读位置持久化：每读完一段就保存，读完本章清空
+        if (chKey) {
+          if (s.state === 'finished') {
+            store.clearTtsPos(chKey);
+          } else if (s.state === 'playing' || s.state === 'synthesizing') {
+            store.saveTtsPos(chKey, s.index);
+          }
+        }
         if (s.state === 'finished') {
           wx.showToast({ title: '✅ 本章朗读完成', icon: 'none' });
         }
@@ -448,10 +513,29 @@ Page({
       wx.showToast({ title: '本章没有可朗读内容', icon: 'none' });
       return;
     }
-    engine.setSegments(segs);
-    engine.setVoice(this.data.ttsVoice);
-    engine.setRate(this.data.ttsRate);
-    engine.play(0);
+    const chKey = (chapters[this.data.currentIndex] || {}).key;
+    const lastPos = chKey ? store.getTtsPos(chKey) : null;
+    const startPlay = (startIndex) => {
+      engine.setSegments(segs);
+      engine.setVoice(this.data.ttsVoice);
+      engine.setRate(this.data.ttsRate);
+      engine.play(startIndex);
+      this._armTtsTimer();
+    };
+    // 有历史朗读位置（且不是已经读完了），询问是继续还是从头
+    if (lastPos && lastPos.idx > 0 && lastPos.idx < segs.length) {
+      const pct = Math.round(lastPos.idx / segs.length * 100);
+      wx.showActionSheet({
+        itemList: [`▶ 继续上次（第 ${lastPos.idx + 1} / ${segs.length} 段，已读 ${pct}%）`, '⏮ 从头开始'],
+        success: (res) => {
+          if (res.tapIndex === 0) startPlay(lastPos.idx);
+          else if (res.tapIndex === 1) startPlay(0);
+        },
+        fail: () => {},
+      });
+      return;
+    }
+    startPlay(0);
   },
 
   ttsPause() { if (this._ttsEngine) this._ttsEngine.pause(); },
@@ -459,10 +543,11 @@ Page({
   ttsStop() { this._stopTts(); },
 
   _stopTts() {
+    this._clearTtsTimer();
     if (this._ttsEngine) {
       this._ttsEngine.stop();
     }
-    this.setData({ ttsState: 'idle', ttsIndex: 0, ttsTotal: 0 });
+    this.setData({ ttsState: 'idle', ttsIndex: 0, ttsTotal: 0, timerCountdownText: '' });
   },
 
   applyNavStyle(night) {

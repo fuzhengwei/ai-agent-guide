@@ -462,11 +462,11 @@
 .night .tts-close { background: #262c3a; color: #9aa5b8; }
 .tts-row { margin-bottom: 20rpx; }
 .tts-label { font-size: 25rpx; font-weight: 600; color: var(--fg-body); margin-bottom: 12rpx; }
-.tts-voices { display: flex; gap: 14rpx; }
+.tts-voices { display: flex; flex-wrap: wrap; gap: 14rpx; }
 .voice-opt {
-  flex: 1; text-align: center; padding: 14rpx 8rpx;
+  flex: 0 0 calc(33.33% - 10rpx); text-align: center; padding: 14rpx 8rpx;
   background: #f1f4f9; border: 2rpx solid transparent; border-radius: 14rpx;
-  font-size: 24rpx; color: #5b6675;
+  font-size: 24rpx; color: #5b6675; box-sizing: border-box;
 }
 .voice-opt.on { background: #eef1ff; border-color: #4353c9; color: #4353c9; }
 .night .voice-opt { background: #262c3a; color: #9aa5b8; }
@@ -489,4 +489,19 @@
 .tts-status { font-size: 23rpx; color: #8a94a3; text-align: center; padding: 4rpx 0 8rpx; }
 .tts-hint { font-size: 21rpx; color: #9aa3b1; line-height: 1.6; padding-top: 10rpx; border-top: 1rpx dashed #eef1f6; }
 .night .tts-hint { color: #6b7588; border-top-color: #2a303d; }
+
+/* 定时停止 */
+.tts-timer-opts { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.timer-opt {
+  padding: 10rpx 22rpx; font-size: 23rpx; border-radius: 999rpx;
+  background: #f1f4f9; color: #5b6675; border: 2rpx solid transparent;
+}
+.timer-opt.on { background: #eef1ff; border-color: #4353c9; color: #4353c9; font-weight: 600; }
+.night .timer-opt { background: #262c3a; color: #9aa5b8; }
+.night .timer-opt.on { background: #2a3350; border-color: #5a7cf7; color: #a5b4fc; }
+.tts-timer-info {
+  margin-top: 8rpx; padding: 12rpx 18rpx; font-size: 23rpx; color: #b45309;
+  background: #fef3c7; border-radius: 10rpx;
+}
+.night .tts-timer-info { background: #3a2c14; color: #fbbf24; }
 .tts-unsupported { font-size: 25rpx; color: #9aa3b1; text-align: center; padding: 30rpx 10rpx; line-height: 1.8; }

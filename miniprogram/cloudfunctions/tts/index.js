@@ -11,9 +11,14 @@ const TtsClient = tencentcloud.tts.v20190823.Client;
 // 音色映射：小程序端 voice id → 腾讯云 VoiceType
 // 完整列表见 https://cloud.tencent.com/document/api/1073/37995
 const VOICE_MAP = {
-  standard: 101001,  // 智瑜（女声，默认）
-  bright:   101002,  // 智聆（女声，清亮）
-  deep:     101003,  // 智美（女声，沉稳）
+  standard:   101001,  // 智瑜（女声，默认）
+  bright:     101002,  // 智聆（女声，清亮）
+  deep:       101003,  // 智美（女声，沉稳）
+  male:       101004,  // 智云（男声，标准）
+  soft:       101005,  // 智琪（女声，温柔）
+  sweet:      101006,  // 智芸（女声，甜妹）
+  mature:     101007,  // 智华（女声，知性）
+  male_young: 101008,  // 智书（男声，青年）
 };
 
 // 临时凭证：从云开发环境变量读取（在 cloudbase 控制台 -> 云函数 -> 环境变量 配置）
