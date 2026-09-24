@@ -1,0 +1,127 @@
+<view class="adv {{phase === 'result' ? 'is-result' : ''}} {{passed ? 'is-passed' : ''}}">
+
+  <!-- 顶部 HUD -->
+  <view class="hud">
+    <view class="hud-badge">
+      <text class="hud-lv-icon">{{levelIcon}}</text>
+      <view class="hud-lv-text">
+        <text class="hud-lv-name">{{levelName}}</text>
+        <text class="hud-lv-sub">{{practice ? '自由练习' : '第 ' + (levelIdx + 1) + ' 关'}}</text>
+      </view>
+    </view>
+    <view class="hud-hearts">
+      <text wx:for="{{3}}" wx:key="*this" class="heart {{index < hearts ? '' : 'off'}}">❤️</text>
+    </view>
+  </view>
+
+  <!-- 闯关进度：小狐狸沿着进度条走 -->
+  <view class="track">
+    <view class="track-bar">
+      <view class="track-fill" style="width: {{progressPct}}%"></view>
+      <view class="track-runner" style="left: {{progressPct}}%">🦊</view>
+    </view>
+    <text class="track-text">{{index + 1}} / {{total}}</text>
+  </view>
+
+  <!-- 题目卡 -->
+  <view class="stage">
+    <view class="q-card">
+      <view class="q-head">
+        <view class="q-no"><text>Q{{index + 1}}</text></view>
+        <view wx:if="{{multiMode}}" class="q-tag multi">多选</view>
+        <view wx:else class="q-tag">单选</view>
+      </view>
+      <view class="q-text">{{qText}}</view>
+
+      <view class="opts">
+        <view
+          wx:for="{{options}}"
+          wx:key="oi"
+          class="opt {{item.cls}}"
+          data-i="{{item.oi}}"
+          hover-class="opt-hover"
+          bindtap="pickOption"
+        >
+          <view class="opt-letter">{{item.letter}}</view>
+          <view class="opt-text">{{item.text}}</view>
+          <view wx:if="{{item.mark}}" class="opt-mark {{item.cls}}">{{item.mark}}</view>
+        </view>
+      </view>
+
+      <button
+        wx:if="{{multiMode && !locked}}"
+        class="btn primary send"
+        hover-class="btn-hover"
+        bindtap="sendMulti"
+      >🚀 就选这些！</button>
+    </view>
+
+    <view class="stage-tip">答对全部 {{total}} 题即可通关 · 错 1 题重新挑战</view>
+  </view>
+
+  <!-- 答错弹层 -->
+  <view wx:if="{{showOops}}" class="oops-mask" bindtap="closeOops">
+    <view class="oops-card" catchtap="noop">
+      <view class="oops-emoji">😵</view>      <view class="oops-title">{{oopsTitle}}</view>
+      <view class="oops-ans">
+        <view class="oops-ans-label">✅ 正确答案</view>
+        <view class="oops-ans-text">{{oopsCorrect}}</view>
+      </view>
+      <view wx:if="{{oopsExplain}}" class="oops-explain">{{oopsExplain}}</view>
+      <button class="btn primary" hover-class="btn-hover" bindtap="closeOops">继续闯关 →</button>
+    </view>
+  </view>
+
+  <!-- 结算层 -->
+  <view wx:if="{{phase === 'result'}}" class="result-mask">
+    <!-- 通关烟花 -->
+    <view wx:if="{{passed}}" class="fireworks">
+      <view wx:for="{{bursts}}" wx:key="b" wx:for-item="burst" class="burst b{{burst.b}}">
+        <view
+          wx:for="{{burst.parts}}"
+          wx:key="index"
+          wx:for-item="p"
+          class="spark"
+          style="--rot: {{p.rot}}deg; --dist: {{p.dist}}px; --hue: {{p.hue}}; --delay: {{p.delay}}ms;"
+        ></view>
+      </view>
+    </view>
+
+    <view class="result-card {{passed ? 'win' : 'lose'}}">
+      <view class="result-emoji">{{passed ? '🏆' : '💤'}}</view>
+      <view class="result-title">{{passed ? '太棒了，满分通关！' : '就差一点点！'}}</view>
+      <view class="result-sub">
+        {{passed ? (practice ? '练习模式 · 依旧全对，稳！' : '下一关已解锁，继续冒险吧！') : failQuip}}
+      </view>
+
+      <view class="stats">
+        <view class="stat">
+          <text class="stat-v">{{statWrong}}</text>
+          <text class="stat-k">答错题数</text>
+        </view>
+        <view class="stat">
+          <text class="stat-v">{{statBestCombo}}</text>
+          <text class="stat-k">最高连对</text>
+        </view>
+        <view class="stat">
+          <text class="stat-v">{{statTime}}</text>
+          <text class="stat-k">用时</text>
+        </view>
+        <view class="stat" wx:if="{{!practice}}">
+          <text class="stat-v">{{statAttempt}}</text>
+          <text class="stat-k">第几次挑战</text>
+        </view>
+      </view>
+
+      <view wx:if="{{newBest}}" class="new-best">✨ 新纪录诞生！</view>
+
+      <view class="result-btns">
+        <button class="btn ghost" hover-class="btn-hover" bindtap="goMap">🗺️ 回地图</button>
+        <button wx:if="{{!passed}}" class="btn primary" hover-class="btn-hover" bindtap="retry">💪 再战一次</button>
+        <button wx:elif="{{levelIdx < 27}}" class="btn primary" hover-class="btn-hover" bindtap="nextLevel">⚔️ 下一关</button>
+        <button wx:else class="btn primary" hover-class="btn-hover" bindtap="goMap">👑 去戴王冠</button>
+      </view>
+    </view>
+  </view>
+
+</view>

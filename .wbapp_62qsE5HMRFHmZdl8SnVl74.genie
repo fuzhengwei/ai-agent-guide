@@ -1,0 +1,5 @@
+appId: wbapp_62qsE5HMRFHmZdl8SnVl74
+name: AI Agent 教程
+localDir: /Users/fuzhengwei/DevOps/ai-agent-guide.xiaofuge.cn
+appType: web
+entryHtml: index.html
