@@ -16,13 +16,13 @@
       </view>
       <view class="stat-divider"></view>
       <view class="stat">
-        <view class="stat-num">{{totalQuestions}}</view>
-        <view class="stat-label">面试题</view>
+        <view class="stat-num hl">{{readCount}}</view>
+        <view class="stat-label">已读</view>
       </view>
       <view class="stat-divider"></view>
       <view class="stat">
-        <view class="stat-num hl">{{readCount}}</view>
-        <view class="stat-label">已读</view>
+        <view class="stat-num hl">{{studyTimeText}}</view>
+        <view class="stat-label">学习时长</view>
       </view>
     </view>
 
@@ -31,6 +31,9 @@
         <view class="progress-fill" style="width: {{totalChapters ? readCount * 100 / totalChapters : 0}}%"></view>
       </view>
     </view>
+
+    <!-- 分享给好友/群 -->
+    <button class="hero-share" open-type="share">📤 分享给朋友，一起学习</button>
   </view>
 
   <!-- 继续学习 -->
@@ -38,6 +41,7 @@
     <view class="continue-left">
       <view class="continue-label">{{readCount === 0 ? '开始学习' : (readCount >= totalChapters ? '温故知新' : '继续学习')}}</view>
       <view class="continue-title">{{nextChapter.title}}</view>
+      <view class="continue-meta" wx:if="{{nextChapter.readPct > 0 && nextChapter.readPct < 100}}">上次读到 {{nextChapter.readPct}}%</view>
     </view>
     <view class="continue-btn">▶</view>
   </view>
@@ -79,6 +83,15 @@
             <text wx:if="{{item.locked}}" class="lock-icon">🔒</text>
           </view>
           <view class="chapter-sub" wx:if="{{item.subtitle}}">{{item.subtitle}}</view>
+          <view class="chapter-progress" wx:if="{{item.readPct > 0 && item.readPct < 100}}">
+            <view class="chapter-progress-track">
+              <view class="chapter-progress-fill" style="width: {{item.readPct}}%"></view>
+            </view>
+            <view class="chapter-progress-text">{{item.readPct}}%</view>
+          </view>
+          <view class="chapter-progress done" wx:if="{{item.readPct >= 100}}">
+            <view class="chapter-progress-text done-text">✓ 已读完</view>
+          </view>
         </view>
         <view class="chapter-arrow">›</view>
       </view>

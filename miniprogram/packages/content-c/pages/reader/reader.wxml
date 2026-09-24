@@ -1,14 +1,48 @@
-<view class="reader-wrap {{nightMode ? 'night' : ''}} fs-{{fontMode}}">
+<view class="reader-wrap {{nightMode ? 'night' : ''}}" style="--fs: {{fontSize}}rpx;">
 
   <!-- 顶部阅读进度条 -->
   <view class="read-progress">
     <view class="read-progress-fill" style="width: {{progress}}%"></view>
   </view>
 
-  <!-- 阅读设置：悬浮按钮 + 面板 -->
+  <!-- 已回到上次阅读位置提示 -->
+  <view class="resume-tip" wx:if="{{resumeTip}}">📖 已回到上次阅读位置</view>
+
+  <!-- 悬浮工具：分享 + 收藏 + 目录 + 朗读 + 阅读设置 -->
   <view class="reader-tools">
+    <button class="tool-btn share-btn" open-type="share">↗</button>
+    <view class="tool-btn fav-btn" bindtap="onFavTap" bindlongpress="onFavHelp">☆</view>
+    <view class="tool-btn toc-btn {{tocOpen ? 'on' : ''}}" wx:if="{{toc.length}}" bindtap="toggleToc">☰</view>
+    <view class="tool-btn tts-btn {{ttsState !== 'idle' ? 'on' : ''}}" bindtap="toggleTtsPanel">
+      <block wx:if="{{ttsState === 'idle'}}">🔊</block>
+      <block wx:elif="{{ttsState === 'synthesizing'}}">⏳</block>
+      <block wx:elif="{{ttsState === 'paused'}}">⏸</block>
+      <block wx:else>🔊</block>
+    </view>
     <view class="tool-btn" bindtap="togglePanel">Aa</view>
   </view>
+
+  <!-- 章节目录抽屉 -->
+  <view class="toc-mask" wx:if="{{tocOpen}}" bindtap="toggleToc"></view>
+  <view class="toc-panel {{tocOpen ? 'open' : ''}}" wx:if="{{tocOpen}}">
+    <view class="toc-head">
+      <view class="toc-title">本章目录</view>
+      <view class="toc-close" bindtap="toggleToc">✕</view>
+    </view>
+    <scroll-view class="toc-list" scroll-y scroll-into-view="{{tocAnchor}}" scroll-with-animation>
+      <view id="toc-top-{{tocStamp}}"></view>
+      <view
+        wx:for="{{toc}}"
+        wx:key="anchor"
+        id="{{item.anchor}}"
+        class="toc-item lv{{item.level}}"
+        data-anchor="{{item.anchor}}"
+        bindtap="tapTocItem"
+      >{{item.text}}</view>
+    </scroll-view>
+  </view>
+
+  <!-- 阅读设置面板 -->
   <view class="settings-mask" wx:if="{{panelOpen}}" bindtap="togglePanel"></view>
   <view class="settings-panel {{panelOpen ? 'open' : ''}}" wx:if="{{panelOpen}}">
     <view class="set-row">
@@ -18,9 +52,56 @@
     <view class="set-row">
       <view class="set-label">字号</view>
       <view class="fs-opts">
-        <view class="fs-opt {{fontMode === 's' ? 'on' : ''}}" bindtap="setFont" data-mode="s">小</view>
-        <view class="fs-opt {{fontMode === 'm' ? 'on' : ''}}" bindtap="setFont" data-mode="m">标准</view>
-        <view class="fs-opt {{fontMode === 'l' ? 'on' : ''}}" bindtap="setFont" data-mode="l">大</view>
+        <view class="fs-step {{fontSize <= 22 ? 'dis' : ''}}" bindtap="stepFont" data-dir="-1">A−</view>
+        <view class="fs-value">{{fontSize}}</view>
+        <view class="fs-step {{fontSize >= 38 ? 'dis' : ''}}" bindtap="stepFont" data-dir="1">A＋</view>
+      </view>
+    </view>
+    <view class="set-hint">范围 22 ~ 38，当前 {{fontPercent}}%，自动保存</view>
+  </view>
+
+  <!-- 朗读面板 -->
+  <view class="tts-mask" wx:if="{{ttsPanelOpen}}" bindtap="toggleTtsPanel"></view>
+  <view class="tts-panel" wx:if="{{ttsPanelOpen}}">
+    <view class="tts-head">
+      <view class="tts-title">🔊 语音朗读</view>
+      <view class="tts-close" bindtap="toggleTtsPanel">✕</view>
+    </view>
+    <view class="tts-body" wx:if="{{ttsSupported}}">
+      <view class="tts-row">
+        <view class="tts-label">音色</view>
+        <view class="tts-voices">
+          <view
+            wx:for="{{voices}}"
+            wx:key="id"
+            class="voice-opt {{ttsVoice === item.id ? 'on' : ''}}"
+            data-id="{{item.id}}"
+            bindtap="setVoice"
+          >
+            <view class="voice-name">{{item.label}}</view>
+            <view class="voice-desc">{{item.desc}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="tts-row">
+        <view class="tts-label">语速</view>
+        <slider min="0.6" max="1.8" step="0.1" value="{{ttsRate}}" activeColor="#5a7cf7" block-size="18" bindchanging="onRateChanging" bindchange="onRateChange" />
+        <view class="tts-rate-val">{{ttsRate}}x</view>
+      </view>
+      <view class="tts-controls">
+        <view class="tts-ctl-btn primary" bindtap="ttsPlay" wx:if="{{ttsState === 'idle'}}">▶ 朗读本章</view>
+        <view class="tts-ctl-btn" bindtap="ttsPause" wx:if="{{ttsState === 'playing' || ttsState === 'synthesizing'}}">⏸ 暂停</view>
+        <view class="tts-ctl-btn primary" bindtap="ttsResume" wx:if="{{ttsState === 'paused'}}">▶ 继续</view>
+        <view class="tts-ctl-btn stop" bindtap="ttsStop" wx:if="{{ttsState !== 'idle'}}">⏹ 停止</view>
+      </view>
+      <view class="tts-status" wx:if="{{ttsState !== 'idle'}}">
+        {{ttsState === 'synthesizing' ? '合成中…' : '正在朗读 ' + (ttsIndex + 1) + ' / ' + ttsTotal + ' 段'}}
+      </view>
+      <view class="tts-hint">朗读时当前段落会高亮并自动滚动；离开本章自动停止</view>
+    </view>
+    <view class="tts-body" wx:else>
+      <view class="tts-unsupported">
+        朗读服务暂不可用。<br/>请升级微信版本，或在小程序后台开启「同声传译」插件。
       </view>
     </view>
   </view>
@@ -32,7 +113,19 @@
     <view class="reader-sub" wx:if="{{subtitle}}">{{subtitle}}</view>
   </view>
 
-  <rich-text class="rich" nodes="{{html}}"></rich-text>
+  <!-- 正文：selectable 允许长按选中文字；catchtouchmove 让代码块/表格可独立横滑 -->
+  <rich-text class="rich" nodes="{{html}}" selectable="{{true}}" catchtouchmove="onRichTouch"></rich-text>
+
+  <!-- 收藏/笔记输入弹窗 -->
+  <view class="fav-mask" wx:if="{{favModal}}" bindtap="closeFavModal"></view>
+  <view class="fav-modal" wx:if="{{favModal}}">
+    <view class="fav-quote">"{{favTextPreview}}"</view>
+    <textarea class="fav-input" placeholder="写点笔记…（可不填，直接收藏）" value="{{favNoteInput}}" bindinput="onFavNoteInput" maxlength="500" auto-height />
+    <view class="fav-actions">
+      <view class="fav-act" bindtap="closeFavModal">取消</view>
+      <view class="fav-act primary" bindtap="saveFav">{{favNoteInput ? '收藏+笔记' : '收藏'}}</view>
+    </view>
+  </view>
 
   <!-- 章末：去面试 -->
   <view class="quiz-cta" wx:if="{{quizKey}}" bindtap="goQuiz">

@@ -584,13 +584,15 @@ function codeBlockHtml($, el) {
   }
   if (!label) label = langHint;
   const body = highlightCode(String(code).replace(/^\n+/, '').replace(/\n+$/, ''), langHint);
-  // 注意：rich-text 只认受信任标签，这里必须用 span 而不是 view
+  // 注意：rich-text 只认受信任标签，这里必须用 span 而不是 view。
+  // 结构：头部（三色点+语言标签+横滑提示）+ pre 代码区。
+  // 横滑能力依赖阅读页 rich-text 上的 catchtouchmove（阻止冒泡到页面滚动）。
   const langTag = label ? `<span class="mp-code-lang">${escapeHtml(label)}</span>` : '';
-  return `<div class="mp-codeblock">${langTag}<pre class="code">${body}</pre></div>`;
+  return `<div class="mp-codeblock"><div class="mp-code-head"><span class="mp-code-dots"><span class="mp-code-dot"></span><span class="mp-code-dot"></span><span class="mp-code-dot"></span></span>${langTag}<span class="mp-code-hint">‹ 左右滑动 ›</span></div><pre class="code">${body}</pre></div>`;
 }
 
 // 行内/块级混排：连续的行内内容聚合为一个 <p>，遇到块级元素先冲刷缓冲区
-function renderFlow($, container, out) {
+function renderFlow($, container, out, toc) {
   let buf = '';
   const flush = () => {
     const html = sanitizeFragment($, buf);
@@ -603,7 +605,7 @@ function renderFlow($, container, out) {
     if (n.type !== 'tag') return;
     if (BLOCK_TAGS.has(n.tagName) || /^mp-/.test($(n).attr('class') || '')) {
       flush();
-      renderNode($, n, out);
+      renderNode($, n, out, toc);
       return;
     }
     buf += $.html(n);
@@ -612,7 +614,7 @@ function renderFlow($, container, out) {
   return out;
 }
 
-function renderContainer($, el, cls, out) {
+function renderContainer($, el, cls, out, toc) {
   if (DROP_BOX_RE.test(cls)) return;                       // 装饰容器整块丢弃
   if (CODE_RE.test(cls)) { out.push(codeBlockHtml($, el)); return; }
 
@@ -626,7 +628,7 @@ function renderContainer($, el, cls, out) {
     const $label = el.find('.chat-label').first();
     const label = $label.length ? $label.text().replace(/\s+/g, ' ').trim() : '';
     if ($label.length) $label.remove();
-    const body = renderFlow($, el, []).join('');
+    const body = renderFlow($, el, [], toc).join('');
     if (!body && !label) return;
     // 类型色：thought 思考/observe 观察/action 行动/reply 回答/user 用户
     let tone = 'chat-user';
@@ -647,7 +649,7 @@ function renderContainer($, el, cls, out) {
     const accentKey = ((el.attr('style') || '').match(/--color-([a-z]+)/) || [])[1] || '';
     const accent = BANNER_ACCENT[cls.trim()] || ACCENT_MAP[accentKey] || '';
     if ($title.length) $title.remove();
-    const body = renderFlow($, el, []);
+    const body = renderFlow($, el, [], toc);
     const inner = body.join('');
     if (!inner && !title) return;
     const extra = (/qa-item/.test(cls) ? ' mp-qa' : '') + (accent ? ' ' + accent : '');
@@ -657,10 +659,10 @@ function renderContainer($, el, cls, out) {
     return;
   }
 
-  renderFlow($, el, out);                                  // 其他容器：透明向下递归
+  renderFlow($, el, out, toc);                             // 其他容器：透明向下递归
 }
 
-function renderNode($, node, out) {
+function renderNode($, node, out, toc) {
   const el = $(node);
   const tag = node.tagName;
   const cls = el.attr('class') || '';
@@ -674,7 +676,16 @@ function renderNode($, node, out) {
   }
   if (/^h[2-6]$/.test(tag)) {
     const html = sanitizeFragment($, el.html());
-    if (textOnly(html)) out.push(`<${tag} class="sh">${html}</${tag}>`);
+    const text = textOnly(html);
+    if (!text) return;
+    // h2/h3 纳入章节目录：输出带锚点 id 的标题，供阅读页目录抽屉 scroll-into-view 跳转
+    if (toc && (tag === 'h2' || tag === 'h3')) {
+      const anchor = 'h-' + toc.length;
+      toc.push({ level: tag === 'h2' ? 2 : 3, text, anchor });
+      out.push(`<${tag} class="sh" id="${anchor}">${html}</${tag}>`);
+      return;
+    }
+    out.push(`<${tag} class="sh">${html}</${tag}>`);
     return;
   }
   if (tag === 'p') {
@@ -695,12 +706,12 @@ function renderNode($, node, out) {
     return;
   }
   if (tag === 'blockquote' || QUOTE_RE.test(cls)) {
-    const inner = renderFlow($, el, []);
+    const inner = renderFlow($, el, [], toc);
     if (inner.length) out.push(`<div class="mp-quote">${inner.join('')}</div>`);
     return;
   }
   if (tag === 'hr' || tag === 'img' || tag === 'tr' || tag === 'td' || tag === 'th') return;
-  if (BLOCK_TAGS.has(tag)) { renderContainer($, el, cls, out); return; }
+  if (BLOCK_TAGS.has(tag)) { renderContainer($, el, cls, out, toc); return; }
 
   const html = sanitizeFragment($, $.html(el));
   if (textOnly(html)) out.push(`<p>${html}</p>`);
@@ -762,9 +773,44 @@ function convertChapterHtml(rawHtml) {
   normalizeTables($);
 
   const out = [];
-  renderFlow($, $('body'), out);
+  const toc = [];          // 章节目录：{ level, text, anchor }，阅读页目录抽屉用
+  renderFlow($, $('body'), out, toc);
 
-  return { title, subtitle, html: out.join('\n') };
+  // 语音朗读：为可朗读段落注入 data-tts-idx（阅读页按索引定位+收集文本）
+  const html = injectTtsSpans(out.join('\n'));
+
+  return { title, subtitle, html, toc };
+}
+
+/**
+ * 为生成的 mp HTML 中可朗读段落注入 data-tts-idx
+ * 目标：顶层/卡片/问答中的 p、mp-quote、sh(h2-h4) 标题，跳过代码块内部
+ */
+function injectTtsSpans(html) {
+  const $ = cheerio.load('<div id="__tts__">' + html + '</div>', { decodeEntities: false });
+  const $root = $('#__tts__');
+  let idx = 0;
+  const mark = (_, el) => {
+    const $el = $(el);
+    // 跳过代码块/表格内部
+    if ($el.closest('.mp-codeblock, .mp-table, .mp-table-wrap, pre, code').length) return;
+    const text = $el.text().replace(/\s+/g, ' ').trim();
+    if (!text || text.length < 2) return;
+    // 跳过已含可朗读子节点的容器（避免重复）
+    if ($el.find('p, li, .mp-quote, h2.sh, h3.sh, h4.sh').length) return;
+    $el.attr('data-tts-idx', String(idx++));
+  };
+  // 段落
+  $root.find('p').each(mark);
+  // 列表项
+  $root.find('.mp-list li').each(mark);
+  // 标题（sh 类已挂在 h2/h3/h4 上）
+  $root.find('.sh').each(mark);
+  // 引用块（不含子段落的）
+  $root.find('.mp-quote').each(mark);
+  // 问答（问题/答案）
+  $root.find('.mp-qa-q, .mp-qa-a').each(mark);
+  return $root.html();
 }
 
 /* ---------------- 执行 ---------------- */
@@ -791,7 +837,7 @@ function main() {
       const chKey = `c${String(registry.length).padStart(2, '0')}`;
       const dataFile = `${slug}.js`; // 小程序 require 不支持 .json，数据必须以 .js 模块提供
       fs.writeFileSync(path.join(dataDir, dataFile), 'module.exports = ' + JSON.stringify({
-        key: chKey, slug, title: conv.title, subtitle: conv.subtitle, html: conv.html,
+        key: chKey, slug, title: conv.title, subtitle: conv.subtitle, html: conv.html, toc: conv.toc,
       }) + ';\n', 'utf8');
       const chNum = (conv.title.match(/第(\d+)章/) || [])[1];
       const quizKey = QUIZ_KEY_BY_SLUG[slug] || (chNum ? `ch${String(+chNum).padStart(2, '0')}` : null);
@@ -852,7 +898,13 @@ function main() {
   ['runner.js', 'runner.wxml', 'runner.wxss', 'runner.json'].forEach(f => {
     fs.copyFileSync(path.join(quizTpl, f), path.join(quizRunnerDir, f));
   });
-  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner'] });
+  // 勇者冒险岛 · 闯关答题页（卡通地图玩法，每关随机抽 10 题全对进阶）
+  const quizAdventureDir = path.join(quizPkg, 'pages', 'adventure');
+  fs.mkdirSync(quizAdventureDir, { recursive: true });
+  ['adventure.js', 'adventure.wxml', 'adventure.wxss', 'adventure.json'].forEach(f => {
+    fs.copyFileSync(path.join(quizTpl, f), path.join(quizAdventureDir, f));
+  });
+  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner', 'pages/adventure/adventure'] });
 
   // 大厂真题场次追加到主包章节注册表（排在教程章节之后，复用同一套面试 runner）
   BOSS_QUIZZES.forEach(b => {

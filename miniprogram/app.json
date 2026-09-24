@@ -2,7 +2,9 @@
   "pages": [
     "pages/index/index",
     "pages/quiz/quiz",
-    "pages/mine/mine"
+    "pages/mine/mine",
+    "pages/notes/notes",
+    "pages/leaderboard/leaderboard"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",
@@ -39,6 +41,12 @@
   },
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.5",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
   "subpackages": [
     {
       "root": "packages/content-a",
@@ -67,7 +75,8 @@
     {
       "root": "packages/quiz",
       "pages": [
-        "pages/runner/runner"
+        "pages/runner/runner",
+        "pages/adventure/adventure"
       ]
     }
   ]

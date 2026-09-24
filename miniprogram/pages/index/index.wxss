@@ -39,6 +39,15 @@
 .progress-track { height: 12rpx; background: rgba(255,255,255,0.18); border-radius: 999rpx; overflow: hidden; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #7dd3fc); border-radius: 999rpx; transition: width 0.6s ease; }
 
+/* hero 内分享按钮：清掉微信 button 默认样式 */
+.hero-share {
+  margin: 24rpx 0 0; padding: 18rpx 0; line-height: 1.4;
+  background: rgba(255, 255, 255, 0.14); color: #ffffff;
+  border: 1rpx solid rgba(255, 255, 255, 0.32); border-radius: 999rpx;
+  font-size: 26rpx; font-weight: 600; text-align: center;
+}
+.hero-share::after { border: none; }
+
 /* ===== 继续学习卡 ===== */
 .continue-card {
   display: flex; align-items: center;
@@ -112,3 +121,20 @@
 .chapter-arrow { color: #d1d5db; font-size: 40rpx; margin-left: 12rpx; }
 
 .footer { text-align: center; color: #9ca3af; font-size: 24rpx; margin-top: 24rpx; }
+
+/* ===== 章节阅读进度 ===== */
+.continue-meta { font-size: 22rpx; color: #d97706; margin-top: 6rpx; }
+.chapter-progress {
+  display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx;
+}
+.chapter-progress-track {
+  flex: 1; height: 6rpx; background: #f1f5f9; border-radius: 999rpx; overflow: hidden;
+}
+.chapter-progress-fill {
+  height: 100%; background: linear-gradient(90deg, #38bdf8, #3b82f6); border-radius: 999rpx;
+  transition: width 0.3s ease;
+}
+.chapter-progress-text { font-size: 20rpx; color: #3b82f6; font-weight: 600; flex-shrink: 0; }
+.chapter-progress.done .done-text { color: #16a34a; }
+.chapter-item.read .chapter-progress-track { background: #e8f5e9; }
+.chapter-item.read .chapter-progress-fill { background: linear-gradient(90deg, #4ade80, #22c55e); }

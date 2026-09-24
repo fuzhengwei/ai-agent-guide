@@ -4,6 +4,9 @@
 const KEYS = {
   READ_MAP: 'dsh_read_map',
   QUIZ_RECORDS: 'dsh_quiz_records',
+  READ_POS: 'dsh_read_pos',        // 各章节阅读位置 { key: { top, time } }
+  LAST_CHAPTER: 'dsh_last_chapter',// 最近打开的章节 { key, slug, pkg, title, time }
+  STUDY_TIME: 'dsh_study_time',    // { total: ms, days: { 'YYYY-MM-DD': ms } }
 };
 
 // 星级规则：正确率 >=90% 三星 / >=70% 两星 / >=60% 一星（通关）
@@ -11,6 +14,39 @@ const PASS_RATIO = 0.6;
 
 function getReadMap() {
   return wx.getStorageSync(KEYS.READ_MAP) || {};
+}
+
+/* ===== 阅读位置记忆（微信文章式：离开后再进自动回到上次位置） ===== */
+
+function saveReadPos(chKey, top, pct) {
+  if (!chKey || typeof top !== 'number') return;
+  try {
+    const map = wx.getStorageSync(KEYS.READ_POS) || {};
+    map[chKey] = { top: Math.max(0, Math.round(top)), pct: typeof pct === 'number' ? Math.min(100, Math.max(0, pct)) : undefined, time: Date.now() };
+    wx.setStorageSync(KEYS.READ_POS, map);
+  } catch (e) {}
+}
+
+function getReadPos(chKey) {
+  try {
+    const map = wx.getStorageSync(KEYS.READ_POS) || {};
+    const rec = map[chKey];
+    return rec && typeof rec.top === 'number' && rec.top > 0 ? rec : null;
+  } catch (e) { return null; }
+}
+
+// 记录最近打开的章节（首页「继续上次阅读」提示用）
+function setLastChapter(info) {
+  if (!info || !info.key) return;
+  try {
+    wx.setStorageSync(KEYS.LAST_CHAPTER, Object.assign({ time: Date.now() }, info));
+  } catch (e) {}
+}
+
+function getLastChapter() {
+  try {
+    return wx.getStorageSync(KEYS.LAST_CHAPTER) || null;
+  } catch (e) { return null; }
 }
 
 function markRead(chKey) {
@@ -80,11 +116,47 @@ function getGameStats() {
 function clearAll() {
   wx.removeStorageSync(KEYS.READ_MAP);
   wx.removeStorageSync(KEYS.QUIZ_RECORDS);
+  wx.removeStorageSync(KEYS.READ_POS);
+  wx.removeStorageSync(KEYS.LAST_CHAPTER);
+  wx.removeStorageSync(KEYS.STUDY_TIME);
+}
+
+/* ===== 学习时长统计 ===== */
+
+function _getStudyTime() {
+  try {
+    const d = wx.getStorageSync(KEYS.STUDY_TIME) || {};
+    return { total: d.total || 0, days: d.days || {} };
+  } catch (e) { return { total: 0, days: {} }; }
+}
+
+// 累加学习时长（ms），同时记入当日
+function addStudyTime(ms) {
+  if (!ms || ms <= 0) return;
+  const d = _getStudyTime();
+  d.total += ms;
+  const day = _today();
+  d.days[day] = (d.days[day] || 0) + ms;
+  try { wx.setStorageSync(KEYS.STUDY_TIME, d); } catch (e) {}
+}
+
+function getStudyTime() {
+  const d = _getStudyTime();
+  return { total: d.total, days: Object.keys(d.days).length, todayMs: d.days[_today()] || 0 };
+}
+
+function _today() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 module.exports = {
   getReadMap, markRead,
+  saveReadPos, getReadPos, setLastChapter, getLastChapter,
   getQuizRecords, saveQuizResult, calcStars, isPassed, getGameStats,
   removeWrongIds,
+  addStudyTime, getStudyTime,
   clearAll,
 };

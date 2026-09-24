@@ -69,6 +69,8 @@ const App = {
     this.bindEvents();
     this.loadTheme();
     Progress.updateUI();
+    ProgressPlus.init();
+    Reader.init();
     AIChat.init();
     
     // 首页统计
@@ -836,6 +838,9 @@ const App = {
     // 数字计数动画
     this.animateNumbers();
 
+    // 封面：注入「继续学习」卡片
+    ProgressPlus.injectContinueCard();
+
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const breadcrumb = document.getElementById('breadcrumb');
     if (breadcrumb) breadcrumb.textContent = '首页';
@@ -982,6 +987,9 @@ const App = {
 
     // 滚动到底部时标记章节完成（替代原来的 5 秒自动完成）
     this.setupScrollCompletion(chapterId);
+
+    // 学习进度增强：重置阅读条、检测恢复上次阅读位置
+    ProgressPlus.onChapterLoaded(chapterId);
   },
 
   /**
