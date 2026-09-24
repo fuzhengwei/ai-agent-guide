@@ -174,26 +174,37 @@ Page({
       wx.switchTab({ url: '/pages/mine/mine' });
       return;
     }
-    // 未登录：拉起微信头像昵称授权
-    wx.getUserProfile({
-      desc: '用于展示头像和学习数据',
+    // 未登录：头像选择由 button[open-type=chooseAvatar] 触发，这里只做提示
+    // 昵称通过下面的输入框获取
+  },
+
+  // 微信新授权流程：chooseAvatar 返回头像临时路径
+  onChooseAvatar(e) {
+    const avatarUrl = e.detail.avatarUrl;
+    if (!avatarUrl) return;
+    // 弹出昵称输入框
+    wx.showModal({
+      title: '设置昵称',
+      editable: true,
+      placeholderText: '输入你的昵称',
       success: (res) => {
-        const info = res.userInfo || {};
-        const profile = { nickname: info.nickName || '', avatarUrl: info.avatarUrl || '' };
-        store.setUserProfile(profile);
-        this.setData({ userAvatar: profile.avatarUrl, userName: profile.nickname });
-        // 同步到云端
-        if (cloud.ready()) {
-          cloud.saveProfile(profile).then(() => {
-            // 更新全局档案
-            if (app.globalData) app.globalData.profile = Object.assign({}, app.globalData.profile, profile);
-          });
-        }
-        wx.showToast({ title: '登录成功', icon: 'success' });
-      },
-      fail: () => {
-        wx.showToast({ title: '已取消', icon: 'none' });
+        const nickname = (res.content || '').trim() || '学习者';
+        this._finishLogin({ nickname, avatarUrl });
       },
     });
+  },
+
+  _finishLogin(profile) {
+    store.setUserProfile(profile);
+    this.setData({ userAvatar: profile.avatarUrl, userName: profile.nickname });
+    // 同步到云端
+    if (cloud.ready()) {
+      cloud.saveProfile(profile).then((r) => {
+        if (r.ok && app.globalData) {
+          app.globalData.profile = Object.assign({}, app.globalData.profile, profile);
+        }
+      });
+    }
+    wx.showToast({ title: '登录成功', icon: 'success' });
   },
 });

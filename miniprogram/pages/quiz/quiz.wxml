@@ -1,149 +1,120 @@
-<view class="map-page" style="background: {{bgGrad}};">
+<view class="page">
 
-  <!-- 顶部状态条 -->
-  <view class="topbar">
-    <view class="topbar-left">
-      <text class="topbar-title">🏝️ 勇者冒险岛</text>
-      <text class="topbar-sub">已通关 {{cleared}} / 28 关</text>
-    </view>
-    <view class="topbar-right">
-      <view class="topbar-btn" bindtap="resetSave" hover-class="btn-press">🔄</view>
+  <!-- 顶部 Hero -->
+  <view class="hero">
+    <view class="hero-badge">🎤 AI Agent 面试间</view>
+    <view class="hero-title">来一场真实的</view>
+    <view class="hero-title">技术面试</view>
+    <view class="hero-sub">7 位面试官 · 4 种风格 · 还原大厂压力面</view>
+    <view class="hero-stats">
+      <view class="stat">
+        <text class="stat-num">{{totalCount}}</text>
+        <text class="stat-key">面试场次</text>
+      </view>
+      <view class="stat">
+        <text class="stat-num">{{passedCount}}</text>
+        <text class="stat-key">已通关</text>
+      </view>
+      <view class="stat">
+        <text class="stat-num">{{avgRate}}%</text>
+        <text class="stat-key">平均正确率</text>
+      </view>
     </view>
   </view>
 
-  <!-- 地图长卷 -->
-  <scroll-view
-    class="map-scroll"
-    scroll-y
-    enhanced
-    show-scrollbar="{{false}}"
-    scroll-top="{{scrollTopV}}"
-    scroll-with-animation
-  >
-    <view class="map-canvas" style="height: {{mapH * 1.5}}rpx;">
-
-      <!-- 星空背景 -->
+  <!-- 面试官风格选择 -->
+  <view class="sec">
+    <view class="sec-title">选择面试官风格</view>
+    <view class="style-grid">
       <view
-        wx:for="{{stars}}"
-        wx:key="index"
-        class="star"
-        style="left: {{item.x}}%; top: {{item.y}}rpx; width: {{item.s}}rpx; height: {{item.s}}rpx; opacity: {{item.opacity}}; animation-delay: {{item.delay}}s;"
-      ></view>
-
-      <!-- 区域标题横幅 -->
-      <view
-        wx:for="{{zoneBanners}}"
-        wx:key="name"
-        class="zone-banner"
-        style="top: {{item.y * 1.5}}rpx;"
-      >✦ {{item.name}} ✦</view>
-
-      <!-- 漂浮云朵 -->
-      <view
-        wx:for="{{clouds}}"
-        wx:key="index"
-        class="cloud c{{item.d}}"
-        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; font-size: {{52 * item.s}}rpx;"
-      >☁️</view>
-
-      <!-- 山路：用一系列圆角小段拼出弯曲路径（兼容小程序真机，不用 SVG） -->
-      <view
-        wx:for="{{pathSegs}}"
-        wx:key="index"
-        class="path-seg {{item.kind === 'dash' ? 'dash' : ''}}"
-        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; width: {{item.w}}rpx; height: {{item.h}}rpx; transform: translate(-50%, -50%) rotate({{item.rot}}deg);"
-      ></view>
-
-      <!-- 路边装饰 -->
-      <view
-        wx:for="{{decors}}"
-        wx:key="index"
-        class="decor"
-        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx; font-size: {{item.s ? 44 * item.s : 44}}rpx;"
-      >{{item.icon}}</view>
-
-      <!-- 终点王冠 -->
-      <view
-        class="crown {{crown.lit ? 'lit' : ''}}"
-        style="left: {{crown.px}}%; top: {{crown.py * 1.5}}rpx;"
-      >👑</view>
-
-      <!-- 宝箱 -->
-      <view
-        wx:for="{{chests}}"
-        wx:key="index"
-        class="chest {{item.opened ? 'opened' : ''}}"
-        style="left: {{item.x}}%; top: {{item.y * 1.5}}rpx;"
-        data-i="{{index}}"
-        bindtap="tapChest"
-        hover-class="node-press"
-      >{{item.opened ? '🎁' : '📦'}}</view>
-
-      <!-- 关卡节点 -->
-      <view
-        wx:for="{{levels}}"
-        wx:key="idx"
-        class="node {{item.state}}"
-        style="left: {{item.px}}%; top: {{item.py * 1.5}}rpx;"
-        data-idx="{{item.idx}}"
-        bindtap="tapLevel"
-        hover-class="node-press"
+        wx:for="{{styles}}"
+        wx:key="id"
+        class="style-card {{style === item.id ? 'on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="pickStyle"
+        hover-class="press"
       >
-        <view class="node-bubble">
-          <text wx:if="{{item.state === 'locked'}}" class="node-lock">🔒</text>
-          <text wx:elif="{{item.state === 'cleared'}}" class="node-star">⭐</text>
-          <text wx:else class="node-num">{{item.num}}</text>
-        </view>
-        <view class="node-flag">{{item.icon}}</view>
-        <view class="node-name {{item.state}}">{{item.name}}</view>
-        <view wx:if="{{item.state === 'current'}}" class="node-pulse"></view>
+        <view class="style-emoji">{{item.emoji}}</view>
+        <view class="style-name">{{item.name}}</view>
+        <view class="style-desc">{{item.desc}}</view>
+        <view wx:if="{{style === item.id}}" class="style-check">✓</view>
       </view>
-
-      <!-- 小狐狸勇者 -->
-      <view class="fox" style="left: {{fox.x}}%; top: {{fox.y * 1.5}}rpx;">🦊</view>
-
-      <!-- 底部起点留白 -->
-      <view class="map-tail"></view>
     </view>
-  </scroll-view>
-
-  <!-- 全部通关横幅 -->
-  <view wx:if="{{isAllClear}}" class="allclear">
-    🎉 你已登顶雪山王城，全部 28 关通关！
+    <view class="style-tip">已选 <text class="hl">{{curStyle.name}}</text> · {{curStyle.tagline}}</view>
   </view>
 
-  <!-- 关卡详情弹窗 -->
-  <view wx:if="{{popup}}" class="popup-mask" bindtap="closePopup">
-    <view class="popup-card" catchtap="noop">
-      <view class="popup-head" style="background: linear-gradient(135deg, {{popup.zoneLine}}, #ffb347);">
-        <text class="popup-icon">{{popup.icon}}</text>
-        <view class="popup-head-text">
-          <text class="popup-name">第 {{popup.num}} 关 · {{popup.name}}</text>
-          <text class="popup-monster">守关小怪 {{popup.monster}} 出没</text>
-        </view>
-      </view>
-
-      <view class="popup-body">
-        <view class="popup-meta">
-          <view class="meta-chip">📝 {{popup.poolCount}} 题池 · 抽 10 题</view>
-          <view class="meta-chip">{{popup.cleared ? '⭐ 已通关 · 自由练习' : '🎯 全对才能过关'}}</view>
-          <view wx:if="{{popup.bestScore}}" class="meta-chip gold">🏅 最佳 {{popup.bestScore}} 分</view>
-        </view>
-
-        <view wx:if="{{popup.tip}}" class="popup-tip">
-          <view class="popup-tip-label">💡 本关小贴士（来自题库真题）</view>
-          <view class="popup-tip-q">{{popup.tip.question}}</view>
-          <view class="popup-tip-a">{{popup.tip.answer}}</view>
-        </view>
-
-        <view class="popup-btns">
-          <button class="btn ghost" hover-class="btn-hover" bindtap="closePopup">再逛逛</button>
-          <button class="btn primary" hover-class="btn-hover" bindtap="startLevel">
-            {{popup.cleared ? '🎮 再玩一次' : '⚔️ 开始挑战'}}
-          </button>
-        </view>
+  <!-- 大厂真题 -->
+  <view class="sec">
+    <view class="sec-title">🏢 大厂真题场</view>
+    <view class="boss-row">
+      <view
+        wx:for="{{bossList}}"
+        wx:key="key"
+        class="boss-card"
+        data-key="{{item.quizKey}}"
+        data-title="{{item.title}}"
+        bindtap="startChapter"
+        hover-class="press"
+      >
+        <view class="boss-emoji">{{item.emoji}}</view>
+        <view class="boss-name">{{item.name}}</view>
+        <view class="boss-desc">{{item.desc}}</view>
+        <view class="boss-meta">{{item.count}} 题 · 真题还原</view>
       </view>
     </view>
   </view>
 
+  <!-- 混合面试 -->
+  <view class="sec">
+    <view class="sec-title">🎲 混合面试</view>
+    <view class="mix-list">
+      <view
+        wx:for="{{mixList}}"
+        wx:key="id"
+        class="mix-row {{item.hot ? 'hot' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="startMix"
+        hover-class="press"
+      >
+        <view class="mix-emoji">{{item.emoji}}</view>
+        <view class="mix-info">
+          <view class="mix-name">
+            {{item.name}}
+            <text wx:if="{{item.hot}}" class="mix-hot">HOT</text>
+          </view>
+          <view class="mix-desc">{{item.desc}}</view>
+        </view>
+        <view class="mix-go">›</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 章节面试 -->
+  <view class="sec">
+    <view class="sec-title">📚 章节面试 <text class="sec-sub">按课程顺序逐章突破</text></view>
+    <view class="ch-list">
+      <view
+        wx:for="{{chapters}}"
+        wx:key="key"
+        class="ch-row"
+        data-key="{{item.quizKey}}"
+        data-title="{{item.title}}"
+        bindtap="startChapter"
+        hover-class="press"
+      >
+        <view class="ch-num">{{item.num}}</view>
+        <view class="ch-info">
+          <view class="ch-title">{{item.shortTitle}}</view>
+          <view class="ch-sub">{{item.count}} 题 · {{item.subtitle}}</view>
+        </view>
+        <view class="ch-right">
+          <view wx:if="{{item.passed}}" class="ch-badge pass">✓ {{item.rate}}%</view>
+          <view wx:elif="{{item.done}}" class="ch-badge doing">· {{item.rate}}%</view>
+          <view wx:else class="ch-badge">未面</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="tail"></view>
 </view>

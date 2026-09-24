@@ -5,9 +5,12 @@ App({
   },
 
   onLaunch() {
-    // 初始化微信云开发
+    // 初始化微信云开发（必须指定环境 ID，否则体验版/正式版连不上）
     if (wx.cloud) {
-      wx.cloud.init({ traceUser: true });
+      wx.cloud.init({
+        env: 'cloudbase-d6gmq1a9v43f0c2a3',
+        traceUser: true,
+      });
       this.cloudReady = true;
       this.silentLogin();
     } else {

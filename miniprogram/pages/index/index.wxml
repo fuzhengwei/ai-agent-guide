@@ -2,11 +2,14 @@
 
   <!-- 顶部 Hero -->
   <view class="hero">
-    <!-- 用户头像入口（右上角） -->
-    <view class="user-chip" bindtap="onUserTap">
-      <image wx:if="{{userAvatar}}" class="user-avatar" src="{{userAvatar}}" mode="aspectFill" />
-      <view wx:else class="user-avatar-placeholder">👤</view>
-      <view class="user-name">{{userName || '点击登录'}}</view>
+    <!-- 用户头像入口（右上角）：未登录用 button 触发授权弹窗 -->
+    <button wx:if="{{!userAvatar}}" class="user-chip user-chip-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" bindtap="onUserTap">
+      <view class="user-avatar-placeholder">👤</view>
+      <view class="user-name">点击登录</view>
+    </button>
+    <view wx:else class="user-chip" bindtap="onUserTap">
+      <image class="user-avatar" src="{{userAvatar}}" mode="aspectFill" />
+      <view class="user-name">{{userName}}</view>
     </view>
     <image class="hero-logo" src="/assets/tab/course-active.png" mode="aspectFit" />
     <view class="hero-deco d1"></view>

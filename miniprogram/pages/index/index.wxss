@@ -160,3 +160,11 @@
   font-size: 24rpx; color: rgba(255, 255, 255, 0.92); font-weight: 600;
   max-width: 160rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* button 版的头像入口：清默认样式，与 .user-chip 视觉一致 */
+.user-chip-btn {
+  padding: 8rpx 20rpx 8rpx 10rpx; line-height: 1.4; margin: 0;
+  background: rgba(255, 255, 255, 0.16); border: 1rpx solid rgba(255, 255, 255, 0.28);
+  border-radius: 999rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.92);
+}
+.user-chip-btn::after { border: none; }

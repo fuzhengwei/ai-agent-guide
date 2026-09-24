@@ -69,8 +69,7 @@
     {
       "root": "packages/quiz",
       "pages": [
-        "pages/runner/runner",
-        "pages/adventure/adventure"
+        "pages/runner/runner"
       ]
     }
   ]
