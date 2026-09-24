@@ -3,10 +3,22 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+function friendlyError(err) {
+  const msg = (err && err.message) || String(err);
+  if (/collection not exists|COLLECTION_NOT_EXIST/i.test(msg)) {
+    return '数据库集合未创建：请到云开发控制台「数据库」新建 user_profiles 集合';
+  }
+  if (/permission denied|PERMISSION_DENIED/i.test(msg)) {
+    return '数据库权限不足：请到云开发控制台「数据库 → 集合权限」放开读权限';
+  }
+  return msg;
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const profiles = db.collection('user_profiles');
 
+  try {
   // 查档案，没有则创建（默认昵称脱敏）
   const { data } = await profiles.where({ _openid: OPENID }).limit(1).get();
   let profile = data[0];
@@ -64,4 +76,7 @@ exports.main = async (event) => {
   }
 
   return { ok: true, openid: OPENID, profile };
+  } catch (err) {
+    return { ok: false, msg: friendlyError(err) };
+  }
 };

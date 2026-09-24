@@ -156,19 +156,26 @@
 .set-hint { font-size: 22rpx; color: #9aa3b1; padding: 12rpx 0 4rpx; }
 .night .set-hint { color: #6b7588; }
 
-/* 章节头：更像书的扉页，留白充足 */
+/* 章节头：底部细分隔线 + 面包屑（本书教程 › 第N章）+ 纯标题，书页式简洁风格 */
 .reader-head {
-  margin: 44rpx 0 52rpx; padding: 44rpx 36rpx 40rpx;
-  background: var(--head-bg);
-  border-radius: 22rpx; border-left: 8rpx solid #4f6ef7;
+  margin: 28rpx 0 20rpx;
+  padding: 8rpx 2rpx 34rpx;
+  border-bottom: 2rpx solid var(--panel-border);
 }
-.reader-chip {
-  display: inline-block; font-size: 21rpx; font-weight: 600; letter-spacing: 3rpx;
-  color: #7d92e8; background: rgba(255, 255, 255, 0.72); border-radius: 999rpx; padding: 6rpx 22rpx;
-  box-shadow: 0 2rpx 8rpx rgba(79, 70, 229, 0.12);
+.reader-bread {
+  display: flex; align-items: center; gap: 12rpx;
+  font-size: 23rpx; font-weight: 600; letter-spacing: 2rpx;
+  color: #7d92e8; margin-bottom: 18rpx;
 }
-.night .reader-chip { background: rgba(90, 124, 247, 0.16); color: #93a8f2; box-shadow: none; }
-.reader-title { font-size: 42rpx; font-weight: 700; color: var(--fg-title); line-height: 1.45; margin-top: 18rpx; letter-spacing: 0.5rpx; }
+.night .reader-bread { color: #93a8f2; }
+.reader-bread-book { color: var(--fg-soft); font-weight: 500; }
+.night .reader-bread-book { color: #778193; }
+.reader-bread-sep { color: #c3cce0; font-weight: 400; }
+.night .reader-bread-sep { color: #4a5470; }
+.reader-title {
+  font-size: 46rpx; font-weight: 800; color: var(--fg-title);
+  line-height: 1.4; letter-spacing: 0.5rpx; word-break: break-word;
+}
 .reader-sub { font-size: 25rpx; color: var(--fg-sub); margin-top: 14rpx; line-height: 1.75; }
 
 /* ================================================================

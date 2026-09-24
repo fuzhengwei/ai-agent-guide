@@ -1,7 +1,7 @@
 /**
- * 面试间首页：选风格 → 选场次（大厂真题 / 混合 / 章节）→ 进入对话流
+ * 面试 tab 首页：教程配套面试入口
  *
- * 取代原冒险岛地图页。保留 4 风格面试官池和评级/错题统计，去除 28 关解锁链。
+ * 28 章教程题库逐章面试 + 4 种面试官风格 + 大厂真题 + 混合面试
  */
 const store = require('../../utils/store.js');
 const share = require('../../utils/share.js');
@@ -9,33 +9,32 @@ const IV = require('../../utils/interview.js');
 const MIX = require('../../utils/mix.js');
 
 const STYLES = [
-  { id: 'sharp',  name: '犀利施压', emoji: '🔥', desc: '追问到底 · 还原大厂压力面', tagline: '林致远之外的另一种残酷' },
-  { id: 'gentle', name: '温柔引导', emoji: '🌸', desc: '循循善诱 · 适合初学者',       tagline: '答错也不会让你难堪' },
-  { id: 'boss',   name: '大厂实战', emoji: '💼', desc: '字节/美团/京东业务视角',      tagline: '只聊能上线的方案' },
-  { id: 'steady', name: '稳重基础', emoji: '📐', desc: '老架构师 · 抠概念准确性',     tagline: '基本功决定下限' },
+  { id: 'sharp',  name: '犀利施压', emoji: '🔥', tagline: '追问到底 · 还原大厂压力面' },
+  { id: 'gentle', name: '温柔引导', emoji: '🌸', tagline: '循循善诱 · 适合初学者' },
+  { id: 'boss',   name: '大厂实战', emoji: '💼', tagline: '只聊能上线的方案' },
+  { id: 'steady', name: '稳重基础', emoji: '📐', tagline: '抠概念准确性 · 基本功决定下限' },
 ];
 
 const BOSS_LIST = [
-  { quizKey: 'bytedance', name: '字节跳动', emoji: '🎵', desc: '算法 + 工程双重压力', count: 10 },
-  { quizKey: 'meituan',   name: '美团',     emoji: '🟡', desc: 'Agent 业务落地',     count: 10 },
-  { quizKey: 'jd',        name: '京东',     emoji: '🛒', desc: '电商 AI 架构场景',   count: 10 },
+  { quizKey: 'bytedance', name: '字节跳动', emoji: '🎵', count: 10 },
+  { quizKey: 'meituan',   name: '美团',     emoji: '🟡', count: 10 },
+  { quizKey: 'jd',        name: '京东',     emoji: '🛒', count: 10 },
 ];
 
 Page({
   data: {
     styles: STYLES,
-    style: 'steady',                  // 默认稳重基础
+    style: 'steady',
     curStyle: STYLES[3],
     bossList: BOSS_LIST,
     mixList: [],
     chapters: [],
-    totalCount: 0,
+    chapterCount: 0,
     passedCount: 0,
     avgRate: 0,
   },
 
   onLoad() {
-    // 读取用户上次选择的风格
     try {
       const saved = wx.getStorageSync('dsh_iv_style');
       if (saved && STYLES.find(s => s.id === saved)) {
@@ -53,7 +52,7 @@ Page({
     const quizIndex = require('../../data/quiz-index.js');
     const records = store.getQuizRecords();
 
-    // ===== 混合面试 =====
+    // 混合面试
     const mixList = MIX.MODES.map(m => ({
       id: m.id,
       name: m.name,
@@ -62,7 +61,7 @@ Page({
       hot: !!m.hot,
     }));
 
-    // ===== 章节面试 =====
+    // 章节面试
     const chapterList = chapters.filter(c => c.quizKey && !c.isBoss);
     const chList = chapterList.map(c => {
       const idx = quizIndex.find(x => x.ch === c.quizKey);
@@ -75,7 +74,6 @@ Page({
         num: c.num,
         quizKey: c.quizKey,
         title: c.title,
-        // 从 "第N章 xxx" 中抽出短标题
         shortTitle: c.title.replace(/^第\d+章\s*/, ''),
         subtitle: c.subtitle || '',
         count: idx ? idx.count : 10,
@@ -85,7 +83,6 @@ Page({
       };
     });
 
-    // ===== 汇总 =====
     const doneList = chList.filter(c => c.done);
     const passedCount = chList.filter(c => c.passed).length;
     const avgRate = doneList.length
@@ -95,7 +92,7 @@ Page({
     this.setData({
       mixList,
       chapters: chList,
-      totalCount: chList.length + BOSS_LIST.length + mixList.length,
+      chapterCount: chList.length,
       passedCount,
       avgRate,
     });
@@ -129,7 +126,7 @@ Page({
   },
 
   ...share.attach(
-    'AI Agent 面试间：7 位面试官 4 种风格，大厂真题+章节面试，来一场真实的技术面试',
+    'AI Agent 教程配套面试：28 章逐章检验，4 种面试官风格，大厂真题实战',
     '/pages/quiz/quiz'
   ),
 });

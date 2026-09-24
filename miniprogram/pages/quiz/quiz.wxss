@@ -1,7 +1,8 @@
-/* 面试间首页 · 精致现代风 */
+/* 面试 tab 首页 · 教程配套面试 */
 page {
   background: #f4f5f7;
   height: 100%;
+  overflow-y: auto;
 }
 
 .page {
@@ -16,8 +17,6 @@ page {
   background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
   padding: 60rpx 40rpx 50rpx;
   color: #fff;
-  position: relative;
-  overflow: hidden;
 }
 .hero-badge {
   display: inline-block;
@@ -32,15 +31,15 @@ page {
   margin-bottom: 24rpx;
 }
 .hero-title {
-  font-size: 56rpx;
+  font-size: 52rpx;
   font-weight: 900;
   line-height: 1.25;
   letter-spacing: 2rpx;
-  margin-bottom: 16rpx;
 }
 .hero-sub {
   font-size: 26rpx;
   color: #94a3b8;
+  margin-top: 16rpx;
   margin-bottom: 40rpx;
   letter-spacing: 1rpx;
 }
@@ -80,52 +79,36 @@ page {
   margin-left: 12rpx;
 }
 
-/* ---------- 风格选择 ---------- */
-.style-grid {
-  display: flex;
-  flex-wrap: wrap;
+/* ---------- 面试官风格：横排芯片 ---------- */
+.style-scroll {
+  white-space: nowrap;
+  margin: 0 -32rpx;
+  padding: 0 32rpx;
+}
+.style-row {
+  display: inline-flex;
   gap: 16rpx;
 }
-.style-card {
-  width: calc(50% - 8rpx);
+.style-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
   background: #fff;
-  border-radius: 24rpx;
-  padding: 28rpx 24rpx;
-  position: relative;
-  border: 2rpx solid transparent;
-  box-sizing: border-box;
+  border: 2rpx solid #e2e8f0;
+  border-radius: 999rpx;
+  padding: 16rpx 28rpx;
+  flex-shrink: 0;
 }
-.style-card.on {
+.style-chip.on {
   background: linear-gradient(160deg, #eef2ff, #e0e7ff);
   border-color: #6366f1;
-  box-shadow: 0 8rpx 20rpx rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.15);
 }
-.style-emoji { font-size: 44rpx; margin-bottom: 12rpx; }
+.style-emoji { font-size: 32rpx; }
 .style-name {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 800;
   color: #0f172a;
-  margin-bottom: 6rpx;
-}
-.style-desc {
-  font-size: 22rpx;
-  color: #64748b;
-  line-height: 1.4;
-}
-.style-check {
-  position: absolute;
-  top: 16rpx;
-  right: 16rpx;
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 50%;
-  background: #6366f1;
-  color: #fff;
-  font-size: 22rpx;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .style-tip {
   margin-top: 20rpx;
@@ -134,44 +117,39 @@ page {
   text-align: center;
   letter-spacing: 0.5rpx;
 }
-.style-tip .hl {
-  color: #6366f1;
-  font-weight: 800;
-}
 
 /* ---------- 大厂真题 ---------- */
-.boss-row {
+.boss-grid {
   display: flex;
   gap: 16rpx;
 }
 .boss-card {
   flex: 1;
-  background: linear-gradient(160deg, #fff, #fafafa);
+  min-width: 0;
+  background: #fff;
   border: 1rpx solid #e2e8f0;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   padding: 28rpx 22rpx;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
 }
-.boss-emoji { font-size: 40rpx; margin-bottom: 14rpx; }
+.boss-emoji { font-size: 40rpx; margin-bottom: 12rpx; }
 .boss-name {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 6rpx;
-}
-.boss-desc {
-  font-size: 22rpx;
-  color: #64748b;
-  margin-bottom: 16rpx;
-  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .boss-meta {
   font-size: 20rpx;
   color: #94a3b8;
   font-weight: 600;
-  letter-spacing: 0.5rpx;
 }
 
 /* ---------- 混合面试 ---------- */
@@ -194,7 +172,10 @@ page {
   border-color: #fbbf24;
 }
 .mix-emoji { font-size: 40rpx; }
-.mix-info { flex: 1; }
+.mix-info {
+  flex: 1;
+  min-width: 0;
+}
 .mix-name {
   font-size: 28rpx;
   font-weight: 800;
@@ -203,6 +184,9 @@ page {
   display: flex;
   align-items: center;
   gap: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mix-hot {
   font-size: 18rpx;
@@ -217,6 +201,9 @@ page {
   font-size: 22rpx;
   color: #64748b;
   letter-spacing: 0.5rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mix-go {
   font-size: 36rpx;
@@ -253,13 +240,19 @@ page {
   align-items: center;
   justify-content: center;
 }
-.ch-info { flex: 1; }
+.ch-info {
+  flex: 1;
+  min-width: 0;  /* 关键：允许 flex 子项收缩到内容以下 */
+}
 .ch-title {
   font-size: 27rpx;
   font-weight: 700;
   color: #0f172a;
   margin-bottom: 4rpx;
   letter-spacing: 0.5rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ch-sub {
   font-size: 21rpx;

@@ -1,6 +1,6 @@
 {
-  "navigationBarTitleText": "勇者冒险岛",
+  "navigationBarTitleText": "面试",
   "navigationBarTextStyle": "black",
-  "navigationBarBackgroundColor": "#a8e6ff",
-  "disableScroll": true
+  "navigationBarBackgroundColor": "#ffffff",
+  "disableScroll": false
 }

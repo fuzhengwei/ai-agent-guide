@@ -3,11 +3,24 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+// 把云数据库常见错误翻译成用户能看懂的提示
+function friendlyError(err) {
+  const msg = (err && err.message) || String(err);
+  if (/collection not exists|COLLECTION_NOT_EXIST/i.test(msg)) {
+    return '数据库集合未创建：请到云开发控制台「数据库」新建 user_profiles 集合';
+  }
+  if (/permission denied|PERMISSION_DENIED/i.test(msg)) {
+    return '数据库权限不足：请到云开发控制台「数据库 → 集合权限」放开读权限';
+  }
+  return msg;
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const profiles = db.collection('user_profiles');
   const { action } = event;
 
+  try {
   // 上报：累计学习时长 + 阅读数 + 积分/星数（客户端本地统计汇总后上传，全量覆盖）
   if (action === 'report') {
     const patch = {
@@ -56,4 +69,7 @@ exports.main = async (event) => {
   }
 
   return { ok: false, msg: 'unknown action' };
+  } catch (err) {
+    return { ok: false, msg: friendlyError(err) };
+  }
 };

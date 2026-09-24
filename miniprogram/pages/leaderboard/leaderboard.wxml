@@ -22,8 +22,10 @@
 
   <view class="empty" wx:if="{{!online}}">
     <view class="empty-icon">☁️</view>
-    <view class="empty-text">云功能未开通或网络异常</view>
-    <view class="empty-sub">请在微信开发者工具中开通云开发并部署云函数</view>
+    <view class="empty-text">云功能调用失败</view>
+    <view class="empty-sub" wx:if="{{errMsg}}" style="word-break:break-all">{{errMsg}}</view>
+    <view class="empty-sub">请确认云开发已开通、云函数已部署到当前环境</view>
+    <button class="retry-btn" bindtap="load">重试</button>
   </view>
   <view class="empty" wx:elif="{{loading}}"><view class="empty-text">加载中…</view></view>
   <view class="empty" wx:elif="{{!list.length}}">

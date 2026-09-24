@@ -20,6 +20,11 @@
 .empty-icon { font-size: 72rpx; margin-bottom: 16rpx; }
 .empty-text { font-size: 30rpx; color: #374151; font-weight: 600; }
 .empty-sub { font-size: 24rpx; color: #9aa3b1; margin-top: 10rpx; }
+.retry-btn {
+  margin-top: 28rpx; display: inline-block; font-size: 26rpx;
+  color: #2563eb; background: #fff; border: 2rpx solid #2563eb;
+  border-radius: 999rpx; padding: 12rpx 48rpx;
+}
 
 .row {
   display: flex; align-items: center; gap: 18rpx;

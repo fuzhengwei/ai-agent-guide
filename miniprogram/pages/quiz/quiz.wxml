@@ -1,15 +1,15 @@
 <view class="page">
 
-  <!-- 顶部 Hero -->
+  <!-- 顶部 Hero：紧扣教程 -->
   <view class="hero">
-    <view class="hero-badge">🎤 AI Agent 面试间</view>
-    <view class="hero-title">来一场真实的</view>
-    <view class="hero-title">技术面试</view>
-    <view class="hero-sub">7 位面试官 · 4 种风格 · 还原大厂压力面</view>
+    <view class="hero-badge">📚 教程配套面试</view>
+    <view class="hero-title">学完一章</view>
+    <view class="hero-title">来场面试</view>
+    <view class="hero-sub">28 章教程题库 · 4 种面试官风格 · 逐章检验掌握度</view>
     <view class="hero-stats">
       <view class="stat">
-        <text class="stat-num">{{totalCount}}</text>
-        <text class="stat-key">面试场次</text>
+        <text class="stat-num">{{chapterCount}}</text>
+        <text class="stat-key">章节面试</text>
       </view>
       <view class="stat">
         <text class="stat-num">{{passedCount}}</text>
@@ -22,34 +22,34 @@
     </view>
   </view>
 
-  <!-- 面试官风格选择 -->
+  <!-- 面试官风格：紧凑横排 -->
   <view class="sec">
-    <view class="sec-title">选择面试官风格</view>
-    <view class="style-grid">
-      <view
-        wx:for="{{styles}}"
-        wx:key="id"
-        class="style-card {{style === item.id ? 'on' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="pickStyle"
-        hover-class="press"
-      >
-        <view class="style-emoji">{{item.emoji}}</view>
-        <view class="style-name">{{item.name}}</view>
-        <view class="style-desc">{{item.desc}}</view>
-        <view wx:if="{{style === item.id}}" class="style-check">✓</view>
+    <view class="sec-title">面试官风格</view>
+    <scroll-view class="style-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="style-row">
+        <view
+          wx:for="{{styles}}"
+          wx:key="id"
+          class="style-chip {{style === item.id ? 'on' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="pickStyle"
+          hover-class="press"
+        >
+          <text class="style-emoji">{{item.emoji}}</text>
+          <text class="style-name">{{item.name}}</text>
+        </view>
       </view>
-    </view>
-    <view class="style-tip">已选 <text class="hl">{{curStyle.name}}</text> · {{curStyle.tagline}}</view>
+    </scroll-view>
+    <view class="style-tip">{{curStyle.emoji}} {{curStyle.name}} · {{curStyle.tagline}}</view>
   </view>
 
   <!-- 大厂真题 -->
   <view class="sec">
     <view class="sec-title">🏢 大厂真题场</view>
-    <view class="boss-row">
+    <view class="boss-grid">
       <view
         wx:for="{{bossList}}"
-        wx:key="key"
+        wx:key="quizKey"
         class="boss-card"
         data-key="{{item.quizKey}}"
         data-title="{{item.title}}"
@@ -58,8 +58,7 @@
       >
         <view class="boss-emoji">{{item.emoji}}</view>
         <view class="boss-name">{{item.name}}</view>
-        <view class="boss-desc">{{item.desc}}</view>
-        <view class="boss-meta">{{item.count}} 题 · 真题还原</view>
+        <view class="boss-meta">{{item.count}} 题</view>
       </view>
     </view>
   </view>
@@ -89,9 +88,9 @@
     </view>
   </view>
 
-  <!-- 章节面试 -->
+  <!-- 章节面试：教程主体 -->
   <view class="sec">
-    <view class="sec-title">📚 章节面试 <text class="sec-sub">按课程顺序逐章突破</text></view>
+    <view class="sec-title">📚 章节面试 <text class="sec-sub">跟教程进度走</text></view>
     <view class="ch-list">
       <view
         wx:for="{{chapters}}"

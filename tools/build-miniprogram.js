@@ -728,6 +728,11 @@ function convertChapterHtml(rawHtml) {
   const title = $('h1.chapter-title').first().text().trim();
   const subtitle = $('p.chapter-subtitle').first().text().trim();
 
+  // 章节头已由阅读页 reader-head 卡片统一渲染（含章节序号 chip / 标题 / 副标题），
+  // 这里把正文里的重复 h1.chapter-title / p.chapter-subtitle 摘掉，避免上下两处展示同一标题。
+  $('h1.chapter-title').first().remove();
+  $('p.chapter-subtitle').first().remove();
+
   // 先处理动画类容器（需要读取 script 配置），转成 mp-json 占位节点
   const scriptAll = $('script');
   $('div.compare-animation').each((_, el) => $(el).replaceWith(nodeToPlaceholder(convertCompare($, el))));
@@ -904,13 +909,7 @@ function main() {
   ['runner.js', 'runner.wxml', 'runner.wxss', 'runner.json'].forEach(f => {
     fs.copyFileSync(path.join(quizTpl, f), path.join(quizRunnerDir, f));
   });
-  // 勇者冒险岛 · 闯关答题页（卡通地图玩法，每关随机抽 10 题全对进阶）
-  const quizAdventureDir = path.join(quizPkg, 'pages', 'adventure');
-  fs.mkdirSync(quizAdventureDir, { recursive: true });
-  ['adventure.js', 'adventure.wxml', 'adventure.wxss', 'adventure.json'].forEach(f => {
-    fs.copyFileSync(path.join(quizTpl, f), path.join(quizAdventureDir, f));
-  });
-  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner', 'pages/adventure/adventure'] });
+  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner'] });
 
   // 大厂真题场次追加到主包章节注册表（排在教程章节之后，复用同一套面试 runner）
   BOSS_QUIZZES.forEach(b => {

@@ -106,10 +106,14 @@
     </view>
   </view>
 
-  <!-- 章节头 -->
+  <!-- 章节头：「本书教程 › 第N章」面包屑 + 纯标题（序号不再重复出现在标题里） -->
   <view class="reader-head">
-    <view class="reader-chip" wx:if="{{chapterNum !== ''}}">第 {{chapterNum}} 章</view>
-    <view class="reader-title">{{title}}</view>
+    <view class="reader-bread" wx:if="{{chapterNum !== ''}}">
+      <text class="reader-bread-book">本书教程</text>
+      <text class="reader-bread-sep">›</text>
+      <text class="reader-bread-num">第 {{chapterNum}} 章</text>
+    </view>
+    <view class="reader-title">{{titleMain || title}}</view>
     <view class="reader-sub" wx:if="{{subtitle}}">{{subtitle}}</view>
   </view>
 
@@ -125,8 +129,6 @@
     <block wx:for="{{nodes}}" wx:key="index">
       <!-- 段落 -->
       <view wx:if="{{item.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
-      <!-- 章内大标题 -->
-      <view wx:elif="{{item.type === 'h1'}}" class="nd-h1">{{item.text}}</view>
       <!-- 小节标题（目录锚点：真实节点 id，可 scroll 定位） -->
       <view wx:elif="{{item.type === 'h'}}" id="{{item.anchor}}" class="nd-h lv{{item.level}}">{{item.text}}</view>
       <!-- 引用 -->

@@ -10,6 +10,7 @@ Page({
     loading: true,
     online: true,
     studyText: '',
+    errMsg: '',
   },
 
   onShow() {
@@ -38,7 +39,7 @@ Page({
 
   load() {
     if (!cloud.ready()) {
-      this.setData({ loading: false, online: false });
+      this.setData({ loading: false, online: false, errMsg: 'wx.cloud 未初始化' });
       return;
     }
     this.setData({ loading: true });
@@ -58,9 +59,10 @@ Page({
           myRank: res.myRank,
           loading: false,
           online: true,
+          errMsg: '',
         });
       } else {
-        this.setData({ loading: false, online: false });
+        this.setData({ loading: false, online: false, errMsg: res.errMsg || '云函数返回失败' });
       }
     });
   },

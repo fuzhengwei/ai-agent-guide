@@ -10,12 +10,21 @@ function ready() {
 
 function call(name, data) {
   return new Promise((resolve) => {
-    if (!ready()) return resolve({ ok: false, offline: true });
+    if (!ready()) return resolve({ ok: false, offline: true, errMsg: 'cloud not ready' });
     wx.cloud.callFunction({
       name,
       data,
-      success: (res) => resolve(res.result || { ok: false }),
-      fail: () => resolve({ ok: false, offline: true }),
+      success: (res) => {
+        const r = res.result || { ok: false, errMsg: 'empty result' };
+        if (!r.ok) r.errMsg = r.errMsg || r.msg || 'result not ok';
+        resolve(r);
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || 'callFunction fail';
+        const code = (err && err.errCode !== undefined) ? err.errCode : ((err && err.code) || '');
+        console.error('[cloud]', name, msg, code, err);
+        resolve({ ok: false, offline: true, errMsg: msg, errCode: code });
+      },
     });
   });
 }

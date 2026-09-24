@@ -131,14 +131,18 @@ Page({
     store.setLastChapter({ key: meta.key, slug: meta.slug, pkg: meta.pkg, title: meta.title });
     wx.setNavigationBarTitle({ title: meta.title });
     this._ttsSegs = Array.isArray(ch.ttsSegs) ? ch.ttsSegs : [];
+    const chapterNum = meta.num !== null && meta.num !== undefined ? meta.num : '';
+    // 主标题去掉「第N章」前缀：章节序号由章节头 chip 单独展示，避免同一信息出现两次
+    const titleMain = String(ch.title || '').replace(/^第\s*\d+\s*章[·:：\s-]*/, '').trim() || ch.title;
     this.setData({
       title: ch.title,
+      titleMain,
       subtitle: ch.subtitle || '',
       nodes: Array.isArray(ch.nodes) ? ch.nodes : [],
       toc: Array.isArray(ch.toc) ? ch.toc : [],
       tocOpen: false,
       tocAnchor: '',
-      chapterNum: meta.num !== null && meta.num !== undefined ? meta.num : '',
+      chapterNum,
       quizKey: meta.quizKey || '',
       currentIndex: index,
       finished: index === chapters.length - 1,

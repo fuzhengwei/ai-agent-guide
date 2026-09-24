@@ -3,11 +3,23 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+function friendlyError(err) {
+  const msg = (err && err.message) || String(err);
+  if (/collection not exists|COLLECTION_NOT_EXIST/i.test(msg)) {
+    return '数据库集合未创建：请到云开发控制台「数据库」新建 user_notes 集合';
+  }
+  if (/permission denied|PERMISSION_DENIED/i.test(msg)) {
+    return '数据库权限不足：请到云开发控制台「数据库 → 集合权限」放开读权限';
+  }
+  return msg;
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const notes = db.collection('user_notes');
   const { action } = event;
 
+  try {
   if (action === 'add') {
     const item = {
       _openid: OPENID,
@@ -42,4 +54,7 @@ exports.main = async (event) => {
   }
 
   return { ok: false, msg: 'unknown action' };
+  } catch (err) {
+    return { ok: false, msg: friendlyError(err) };
+  }
 };
