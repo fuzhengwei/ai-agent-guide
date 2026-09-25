@@ -78,8 +78,14 @@
             data-id="{{item.id}}"
             bindtap="setVoice"
           >
+            <view class="voice-emoji">{{item.emoji}}</view>
             <view class="voice-name">{{item.label}}</view>
             <view class="voice-desc">{{item.desc}}</view>
+            <view
+              class="voice-try {{previewingVoice === item.id ? 'ing' : ''}}"
+              catchtap="previewVoice"
+              data-id="{{item.id}}"
+            >{{previewingVoice === item.id ? '播放中…' : '▶ 试听'}}</view>
           </view>
         </view>
       </view>

@@ -1,35 +1,36 @@
 /**
- * 语音朗读模块（云函数 TTS 方案）
+ * 语音朗读模块（云函数 TTS 方案 + 三级缓存）
  *
- * 原理：wx.cloud.callFunction('tts', { text, voice, rate }) → 返回 base64 mp3
- *       → InnerAudioContext 播放临时文件
+ * 播放链路：wx.cloud.callFunction('tts') → 云存储 URL / base64 → InnerAudioContext
  *
- * 前置条件：
- * 1. 云开发环境已开通（project.config.json 的 cloudfunctionRoot）
- * 2. 部署 cloudfunctions/tts 到云端（右键「上传并部署：云端安装依赖」）
- * 3. 云函数环境变量配置 TENCENT_SECRET_ID / TENCENT_SECRET_KEY
- *    （腾讯云控制台 -> API 密钥管理 创建；TTS 需开通，新账号有免费额度）
+ * 三级缓存（同音色同语速同文本只合成一次）：
+ *   L1 内存 Map：当前会话即时命中
+ *   L2 本地文件：wx 文件系统持久化，跨启动保留，按章节清理（最多保留 3 章）
+ *   L3 云存储：tts-audio/{md5}.mp3，所有用户共享，命中即返临时 URL
  *
- * 音色选项：腾讯云 TTS VoiceType，见 VOICE_MAP
+ * 预取：播放第 N 段时后台预取 N+1/N+2 段，听感无缝
  */
 
 const app = getApp();
 
-// 音色选项：腾讯云 TTS VoiceType
-// 完整列表 https://cloud.tencent.com/document/api/1073/37995
-// 1010xx 系列属于通用语音合成，按字符计费；精品音色（1051xxxx 等）价格更高，暂不提供
+// 音色选项（与云函数 VOICE_MAP 对应）
 const VOICES = [
-  // 女声
-  { id: 'standard',  label: '智瑜 · 女声',     desc: '默认，清晰自然',      voiceType: 101001 },
-  { id: 'bright',    label: '智聆 · 清亮',     desc: '音调偏高，偏活泼',    voiceType: 101002 },
-  { id: 'deep',      label: '智美 · 沉稳',     desc: '音调偏低，偏磁性',    voiceType: 101003 },
-  { id: 'soft',      label: '智琪 · 温柔',     desc: '柔和亲切，适合睡前',  voiceType: 101005 },
-  { id: 'sweet',     label: '智芸 · 甜妹',     desc: '年轻甜美，活力感',    voiceType: 101006 },
-  { id: 'mature',    label: '智华 · 知性',     desc: '成熟稳重，播音腔',    voiceType: 101007 },
-  // 男声
-  { id: 'male',      label: '智云 · 男声',     desc: '标准男声，沉稳清晰',  voiceType: 101004 },
-  { id: 'male_young',label: '智书 · 青年',     desc: '年轻男声，清爽干净',  voiceType: 101008 },
+  { id: 'standard',  label: '智瑜', desc: '情感女声 · 默认', voiceType: 101001, emoji: '👩' },
+  { id: 'bright',    label: '智聆', desc: '通用女声 · 清亮', voiceType: 101002, emoji: '👧' },
+  { id: 'sweet',     label: '智甜', desc: '甜美女声 · 软萌', voiceType: 101016, emoji: '🍭' },
+  { id: 'assistant', label: '智言', desc: '助手女声 · 亲切', voiceType: 101006, emoji: '🤖' },
+  { id: 'deep',      label: '智美', desc: '客服女声 · 沉稳', voiceType: 101003, emoji: '👩‍💼' },
+  { id: 'male',      label: '智云', desc: '通用男声 · 标准', voiceType: 101004, emoji: '👨' },
+  { id: 'reader',    label: '智华', desc: '阅读男声 · 成熟', voiceType: 101010, emoji: '🎙️' },
+  { id: 'boy',       label: '智萌', desc: '男童声 · 卡通',   voiceType: 101015, emoji: '🧒' },
 ];
+
+// 试听示例语（一次合成后各级缓存都命中，重复试听几乎免费）
+const PREVIEW_TEXT = '你好，我是你的学习伙伴，让我为你朗读这篇文章吧。';
+
+const CACHE_PREFIX = 'tts-cache-v1:';
+const CHAPTER_LIST_KEY = 'tts-cache-chapters';
+const MAX_CACHED_CHAPTERS = 3;
 
 function getVoices() { return VOICES; }
 
@@ -37,21 +38,80 @@ function isSupported() {
   return !!(app && app.cloudReady && wx.cloud);
 }
 
-/**
- * 创建朗读引擎
- * onState({ state, index, total }) — state: 'idle'|'playing'|'paused'|'synthesizing'|'finished'
- */
+// 本地缓存命名用的字符串 hash（与云函数 md5 不同，本地散列够用即可）
+function _hash(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16) + (h1 >>> 0).toString(16);
+}
+
+// L2 本地缓存元数据：记录每章有哪些 key，用于按章清理（LRU，最多 MAX_CACHED_CHAPTERS 章）
+function _chapterList() {
+  try { return wx.getStorageSync(CHAPTER_LIST_KEY) || []; } catch (e) { return []; }
+}
+function _clearChapter(chId) {
+  const keysKey = CACHE_PREFIX + 'keys:' + chId;
+  try {
+    const keys = wx.getStorageSync(keysKey) || [];
+    keys.forEach(k => {
+      const p = wx.getStorageSync(CACHE_PREFIX + k);
+      if (p) { try { wx.getFileSystemManager().unlinkSync(p); } catch (e) {} }
+      try { wx.removeStorageSync(CACHE_PREFIX + k); } catch (e) {}
+    });
+    wx.removeStorageSync(keysKey);
+  } catch (e) {}
+}
+function _touchChapter(chId) {
+  if (!chId) return;
+  let list = _chapterList().filter(x => x !== chId);
+  list.push(chId);
+  while (list.length > MAX_CACHED_CHAPTERS) {
+    const evicted = list.shift();
+    _clearChapter(evicted);
+  }
+  try { wx.setStorageSync(CHAPTER_LIST_KEY, list); } catch (e) {}
+}
+function _saveLocal(chId, key, filePath) {
+  if (!chId) return;
+  const keysKey = CACHE_PREFIX + 'keys:' + chId;
+  try {
+    let keys = wx.getStorageSync(keysKey) || [];
+    if (keys.indexOf(key) < 0) { keys.push(key); wx.setStorageSync(keysKey, keys); }
+    wx.setStorageSync(CACHE_PREFIX + key, filePath);
+    _touchChapter(chId);
+  } catch (e) {}
+}
+function _loadLocal(key) {
+  try {
+    const p = wx.getStorageSync(CACHE_PREFIX + key);
+    if (!p) return null;
+    wx.getFileSystemManager().accessSync(p); // 文件可能已被系统清理
+    return p;
+  } catch (e) {
+    try { wx.removeStorageSync(CACHE_PREFIX + key); } catch (e2) {}
+    return null;
+  }
+}
+
 function createEngine(opts) {
   const onState = (opts && opts.onState) || function () {};
+  const chapterId = (opts && opts.chapterId) || '';
   const ctx = wx.createInnerAudioContext();
   ctx.obeyMuteSwitch = false;
 
-  let segments = [];   // [{ idx, text }]
+  let segments = [];
   let index = 0;
   let state = 'idle';
   let voice = VOICES[0];
   let rate = 1.0;
-  let _gen = 0; // 代际令牌，避免旧请求回调污染新会话
+  let _gen = 0;
+  const memCache = {}; // L1: key -> filePath
 
   const fs = wx.getFileSystemManager();
 
@@ -67,30 +127,77 @@ function createEngine(opts) {
       .slice(0, 300);
   }
 
-  function _synth(text, cb) {
-    if (!isSupported()) { cb(new Error('cloud-not-ready')); return; }
+  function _key(text, v, r) {
+    const rt = Math.round((r || 1) * 10) / 10;
+    return _hash(`${(v || voice).voiceType}|${rt}|${text}`);
+  }
+
+  // 云函数返回（url 或 base64）→ 本地文件路径
+  function _materialize(r0, key, cb) {
+    const filePath = `${wx.env.USER_DATA_PATH}/tts-${key}.mp3`;
+    if (r0.url) {
+      wx.downloadFile({
+        url: r0.url,
+        filePath,
+        success: (d) => {
+          if (d.statusCode >= 200 && d.statusCode < 300) {
+            _saveLocal(chapterId, key, filePath);
+            cb(null, filePath);
+          } else cb(new Error('download-' + d.statusCode));
+        },
+        fail: () => cb(new Error('download-failed')),
+      });
+      return;
+    }
+    if (r0.audio) {
+      try {
+        fs.writeFileSync(filePath, r0.audio, 'base64');
+        _saveLocal(chapterId, key, filePath);
+        cb(null, filePath);
+      } catch (e) { cb(e); }
+      return;
+    }
+    cb(new Error(r0.msg || 'synth-failed'));
+  }
+
+  // 取一段音频：L1 → L2 → 云函数（L3 在云函数侧）
+  function _fetch(text, v, r, cb) {
+    const key = _key(text, v, r);
+    if (memCache[key]) return cb(null, memCache[key]);
+    const local = _loadLocal(key);
+    if (local) { memCache[key] = local; return cb(null, local); }
+    if (!isSupported()) return cb(new Error('cloud-not-ready'));
+
     const gen = _gen;
     wx.cloud.callFunction({
       name: 'tts',
-      data: { text, voice: voice.id, rate },
+      data: { text, voice: (v || voice).id, rate: r || rate },
       success: (res) => {
         if (gen !== _gen) return;
-        const r = res.result || {};
-        if (!r.ok || !r.audio) { cb(new Error(r.msg || 'synth-failed')); return; }
-        // base64 → 临时文件
-        const filePath = `${wx.env.USER_DATA_PATH}/tts-${Date.now()}.mp3`;
-        try {
-          fs.writeFileSync(filePath, r.audio, 'base64');
-          cb(null, filePath);
-        } catch (e) {
-          cb(e);
-        }
+        const r0 = res.result || {};
+        if (!r0.ok) return cb(new Error(r0.msg || 'synth-failed'));
+        _materialize(r0, key, (err, filePath) => {
+          if (!err) memCache[key] = filePath;
+          cb(err, filePath);
+        });
       },
       fail: (err) => {
         if (gen !== _gen) return;
         cb(new Error((err && err.errMsg) || 'network-failed'));
       },
     });
+  }
+
+  // 播放中后台预取接下来两段
+  function _prefetch(fromIdx) {
+    if (state !== 'playing' && state !== 'synthesizing') return;
+    for (let i = fromIdx + 1; i <= Math.min(fromIdx + 2, segments.length - 1); i++) {
+      const seg = segments[i];
+      if (!seg) continue;
+      const text = _cleanText(seg.text);
+      if (!text) continue;
+      _fetch(text, voice, rate, () => {});
+    }
   }
 
   function _errMsg(err) {
@@ -114,11 +221,10 @@ function createEngine(opts) {
 
     state = 'synthesizing';
     notify();
-    _synth(text, (err, filePath) => {
+    _fetch(text, voice, rate, (err, filePath) => {
       if (err) {
         engine._failCount = (engine._failCount || 0) + 1;
-        // 首段就失败 = 服务整体不可用，直接报错并显示真实原因；
-        // 中途偶发失败则跳过该段继续，连续失败 3 段才中止
+        // 首段失败 = 服务整体不可用，直接报真实原因；中途偶发失败跳段，连错 3 段中止
         if (engine._failCount >= 3 || engine._synthOk !== true) {
           stop();
           wx.showToast({ title: _errMsg(err), icon: 'none', duration: 3000 });
@@ -136,6 +242,7 @@ function createEngine(opts) {
       ctx.src = filePath;
       ctx.playbackRate = rate;
       ctx.play();
+      _prefetch(index);
     });
   }
 
@@ -197,6 +304,22 @@ function createEngine(opts) {
       notify();
       _speakCurrent();
     },
+
+    // 试听指定音色（独立播放通道，不影响朗读状态）
+    preview(voiceId, cb) {
+      const v = VOICES.find(x => x.id === voiceId) || voice;
+      _fetch(PREVIEW_TEXT, v, 1.0, (err, filePath) => {
+        if (err) { cb && cb(err); return; }
+        const pctx = wx.createInnerAudioContext();
+        pctx.obeyMuteSwitch = false;
+        pctx.src = filePath;
+        const cleanup = () => { try { pctx.destroy(); } catch (e) {} };
+        pctx.onEnded(cleanup);
+        pctx.onError(cleanup);
+        pctx.play();
+        cb && cb(null);
+      });
+    },
   };
 
   function stop() {
@@ -216,4 +339,4 @@ function createEngine(opts) {
   return engine;
 }
 
-module.exports = { createEngine, getVoices, isSupported };
+module.exports = { createEngine, getVoices, isSupported, PREVIEW_TEXT };

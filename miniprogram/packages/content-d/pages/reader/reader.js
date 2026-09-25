@@ -45,6 +45,7 @@ Page({
     ttsState: 'idle',    // idle | playing | paused | synthesizing | finished
     ttsIndex: 0,
     ttsTotal: 0,
+    previewingVoice: '', // 正在试听的音色 id
     // 朗读定时停止
     ttsTimer: 'none',    // none | 15 | 30 | 45 | 60（分钟）| time:HH:mm（具体时刻）
     timerOptions: [
@@ -385,6 +386,25 @@ Page({
     if (this._ttsEngine) this._ttsEngine.setVoice(id);
   },
 
+  previewVoice(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id || this.data.previewingVoice) return;
+    const engine = this._ensureTtsEngine();
+    if (!engine) {
+      wx.showToast({ title: '朗读服务不可用', icon: 'none' });
+      return;
+    }
+    this.setData({ previewingVoice: id });
+    engine.preview(id, (err) => {
+      this.setData({ previewingVoice: '' });
+      if (err) wx.showToast({ title: '试听失败，稍后再试', icon: 'none' });
+    });
+    // 试听大约 5s，兜底恢复按钮状态
+    setTimeout(() => {
+      if (this.data.previewingVoice === id) this.setData({ previewingVoice: '' });
+    }, 6000);
+  },
+
   setTimer(e) {
     const id = e.currentTarget.dataset.id;
     this.setData({ ttsTimer: id });
@@ -445,6 +465,7 @@ Page({
     if (this._ttsEngine) return this._ttsEngine;
     if (!tts.isSupported()) return null;
     this._ttsEngine = tts.createEngine({
+      chapterId: (chapters[this.data.currentIndex] || {}).key || '',
       onState: (s) => {
         const patch = {
           ttsState: s.state === 'finished' ? 'idle' : s.state,
