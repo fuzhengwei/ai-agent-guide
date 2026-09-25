@@ -407,6 +407,7 @@ Page({
     this._say([
       { role: 'iv', kind: 'plain', text: '好，我这边的问题问完了。' },
       { role: 'iv', kind: 'plain', text: IV.closingByRatio(ratio) },
+      { role: 'iv', kind: 'plain', text: '可以去排行榜看看你的成绩排第几，和其他同学比一比。' },
     ], () => {
       this.setData({ finished: true, report, awaiting: false });
     });
@@ -454,6 +455,10 @@ Page({
   goNextLevel() {
     if (!this.data.nextKey) return;
     wx.redirectTo({ url: '/packages/quiz/pages/runner/runner?ch=' + this.data.nextKey });
+  },
+
+  goLeaderboard() {
+    wx.navigateTo({ url: '/pages/leaderboard/leaderboard' });
   },
 
   goBack() {

@@ -7,7 +7,17 @@
       <view class="me-avatar-tip">换头像</view>
     </button>
     <view class="me-left">
-      <view class="me-name">{{me.nickname}}</view>
+      <input
+        class="me-nick-input"
+        type="nickname"
+        value="{{me.nickname}}"
+        placeholder="点我设置昵称"
+        placeholder-class="me-nick-ph"
+        bindinput="onNicknameInput"
+        bindblur="onNicknameBlur"
+        bindconfirm="onNicknameBlur"
+        confirm-type="done"
+      />
       <view class="me-sub">本地累计学习 {{studyText}}</view>
     </view>
     <view class="me-rank" wx:if="{{myRank}}">第 {{myRank}} 名</view>
@@ -20,10 +30,18 @@
     </view>
   </view>
 
-  <!-- 榜单切换 -->
-  <view class="tabs">
-    <view class="tab {{board === 'study' ? 'on' : ''}}" data-board="study" bindtap="switchBoard">⏱ 学习时长</view>
-    <view class="tab {{board === 'score' ? 'on' : ''}}" data-board="score" bindtap="switchBoard">📝 积分榜</view>
+  <!-- 分享海报按钮 -->
+  <view class="share-poster" bindtap="makePoster" wx:if="{{me}}">
+    <text>🎨 分享我的学习海报</text>
+  </view>
+
+  <!-- 榜单切换 + 总人数 -->
+  <view class="tabs-wrap">
+    <view class="tabs">
+      <view class="tab {{board === 'study' ? 'on' : ''}}" data-board="study" bindtap="switchBoard">⏱ 学习时长</view>
+      <view class="tab {{board === 'score' ? 'on' : ''}}" data-board="score" bindtap="switchBoard">📝 考试榜</view>
+    </view>
+    <view class="total-count" wx:if="{{totalCount > 0}}">👥 共 {{totalCount}} 位同学在学习</view>
   </view>
 
   <view class="empty" wx:if="{{!online}}">
@@ -40,16 +58,59 @@
     <view class="empty-sub">快去学习和答题，抢占第一名！</view>
   </view>
 
-  <view class="row {{item.isMe ? 'me' : ''}}" wx:for="{{list}}" wx:key="rank">
+  <view class="list-tip" wx:if="{{totalCount > 99}}">仅展示前 99 名</view>
+
+  <view class="row {{item.isMe ? 'me' : ''}}" wx:for="{{list}}" wx:key="rank" bindtap="openDetail" data-item="{{item}}">
     <view class="avatar-wrap">
       <image class="avatar" wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
       <view class="avatar avatar-fb" wx:else style="background:linear-gradient(135deg,{{item.avatarBg[0]}},{{item.avatarBg[1]}})">{{item.initial}}</view>
       <view class="medal-badge" wx:if="{{item.rank <= 3}}">{{item.medal}}</view>
     </view>
     <view class="rank-num" wx:if="{{item.rank > 3}}">{{item.rank}}</view>
-    <view class="name">{{item.nickname}}</view>
+    <view class="row-main">
+      <view class="name">{{item.nickname}}</view>
+      <view class="badges">
+        <text class="badge" wx:for="{{item.badges}}" wx:for-item="b" wx:key="*this">{{b}}</text>
+      </view>
+    </view>
     <view class="val">{{item.valueText}}</view>
   </view>
 
-  <button class="nick-btn" bindtap="setNick">✏️ 设置我的昵称</button>
+  <!-- 用户学习详情弹层 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-card" catchtap="">
+      <view class="detail-head">
+        <image class="detail-avatar" wx:if="{{detailUser.avatarUrl}}" src="{{detailUser.avatarUrl}}" mode="aspectFill" />
+        <view class="detail-avatar detail-avatar-fb" wx:else style="background:linear-gradient(135deg,{{detailUser.avatarBg[0]}},{{detailUser.avatarBg[1]}})">{{detailUser.initial}}</view>
+        <view class="detail-title">
+          <view class="detail-name">{{detailUser.nickname}}</view>
+          <view class="detail-rank">第 {{detailRank}} 名</view>
+        </view>
+        <view class="detail-close" catchtap="closeDetail">×</view>
+      </view>
+      <view class="detail-stats">
+        <view class="d-stat"><view class="d-num">{{detailUser.totalStudyText}}</view><view class="d-label">累计学习</view></view>
+        <view class="d-stat"><view class="d-num">{{detailUser.readCount}}</view><view class="d-label">已读章节</view></view>
+        <view class="d-stat"><view class="d-num">{{detailUser.attempts}}</view><view class="d-label">答题次数</view></view>
+        <view class="d-stat"><view class="d-num">{{detailUser.acc}}%</view><view class="d-label">正确率</view></view>
+        <view class="d-stat"><view class="d-num">{{detailUser.xp}}</view><view class="d-label">总积分</view></view>
+        <view class="d-stat"><view class="d-num">⭐{{detailUser.stars}}</view><view class="d-label">累计星数</view></view>
+      </view>
+      <view class="detail-sec" wx:if="{{detailUser.topQuiz.length}}">
+        <view class="d-sec-title">🔥 最常考章节</view>
+        <view class="d-chap" wx:for="{{detailUser.topQuiz}}" wx:for-item="q" wx:key="title">
+          <text class="d-chap-name">{{q.title}}</text><text class="d-chap-n">{{q.count}} 次</text>
+        </view>
+      </view>
+      <view class="detail-sec" wx:if="{{detailUser.topRead.length}}">
+        <view class="d-sec-title">📖 常学章节</view>
+        <view class="d-chap" wx:for="{{detailUser.topRead}}" wx:for-item="t" wx:key="*this">
+          <text class="d-chap-name">{{t}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 离屏 Canvas 用于生成海报 -->
+  <canvas type="2d" id="posterCanvas" style="position:fixed;left:-9999px;top:-9999px;width:375px;height:700px;" />
 </view>

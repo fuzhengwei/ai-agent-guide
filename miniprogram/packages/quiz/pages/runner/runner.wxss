@@ -207,4 +207,18 @@ page { height: 100%; background: #eef0f5; }
 }
 .rp-btn.share::after { border: none; }
 
+/* 排行榜引导卡 */
+.rp-lb-card {
+  display: flex; align-items: center; gap: 18rpx;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(217, 119, 6, .12);
+}
+.rp-lb-card:active { opacity: .85; }
+.rp-lb-icon { font-size: 44rpx; }
+.rp-lb-info { flex: 1; }
+.rp-lb-title { font-size: 28rpx; font-weight: 700; color: #92400e; }
+.rp-lb-sub { font-size: 22rpx; color: #b45309; margin-top: 4rpx; }
+.rp-lb-arrow { font-size: 40rpx; color: #d97706; font-weight: 300; }
+
 .rp-foot { text-align: center; font-size: 21rpx; color: #a3adbd; margin: 26rpx 0 40rpx; }

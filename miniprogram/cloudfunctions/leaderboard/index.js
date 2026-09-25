@@ -33,7 +33,7 @@ exports.main = async (event) => {
   await ensureCollection('user_profiles');
 
   try {
-  // 上报：累计学习时长 + 阅读数 + 积分/星数（客户端本地统计汇总后上传，全量覆盖）
+  // 上报：累计学习时长 + 阅读数 + 积分/星数 + 明细数据（客户端本地统计汇总后上传，全量覆盖）
   if (action === 'report') {
     const patch = {
       totalStudyMs: Math.max(0, Math.min(Number(event.totalStudyMs) || 0, 100 * 365 * 86400000)),
@@ -42,6 +42,22 @@ exports.main = async (event) => {
       stars: Math.max(0, Math.min(Number(event.stars) || 0, 10000)),
       updatedAt: db.serverDate(),
     };
+    // 明细字段（可选）：答题明细、正确率、已读章节
+    if (event.quizDetail && typeof event.quizDetail === 'object') {
+      // { quizKey: attempts }，只保留数值
+      const qd = {};
+      Object.keys(event.quizDetail).slice(0, 100).forEach(k => {
+        qd[k] = Math.max(0, Math.min(Number(event.quizDetail[k]) || 0, 100000));
+      });
+      patch.quizDetail = qd;
+    }
+    if (event.answerTotal !== undefined) {
+      patch.answerTotal = Math.max(0, Math.min(Number(event.answerTotal) || 0, 10000000));
+      patch.correctTotal = Math.max(0, Math.min(Number(event.correctTotal) || 0, 10000000));
+    }
+    if (Array.isArray(event.readChapters)) {
+      patch.readChapters = event.readChapters.slice(0, 100).map(String);
+    }
     const { data } = await profiles.where({ _openid: OPENID }).limit(1).get();
     if (data[0]) {
       await profiles.doc(data[0]._id).update({ data: patch });
@@ -51,34 +67,50 @@ exports.main = async (event) => {
     return { ok: true };
   }
 
-  // 排行榜：study=时长榜，score=积分榜
+  // 排行榜：study=时长榜，score=考试榜
   if (action === 'list') {
     const field = event.board === 'score' ? 'xp' : 'totalStudyMs';
-    const { data } = await profiles
-      .where({ [field]: db.command.gt(0) })
-      .orderBy(field, 'desc')
-      .limit(50)
-      .field({ nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true })
-      .get();
+    const PUBLIC_FIELDS = { nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true, quizDetail: true, correctTotal: true, answerTotal: true, readChapters: true };
+    // 并行查询：总学习人数 + 前99名 + 我的档案（减少串行等待）
+    const [totalCountRes, dataRes, mineRes] = await Promise.all([
+      profiles.count(),
+      profiles
+        .where({ [field]: db.command.gt(0) })
+        .orderBy(field, 'desc')
+        .limit(99)
+        .field(PUBLIC_FIELDS)
+        .get(),
+      profiles.where({ _openid: OPENID }).limit(1).field(PUBLIC_FIELDS).get(),
+    ]);
+    const totalCount = totalCountRes.total || 0;
+    const data = dataRes.data || [];
+    const mine = mineRes.data || [];
     // 只返回公开字段（无 openid），并标记是否本人
-    const list = data.map(p => ({
+    const pub = p => ({
       nickname: p.nickname,
       avatarUrl: p.avatarUrl || '',
       totalStudyMs: p.totalStudyMs || 0,
       readCount: p.readCount || 0,
       xp: p.xp || 0,
       stars: p.stars || 0,
-    }));
-    // 我的名次
-    const mine = await profiles.where({ _openid: OPENID }).limit(1)
-      .field({ nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true }).get();
+      quizDetail: p.quizDetail || {},
+      correctTotal: p.correctTotal || 0,
+      answerTotal: p.answerTotal || 0,
+      readChapters: p.readChapters || [],
+    });
+    const list = data.map(pub);
+    // 我的名次（只在有数据时才 count，避免空跑）
     let myRank = 0;
-    if (mine.data[0]) {
-      const myVal = mine.data[0][field] || 0;
-      const cnt = await profiles.where({ [field]: db.command.gt(myVal) }).count();
-      myRank = cnt.total + 1;
+    if (mine[0]) {
+      const myVal = mine[0][field] || 0;
+      if (myVal > 0) {
+        const cnt = await profiles.where({ [field]: db.command.gt(myVal) }).count();
+        myRank = cnt.total + 1;
+      } else {
+        myRank = 0; // 没成绩不排名
+      }
     }
-    return { ok: true, list, me: mine.data[0] || null, myRank };
+    return { ok: true, list, me: mine[0] ? pub(mine[0]) : null, myRank, totalCount };
   }
 
   return { ok: false, msg: 'unknown action' };

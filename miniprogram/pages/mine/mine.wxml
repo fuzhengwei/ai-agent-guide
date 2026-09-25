@@ -13,7 +13,9 @@
         value="{{nickname}}"
         placeholder="点我设置昵称"
         placeholder-class="nickname-ph"
+        bindinput="onNicknameInput"
         bindblur="onNicknameBlur"
+        bindconfirm="onNicknameBlur"
         confirm-type="done"
       />
       <view class="profile-sub">
@@ -49,6 +51,10 @@
       <view class="menu-title"><text class="menu-icon icon-gold">🏆</text>排行榜</view>
       <view class="arrow">›</view>
     </view>
+    <view class="menu-item" bindtap="makePoster">
+      <view class="menu-title"><text class="menu-icon icon-pink">🎨</text>分享我的学习海报</view>
+      <view class="arrow">›</view>
+    </view>
   </view>
 
   <!-- 解锁（付费开关开启时） -->
@@ -75,5 +81,8 @@
     </view>
   </view>
 
-  <view class="footer">AI Agent 通识教程 v1.0</view>
+  <view class="footer">AI Agent 通识教程 v2.0.1</view>
+
+  <!-- 离屏 Canvas 用于生成海报 -->
+  <canvas type="2d" id="posterCanvas" style="position:fixed;left:-9999px;top:-9999px;width:375px;height:700px;" />
 </view>

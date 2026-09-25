@@ -47,6 +47,7 @@ exports.main = async (event) => {
   }
 
   // 保存微信授权的头像/昵称（用户主动点击头像授权后调用）
+  // avatarUrl 优先使用云存储 fileID（永久有效），http(s) 临时链接仅作兼容
   if (event.action === 'saveProfile') {
     const nickname = String(event.nickname || '').trim().slice(0, 20);
     const avatarUrl = String(event.avatarUrl || '').trim().slice(0, 500);

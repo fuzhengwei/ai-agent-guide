@@ -155,6 +155,16 @@
       <view class="rp-btn primary" wx:else bindtap="goBack">返回面试大厅</view>
     </view>
 
+    <!-- 排行榜引导 -->
+    <view class="rp-lb-card" bindtap="goLeaderboard">
+      <view class="rp-lb-icon">🏆</view>
+      <view class="rp-lb-info">
+        <view class="rp-lb-title">去排行榜看看你的名次</view>
+        <view class="rp-lb-sub">和其他同学比一比，看看谁学得更快</view>
+      </view>
+      <view class="rp-lb-arrow">›</view>
+    </view>
+
     <!-- 分享战绩：open-type=share 触发转发面板，文案在 JS 里带成绩 -->
     <button class="rp-btn share" open-type="share">📤 分享我的战绩</button>
 

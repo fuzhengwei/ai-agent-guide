@@ -22,16 +22,38 @@
 .me-avatar-tip { font-size: 18rpx; opacity: .75; margin-top: 6rpx; text-align: center; }
 .me-left { flex: 1; margin-left: 24rpx; overflow: hidden; }
 .me-name { font-size: 30rpx; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-nick-input {
+  color: #fff; font-size: 30rpx; font-weight: 700; min-height: 44rpx; padding: 0;
+}
+.me-nick-ph { color: rgba(255,255,255,.6); font-weight: 400; font-size: 26rpx; }
+.me-edit { font-size: 22rpx; opacity: .7; margin-left: 6rpx; }
 .me-sub { font-size: 22rpx; opacity: .8; margin-top: 6rpx; }
 .me-rank { font-size: 26rpx; font-weight: 700; background: rgba(255,255,255,.2); padding: 8rpx 22rpx; border-radius: 999rpx; flex-shrink: 0; }
 
+/* ===== 分享海报按钮 ===== */
+.share-poster {
+  margin: 0 0 20rpx; text-align: center; padding: 20rpx;
+  background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;
+  border-radius: 14rpx; font-size: 28rpx; font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(217, 119, 6, .25);
+}
+.share-poster:active { opacity: .85; }
+
 /* ===== 榜单切换 ===== */
-.tabs { display: flex; gap: 14rpx; margin-bottom: 20rpx; }
+.tabs-wrap { margin-bottom: 20rpx; }
+.tabs { display: flex; gap: 14rpx; }
 .tab {
   flex: 1; text-align: center; padding: 16rpx 0; border-radius: 12rpx;
   background: #fff; font-size: 26rpx; color: #666; border: 2rpx solid #e5e7eb;
 }
 .tab.on { background: #2563eb; color: #fff; border-color: transparent; font-weight: 600; }
+.total-count {
+  text-align: center; font-size: 24rpx; color: #6b7280; margin-top: 12rpx;
+}
+
+.list-tip {
+  text-align: center; font-size: 22rpx; color: #9aa3b1; margin-bottom: 12rpx;
+}
 
 /* ===== 空态 ===== */
 .empty { text-align: center; padding: 100rpx 40rpx; }
@@ -69,7 +91,51 @@
   font-size: 26rpx; font-weight: 700; color: #9aa3b1;
 }
 .name { flex: 1; font-size: 27rpx; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name .sub { font-size: 20rpx; color: #9ca3af; margin-top: 2rpx; }
 .val { font-size: 26rpx; font-weight: 700; color: #2563eb; white-space: nowrap; }
+
+/* ===== 行内徽章 ===== */
+.row-main { flex: 1; overflow: hidden; }
+.badges { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 6rpx; }
+.badge {
+  font-size: 20rpx; color: #4b5563; background: #f3f4f6;
+  border-radius: 999rpx; padding: 2rpx 12rpx;
+}
+
+/* ===== 用户详情弹层 ===== */
+.detail-mask {
+  position: fixed; inset: 0; background: rgba(17,24,39,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.detail-card {
+  width: 620rpx; max-height: 80vh; overflow-y: auto;
+  background: #fff; border-radius: 20rpx; padding: 32rpx;
+}
+.detail-head { display: flex; align-items: center; gap: 20rpx; margin-bottom: 24rpx; }
+.detail-avatar { width: 88rpx; height: 88rpx; border-radius: 50%; flex-shrink: 0; }
+.detail-avatar-fb {
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 36rpx; font-weight: 700;
+}
+.detail-title { flex: 1; overflow: hidden; }
+.detail-name { font-size: 32rpx; font-weight: 700; color: #1f2937; }
+.detail-rank { font-size: 22rpx; color: #f59e0b; font-weight: 600; margin-top: 4rpx; }
+.detail-close { font-size: 44rpx; color: #9ca3af; line-height: 1; padding: 8rpx; }
+.detail-stats {
+  display: flex; flex-wrap: wrap; gap: 16rpx;
+  background: #f9fafb; border-radius: 14rpx; padding: 20rpx;
+}
+.d-stat { width: calc(33.33% - 11rpx); text-align: center; }
+.d-num { font-size: 28rpx; font-weight: 700; color: #2563eb; }
+.d-label { font-size: 20rpx; color: #9ca3af; margin-top: 4rpx; }
+.detail-sec { margin-top: 24rpx; }
+.d-sec-title { font-size: 26rpx; font-weight: 700; color: #374151; margin-bottom: 12rpx; }
+.d-chap {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14rpx 16rpx; background: #f9fafb; border-radius: 10rpx; margin-bottom: 10rpx;
+}
+.d-chap-name { font-size: 24rpx; color: #374151; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-chap-n { font-size: 22rpx; color: #9ca3af; margin-left: 16rpx; }
 
 .nick-btn {
   margin: 24rpx 0 40rpx; background: #fff; color: #5a7cf7;

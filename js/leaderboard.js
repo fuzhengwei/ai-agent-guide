@@ -184,7 +184,7 @@ const Leaderboard = {
   async loadBoard(board) {
     const body = document.getElementById('lbBody');
     body.innerHTML = '<div class="lb-empty">加载中…</div>';
-    const { data, error } = await this.cloud.database.rpc('get_leaderboard', { board, lim: 20 });
+    const { data, error } = await this.cloud.database.rpc('get_leaderboard', { board, lim: 99 });
     if (error) { body.innerHTML = '<div class="lb-empty">加载失败，请稍后重试</div>'; return; }
     const rows = (data || []).filter(r => r.value !== null);
     if (!rows.length) {
@@ -203,6 +203,9 @@ const Leaderboard = {
         <span class="lb-val">${val}</span>
       </div>`;
     }).join('');
+    if (rows.length >= 99) {
+      body.innerHTML += '<div class="lb-tip">仅展示前 99 名</div>';
+    }
   },
 
   async promptNickname() {
@@ -244,6 +247,7 @@ const Leaderboard = {
       .lb-empty { text-align: center; color: var(--color-text-secondary, #999); padding: 40px 0; font-size: 13px; line-height: 2; }
       .lb-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; }
       .lb-row.top { background: var(--color-bg-secondary, #f9fafb); }
+      .lb-tip { text-align: center; font-size: 12px; color: var(--color-text-secondary, #999); padding: 8px 0 4px; }
       .lb-medal { width: 28px; text-align: center; flex-shrink: 0; }
       .lb-rank { font-size: 12px; color: var(--color-text-secondary, #999); }
       .lb-name { flex: 1; color: var(--color-text-primary, #111); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
