@@ -1,9 +1,9 @@
 <!-- 第21章：RAG 检索增强生成 -->
-<h1 class="chapter-title">第11章 RAG：检索增强生成</h1>
+<h1 class="chapter-title">第12章 RAG：检索增强生成</h1>
 <p class="chapter-subtitle">第三篇：Agent 的知识 — 让 Agent 拥有"外挂知识库"——从向量检索到生产级 RAG</p>
 
 <!-- ===== 20.1 为什么 Agent 需要 RAG？ ===== -->
-<h2 class="section-heading">20.1 为什么 Agent 需要 RAG？</h2>
+<h2 class="section-heading">12.1 为什么 Agent 需要 RAG？</h2>
 
 <p>大模型有两个硬伤：<strong>知识截止日期</strong>（训练数据有时效性）和<strong>领域知识不足</strong>（通用模型不懂你的业务）。微调可以解决一部分，但成本高、周期长、更新慢。<strong>RAG（Retrieval-Augmented Generation，检索增强生成）</strong>提供了更灵活的方案：<strong>先检索，再生成</strong>。</p>
 
@@ -58,7 +58,7 @@
 </div>
 
 <!-- ===== 20.2 RAG 完整流程 ===== -->
-<h2 class="section-heading">20.2 RAG 的完整流程</h2>
+<h2 class="section-heading">12.2 RAG 的完整流程</h2>
 
 <p>RAG 不是简单的"搜索 + 拼接"，一个生产级 RAG 系统包含<strong>五个阶段</strong>：</p>
 
@@ -491,11 +491,11 @@ public class VectorStoreExample {
 </div>
 
 <!-- ===== 20.3 检索策略 ===== -->
-<h2 class="section-heading">20.3 检索策略：不只是相似度搜索</h2>
+<h2 class="section-heading">12.3 检索策略：不只是相似度搜索</h2>
 
 <p>最简单的 RAG 只做<strong>向量相似度搜索</strong>，但生产级 RAG 需要更复杂的检索策略。</p>
 
-<h3 class="sub-heading">20.3.1 基础：向量相似度搜索</h3>
+<h3 class="sub-heading">12.3.1 基础：向量相似度搜索</h3>
 
 <div class="code-block">
 <span class="code-label">Python</span>
@@ -533,7 +533,7 @@ results = collection.query(
   </table>
 </div>
 
-<h3 class="sub-heading">20.3.2 进阶：混合检索（BM25 + 向量）</h3>
+<h3 class="sub-heading">12.3.2 进阶：混合检索（BM25 + 向量）</h3>
 
 <p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
 
@@ -734,7 +734,7 @@ public class HybridRetriever {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.3.3 进阶：重排序（Reranker）</h3>
+<h3 class="sub-heading">12.3.3 进阶：重排序（Reranker）</h3>
 
 <p>向量检索速度快但精度有限，返回 Top-20 中可能有噪声。<strong>重排序模型</strong>对这 20 条结果做精细打分，选出最相关的 Top-5。</p>
 
@@ -897,9 +897,9 @@ public class RerankExample {
 </div>
 
 <!-- ===== 20.4 RAG 高级优化 ===== -->
-<h2 class="section-heading">20.4 RAG 高级优化技巧</h2>
+<h2 class="section-heading">12.4 RAG 高级优化技巧</h2>
 
-<h3 class="sub-heading">20.4.1 Query 改写</h3>
+<h3 class="sub-heading">12.4.1 Query 改写</h3>
 
 <p>用户提问往往模糊或口语化，直接检索效果差。先用 LLM <strong>改写 Query</strong>，提升检索质量。</p>
 
@@ -1003,7 +1003,7 @@ import java.io.*;
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.4.2 HyDE（假设性文档嵌入）</h3>
+<h3 class="sub-heading">12.4.2 HyDE（假设性文档嵌入）</h3>
 
 <p>有时候用户的问题太短，向量化后语义信息不足。<strong>HyDE</strong> 的思路是：先让 LLM 生成一个"假回答"，用假回答去检索，再用检索结果生成真回答。</p>
 
@@ -1017,7 +1017,7 @@ import java.io.*;
   </p>
 </div>
 
-<h3 class="sub-heading">20.4.3 父子分块（Parent-Child Chunking）</h3>
+<h3 class="sub-heading">12.4.3 父子分块（Parent-Child Chunking）</h3>
 
 <p>检索时用<strong>小块</strong>（精确匹配），生成时用<strong>大块</strong>（上下文完整）。</p>
 
@@ -1036,7 +1036,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 20.5 Agent + RAG 架构 ===== -->
-<h2 class="section-heading">20.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
+<h2 class="section-heading">12.5 Agent + RAG：让 Agent 自主决定何时检索</h2>
 
 <p>最简单的 RAG 是"每次提问都检索"，但有些问题不需要检索（如"你好"、"1+1=?"）。把 RAG 包装成 Agent 的一个<strong>工具</strong>，让 Agent 自主决定何时检索。</p>
 
@@ -1215,7 +1215,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 20.6 生产级 RAG 架构 ===== -->
-<h2 class="section-heading">20.6 生产级 RAG 架构</h2>
+<h2 class="section-heading">12.6 生产级 RAG 架构</h2>
 
 <div class="card">
   <div class="card-title">🏭 企业级 RAG 系统架构</div>
@@ -1244,7 +1244,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 20.7 GraphRAG ===== -->
-<h2 class="section-heading">20.7 GraphRAG：知识图谱增强检索</h2>
+<h2 class="section-heading">12.7 GraphRAG：知识图谱增强检索</h2>
 
 <p>传统向量 RAG 有一个致命弱点：<strong>只能检索局部相似片段，无法回答全局性问题</strong>。比如"整个系统架构包含哪些模块？"这样的问题需要跨文档、跨段落的全局视角。<strong>GraphRAG</strong> 通过构建知识图谱，让 RAG 具备"关联推理"的能力。</p>
 
@@ -1253,7 +1253,7 @@ import java.io.*;
   <p>不只是把文档切成块存向量库，而是先从文档中<strong>抽取实体和关系</strong>，构建一张知识图谱。检索时不是做向量相似度搜索，而是在图上进行<strong>子图检索和图遍历</strong>，找到与问题相关的实体及其关联信息。</p>
 </div>
 
-<h3 class="sub-heading">20.7.1 GraphRAG 的四步流程</h3>
+<h3 class="sub-heading">12.7.1 GraphRAG 的四步流程</h3>
 
 <div class="flowchart-container" id="graphRagFlow"></div>
 
@@ -1418,7 +1418,7 @@ import java.io.*;
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
+<h3 class="sub-heading">12.7.2 GraphRAG vs 向量 RAG：什么时候用什么？</h3>
 
 <div class="comparison-table">
   <table>
@@ -1463,7 +1463,7 @@ import java.io.*;
 </div>
 
 <!-- ===== 20.8 Agentic RAG ===== -->
-<h2 class="section-heading">20.8 Agentic RAG：Agent 驱动的自适应检索</h2>
+<h2 class="section-heading">12.8 Agentic RAG：Agent 驱动的自适应检索</h2>
 
 <p>传统 RAG 是一个<strong>固定流水线</strong>：用户提问 → 检索 → 拼接上下文 → LLM 生成。无论问题难易，流程都一样。但这不合理——有些问题不需要检索，有些需要检索多次，有些需要先检索再反思再检索。<strong>Agentic RAG</strong> 把 Agent 引入检索循环，让 Agent 动态决策<strong>是否检索、检索几次、何时停止</strong>。</p>
 
@@ -1472,7 +1472,7 @@ import java.io.*;
   <p>不再是一条固定的"检索→生成"流水线，而是让 Agent 作为<strong>检索编排者</strong>，根据问题难度动态决定检索策略：简单问题直接回答，复杂问题多轮检索+反思，检索不充分则换角度重搜，直到信息充分才生成最终回答。</p>
 </div>
 
-<h3 class="sub-heading">20.8.1 传统 RAG vs Agentic RAG</h3>
+<h3 class="sub-heading">12.8.1 传统 RAG vs Agentic RAG</h3>
 
 <div class="compare-grid">
   <div class="card">
@@ -1497,7 +1497,7 @@ import java.io.*;
   </div>
 </div>
 
-<h3 class="sub-heading">20.8.2 Agentic RAG 的核心循环</h3>
+<h3 class="sub-heading">12.8.2 Agentic RAG 的核心循环</h3>
 
 <div class="flowchart-container" id="agenticRagLoop"></div>
 
@@ -1862,7 +1862,7 @@ public class RAGState {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">20.8.3 Agentic RAG 什么时候触发检索？</h3>
+<h3 class="sub-heading">12.8.3 Agentic RAG 什么时候触发检索？</h3>
 
 <p>这是面试高频追问点。Agent 通过以下信号判断是否触发检索：</p>
 
@@ -1905,7 +1905,7 @@ public class RAGState {
 </div>
 
 <!-- ===== 20.9 代码知识库：tree-sitter 符号感知分块 ===== -->
-<h2 class="section-heading" id="tree-sitter">20.9 代码知识库：tree-sitter 符号感知分块</h2>
+<h2 class="section-heading" id="tree-sitter">12.9 代码知识库：tree-sitter 符号感知分块</h2>
 
 <p>前面的章节讲的都是<strong>文本 RAG</strong>——把文档切成固定大小的块。但如果你要建一个<strong>代码知识库</strong>，比如把整个项目的源码放进去让 AI 回答"<code>handle_messages 函数是干什么的</code>"，固定大小分块会出大问题。</p>
 
@@ -1917,7 +1917,7 @@ public class RAGState {
   </p>
 </div>
 
-<h3 class="sub-heading">20.9.1 tree-sitter 是什么？</h3>
+<h3 class="sub-heading">12.9.1 tree-sitter 是什么？</h3>
 
 <p><strong>tree-sitter</strong> 是一个增量解析库，能将源码解析为 <strong>AST（抽象语法树）</strong>。它的核心能力是：给你一段代码，告诉你哪个字节范围是一个函数定义、哪个是类定义、哪个是方法。</p>
 
@@ -1931,7 +1931,7 @@ public class RAGState {
   </ul>
 </div>
 
-<h3 class="sub-heading">20.9.2 符号感知分块</h3>
+<h3 class="sub-heading">12.9.2 符号感知分块</h3>
 
 <p>核心思路：<strong>不按字符切，按 AST 符号边界切</strong>。每个 chunk 是一个完整的符号（函数/类/方法/结构体/接口/枚举），并附带元数据：</p>
 
@@ -2001,7 +2001,7 @@ chunk 2: [fn handle_connections() { ... }]
   </div>
 </div>
 
-<h3 class="sub-heading">20.9.3 代码实现：提取符号边界</h3>
+<h3 class="sub-heading">12.9.3 代码实现：提取符号边界</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from tree_sitter import Parser, Language
@@ -2291,7 +2291,7 @@ List<Chunk> splitCodeBySymbols(String sourceCode, String language) {
 </div>
 
 <!-- ===== 20.10 HNSW 索引 ===== -->
-<h2 class="section-heading" id="hnsw-index">20.10 HNSW 索引：让向量搜索从 O(n) 到 O(log n)</h2>
+<h2 class="section-heading" id="hnsw-index">12.10 HNSW 索引：让向量搜索从 O(n) 到 O(log n)</h2>
 
 <p>上一节讲了向量检索，但有一个问题被跳过了：<strong>10 万个向量，怎么搜索？</strong></p>
 
@@ -2303,7 +2303,7 @@ List<Chunk> splitCodeBySymbols(String sourceCode, String language) {
   </p>
 </div>
 
-<h3 class="sub-heading">20.10.1 HNSW 原理：分层小世界图</h3>
+<h3 class="sub-heading">12.10.1 HNSW 原理：分层小世界图</h3>
 
 <p><strong>HNSW（Hierarchical Navigable Small World）</strong> 是目前最流行的近似最近邻搜索（ANN）算法。核心思想：<strong>构建多层图结构，上层稀疏（高速公路），下层稠密（城市道路），搜索时从上层快速定位区域，再在下层精细搜索</strong>。</p>
 
@@ -2327,7 +2327,7 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<h3 class="sub-heading">20.10.2 搜索过程</h3>
+<h3 class="sub-heading">12.10.2 搜索过程</h3>
 
 <p>HNSW 搜索使用<strong>贪心最佳优先搜索 + 优先级队列</strong>：</p>
 
@@ -2344,7 +2344,7 @@ setTimeout(() => {
 
 <p><strong>余弦距离</strong>公式：<code>distance = 1 - cosine_similarity</code>。距离越小越相似。</p>
 
-<h3 class="sub-heading">20.10.3 纯手写 vs 外部向量数据库</h3>
+<h3 class="sub-heading">12.10.3 纯手写 vs 外部向量数据库</h3>
 
 <p>大多数 RAG 教程直接用 Chroma/Pinecone/Milvus，但生产中很多场景不想引入新依赖。WaLiAPI 的做法是<strong>纯 Rust 手写 HNSW</strong>，用 <code>bincode</code> 序列化到本地文件，零外部依赖。</p>
 
@@ -2368,7 +2368,7 @@ setTimeout(() => {
   </table>
 </div>
 
-<h3 class="sub-heading">20.10.4 代码实现：HNSW 搜索核心</h3>
+<h3 class="sub-heading">12.10.4 代码实现：HNSW 搜索核心</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import heapq
@@ -2705,7 +2705,7 @@ public class HnswIndex {
 </div>
 
 <!-- ===== 20.11 Token 预算管理 ===== -->
-<h2 class="section-heading" id="token-budget">20.11 Token 预算管理：上下文超限怎么办</h2>
+<h2 class="section-heading" id="token-budget">12.11 Token 预算管理：上下文超限怎么办</h2>
 
 <p>RAG 检索到 20 个相关 chunk，加上对话历史，拼进 Prompt 后超过了模型的上下文窗口——这是个非常常见的生产问题。</p>
 
@@ -2717,7 +2717,7 @@ public class HnswIndex {
   </p>
 </div>
 
-<h3 class="sub-heading">20.11.1 Token 估算</h3>
+<h3 class="sub-heading">12.11.1 Token 估算</h3>
 
 <p>不同字符的 Token 消耗不同，可以简单估算：</p>
 
@@ -2738,7 +2738,7 @@ public class HnswIndex {
   </table>
 </div>
 
-<h3 class="sub-heading">20.11.2 三级降级策略</h3>
+<h3 class="sub-heading">12.11.2 三级降级策略</h3>
 
 <p>核心原则：<code>context_limit = model_limit × 0.7</code>（留 30% 给 Response）。</p>
 
@@ -2762,7 +2762,7 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<h3 class="sub-heading">20.11.3 代码实现：Token 估算 + 逐级降级</h3>
+<h3 class="sub-heading">12.11.3 代码实现：Token 估算 + 逐级降级</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre># Token 估算：ASCII ~4字符/token，CJK ~2字符/token
@@ -3009,7 +3009,7 @@ public class TokenBudget {
 </div>
 
 <!-- ===== 20.12 从零构建 RAG ===== -->
-<h2 class="section-heading" id="zero-dependency-rag">20.12 从零构建 RAG：不依赖外部向量数据库</h2>
+<h2 class="section-heading" id="zero-dependency-rag">12.12 从零构建 RAG：不依赖外部向量数据库</h2>
 
 <p>大多数 RAG 教程第一步就是 <code>pip install chromadb</code> 或注册 Pinecone。但生产中很多场景不想引入新依赖——桌面应用、私有部署、小团队工具。</p>
 
@@ -3022,7 +3022,7 @@ public class TokenBudget {
   </ul>
 </div>
 
-<h3 class="sub-heading">20.12.1 嵌入式方案：SQLite 三件套</h3>
+<h3 class="sub-heading">12.12.1 嵌入式方案：SQLite 三件套</h3>
 
 <p>WaLiAPI 的做法：<strong>SQLite 存数据 + BLOB 存向量 + 手写 HNSW + FTS5 全文索引</strong>，一个 <code>.db</code> 文件搞定。</p>
 
@@ -3058,7 +3058,7 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<h3 class="sub-heading">20.12.2 Embedding 渠道复用</h3>
+<h3 class="sub-heading">12.12.2 Embedding 渠道复用</h3>
 
 <p>如果你已经有一个 LLM API 网关（如 WaLiAPI），它已经有完善的渠道调度、重试、多渠道 fallback。<strong>为什么不直接复用？</strong></p>
 
@@ -3071,7 +3071,7 @@ setTimeout(() => {
   </p>
 </div>
 
-<h3 class="sub-heading">20.12.3 对比：外部向量数据库 vs 嵌入式方案</h3>
+<h3 class="sub-heading">12.12.3 对比：外部向量数据库 vs 嵌入式方案</h3>
 
 <div class="comparison-table">
   <table>
@@ -3093,7 +3093,7 @@ setTimeout(() => {
   </table>
 </div>
 
-<h3 class="sub-heading">20.12.4 代码实现：SQLite BLOB 存向量</h3>
+<h3 class="sub-heading">12.12.4 代码实现：SQLite BLOB 存向量</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import sqlite3
@@ -3342,7 +3342,7 @@ public class SQLiteVectorStore {
 </div>
 
 <!-- ===== 20.13 MCP + RAG ===== -->
-<h2 class="section-heading" id="mcp-rag">20.13 MCP + RAG：让任何 AI Agent 使用你的知识库</h2>
+<h2 class="section-heading" id="mcp-rag">12.13 MCP + RAG：让任何 AI Agent 使用你的知识库</h2>
 
 <p>知识库建好了，但问题来了：<strong>Claude Desktop 用不了、Cursor 用不了、Copilot 用不了</strong>——每个 AI 工具各自为战，知识库成了孤岛。</p>
 
@@ -3358,7 +3358,7 @@ public class SQLiteVectorStore {
   </p>
 </div>
 
-<h3 class="sub-heading">20.13.1 MCP 是什么？</h3>
+<h3 class="sub-heading">12.13.1 MCP 是什么？</h3>
 
 <p><strong>MCP（Model Context Protocol）</strong> 是 Anthropic 推出的开放协议，标准化 AI 模型与外部工具的交互方式。你可以理解为：<strong>USB-C 接口之于充电器，MCP 之于 AI 工具</strong>。</p>
 
@@ -3386,7 +3386,7 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<h3 class="sub-heading">20.13.2 暴露 13 个 MCP 工具</h3>
+<h3 class="sub-heading">12.13.2 暴露 13 个 MCP 工具</h3>
 
 <div class="comparison-table">
   <table>
@@ -3415,7 +3415,7 @@ setTimeout(() => {
   </table>
 </div>
 
-<h3 class="sub-heading">20.13.3 instructions 注入</h3>
+<h3 class="sub-heading">12.13.3 instructions 注入</h3>
 
 <p>Agent 首次连接 MCP Server 时，自动注入系统提示，引导 Agent 优先使用 <code>ask</code> / <code>search</code>：</p>
 
@@ -3436,7 +3436,7 @@ setTimeout(() => {
 **支持的文件格式：** md, txt, pdf, docx, code (rs/py/ts/js/go/java)</pre>
 </div>
 
-<h3 class="sub-heading">20.13.4 代码实现：MCP 工具定义</h3>
+<h3 class="sub-heading">12.13.4 代码实现：MCP 工具定义</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre># MCP 工具定义（JSON-RPC 2.0 格式）
@@ -3646,7 +3646,7 @@ Map<String, Object> handleMcpRequest(String method, Map<String, Object> params) 
 </div>
 
 <!-- ===== 20.14 Deep Research ===== -->
-<h2 class="section-heading" id="deep-research">20.14 Deep Research：多轮迭代检索-分析-综合</h2>
+<h2 class="section-heading" id="deep-research">12.14 Deep Research：多轮迭代检索-分析-综合</h2>
 
 <p>Agentic RAG 解决了"检索结果够不够"的问题，但面对<strong>研究性问题</strong>——"分析我们系统所有模块的技术选型和设计权衡"——单轮检索+反思还是不够。</p>
 
@@ -3663,7 +3663,7 @@ Map<String, Object> handleMcpRequest(String method, Map<String, Object> params) 
   </p>
 </div>
 
-<h3 class="sub-heading">20.14.1 Deep Research 流程</h3>
+<h3 class="sub-heading">12.14.1 Deep Research 流程</h3>
 
 <div class="flowchart-container" id="deep-research-flowchart"></div>
 <script>
@@ -3696,7 +3696,7 @@ setTimeout(() => {
 }, 300);
 </script>
 
-<h3 class="sub-heading">20.14.2 Deep Research vs Agentic RAG</h3>
+<h3 class="sub-heading">12.14.2 Deep Research vs Agentic RAG</h3>
 
 <div class="comparison-table">
   <table>
@@ -3718,7 +3718,7 @@ setTimeout(() => {
   </table>
 </div>
 
-<h3 class="sub-heading">20.14.3 代码实现：Deep Research 核心循环</h3>
+<h3 class="sub-heading">12.14.3 代码实现：Deep Research 核心循环</h3>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>async def deep_research(

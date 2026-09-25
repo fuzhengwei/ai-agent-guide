@@ -3,7 +3,7 @@
 <p class="chapter-subtitle">模型不动，只优化 Harness 就提升 10 倍——大脑的工程化体系</p>
 
 <!-- ===== 9.1 三个范式 ===== -->
-<h2 class="section-heading">9.1 三个范式：Prompt → Context → Harness</h2>
+<h2 class="section-heading">10.1 三个范式：Prompt → Context → Harness</h2>
 
 <p>2025年底，一位创业者在社交媒体发了一条动态，迅速引爆了技术圈：</p>
 
@@ -15,7 +15,7 @@
 
 <p>这条动态揭示了一个反直觉的事实：<strong>变量是 Harness，不是 Model</strong>。过去两年，行业都在追更强的模型——GPT-5、Claude 4.5、Gemini 2.5。但三组实验给行业泼了一盆冷水。</p>
 
-<h3 class="sub-heading">9.1.1 三组关键实验</h3>
+<h3 class="sub-heading">10.1.1 三组关键实验</h3>
 
 <div class="comparison-table">
   <table>
@@ -55,7 +55,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">模型代际升级在同一 Benchmark 上通常只能带来 <strong>2-4 个百分点</strong>的提升。而 Harness 优化可以带来 <strong>10 倍</strong>的差距。变量是 Harness，不是 Model——这就是<strong>绑定约束论</strong>。</p>
 </div>
 
-<h3 class="sub-heading">9.1.2 绑定约束论 (Binding-Constraint Thesis)</h3>
+<h3 class="sub-heading">10.1.2 绑定约束论 (Binding-Constraint Thesis)</h3>
 
 <p>论文把这个观察命名为<strong>绑定约束论</strong>：</p>
 
@@ -65,7 +65,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">类比：一辆赛车（模型）再快，如果赛道（Harness）坑坑洼洼、没有导航、油箱漏油，最终成绩也不会好。决定成绩方差的是赛道质量，而不是赛车品牌。</p>
 </div>
 
-<h3 class="sub-heading">9.1.3 三层范式迁移</h3>
+<h3 class="sub-heading">10.1.3 三层范式迁移</h3>
 
 <p>过去三年 LLM 应用工程经历了三次范式迁移，三者是<strong>嵌套关系</strong>，不是替代关系：</p>
 
@@ -97,13 +97,13 @@
 </div>
 
 <!-- ===== 9.2 Harness 六大组件 ===== -->
-<h2 class="section-heading">9.2 Harness 六大组件</h2>
+<h2 class="section-heading">10.2 Harness 六大组件</h2>
 
 <p>裸模型有四大硬伤：<strong>无记忆、不能执行代码、知识过时、无工作环境</strong>。Harness 的六大组件逐一补救：</p>
 
 <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"model","label":"裸模型\n四大硬伤：\n无记忆/不能执行/\n知识过时/无环境","type":"start"},{"id":"fs","label":"① 文件系统\n存储与版本管理\n→ 解决无工作环境","type":"process"},{"id":"sandbox","label":"② 沙箱执行\n代码自验证\n→ 解决不能执行代码","type":"process"},{"id":"agentsmd","label":"③ AGENTS.md\n无需训练注入知识\n→ 解决知识过时","type":"process"},{"id":"websearch","label":"④ Web Search + MCP\n打破知识截止\n→ 解决知识截止日期","type":"process"},{"id":"ctx","label":"⑤ 上下文工程\n滑动窗口/摘要/保留\n→ 解决无记忆与信息腐烂","type":"process"},{"id":"orch","label":"⑥ 编排 + Hooks\n多Agent协同质量\n→ 解决无法协作","type":"end"}],"edges":[{"from":"model","to":"fs"},{"from":"fs","to":"sandbox"},{"from":"sandbox","to":"agentsmd"},{"from":"agentsmd","to":"websearch"},{"from":"websearch","to":"ctx"},{"from":"ctx","to":"orch"}]}'></div>
 
-<h3 class="sub-heading">9.2.1 文件系统——解决"无工作环境"</h3>
+<h3 class="sub-heading">10.2.1 文件系统——解决"无工作环境"</h3>
 
 <p>裸模型没有文件系统，没有工作空间，没有项目目录。它不能创建文件、不能组织代码结构、不能管理依赖、不能运行构建工具。这意味着它无法完成任何"工程级"任务。</p>
 
@@ -116,7 +116,7 @@
   ④ <strong>协作基础</strong>：多 Agent 共享同一文件系统协同工作</p>
 </div>
 
-<h3 class="sub-heading">9.2.2 沙箱执行——解决"不能执行代码"</h3>
+<h3 class="sub-heading">10.2.2 沙箱执行——解决"不能执行代码"</h3>
 
 <p>裸模型只能输出文本，不能真正执行代码。但 Agent 需要运行代码来验证结果——写了一段排序算法，得跑一下确认没问题。沙箱让 Agent 拥有了"动手验证"的能力。</p>
 
@@ -146,7 +146,7 @@
   <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">核心思想：不依赖单一安全机制。即使第一层漏过某条命令，第二层可以降级为需确认，第三层可以在 OS 级别隔离其影响。<strong>参见第9章 8.4.5</strong>。</p>
 </div>
 
-<h3 class="sub-heading">9.2.3 AGENTS.md / System Prompt——解决"知识过时"</h3>
+<h3 class="sub-heading">10.2.3 AGENTS.md / System Prompt——解决"知识过时"</h3>
 
 <p>模型的知识有截止日期——截止之后的新 API、新框架版本、新安全漏洞它都不知道。AGENTS.md 是一个<strong>无需训练</strong>就能注入知识的机制。</p>
 
@@ -257,7 +257,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 6px;">关键设计：<code>dangerouslyDisableSandbox</code> 参数需显式声明，且<strong>逐个重置回沙箱</strong>——不会因为一次禁用就永久绕过沙箱。这是 Prompt Engineering 与 Safety Engineering 交叉的典型案例。</p>
 </div>
 
-<h3 class="sub-heading">9.2.4 Web Search + MCP——解决"知识截止日期"</h3>
+<h3 class="sub-heading">10.2.4 Web Search + MCP——解决"知识截止日期"</h3>
 
 <p>模型的知识有截止日期，截止之后的一切它统统不知道。Web Search 让 Agent 能主动搜索最新信息，MCP 让 Agent 能调用外部工具获取实时数据。</p>
 
@@ -269,7 +269,7 @@
   这就像给一个只能看教科书的学生配了手机和实验室——教科书（训练数据）是基础，手机（Web Search）获取最新资讯，实验室（MCP）动手验证。</p>
 </div>
 
-<h3 class="sub-heading">9.2.5 上下文工程——解决"无记忆与信息腐烂"</h3>
+<h3 class="sub-heading">10.2.5 上下文工程——解决"无记忆与信息腐烂"</h3>
 
 <p>裸模型没有记忆——每次对话都是从零开始。上下文工程的核心是<strong>让关键信息不丢失</strong>。</p>
 
@@ -291,7 +291,7 @@
   </table>
 </div>
 
-<h3 class="sub-heading">9.2.6 编排 + Hooks——解决"无法协作"</h3>
+<h3 class="sub-heading">10.2.6 编排 + Hooks——解决"无法协作"</h3>
 
 <p>单个 Agent 能力有限，复杂任务需要多个 Agent 协作。编排引擎负责调度，Hooks 保障协同质量。</p>
 
@@ -305,11 +305,11 @@
 </div>
 
 <!-- ===== 9.3 Harness 实战 ===== -->
-<h2 class="section-heading">9.3 Harness 实战：构建一个最简 Agent Harness</h2>
+<h2 class="section-heading">10.3 Harness 实战：构建一个最简 Agent Harness</h2>
 
 <p>让我们从裸模型开始，逐步添加 Harness 组件，观察每一步的性能提升。</p>
 
-<h3 class="sub-heading">9.3.1 Step 0：裸模型（仅 Prompt）</h3>
+<h3 class="sub-heading">10.3.1 Step 0：裸模型（仅 Prompt）</h3>
 
 <p>最基础的调用——只靠 Prompt 让 LLM 回答问题。没有工具、没有记忆、没有沙箱。</p>
 
@@ -407,7 +407,7 @@ public class BareModel {
 }</pre></div>
 </div>
 
-<h3 class="sub-heading">9.3.2 Step 1：加 System Prompt（知识注入）</h3>
+<h3 class="sub-heading">10.3.2 Step 1：加 System Prompt（知识注入）</h3>
 
 <p>加入 AGENTS.md 风格的 System Prompt，注入项目规则和上下文知识。</p>
 
@@ -527,7 +527,7 @@ public class SystemPromptAgent {
 // 任务完成率：~45%</pre></div>
 </div>
 
-<h3 class="sub-heading">9.3.3 Step 2：加工具调用（Web Search + MCP）</h3>
+<h3 class="sub-heading">10.3.3 Step 2：加工具调用（Web Search + MCP）</h3>
 
 <p>加入 Function Calling，让 Agent 能调用真实天气 API 获取实时数据。</p>
 
@@ -702,7 +702,7 @@ public class ToolAgent {
 // 任务完成率：~65%（能获取实时数据了）</pre></div>
 </div>
 
-<h3 class="sub-heading">9.3.4 Step 3：加沙箱验证 + Hooks（完整 Harness）</h3>
+<h3 class="sub-heading">10.3.4 Step 3：加沙箱验证 + Hooks（完整 Harness）</h3>
 
 <p>加入沙箱执行验证结果、Hooks 拦截危险操作——这就是一个完整的 Harness。</p>
 
@@ -993,11 +993,11 @@ public class FullHarnessAgent {
 </div>
 
 <!-- ===== 9.4 代表项目与产品分析 ===== -->
-<h2 class="section-heading">9.4 代表项目与产品分析</h2>
+<h2 class="section-heading">10.4 代表项目与产品分析</h2>
 
 <p>2025-2026年，一批"代码写完之后的一切"产品爆发，它们本质上都是在搭建不同层次的 Harness。让我们逐一分析：</p>
 
-<h3 class="sub-heading">9.4.1 Claude Code（Anthropic）</h3>
+<h3 class="sub-heading">10.4.1 Claude Code（Anthropic）</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
   <div class="card-title">🟣 Claude Code — Anthropic 的终端 Agent</div>
@@ -1051,7 +1051,7 @@ public class FullHarnessAgent {
   <p style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">📐 完整架构分析参见<strong>第9章 8.4.5 工业级沙箱实践：Claude Code 案例</strong>。</p>
 </div>
 
-<h3 class="sub-heading">9.4.2 OpenAI Codex</h3>
+<h3 class="sub-heading">10.4.2 OpenAI Codex</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">🔵 OpenAI Codex — 沙箱执行的典范</div>
@@ -1059,7 +1059,7 @@ public class FullHarnessAgent {
   异步任务模式：用户提交任务 → Codex 在沙箱中独立执行 → 完成后返回结果。用户不需要盯着屏幕等，去做别的事，回来再看结果。这是"异步 Harness"的典范。</p>
 </div>
 
-<h3 class="sub-heading">9.4.3 Cursor</h3>
+<h3 class="sub-heading">10.4.3 Cursor</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-warning);">
   <div class="card-title">🟡 Cursor — 上下文工程的典范</div>
@@ -1067,7 +1067,7 @@ public class FullHarnessAgent {
   Cursor 的上下文策略：① <strong>@file</strong> 手动指定相关文件；② <strong>@folder</strong> 引入整个目录；③ <strong>@web</strong> 搜索互联网最新信息；④ <strong>@codebase</strong> 自动分析整个项目。四层策略覆盖了从精确到模糊的所有上下文需求。</p>
 </div>
 
-<h3 class="sub-heading">9.4.4 Devin</h3>
+<h3 class="sub-heading">10.4.4 Devin</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">🔴 Devin — 全自主 Agent</div>
@@ -1075,7 +1075,7 @@ public class FullHarnessAgent {
   Devin 的 Harness 特点：① 完整沙箱环境（独立浏览器+终端+编辑器）；② 自主规划能力（分解任务、排定优先级）；③ 自我纠错能力（发现错误自动修复）；④ 但<strong>成本极高</strong>——每任务 $10-50，只适合复杂长程任务。</p>
 </div>
 
-<h3 class="sub-heading">9.4.5 Harness Inc.（DevOps 平台）</h3>
+<h3 class="sub-heading">10.4.5 Harness Inc.（DevOps 平台）</h3>
 
 <div class="card" style="border-left: 3px solid #8B5CF6;">
   <div class="card-title">🟤 Harness Inc. — AI for Everything After Code</div>
@@ -1085,7 +1085,7 @@ public class FullHarnessAgent {
 </div>
 
 
-<h3 class="sub-heading">9.4.6 Trae（字节跳动）— 国内最火 AI IDE</h3>
+<h3 class="sub-heading">10.4.6 Trae（字节跳动）— 国内最火 AI IDE</h3>
 
 <div class="card" style="border-left: 3px solid #00D4AA;">
   <div class="card-title">🟢 Trae — 字节跳动的 AI 原生 IDE</div>
@@ -1110,7 +1110,7 @@ public class FullHarnessAgent {
 • <strong>上下文工程</strong>：Cursor @codebase > Trae Builder 模式（Cursor 更精准）
 </div>
 
-<h3 class="sub-heading">9.4.7 WaLiCode — 小傅哥的开源 AI IDE</h3>
+<h3 class="sub-heading">10.4.7 WaLiCode — 小傅哥的开源 AI IDE</h3>
 
 <div class="card" style="border-left: 3px solid #FF6B35;">
   <div class="card-title">🟠 WaLiCode — <a href="https://walicode.xiaofuge.cn" target="_blank">walicode.xiaofuge.cn</a></div>
@@ -1134,7 +1134,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 此外，WaLiCode 的<strong>多协议适配层</strong>让企业在 OpenAI/Anthropic/Ollama 之间切换零成本，配合国产模型（DeepSeek/Qwen/GLM）可实现完全自主可控的 AI 编程环境。
 </div>
 
-<h3 class="sub-heading">9.4.8 Manus — 通用 Agent 的破圈者</h3>
+<h3 class="sub-heading">10.4.8 Manus — 通用 Agent 的破圈者</h3>
 
 <div class="card" style="border-left: 3px solid #6366F1;">
   <div class="card-title">🟣 Manus — 2026 年初爆火的通用 Agent</div>
@@ -1150,7 +1150,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 <li><strong>可复现性</strong>：每个任务的执行过程完全记录，可回放、可分享、可复用</li>
 </ul>
 
-<h3 class="sub-heading">9.4.9 Windsurf（Codeium）— 企业级 AI IDE</h3>
+<h3 class="sub-heading">10.4.9 Windsurf（Codeium）— 企业级 AI IDE</h3>
 
 <div class="card" style="border-left: 3px solid #06B6D4;">
   <div class="card-title">🔷 Windsurf — Codeium 的企业级 AI IDE</div>
@@ -1165,7 +1165,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 <li><strong>上下文理解</strong>：自动索引项目代码，精准定位相关文件</li>
 </ul>
 
-<h3 class="sub-heading">9.4.10 Cline — VSCode Agent 插件</h3>
+<h3 class="sub-heading">10.4.10 Cline — VSCode Agent 插件</h3>
 
 <div class="card" style="border-left: 3px solid #F59E0B;">
   <div class="card-title">🟡 Cline — VSCode 中的自主 Agent 插件</div>
@@ -1181,7 +1181,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 <li><strong> MCP 支持</strong>：可连接 MCP Server 扩展工具能力</li>
 </ul>
 
-<h3 class="sub-heading">9.4.11 代表项目对比</h3>
+<h3 class="sub-heading">10.4.11 代表项目对比</h3>
 
 <div class="comparison-table">
   <table>
@@ -1210,11 +1210,11 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 </div>
 
 <!-- ===== 9.5 Harness 设计陷阱与最佳实践 ===== -->
-<h2 class="section-heading">9.5 Harness 设计陷阱与最佳实践</h2>
+<h2 class="section-heading">10.5 Harness 设计陷阱与最佳实践</h2>
 
 <p>Harness 不是"越多越好"，过度约束和约束不足都会出问题。</p>
 
-<h3 class="sub-heading">9.5.1 三大设计陷阱</h3>
+<h3 class="sub-heading">10.5.1 三大设计陷阱</h3>
 
 <div class="card" style="border-left: 3px solid var(--color-error);">
   <div class="card-title">陷阱 1：过度约束 — 限制太多 Agent 无法完成任务</div>
@@ -1241,7 +1241,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
   ⑥ <strong>缺 Hooks</strong> → Agent 协作时无法互相检查质量</p>
 </div>
 
-<h3 class="sub-heading">9.5.2 Harness 设计最佳实践清单</h3>
+<h3 class="sub-heading">10.5.2 Harness 设计最佳实践清单</h3>
 
 <div class="comparison-table">
   <table>

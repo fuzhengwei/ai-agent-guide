@@ -16,15 +16,15 @@ const QUIZ_FILE = path.join(ROOT, 'data', 'quiz-bank.json');
 const MP_DIR = path.join(ROOT, 'miniprogram');
 const PKG_DIR = path.join(MP_DIR, 'packages');
 
-// 教程顺序（ch04b 为加餐章，ch21/ch22 对应第8/9章，按网站 JSON-LD 顺序排列）
+// 教程顺序（与 js/main.js 权威章序一致：第0章 ~ 第28章）
 const ORDERED_FILES = [
   'ch00-fundamentals', 'ch01-llm-basics', 'ch02-what-is-agent', 'ch03-weather-agent',
-  'ch04-prompt-engineering', 'ch04-react-pattern', 'ch04b-context-engineering', 'ch05-memory',
-  'ch06-brain-intent-router', 'ch21-loop-runtime-sandbox', 'ch22-harness', 'ch06-tools',
-  'ch07-mcp', 'ch08-skills', 'ch09-cli-capability', 'ch10-multi-agent',
-  'ch11-langgraph', 'ch12-framework-comparison', 'ch13-dify-coze', 'ch14-cli-agent',
-  'ch15-gui-agent', 'ch16-rag', 'ch17-evaluation', 'ch18-security',
-  'ch19-deployment', 'ch20-inference-framework', 'ch23-future-summary', 'ch26-llm-wiki',
+  'ch04-prompt-engineering', 'ch04b-context-engineering', 'ch04-react-pattern', 'ch05-memory',
+  'ch06-brain-intent-router', 'ch21-loop-runtime-sandbox', 'ch22-harness', 'ch27-dsh-java-anatomy', 'ch16-rag',
+  'ch26-llm-wiki', 'ch06-tools', 'ch07-mcp', 'ch08-skills',
+  'ch09-cli-capability', 'ch10-multi-agent', 'ch11-langgraph', 'ch12-framework-comparison',
+  'ch13-dify-coze', 'ch14-cli-agent', 'ch15-gui-agent', 'ch17-evaluation',
+  'ch18-security', 'ch19-deployment', 'ch20-inference-framework', 'ch24-jev-decision-model', 'ch23-future-summary',
 ];
 
 // 分包划分：每包约 7 章
@@ -65,8 +65,10 @@ const QUIZ_KEY_BY_SLUG = {
   'ch18-security': 'ch22',               // 第24章 安全
   'ch19-deployment': 'ch23',             // 第25章 部署
   'ch20-inference-framework': 'ch24',    // 第26章 推理框架
-  'ch23-future-summary': 'ch25',         // 第27章 展望
+  'ch23-future-summary': 'ch25',         // 第28章 展望
   'ch26-llm-wiki': 'ch27',               // 第12章 LLM-Wiki
+  'ch24-jev-decision-model': 'ch28',     // 第27章 Jev 决策模型
+  'ch27-dsh-java-anatomy': 'ch29',       // 第11章 工业级 Harness 解剖（DSH Java）
 };
 
 /* ---------------- 工具函数 ---------------- */

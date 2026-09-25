@@ -1,9 +1,9 @@
 <!-- 第27章：LLM-Wiki — 知识编译与持久化 -->
-<h1 class="chapter-title">第12章 LLM-Wiki：知识编译与持久化</h1>
+<h1 class="chapter-title">第13章 LLM-Wiki：知识编译与持久化</h1>
 <p class="chapter-subtitle">第三篇：Agent 的知识 — 从 Karpathy 方法论到工业级实现：让知识被编译一次、持续维护，而非每次从头检索</p>
 
 <!-- ===== 26.1 什么是 LLM-Wiki ===== -->
-<h2 class="section-heading">26.1 什么是 LLM-Wiki</h2>
+<h2 class="section-heading">13.1 什么是 LLM-Wiki</h2>
 
 <p>上一章我们讲了 RAG——通过向量检索从外部文档中获取知识。但 Agent 还需要另一种知识：<strong>项目知识</strong>——这个项目的架构约定、代码规范、部署流程、业务规则。这些知识不是"检索"来的，而是 Agent 每次启动时直接读取的。</p>
 
@@ -70,7 +70,7 @@
 </div>
 
 <!-- ===== 26.2 两种实现形态 ===== -->
-<h2 class="section-heading">26.2 两种实现形态：Skill 形态与桌面应用</h2>
+<h2 class="section-heading">13.2 两种实现形态：Skill 形态与桌面应用</h2>
 
 <p>Karpathy 的原始设计是一个抽象模式文档，设计上是复制粘贴给 LLM agent 使用的。在工业实践中，这个理念演化出了两种主要实现形态：</p>
 
@@ -121,7 +121,7 @@
 </div>
 
 <!-- ===== 26.3 AGENTS.md：项目的"宪法" ===== -->
-<h2 class="section-heading">26.3 AGENTS.md：项目的"宪法"</h2>
+<h2 class="section-heading">13.3 AGENTS.md：项目的"宪法"</h2>
 
 <p><code>AGENTS.md</code> 是项目根目录下的 Markdown 文件，是 Agent 的<strong>行为准则</strong>。它告诉 Agent：这个项目是什么、用什么技术栈、有哪些约定、什么能做什么不能做。</p>
 
@@ -201,7 +201,7 @@
 </div>
 
 <!-- ===== 26.4 CLAUDE.md：记忆的入口 ===== -->
-<h2 class="section-heading">26.4 CLAUDE.md：记忆的入口</h2>
+<h2 class="section-heading">13.4 CLAUDE.md：记忆的入口</h2>
 
 <p>如果说 <code>AGENTS.md</code> 是"规则"，那 <code>CLAUDE.md</code> 就是"记忆"。Claude Code 引入了四类型记忆系统，通过 <code>CLAUDE.md</code> 文件管理 Agent 的长期知识。</p>
 
@@ -261,7 +261,7 @@
 <p>private 记忆放用户 home 目录，不会泄漏到项目中；team 记忆放项目目录，随 Git 提交共享给整个团队。这保证了个人偏好不会污染团队规则。</p>
 
 <!-- ===== 26.5 SOUL.md：Agent 的人格 ===== -->
-<h2 class="section-heading">26.5 SOUL.md：Agent 的人格</h2>
+<h2 class="section-heading">13.5 SOUL.md：Agent 的人格</h2>
 
 <p><code>SOUL.md</code> 定义 Agent 的<strong>人格、语气、交互风格</strong>。它是 LLM-Wiki 体系中最"软"的一层——不涉及技术规则，而是塑造 Agent 的"性格"。</p>
 
@@ -284,7 +284,7 @@
 <p>SOUL.md 在 Agent 框架中通常作为 System Prompt 的第一段注入，影响 Agent 的所有后续交互。Claude Code 的 System Prompt 分区设计中，SOUL.md 对应静态全局段——内容固定，可被 prompt cache 缓存。</p>
 
 <!-- ===== 26.6 知识库的工程实践 ===== -->
-<h2 class="section-heading">26.6 知识库的工程实践</h2>
+<h2 class="section-heading">13.6 知识库的工程实践</h2>
 
 <h3 class="sub-heading">目录结构设计</h3>
 
@@ -379,7 +379,7 @@
 <p>企业策略具有最高优先级——如果安全团队锁定了某些配置（如"禁止写入 .env 文件"），即使项目 AGENTS.md 写了"可以修改 .env"，Agent 也不会执行。</p>
 
 <!-- ===== 26.7 两步思维链摄入：工业级 Ingest 流程 ===== -->
-<h2 class="section-heading">26.7 两步思维链摄入：工业级 Ingest 流程</h2>
+<h2 class="section-heading">13.7 两步思维链摄入：工业级 Ingest 流程</h2>
 
 <p>Karpathy 的原始设计描述的是 LLM 同时阅读和写入的单步摄入。工业级实现将其拆分为<strong>两次顺序 LLM 调用</strong>，显著提升质量：</p>
 
@@ -442,7 +442,7 @@
 </div>
 
 <!-- ===== 26.8 知识图谱与关联度模型 ===== -->
-<h2 class="section-heading">26.8 知识图谱与关联度模型</h2>
+<h2 class="section-heading">13.8 知识图谱与关联度模型</h2>
 
 <p>Karpathy 的原始设计提到了 <code>[[wikilinks]]</code> 用于交叉引用，但没有图分析。工业级实现（llm_wiki 桌面应用）构建了完整的知识图谱可视化和关联度引擎。</p>
 
@@ -494,7 +494,7 @@
 </div>
 
 <!-- ===== 26.9 多阶段检索管线 ===== -->
-<h2 class="section-heading">26.9 多阶段检索管线</h2>
+<h2 class="section-heading">13.9 多阶段检索管线</h2>
 
 <p>原始设计的查询是"LLM 读取相关页面"的简单模式。工业级实现构建了支持可选向量搜索的<strong>多阶段检索管线</strong>：</p>
 
@@ -514,7 +514,7 @@
 <p><strong>向量搜索完全可选</strong>——默认关闭，在设置中开启。关闭时管线 fallback 到分词搜索 + 图谱扩展。基准测试：开启向量搜索后整体召回率从 58.2% 提升至 71.4%。</p>
 
 <!-- ===== 26.10 级联删除与知识库维护 ===== -->
-<h2 class="section-heading">26.10 级联删除与知识库维护</h2>
+<h2 class="section-heading">13.10 级联删除与知识库维护</h2>
 
 <p>Karpathy 的原始设计没有删除机制。工业级实现新增了<strong>智能级联删除</strong>：</p>
 
@@ -551,7 +551,7 @@
 </ul>
 
 <!-- ===== 26.11 外挂状态模型 ===== -->
-<h2 class="section-heading">26.11 外挂状态模型与素材路由</h2>
+<h2 class="section-heading">13.11 外挂状态模型与素材路由</h2>
 
 <p>llm-wiki-skill 支持多种素材来源（网页、X/Twitter、微信公众号、YouTube、知乎、PDF、本地文件），每种来源有独立的提取适配器。为统一管理适配器的可用性，设计了五类外挂状态模型：</p>
 
@@ -575,7 +575,7 @@
 <p>核心设计原则：<strong>外挂失败不中断核心主线</strong>。无论适配器处于什么状态，用户都可以通过手动粘贴文本完成 ingest。来源总表通过 <code>source-registry.sh</code> 统一管理，支持 URL 模式匹配和文件扩展名匹配。</p>
 
 <!-- ===== 26.12 与 Harness 的关系 ===== -->
-<h2 class="section-heading">26.12 与 Harness 的关系</h2>
+<h2 class="section-heading">13.12 与 Harness 的关系</h2>
 
 <p>在第 9 章中，我们讲过 Harness 工程的六大组件。其中 <strong>AGENTS.md / System Prompt</strong> 正是六大组件之一——它解决的是"知识过时"问题。</p>
 
@@ -611,7 +611,7 @@
 </table>
 
 <!-- ===== 26.13 本地 API 与 Agent 集成 ===== -->
-<h2 class="section-heading">26.13 本地 API 与 Agent 集成</h2>
+<h2 class="section-heading">13.13 本地 API 与 Agent 集成</h2>
 
 <p>llm_wiki 桌面应用内置了本地 HTTP API（监听 <code>127.0.0.1:19828</code>，Token 鉴权，仅本机可达），让外部 AI Agent 可以直接查询知识库：</p>
 
@@ -649,7 +649,7 @@ npx skills add https://github.com/nashsu/llm_wiki_skill.git --skill llm-wiki</pr
 <p>安装后，Agent 能响应"我的知识库里关于 X 是怎么说的"、"搜索我的知识库找 Y"等请求，默认只读，引用 wiki 页面路径方便核对。</p>
 
 <!-- ===== 26.14 安全考量 ===== -->
-<h2 class="section-heading">26.14 安全考量</h2>
+<h2 class="section-heading">13.14 安全考量</h2>
 
 <p>知识文件虽好，但也要注意安全问题：</p>
 
@@ -688,7 +688,7 @@ npx skills add https://github.com/nashsu/llm_wiki_skill.git --skill llm-wiki</pr
 </ul>
 
 <!-- ===== 26.15 小结 ===== -->
-<h2 class="section-heading">26.15 小结</h2>
+<h2 class="section-heading">13.15 小结</h2>
 
 <div class="card">
   <div class="card-title">📌 核心要点</div>

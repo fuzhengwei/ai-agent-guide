@@ -210,7 +210,7 @@ setTimeout(() => {
 <p>这个闭环不断循环，让 Agent 能够处理多步骤、多轮交互的复杂任务。后续章节讲的 ReAct 模式、反思机制，都是在这个闭环基础上的演进。</p>
 
 <!-- ===== 2.5b 操作可逆性与授权范围 ===== -->
-<h2 class="section-heading">2.5b 操作可逆性与授权范围</h2>
+<h2 class="section-heading">2.6 操作可逆性与授权范围</h2>
 
 <p>Agent 闭环中“行动”这一步，在教学中往往被简化为“调用工具”。但工业级 Agent 必须回答一个问题：<strong>哪些操作可以自由执行，哪些需要用户确认？</strong></p>
 
@@ -255,7 +255,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 2.6 Agent vs ChatBot vs Copilot ===== -->
-<h2 class="section-heading">2.6 Agent vs ChatBot vs Copilot</h2>
+<h2 class="section-heading">2.7 Agent vs ChatBot vs Copilot</h2>
 
 <p>面试中经常被问到这三者的区别，我们用一张表总结：</p>
 
@@ -307,7 +307,7 @@ setTimeout(() => {
 </div>
 
 <!-- ===== 2.7 从用户输入到输出的完整链路 ===== -->
-<h2 class="section-heading">2.7 从用户输入到输出的完整链路</h2>
+<h2 class="section-heading">2.8 从用户输入到输出的完整链路</h2>
 
 <p>面试最高频的问题之一：<strong>整个 Agent 从用户发出消息到完成任务，中间经历了哪些步骤？</strong> 很多面试官会要求你从接收消息开始，一步一步讲清楚每一步做了什么、为什么需要、哪些模块负责。本节把这条链路彻底拆透。</p>
 
@@ -690,7 +690,7 @@ public class AgentChain {
 <p>代码中每一步都打印了日志，你可以清楚地看到<strong>一条消息从进入 Agent 到变成最终输出，走过了哪些节点</strong>。面试时，能讲出这 8 步并解释每步的作用，就是满分回答。</p>
 
 <!-- ===== 2.8 意图识别与任务分类 ===== -->
-<h2 class="section-heading">2.8 意图识别与任务分类</h2>
+<h2 class="section-heading">2.9 意图识别与任务分类</h2>
 
 <p>Step 2（意图识别）和 Step 3（任务分类）是整条链路的<strong>分叉点</strong>——Agent 能否走上正确的执行路径，取决于这两步做得好不好。面试中经常追问：<strong>Agent 怎么理解用户意图？怎么判断任务复杂度？</strong></p>
 
@@ -1119,7 +1119,7 @@ public class TaskClassifier {
 </div>
 
 <!-- ===== 2.9 执行调度决策 ===== -->
-<h2 class="section-heading">2.9 执行调度决策</h2>
+<h2 class="section-heading">2.10 执行调度决策</h2>
 
 <p>Agent 拿到子任务列表后，下一步是<strong>执行调度</strong>——决定先做什么后做什么，什么时候该调用模型（推理/理解/生成文本），什么时候该调用工具（搜索/计算/文件操作）。这是 2.7 链路中 Step 5 的核心逻辑。</p>
 

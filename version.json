@@ -1,4 +1,4 @@
 {
-  "version": "20260924.6",
-  "changelog": "修复章节标题/副标题/混合面试描述超出边界：flex 子项加 min-width:0 + 文字溢出省略"
+  "version": "20260925.3",
+  "changelog": "新增第11章「工业级 Harness 解剖：deepseek-harness-java」（事件溯源/审批双防线/ArchUnit 等 8 八股+15题），后续17章节编号全量顺延+1"
 }

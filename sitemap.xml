@@ -210,4 +210,13 @@
     <link>#ch21</link>
   </url>
 
+  <!-- 第27章 Jev 决策模型 -->
+  <url>
+    <loc>https://ai-agent-guide.xiaofuge.cn/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <link>#ch28</link>
+  </url>
+
 </urlset>

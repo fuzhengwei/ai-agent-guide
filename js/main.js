@@ -28,6 +28,7 @@ const App = {
     { id: 'ch07', num: 8, title: '意图识别与决策中枢', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch06-brain-intent-router.html' },
     { id: 'ch08', num: 9, title: 'Agent 运行时：Loop 引擎与沙箱', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch21-loop-runtime-sandbox.html' },
     { id: 'ch09', num: 10, title: 'Harness 工程：大脑的工程化外壳', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch22-harness.html' },
+    { id: 'ch29', num: 11, title: '工业级 Harness 解剖：deepseek-harness-java', section: '🧠 第二篇：Agent 的大脑', file: 'chapters/ch27-dsh-java-anatomy.html' },
 
     // 第三篇：Agent 的知识
     { id: 'ch20', num: 11, title: 'RAG：检索增强生成', section: '📚 第三篇：Agent 的知识', file: 'chapters/ch16-rag.html' },
@@ -58,7 +59,8 @@ const App = {
     { id: 'ch24', num: 26, title: '推理框架与模型服务化', section: '⚙️ 第八篇：工程化', file: 'chapters/ch20-inference-framework.html' },
 
     // 终章
-    { id: 'ch25', num: 27, title: '2026 Agent 技术展望', section: '🌟 终章', file: 'chapters/ch23-future-summary.html' }
+    { id: 'ch28', num: 27, title: 'Jev 决策模型：Agent 的"反射神经"', section: '🌟 终章', file: 'chapters/ch24-jev-decision-model.html' },
+    { id: 'ch25', num: 28, title: '2026 Agent 技术展望', section: '🌟 终章', file: 'chapters/ch23-future-summary.html' }
   ],
 
   /**
@@ -672,7 +674,7 @@ const App = {
           
           <div class="hero-stats">
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="27">0</span>
+              <span class="stat-num" data-target="29">0</span>
               <span class="stat-label">章节</span>
             </div>
             <div class="hero-stat-item">
@@ -680,11 +682,11 @@ const App = {
               <span class="stat-label">交互动画</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="267">0</span>
+              <span class="stat-num" data-target="275">0</span>
               <span class="stat-label">面试八股</span>
             </div>
             <div class="hero-stat-item">
-              <span class="stat-num" data-target="285">0</span>
+              <span class="stat-num" data-target="300">0</span>
               <span class="stat-label">模拟考题</span>
             </div>
           </div>

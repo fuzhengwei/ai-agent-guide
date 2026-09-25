@@ -8025,5 +8025,239 @@
       ],
       "explanation": "资源调度题的答题主线：① 隔离与优先级——在线推理对延迟敏感，要独占资源并留余量；② 离线微调可排队、可中断恢复，吃低谷算力；③ 技术选型降占用——推理用 PagedAttention/连续批处理，微调用 LoRA/QLoRA；④ 弹性调度在高低峰间腾挪。字节也考过同款题，属高频场景题。"
     }
+  ],
+  "ch29": [
+    {
+      "id": "ch29_q01",
+      "type": "single",
+      "question": "DSH Java 的会话持久化采用事件溯源模型，其核心做法是？",
+      "options": [
+        "定期把消息列表全量序列化成 JSON 写盘",
+        "把对话存进向量数据库便于检索",
+        "追加式记录会话事件流，消息历史由事件折叠得出，可重放重建",
+        "把每次请求和响应存成独立的日志文件"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "事件溯源：不存状态存事件，SessionLog 追加带单调 seq 的事件（turn/start、tool/call 等约 20 种），deriveMessages() 折叠出消息历史，SessionRebuilderService 重放事件可精确重建会话。配合写租约防并发覆盖。"
+    },
+    {
+      "id": "ch29_q02",
+      "type": "single",
+      "question": "ReactLoopAgent 中 Inbox 和 CURRENT_TURN / NEXT_TURN 标记解决的核心问题是？",
+      "options": [
+        "消息的持久化存储",
+        "用户中途插话与输入执行解耦——Agent 执行中新消息排队，在安全点被消费",
+        "消息的加密传输",
+        "多语言消息的自动翻译"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "教科书循环假设用户发完消息安静等待。Inbox 解耦让 Agent 运行中收到的新消息进入队列（CURRENT_TURN 当前回合消费 / NEXT_TURN 下回合处理），配合 wakeDriver 唤醒，实现中途插话而不打断或丢失。"
+    },
+    {
+      "id": "ch29_q03",
+      "type": "single",
+      "question": "Phase.Maintenance（维护态）存在的意义是？",
+      "options": [
+        "让 Agent 可以自动升级模型版本",
+        "空闲期执行压缩/重建等维护任务时，期间进来的消息延后重放，避免与维护任务竞态",
+        "标记 Agent 需要人工检修",
+        "减少空闲时的内存占用"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Maintenance 是 Idle/Running 之外的第三态：空闲期做上下文压缩等维护时 Agent 显式处于维护态，期间进来的消息记 wakeRequested 标记，维护结束后统一重放。没有这个状态，\"压缩跑到一半用户发消息\"就是竞态 Bug 重灾区。"
+    },
+    {
+      "id": "ch29_q04",
+      "type": "single",
+      "question": "MaxTokens 受控续写机制的工作方式是？",
+      "options": [
+        "直接调大 max_tokens 参数重新生成全部内容",
+        "检测到输出被截断后自动注入续写提示让模型从断点继续，最多续写 4 次",
+        "把长输出拆成多条消息分开发给用户",
+        "截断后直接报错让用户重试"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "受控续写：检测 finish_reason=length 后注入 CONTINUATION_PROMPT 让模型从断点续写，拼接多次输出，MAX_TOKEN_CONTINUATIONS=4 防失控。用户对截断无感知——这是教科书不讲但生产高频的机制。"
+    },
+    {
+      "id": "ch29_q05",
+      "type": "single",
+      "question": "关于审批门禁与危险命令守卫的关系，正确的说法是？",
+      "options": [
+        "两者是同一道防线的不同叫法",
+        "审批是\"谁来放行\"（四态裁决+挂起等待），守卫是\"永远不放行\"（正则拦截 rm -rf / 等）——双防线",
+        "守卫可以被用户批准绕过",
+        "审批只用于文件操作，守卫只用于网络操作"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "审批（RuntimeApprovalGate）解决\"需要人确认\"：ALLOW_ONCE/ALLOW_SESSION/DENY/CANCEL 四态，挂起等人工裁决。守卫（DangerousCommandGuard）解决\"任何人都不该批准\"：静态拦截递归强删、fork 炸弹、curl|sh 等。人会手滑疲劳，所以必须有人点同意也过不去的防线。"
+    },
+    {
+      "id": "ch29_q06",
+      "type": "single",
+      "question": "审批门禁的 requiresApproval() 预判方法的作用是？",
+      "options": [
+        "提前判断工具参数是否合法",
+        "在阻塞挂起等待人工裁决之前，向流式调用方发出 requires_approval 信号，避免前端把审批等待误显示为工具执行中",
+        "预判用户是否会批准",
+        "减少审批次数"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "没有预判信号，阻塞等待审批（默认超时 600s）期间前端会把挂起误渲染成\"工具执行中\"，用户以为系统卡死。requiresApproval() 让执行器在挂起前先通知前端显示\"等待审批\"。"
+    },
+    {
+      "id": "ch29_q07",
+      "type": "single",
+      "question": "ArchUnit 架构守护测试的核心价值是？",
+      "options": [
+        "测试业务逻辑的正确性",
+        "提升代码执行性能",
+        "把架构约束（如 domain 不依赖 Spring/infrastructure）写成测试，违反则 CI 失败——架构约束从人治变法治",
+        "自动生成架构文档"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "口头分层约定会被\"就这一次\"的 PR 逐步击穿。ArchUnit 用单元测试断言包依赖规则（如 domain 不得依赖 org.springframework、com.fasterxml），违反即测试失败。新人不知道规则也没关系——测试会告诉他。"
+    },
+    {
+      "id": "ch29_q08",
+      "type": "single",
+      "question": "DSH Java 中 Skills 的\"rank 覆盖\"机制指的是？",
+      "options": [
+        "按 skill 的调用频率排序",
+        "多来源目录按 rank 扫描，同名 skill 低 rank（项目级 > 用户级 > 内置）胜出——离工作现场越近优先级越高",
+        "按 skill 文件大小排序加载",
+        "给 skill 打星级评分"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "FilesystemSkillProviderPort 按 rank 扫描多个根：项目 .dsh（100）< 自定义 roots（300）< 用户 home（400）< 内置（600），同名低 rank 胜出。和 Git local 覆盖 global 同理——项目级 skill 可以覆盖全局同名 skill。"
+    },
+    {
+      "id": "ch29_q09",
+      "type": "single",
+      "question": "Skills 渐进式披露的 token 节省原理是？",
+      "options": [
+        "把 skill 压缩成二进制格式",
+        "系统提示词只放 skill 摘要（name+description+when_to_use），正文由模型按需调 skill 工具加载",
+        "只在用户明确要求时才加载任何 skill",
+        "用小模型处理 skill 内容"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "几十个 skill 的摘要也就几百 token；模型判断需要时主动调 skill 工具，完整正文作为工具结果注入后续步骤上下文——token 按需付费，而不是把所有 skill 全文塞进每次请求。"
+    },
+    {
+      "id": "ch29_q10",
+      "type": "single",
+      "question": "ClaudeCodeSubagentProvider 这类\"外部 CLI 子智能体\"设计意味着？",
+      "options": [
+        "Agent 系统只能使用自家模型",
+        "Agent 系统的编排层和执行层可以来自不同厂商——Harness 做顶层编排，把 claude/codex CLI 当子 Agent 调度",
+        "子智能体必须在同一进程内运行",
+        "CLI 工具将被淘汰"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "外部 CLI 子智能体把别人家的 CLI Agent 作为 provider 调度，意味着编排层（权限/审批/审计）与执行层解耦，可按任务类型路由给最合适的 Agent 产品。这是 A2A 协议标准化的未来的早期形态。"
+    },
+    {
+      "id": "ch29_q11",
+      "type": "single",
+      "question": "RepeatToolReminderEngine 解决的问题是？",
+      "options": [
+        "工具响应太慢",
+        "模型陷入死循环反复以相同参数调用同一工具时，注入提醒把方向盘还给模型",
+        "用户重复提交相同问题",
+        "工具版本过期提醒"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "防打转提醒：检测连续重复的工具调用模式（模型撞墙再撞墙），向上下文注入提醒（\"你已第三次尝试同样调用，结果相同，请换思路\"）。这是生产级 Agent 的高频痛点，教科书基本不讲。"
+    },
+    {
+      "id": "ch29_q12",
+      "type": "single",
+      "question": "DSH Java 的 DDD 六边形架构中，\"组合根\"（AgentRunBeanConfig）的职责是？",
+      "options": [
+        "处理 HTTP 请求路由",
+        "在一个地方把领域端口与基础设施实现装配起来——换实现只改一处，领域层不动",
+        "管理数据库连接池",
+        "编译打包整个工程"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "组合根是全工程唯一装配中枢：LLM 端口、工具注册表、审批网关、压缩引擎等在这里组装成 AgentRunFactory。想换存储/接新 LLM 渠道，只改这一个配置类——这是六边形架构\"端口与适配器\"的落点。"
+    },
+    {
+      "id": "ch29_q13",
+      "type": "multiple",
+      "question": "事件溯源会话模型带来的能力包括哪些？（多选）",
+      "options": [
+        "崩溃后重放事件精确恢复会话到任意时刻",
+        "完整的审计轨迹（每次工具调用、审批都留痕）",
+        "消息历史、前端视图、计费数据可从同一事件流做不同投影",
+        "自动生成单元测试"
+      ],
+      "answer": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "事件溯源的免费午餐：恢复（重放重建）、审计（全留痕）、多投影（deriveMessages/SurfaceProjector/计费各取所需）。ignorable 标记让回放跳过流式 chunk 等过程事件。自动生成单元测试与事件溯源无关。"
+    },
+    {
+      "id": "ch29_q14",
+      "type": "multiple",
+      "question": "生产级 Agent Loop 的终止条件设计包括哪些？（多选）",
+      "options": [
+        "Completed：模型不再请求工具，正常结束",
+        "MaxTokens：截断后受控续写，最多 4 次",
+        "单 turn 步数硬上限（50 步）防失控",
+        "Aborted：用户取消，通过原子标记在安全点停止"
+      ],
+      "answer": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "四种全部正确，此外还有 Blocked（被阻塞）和 Error（异常，出错时合成可见错误消息避免前端白屏）。完整的终止语义是生产级 loop 与教科书循环的重要分界。"
+    },
+    {
+      "id": "ch29_q15",
+      "type": "multiple",
+      "question": "关于 DSH Java 的稳定性机制，正确的有？（多选）",
+      "options": [
+        "工具超时熔断：单工具默认 300s 超时，失败结果回填给模型让其决策",
+        "LLM 重试进度以流式事件实时推给前端（\"正在重试 2/3\"）",
+        "LLM 请求失败时合成可见错误消息，避免前端白屏",
+        "压力压缩失败时中断整个会话以保护数据"
+      ],
+      "answer": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "前三项正确。压力压缩（超 100K token 阈值触发 LLM 摘要旧消息）失败时只记日志不打断主流程——压缩是优化不是关键路径，第 4 项错误。"
+    }
   ]
 }

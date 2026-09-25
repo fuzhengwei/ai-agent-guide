@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/章节-26-blueviolet" alt="26 Chapters">
-  <img src="https://img.shields.io/badge/题库-433%20题-orange" alt="433 Questions">
+  <img src="https://img.shields.io/badge/题库-473%20题-orange" alt="473 Questions">
   <img src="https://img.shields.io/badge/技术栈-HTML%20%2B%20CSS%20%2B%20Vanilla%20JS-green" alt="Tech Stack">
   <img src="https://img.shields.io/badge/部署-Nginx%20%2B%20SSL-brightgreen" alt="Deploy">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="License">
@@ -20,7 +20,7 @@
 - 📚 **26 章体系**：8 大篇章渐进式学习路径，新增「Agent 的大脑」独立篇章
 - 🧠 **多语言代码**：所有代码块支持 Python / TypeScript / Go / Java 四语言切换
 - 📋 **八股速记**：每章面试高频考点精炼总结，面试官视角点评
-- 📝 **在线考试**：433 道单选/多选题，自动判分 + 错题本，模拟真实面试
+- 📝 **在线考试**：473 道单选/多选题，自动判分 + 错题本，模拟真实面试
 - 💬 **AI 助教**：内置 AI 学习助手，支持 OpenAI 兼容协议，阅读中随时提问
 - 🌙 **深色主题**：一键切换亮/暗主题，护眼阅读
 - 📊 **进度追踪**：localStorage 记录学习进度，断点续读
@@ -90,7 +90,7 @@ ai-agent-guide/
 │   ├── ch23-future-summary.html  # 终章
 │   └── ch24-... (见实际文件)
 ├── data/
-│   └── quiz-bank.json            # 题库（26 章，433 题）
+│   └── quiz-bank.json            # 题库（28 章，473 题）
 ├── nginx/                        # Nginx 部署配置
 │   ├── conf/conf.d/              # 站点配置（HTTPS + SPA 路由）
 │   └── ssl/                      # SSL 证书
@@ -165,7 +165,7 @@ ai-agent-guide/
 
 ### 题库设计
 
-- **题量**：26 章，433 道题（覆盖单选 + 多选）
+- **题量**：28 章，473 道题（覆盖单选 + 多选）
 - **题型**：单选题（258）+ 多选题（175）
 - **来源**：`data/quiz-bank.json`，按章节组织
 - **面试官视角**：题目表述像面试官在提问，解析像面试官在点评
@@ -244,7 +244,7 @@ Nginx 配置要点：
 | 指标 | 数值 |
 |------|------|
 | 章节数 | 26 章（8 大篇章） |
-| 题库题量 | 433 道 |
+| 题库题量 | 473 道 |
 | 总行数 | 约 68,000+ 行 |
 | 多语言代码块 | 150+ 个（四语言） |
 | 核心样式 | 3,000+ 行 CSS |
