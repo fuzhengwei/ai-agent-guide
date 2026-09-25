@@ -31,3 +31,8 @@
 - 面试官池 7 人 4 风格（sharp/gentle/boss/steady）在 miniprogram/utils/interview.js；pickByStyle(styleId, seed) 按风格选人
 - 大厂真题场：quiz-bank.json 的 bytedance/meituan/jd 三库（各10题），构建脚本 BOSS_QUIZZES 注册为 boss_* 场次，isBoss=true 常驻解锁
 - 题库页有风格选择卡，runner 接受 ?style= 参数；改面试官/风格相关内容要改 interview.js 与 mp-templates/quiz/runner.js 后重跑构建
+
+## 「项目」tab 与知识星球跳转（2026-09-25）
+- 4 tab：课程/面试/项目/我的；项目页 miniprogram/pages/project/（主包手写），tab 图标 assets/tab/project(-active).png（PIL 画的火箭，灰 #959FB3 / 蓝 #2563EB）
+- 跳知识星球用 wx.navigateToMiniProgram({ shortLink: '#小程序://知识星球/MreBZ6E98bytTbs' })，无需对方 appid/白名单；必须用户点击触发，微信会弹确认框
+- 文案（用户指定）：标题「AI Agent 项目实战」，小字「小傅哥，工作10年+，现国内top3大厂架构师，核心技术负责人。」；面试页的项目卡只 switchTab 到项目 tab，跳星球逻辑只在项目页

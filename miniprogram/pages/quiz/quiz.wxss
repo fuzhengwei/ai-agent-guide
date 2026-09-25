@@ -34,6 +34,44 @@ page {
   flex-shrink: 0;
 }
 
+/* ---------- 项目推荐（外部小程序跳转） ---------- */
+.proj-card {
+  margin-top: 20rpx;
+  background: #fff;
+  border: 1rpx solid #e6e9f0;
+  border-radius: 20rpx;
+  padding: 26rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
+}
+.proj-emoji {
+  font-size: 44rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+.proj-info { flex: 1; min-width: 0; }
+.proj-name {
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #0f172a;
+}
+.proj-desc {
+  font-size: 22rpx;
+  color: #8a94a6;
+  margin-top: 6rpx;
+  line-height: 1.5;
+}
+.proj-go {
+  font-size: 30rpx;
+  color: #c2c9d6;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+/* 项目卡副文案较长，允许两行 */
+.proj-info .proj-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
 /* ---------- Hero ---------- */
 .hero {
   background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);

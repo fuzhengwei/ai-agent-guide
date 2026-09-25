@@ -55,6 +55,19 @@
     <view class="style-tip">{{curStyle.emoji}} {{curStyle.name}} · {{curStyle.tagline}}</view>
   </view>
 
+  <!-- 项目实战：跳转项目 tab -->
+  <view class="sec">
+    <view class="sec-title">🚀 项目实战</view>
+    <view class="proj-card" bindtap="goProject" hover-class="press">
+      <view class="proj-emoji">🪐</view>
+      <view class="proj-info">
+        <view class="proj-name">AI Agent 项目实战</view>
+        <view class="proj-desc">小傅哥，工作10年+，现国内top3大厂架构师，核心技术负责人。</view>
+      </view>
+      <view class="proj-go">›</view>
+    </view>
+  </view>
+
   <!-- 大厂真题 -->
   <view class="sec">
     <view class="sec-title">🏢 大厂真题场</view>

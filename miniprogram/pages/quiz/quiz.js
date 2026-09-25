@@ -113,6 +113,12 @@ Page({
     wx.navigateTo({ url: '/packages/quiz/pages/qa-listen/qa-listen' });
   },
 
+  // 项目实战入口：切到项目 tab（详情与跳转在项目页内）
+  goProject() {
+    wx.vibrateShort({ type: 'light' });
+    wx.switchTab({ url: '/pages/project/project' });
+  },
+
   startChapter(e) {
     const key = e.currentTarget.dataset.key;
     const title = e.currentTarget.dataset.title;

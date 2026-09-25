@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/quiz/quiz",
+    "pages/project/project",
     "pages/mine/mine",
     "pages/notes/notes",
     "pages/leaderboard/leaderboard"
@@ -30,6 +31,12 @@
         "text": "面试",
         "iconPath": "assets/tab/quiz.png",
         "selectedIconPath": "assets/tab/quiz-active.png"
+      },
+      {
+        "pagePath": "pages/project/project",
+        "text": "项目",
+        "iconPath": "assets/tab/project.png",
+        "selectedIconPath": "assets/tab/project-active.png"
       },
       {
         "pagePath": "pages/mine/mine",
