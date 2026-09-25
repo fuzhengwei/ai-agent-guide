@@ -55,7 +55,7 @@ function promptUnlock() {
   if (!CONFIG.PAY_ENABLED) return;
   wx.showModal({
     title: '付费章节',
-    content: `前 ${CONFIG.FREE_CHAPTER_COUNT} 章免费，解锁全部 ${28} 章仅需 ${CONFIG.PRICE_LABEL}（一次买断，永久有效）。`,
+    content: `前 ${CONFIG.FREE_CHAPTER_COUNT} 章免费，解锁全部 30 章仅需 ${CONFIG.PRICE_LABEL}（一次买断，永久有效）。`,
     confirmText: '立即解锁',
     confirmColor: '#2563eb',
     success: (res) => {

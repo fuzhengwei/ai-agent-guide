@@ -12,15 +12,18 @@ const STAGES = [
   { name: '核心机制', icon: '⚙️', desc: 'ReAct · 上下文 · 记忆 · RAG', color: 'blue', nums: [5, 6, 7, 8, 9, 10, 11, 12] },
   { name: '工具与能力', icon: '🛠️', desc: 'FC · MCP · Skills · 多 Agent', color: 'purple', nums: [13, 14, 15, 16, 17, 18, 19] },
   { name: '平台实战', icon: '🚀', desc: 'Dify · CLI Agent · GUI', color: 'orange', nums: [20, 21, 22] },
-  { name: '工程化进阶', icon: '🏔️', desc: '评估 · 安全 · 部署 · 展望', color: 'red', nums: [23, 24, 25, 26, 27] },
+  { name: '工程化进阶', icon: '🏔️', desc: '评估 · 安全 · 部署 · 展望', color: 'red', nums: [23, 24, 25, 26, 27, 28, 29] },
 ];
+
+// 正式章节数（排除 num 为 null 的大厂真题场等非章节条目）
+const REAL_CHAPTER_COUNT = chapters.filter(c => typeof c.num === 'number').length;
 
 Page({
   data: {
     stages: [],
     totalChapters: 0,
     readCount: 0,
-    totalQuestions: 463,
+    totalQuestions: 508,
     nextChapter: null,   // 继续学习目标
     studyTimeText: '',
     studyDays: 0,
@@ -34,7 +37,8 @@ Page({
   onShow() {
     this._refreshUser();
     const readMap = store.getReadMap();
-    const enriched = chapters.map((c, i) => {
+    // 只统计正式章节（num 为 number），大厂真题场等非章节条目不进首页章节列表
+    const enriched = chapters.filter(c => typeof c.num === 'number').map((c, i) => {
       const pos = store.getReadPos(c.key);
       // readPct：有明确 pct 用之；没有但有位置且已读过，按位置粗估；都没则 0
       let readPct = 0;
@@ -76,7 +80,7 @@ Page({
 
     this.setData({
       stages,
-      totalChapters: enriched.length,
+      totalChapters: REAL_CHAPTER_COUNT,
       readCount: enriched.filter(c => c.read).length,
       nextChapter,
       studyTimeText,
@@ -138,7 +142,7 @@ Page({
 
   // 分享/转发（含朋友圈入口）
   ...share.attach(
-    'AI Agent 通识教程：28 章学会 Agent 开发，配 463 道大厂面试题',
+    'AI Agent 通识教程：' + REAL_CHAPTER_COUNT + ' 章学会 Agent 开发，配 508 道大厂面试题',
     '/pages/index/index'
   ),
 

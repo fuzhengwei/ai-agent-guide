@@ -444,29 +444,36 @@
 .fav-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 200; }
 .fav-modal {
   position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%);
-  width: 620rpx; max-width: 88vw; background: var(--panel-bg, #fff);
+  width: 640rpx; max-width: 90vw; background: var(--panel-bg, #fff);
   border-radius: 24rpx; padding: 32rpx; z-index: 201;
   box-shadow: 0 20rpx 60rpx rgba(0,0,0,.25);
+  max-height: 80vh; overflow-y: auto;
 }
-.fav-quote {
-  font-size: 24rpx; color: #8b95a6; line-height: 1.6;
-  border-left: 6rpx solid #eab308; padding-left: 16rpx; margin-bottom: 20rpx;
-  word-break: break-all;
+.fav-title { font-size: 30rpx; font-weight: 700; color: var(--fg-body, #1f2937); margin-bottom: 14rpx; }
+.fav-ch {
+  font-size: 22rpx; color: #8b95a6; margin-bottom: 14rpx;
+  display: inline-block; background: rgba(90,124,247,.08);
+  padding: 6rpx 16rpx; border-radius: 999rpx;
 }
-.night .fav-quote { color: #9aa3b1; }
+.night .fav-ch { color: #9aa3b1; background: rgba(255,255,255,.06); }
+.fav-quote-input {
+  width: 100%; min-height: 120rpx; max-height: 320rpx; box-sizing: border-box;
+  border: 2rpx dashed #eab308; border-radius: 14rpx;
+  padding: 16rpx; font-size: 25rpx; line-height: 1.6; color: var(--fg-body, #1f2937);
+  background: rgba(234,179,8,.05); margin-bottom: 16rpx;
+}
 .fav-input {
-  width: 100%; min-height: 140rpx; box-sizing: border-box;
+  width: 100%; min-height: 120rpx; box-sizing: border-box;
   border: 2rpx solid var(--panel-border, #e5e7eb); border-radius: 14rpx;
   padding: 18rpx; font-size: 26rpx; color: var(--fg-body, #1f2937);
   background: var(--panel-bg, #fff);
 }
-.fav-actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 22rpx; }
+.fav-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14rpx; margin-top: 22rpx; }
 .fav-act {
-  padding: 12rpx 32rpx; border-radius: 999rpx; font-size: 26rpx;
+  padding: 12rpx 26rpx; border-radius: 999rpx; font-size: 25rpx;
   border: 2rpx solid var(--panel-border, #e5e7eb); color: var(--fg-body, #374151);
 }
 .fav-act.primary { background: linear-gradient(135deg, #5a7cf7, #4353c9); color: #fff; border: none; }
-.fav-btn { font-size: 34rpx; }
 
 /* 正文可选中时的长按反馈 */
 .nd-p, .nd-h, .nd-quote, .nd-li-txt, .nd-qaq, .reader-title, .reader-sub {

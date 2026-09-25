@@ -16,7 +16,7 @@
     <view class="hero-deco d2"></view>
     <view class="hero-badge">AI AGENT COURSE</view>
     <view class="hero-title">AI Agent 通识教程</view>
-    <view class="hero-sub">从基础认知到面试通关 · 28 章渐进式学习</view>
+    <view class="hero-sub">从基础认知到面试通关 · 30 章渐进式学习</view>
 
     <view class="hero-stats">
       <view class="stat">
@@ -56,7 +56,7 @@
   </view>
 
   <view class="pay-banner" wx:if="{{payEnabled}}">
-    <text class="pay-banner-text">前 {{freeCount}} 章免费 · 解锁全部 28 章 {{priceLabel}}</text>
+    <text class="pay-banner-text">前 {{freeCount}} 章免费 · 解锁全部 30 章 {{priceLabel}}</text>
     <view class="pay-banner-btn" bindtap="tapUnlock">解锁</view>
   </view>
 

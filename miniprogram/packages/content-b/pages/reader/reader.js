@@ -8,11 +8,6 @@ const tts = require('../../../../utils/tts.js');
 // 阅读偏好持久化
 const PREF_KEY = 'dsh_reader_pref';
 
-// 归一化：去掉所有空白（含换行），用于「剪贴板选段 ↔ 本章正文」模糊匹配
-function normText(s) {
-  return String(s || '').replace(/\s+/g, '');
-}
-
 function loadPref() {
   try {
     return wx.getStorageSync(PREF_KEY) || {};
@@ -73,7 +68,6 @@ Page({
     // 收藏弹窗
     favModal: false,
     favText: '',
-    favTextPreview: '',
     favNoteInput: '',
   },
 
@@ -171,8 +165,6 @@ Page({
       ttsTotal: 0,
       ttsState: 'idle',
     });
-    // 构建本章正文的归一化文本集合（供收藏时匹配剪贴板内容是否出自本章）
-    this._bodyTexts = this._collectBodyTexts(ch);
     this._tocStamp = Date.now();
     this._resumeDone = false;
     this._docHeight = 0;
@@ -263,84 +255,24 @@ Page({
     }
   },
 
-  /* ===== 收藏与笔记 ===== */
+  /* ===== 收藏与笔记 =====
+     交互：长按任意段落/标题/引用 = 选中该段，直接弹出收藏/笔记弹窗。
+     弹窗内原文可编辑（可删减到只留想要的句子）。点 ☆ 未长按时引导先选内容。 */
 
-  // 收集本章所有可选文本，归一化后用于匹配剪贴板内容是否「出自本章」。
-  // 长选段（跨段选择）无法整段命中单个块，再用「长片段包含」兜底判断。
-  _collectBodyTexts(ch) {
-    const texts = [];
-    const push = (t) => { if (t) texts.push(normText(t)); };
-    (ch.nodes || []).forEach((n) => {
-      if (n.type === 'p' || n.type === 'quote' || n.type === 'h' || n.type === 'qaq') push(n.text);
-      else if (n.type === 'list') (n.items || []).forEach(li => push(li.text));
-      else if (n.type === 'card' || n.type === 'chat') (n.children || []).forEach(c => {
-        if (c.type === 'p' || c.type === 'quote') push(c.text);
-        else if (c.type === 'list') (c.items || []).forEach(li => push(li.text));
-      });
-    });
-    return texts;
-  },
-
-  // 判断剪贴板文本是否出自本章正文
-  _isFromChapter(text) {
-    const t = normText(text);
-    if (t.length < 2) return false;
-    if (this._bodyTexts && this._bodyTexts.some(b => b.includes(t))) return true;
-    // 长选段兜底：取选段中段 30 字做包含判断（首尾可能截断跨块）
-    if (t.length >= 40) {
-      const mid = t.slice(Math.floor(t.length / 2) - 15, Math.floor(t.length / 2) + 15);
-      return !!(this._bodyTexts && this._bodyTexts.some(b => b.includes(mid)));
-    }
-    return false;
-  },
-
-  // 点收藏按钮 ☆：取剪贴板，若内容出自本章正文则直接进收藏弹窗。
-  // 不再依赖「2.5 秒内刚复制」的时间戳判断——原生选中菜单里点「复制」并不会
-  // 触发页面 onHide，老方案的时间戳永远不生效；改为内容匹配，任何时刻复制
-  // 的本章内容都能收藏（仅要求与上次收藏的不是同一段）。
-  onFavTap() {
-    wx.getClipboardData({
-      success: (res) => {
-        const text = (res.data || '').trim();
-        if (text && text.length >= 2 && text.length <= 2000 && text !== this._lastFavText && this._isFromChapter(text)) {
-          this._openFavModal(text);
-        } else {
-          this.onFavHelp();
-        }
-      },
-      fail: () => this.onFavHelp(),
-    });
-  },
-
-  onFavHelp() {
-    wx.showModal({
-      title: '如何收藏段落',
-      content: this.data.selectable
-        ? '长按正文选中一段文字 → 点「复制」→ 点右上角 ☆ 即可收藏/写笔记（复制的内容出自本章即可，不限时间）'
-        : '请先在阅读设置（Aa）中开启「文本选择」，之后长按正文选中文字即可复制收藏',
-      showCancel: false,
-      confirmText: '知道了',
-    });
-  },
-
-  // 长按段落/标题/引用：仅当「文本选择」关闭时弹快捷菜单。
-  // 开启文本选择时让路——长按要交给系统原生选中（用户先看到选区，
-  // 自己决定点「复制」还是取消），自定义弹窗会顶掉原生选区导致没法选字。
+  // 长按段落/标题/引用/列表项：直接视为「选中」，弹出收藏/笔记弹窗
   onNodeLongPress(e) {
-    if (this.data.selectable) return;
     const text = (e.currentTarget.dataset.text || '').trim();
     if (!text || text.length < 2) return;
-    wx.showActionSheet({
-      itemList: ['⭐ 收藏/写笔记', '📋 复制该段'],
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          const clipped = text.length > 2000 ? text.slice(0, 2000) : text;
-          this._openFavModal(clipped);
-        } else if (res.tapIndex === 1) {
-          wx.setClipboardData({ data: text });
-        }
-      },
-      fail: () => {},
+    this._openFavModal(text.length > 2000 ? text.slice(0, 2000) : text);
+  },
+
+  // 收藏交互：长按正文段落/标题/引用直接弹出收藏/笔记弹窗（侧边无收藏按钮）
+  onFavHelp() {
+    wx.showModal({
+      title: '收藏 / 写笔记',
+      content: '长按正文中的任意段落、标题或引用，即可选中并收藏，还能附上自己的笔记。',
+      confirmText: '知道了',
+      showCancel: false,
     });
   },
 
@@ -348,9 +280,13 @@ Page({
     this.setData({
       favModal: true,
       favText: text,
-      favTextPreview: text.length > 80 ? text.slice(0, 80) + '…' : text,
       favNoteInput: '',
     });
+  },
+
+  // 弹窗内编辑原文（可删减到只留想要的句子）
+  onFavTextInput(e) {
+    this.setData({ favText: e.detail.value });
   },
 
   onFavNoteInput(e) {
@@ -361,11 +297,24 @@ Page({
     this.setData({ favModal: false });
   },
 
-  saveFav() {
+  // 弹窗内复制收藏内容
+  copyFavText() {
     const text = this.data.favText;
+    if (!text) return;
+    wx.setClipboardData({
+      data: text,
+      success: () => wx.showToast({ title: '已复制', icon: 'success' }),
+    });
+  },
+
+  saveFav() {
+    const text = this.data.favText.trim();
+    if (!text || text.length < 2) {
+      wx.showToast({ title: '收藏内容不能为空', icon: 'none' });
+      return;
+    }
     const note = this.data.favNoteInput.trim();
     const meta = chapters[this.data.currentIndex] || {};
-    this._lastFavText = text;
     this.setData({ favModal: false });
 
     if (!cloud.ready()) {
@@ -562,9 +511,9 @@ Page({
         if (s.state === 'finished') {
           wx.showToast({ title: '✅ 本章朗读完成', icon: 'none' });
         }
-        // 滚动跟随当前朗读段落
+        // 滚动跟随当前朗读段落（等 setData 渲染完成后再定位，避免查到旧布局）
         if ((s.state === 'playing' || s.state === 'synthesizing') && s.index >= 0) {
-          this._scrollToTts(s.index);
+          wx.nextTick(() => this._scrollToTts(s.index));
         }
       },
     });
@@ -574,24 +523,37 @@ Page({
   },
 
   /**
-   * 朗读滚动跟随：tts 索引现在直接对应 data-tts-idx 属性的真实 view 节点，
-   * 用 SelectorQuery 定位后滚动到视口 1/3 处。
+   * 朗读滚动跟随：tts 索引对应 data-tts-idx 属性的真实 view 节点。
+   * 滚动策略：高亮段一离开视口上部舒适区（顶部 1/4 线）就立即滚，
+   * 目标是把它放到视口 1/4 处——提前滚动，段落念完前不会出屏。
    */
   _scrollToTts(idx) {
+    // 节流：段切换可能密集，滚动动画期间不再叠加
+    if (this._ttsScrolling) return;
     wx.createSelectorQuery()
       .select(`[data-tts-idx="${idx}"]`)
       .boundingClientRect(rect => {
         if (!rect) return;
-        const vh = wx.getWindowInfo().windowHeight;
-        if (rect.top < 100 || rect.top > vh - 200) {
-          wx.createSelectorQuery()
-            .selectViewport()
-            .scrollOffset(pos => {
-              const top = (pos ? pos.scrollTop : 0) + rect.top - vh / 3;
-              wx.pageScrollTo({ scrollTop: Math.max(0, top), duration: 200 });
-            })
-            .exec();
-        }
+        const win = wx.getWindowInfo();
+        const vh = win.windowHeight;
+        // 视口顶部安全区（导航栏 + 顶部工具条高度估算）
+        const safeTop = 120;
+        // 舒适区：视口 1/4 ~ 底部 -180；离开就滚到 1/4 处
+        const comfortableTop = safeTop + (vh - safeTop) * 0.25;
+        const bottomLimit = vh - 180;
+        if (rect.top >= comfortableTop && rect.top <= bottomLimit) return; // 在舒适区内不动
+        this._ttsScrolling = true;
+        wx.createSelectorQuery()
+          .selectViewport()
+          .scrollOffset(pos => {
+            const target = Math.max(0, (pos ? pos.scrollTop : 0) + rect.top - comfortableTop);
+            wx.pageScrollTo({
+              scrollTop: target,
+              duration: 260,
+              complete: () => { setTimeout(() => { this._ttsScrolling = false; }, 150); },
+            });
+          })
+          .exec();
       })
       .exec();
   },

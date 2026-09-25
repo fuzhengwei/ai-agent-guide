@@ -23,7 +23,8 @@ Page({
         const list = (res.list || []).map(n => ({
           ...n,
           timeText: this._fmtTime(n.createdAt),
-          preview: n.selectedText.length > 60 ? n.selectedText.slice(0, 60) + '…' : n.selectedText,
+          // 原文完整展示（不限 60 字截断），过长卡片内自然换行
+          preview: n.selectedText || '',
         }));
         this.setData({ list, loading: false, online: true });
       } else {
@@ -44,6 +45,16 @@ Page({
     const c = chapters[idx];
     wx.navigateTo({
       url: `/packages/${c.pkg}/pages/reader/reader?key=${c.key}&slug=${c.slug}`,
+    });
+  },
+
+  // 复制收藏原文/笔记（点「复制」或长按文本）
+  copyText(e) {
+    const text = e.currentTarget.dataset.text;
+    if (!text) return;
+    wx.setClipboardData({
+      data: text,
+      success: () => wx.showToast({ title: '已复制', icon: 'success' }),
     });
   },
 

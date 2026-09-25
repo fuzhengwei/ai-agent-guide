@@ -30,7 +30,7 @@ Page({
     const quizIndex = require('../../data/quiz-index.js');
     const st = store.getStudyTime();
     this.setData({
-      total: chapters.length,
+      total: chapters.filter(c => typeof c.num === 'number').length,
       readCount: Object.keys(readMap).length,
       quizAttempts: recordKeys.reduce((s, k) => s + (records[k].attempts || 0), 0),
       quizDone: recordKeys.length,
@@ -131,7 +131,7 @@ Page({
   about() {
     wx.showModal({
       title: '关于',
-      content: 'AI Agent 通识教程 · 28 章渐进式可视化教程，配套 463 道面试题。\n网页版：ai-agent-guide.xiaofuge.cn',
+      content: 'AI Agent 通识教程 · 30 章渐进式可视化教程，配套 508 道面试题。\n网页版：ai-agent-guide.xiaofuge.cn',
       showCancel: false,
     });
   },
@@ -142,7 +142,7 @@ Page({
       const n = this.data.readCount;
       return n > 0
         ? `我在学 AI Agent 通识教程，已读完 ${n}/${this.data.total} 章，来和我一起打卡！`
-        : 'AI Agent 通识教程：28 章学会 Agent 开发，配 463 道大厂面试题';
+        : 'AI Agent 通识教程：30 章学会 Agent 开发，配 508 道大厂面试题';
     },
     '/pages/index/index'
   ),

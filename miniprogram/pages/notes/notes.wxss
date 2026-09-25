@@ -12,11 +12,12 @@
 .note-text {
   font-size: 27rpx; color: #1f2937; line-height: 1.65;
   border-left: 6rpx solid #eab308; padding-left: 14rpx;
+  word-break: break-all;
 }
 .note-text.is-note { border-left-color: #f97316; }
 .note-mine {
   font-size: 24rpx; color: #555; background: #f9fafb; border-radius: 10rpx;
-  padding: 12rpx 16rpx; margin-top: 12rpx; line-height: 1.6;
+  padding: 12rpx 16rpx; margin-top: 12rpx; line-height: 1.6; word-break: break-all;
 }
 .note-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 14rpx; }
 .note-time { font-size: 21rpx; color: #b0b7c3; }

@@ -8,10 +8,9 @@
   <!-- 已回到上次阅读位置提示 -->
   <view class="resume-tip" wx:if="{{resumeTip}}">📖 已回到上次阅读位置</view>
 
-  <!-- 悬浮工具：分享 + 收藏 + 目录 + 朗读 + 阅读设置 -->
+  <!-- 悬浮工具：分享 + 目录 + 朗读 + 阅读设置（收藏走长按段落，不再设按钮） -->
   <view class="reader-tools">
     <button class="tool-btn share-btn" open-type="share">↗</button>
-    <view class="tool-btn fav-btn" bindtap="onFavTap" bindlongpress="onFavHelp">☆</view>
     <view class="tool-btn toc-btn {{tocOpen ? 'on' : ''}}" wx:if="{{toc.length}}" bindtap="toggleToc">☰</view>
     <view class="tool-btn tts-btn {{ttsState !== 'idle' ? 'on' : ''}}" bindtap="toggleTtsPanel">
       <block wx:if="{{ttsState === 'idle'}}">🔊</block>
@@ -62,7 +61,7 @@
       <view class="set-label">文本选择</view>
       <switch checked="{{selectable}}" bindchange="toggleSelectable" color="#5a7cf7" />
     </view>
-    <view class="set-hint">开启后长按正文可选中复制；复制后点 ☆ 收藏/写笔记。关闭时改为长按弹出收藏菜单</view>
+    <view class="set-hint">开启后长按正文可选中复制；长按段落可直接收藏/写笔记</view>
   </view>
 
   <!-- 朗读面板（底部抽屉，内容超出可滚动） -->
@@ -250,12 +249,15 @@
     </block>
   </view>
 
-  <!-- 收藏/笔记输入弹窗 -->
+  <!-- 收藏/笔记输入弹窗：长按段落直接弹出，原文可编辑删减 -->
   <view class="fav-mask" wx:if="{{favModal}}" bindtap="closeFavModal"></view>
-  <view class="fav-modal" wx:if="{{favModal}}">
-    <view class="fav-quote">"{{favTextPreview}}"</view>
+  <view class="fav-modal" wx:if="{{favModal}}" catchtouchmove="noop">
+    <view class="fav-title">⭐ 收藏 / 写笔记</view>
+    <view class="fav-ch">📖 {{title}}</view>
+    <textarea class="fav-quote-input" value="{{favText}}" bindinput="onFavTextInput" maxlength="2000" auto-height placeholder="收藏的内容…（可编辑删减）" />
     <textarea class="fav-input" placeholder="写点笔记…（可不填，直接收藏）" value="{{favNoteInput}}" bindinput="onFavNoteInput" maxlength="500" auto-height />
     <view class="fav-actions">
+      <view class="fav-act" catchtap="copyFavText">复制内容</view>
       <view class="fav-act" bindtap="closeFavModal">取消</view>
       <view class="fav-act primary" bindtap="saveFav">{{favNoteInput ? '收藏+笔记' : '收藏'}}</view>
     </view>

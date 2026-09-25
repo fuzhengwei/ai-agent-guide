@@ -157,7 +157,8 @@ Page({
       if (i >= list.length) { if (done) done(); return; }
       const msg = list[i];
       this.setData({ typing: true });
-      this._bottom();
+      // 分析类气泡（标准答案+解析）很长，等它渲染完再校准一次滚动
+      this._bottom(msg.kind === 'analysis');
       const wait = Math.min(420 + (msg.text || '').length * 12, 1200);
       this._t1 = setTimeout(() => {
         if (this._gone) return;
@@ -183,14 +184,21 @@ Page({
   // 滚到底部：scroll-into-view 只有值变化才触发。
   // 但 scroll-view 内容高度尚未铺好时立即 setData 会被忽略，
   // 这里先清空、等下一帧内容渲染完成后再设置目标锚点，保证每次必滚。
-  _bottom() {
-    const tick = this.data.tick + 1;
-    const target = 'bt' + tick;
-    this.setData({ tick, scrollInto: '' });
-    setTimeout(() => {
+  // again=true 时 400ms 后再校准一次：选项面板弹出/收起、长气泡渲染
+  // 都会改变容器高度，等布局稳定后再跳一次，避免新内容被面板挡在屏幕外。
+  _bottom(again) {
+    const jump = () => {
       if (this._gone) return;
-      this.setData({ scrollInto: target });
-    }, 60);
+      const tick = this.data.tick + 1;
+      const target = 'bt' + tick;
+      this.setData({ tick, scrollInto: '' });
+      setTimeout(() => {
+        if (this._gone) return;
+        this.setData({ scrollInto: target });
+      }, 60);
+    };
+    jump();
+    if (again) setTimeout(jump, 400);
   },
 
   _random(arr) {
@@ -222,8 +230,10 @@ Page({
       label: '问题 ' + (i + 1) + ' / ' + this.data.total,
       text: q.question,
     }], () => {
+      // awaiting=true 会让底部选项面板弹出、对话区变矮，面板动画 300ms；
+      // 这里二次校准滚动，确保新题完整滚进视野
       this.setData({ options: this._buildOptions(q, [], false), awaiting: true });
-      this._bottom();
+      this._bottom(true);
     });
   },
 
@@ -286,7 +296,7 @@ Page({
       correctCount,
     });
 
-    // ① 我的回答落成气泡
+    // ① 我的回答落成气泡（回答后面板收起、点评气泡较长，二次校准）
     this._push({
       role: 'me', kind: 'answer',
       text: sel.slice().sort((a, b) => a - b)

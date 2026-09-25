@@ -5,7 +5,7 @@
     <view class="hero-badge">📚 教程配套面试</view>
     <view class="hero-title">学完一章</view>
     <view class="hero-title">来场面试</view>
-    <view class="hero-sub">28 章教程题库 · 4 种面试官风格 · 逐章检验掌握度</view>
+    <view class="hero-sub">30 章教程题库 · 4 种面试官风格 · 逐章检验掌握度</view>
     <view class="hero-stats">
       <view class="stat">
         <text class="stat-num">{{chapterCount}}</text>

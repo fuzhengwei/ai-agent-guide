@@ -1,7 +1,7 @@
 /**
  * 面试 tab 首页：教程配套面试入口
  *
- * 28 章教程题库逐章面试 + 4 种面试官风格 + 大厂真题 + 混合面试
+ * 30 章教程题库逐章面试 + 4 种面试官风格 + 大厂真题 + 混合面试
  */
 const store = require('../../utils/store.js');
 const share = require('../../utils/share.js');
@@ -132,7 +132,7 @@ Page({
   },
 
   ...share.attach(
-    'AI Agent 教程配套面试：28 章逐章检验，4 种面试官风格，大厂真题实战',
+    'AI Agent 教程配套面试：30 章逐章检验，4 种面试官风格，大厂真题实战',
     '/pages/quiz/quiz'
   ),
 });
