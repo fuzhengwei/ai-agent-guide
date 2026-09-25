@@ -48,10 +48,13 @@ function rateToSpeed(rate) {
   return Math.max(-2, Math.min(2, Math.round(speed)));
 }
 
+// 缓存版本：升级合成模型/想强制旧音频作废时 +1（前端 utils/tts.js 同步改）
+const CACHE_VERSION = 'v1';
+
 // 缓存 key：语速按 0.1 粒度归一，避免 1.0 和 1.03 产生两份缓存
 function cacheKey(voiceType, rate, text) {
   const r = Math.round((Number(rate) || 1) * 10) / 10;
-  return crypto.createHash('md5').update(`${voiceType}|${r}|${text}`).digest('hex');
+  return crypto.createHash('md5').update(`${CACHE_VERSION}|${voiceType}|${r}|${text}`).digest('hex');
 }
 
 // 云端缓存：tts-audio/{key}.mp3，存在则换临时 URL 返回

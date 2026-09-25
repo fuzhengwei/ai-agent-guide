@@ -60,69 +60,71 @@
     <view class="set-hint">范围 22 ~ 38，当前 {{fontPercent}}%，自动保存</view>
   </view>
 
-  <!-- 朗读面板 -->
+  <!-- 朗读面板（底部抽屉，内容超出可滚动） -->
   <view class="tts-mask" wx:if="{{ttsPanelOpen}}" bindtap="toggleTtsPanel"></view>
-  <view class="tts-panel" wx:if="{{ttsPanelOpen}}">
+  <view class="tts-panel" wx:if="{{ttsPanelOpen}}" catchtouchmove="noop">
+    <view class="tts-grabber"></view>
     <view class="tts-head">
       <view class="tts-title">🔊 语音朗读</view>
       <view class="tts-close" bindtap="toggleTtsPanel">✕</view>
     </view>
-    <view class="tts-body" wx:if="{{ttsSupported}}">
-      <view class="tts-row">
-        <view class="tts-label">音色</view>
-        <view class="tts-voices">
-          <view
-            wx:for="{{voices}}"
-            wx:key="id"
-            class="voice-opt {{ttsVoice === item.id ? 'on' : ''}}"
-            data-id="{{item.id}}"
-            bindtap="setVoice"
-          >
-            <view class="voice-emoji">{{item.emoji}}</view>
-            <view class="voice-name">{{item.label}}</view>
-            <view class="voice-desc">{{item.desc}}</view>
+    <scroll-view scroll-y enhanced show-scrollbar="{{false}}" class="tts-scroll">
+      <view class="tts-body" wx:if="{{ttsSupported}}">
+        <view class="tts-row">
+          <view class="tts-label">音色 <text class="tts-label-sub">· 点卡片选中，点试听小圆钮试听</text></view>
+          <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="tts-voices">
             <view
-              class="voice-try {{previewingVoice === item.id ? 'ing' : ''}}"
-              catchtap="previewVoice"
+              wx:for="{{voices}}"
+              wx:key="id"
+              class="voice-opt {{ttsVoice === item.id ? 'on' : ''}}"
               data-id="{{item.id}}"
-            >{{previewingVoice === item.id ? '播放中…' : '▶ 试听'}}</view>
+              bindtap="setVoice"
+            >
+              <view class="voice-emoji">{{item.emoji}}</view>
+              <view class="voice-name">{{item.label}}</view>
+              <view class="voice-desc">{{item.desc}}</view>
+              <view
+                class="voice-try {{previewingVoice === item.id ? 'ing' : ''}}"
+                catchtap="previewVoice"
+                data-id="{{item.id}}"
+              >{{previewingVoice === item.id ? '●' : '▶'}}</view>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="tts-row">
+          <view class="tts-label">语速 <text class="tts-label-sub">· {{ttsRate}}x</text></view>
+          <slider min="0.6" max="1.8" step="0.1" value="{{ttsRate}}" activeColor="#5a7cf7" block-size="18" bindchanging="onRateChanging" bindchange="onRateChange" />
+        </view>
+        <view class="tts-row">
+          <view class="tts-label">定时停止</view>
+          <view class="tts-timer-opts">
+            <view
+              wx:for="{{timerOptions}}"
+              wx:key="id"
+              class="timer-opt {{ttsTimer === item.id ? 'on' : ''}}"
+              data-id="{{item.id}}"
+              bindtap="setTimer"
+            >{{item.label}}</view>
           </view>
         </view>
+        <view class="tts-timer-info" wx:if="{{ttsTimer !== 'none' && timerCountdownText}}">⏰ {{timerCountdownText}}</view>
+        <view class="tts-controls">
+          <view class="tts-ctl-btn primary" bindtap="ttsPlay" wx:if="{{ttsState === 'idle'}}">▶ 朗读本章</view>
+          <view class="tts-ctl-btn" bindtap="ttsPause" wx:if="{{ttsState === 'playing' || ttsState === 'synthesizing'}}">⏸ 暂停</view>
+          <view class="tts-ctl-btn primary" bindtap="ttsResume" wx:if="{{ttsState === 'paused'}}">▶ 继续</view>
+          <view class="tts-ctl-btn stop" bindtap="ttsStop" wx:if="{{ttsState !== 'idle'}}">⏹ 停止</view>
+        </view>
+        <view class="tts-status" wx:if="{{ttsState !== 'idle'}}">
+          {{ttsState === 'synthesizing' ? '合成中…' : '正在朗读 ' + (ttsIndex + 1) + ' / ' + ttsTotal + ' 段'}}
+        </view>
+        <view class="tts-hint">朗读时自动滚动跟随当前段落；离开本章自动停止</view>
       </view>
-      <view class="tts-row">
-        <view class="tts-label">语速</view>
-        <slider min="0.6" max="1.8" step="0.1" value="{{ttsRate}}" activeColor="#5a7cf7" block-size="18" bindchanging="onRateChanging" bindchange="onRateChange" />
-        <view class="tts-rate-val">{{ttsRate}}x</view>
-      </view>
-      <view class="tts-row">
-        <view class="tts-label">定时停止</view>
-        <view class="tts-timer-opts">
-          <view
-            wx:for="{{timerOptions}}"
-            wx:key="id"
-            class="timer-opt {{ttsTimer === item.id ? 'on' : ''}}"
-            data-id="{{item.id}}"
-            bindtap="setTimer"
-          >{{item.label}}</view>
+      <view class="tts-body" wx:else>
+        <view class="tts-unsupported">
+          朗读服务需要云开发环境。<br/>请确认已开通云开发并部署 tts 云函数。
         </view>
       </view>
-      <view class="tts-timer-info" wx:if="{{ttsTimer !== 'none' && timerCountdownText}}">⏰ {{timerCountdownText}}</view>
-      <view class="tts-controls">
-        <view class="tts-ctl-btn primary" bindtap="ttsPlay" wx:if="{{ttsState === 'idle'}}">▶ 朗读本章</view>
-        <view class="tts-ctl-btn" bindtap="ttsPause" wx:if="{{ttsState === 'playing' || ttsState === 'synthesizing'}}">⏸ 暂停</view>
-        <view class="tts-ctl-btn primary" bindtap="ttsResume" wx:if="{{ttsState === 'paused'}}">▶ 继续</view>
-        <view class="tts-ctl-btn stop" bindtap="ttsStop" wx:if="{{ttsState !== 'idle'}}">⏹ 停止</view>
-      </view>
-      <view class="tts-status" wx:if="{{ttsState !== 'idle'}}">
-        {{ttsState === 'synthesizing' ? '合成中…' : '正在朗读 ' + (ttsIndex + 1) + ' / ' + ttsTotal + ' 段'}}
-      </view>
-      <view class="tts-hint">朗读时自动滚动跟随当前段落；离开本章自动停止</view>
-    </view>
-    <view class="tts-body" wx:else>
-      <view class="tts-unsupported">
-        朗读服务需要云开发环境。<br/>请确认已开通云开发并部署 tts 云函数。
-      </view>
-    </view>
+    </scroll-view>
   </view>
 
   <!-- 章节头：「本书教程 › 第N章」面包屑 + 纯标题（序号不再重复出现在标题里） -->

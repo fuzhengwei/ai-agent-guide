@@ -31,6 +31,8 @@ const PREVIEW_TEXT = '你好，我是你的学习伙伴，让我为你朗读这�
 const CACHE_PREFIX = 'tts-cache-v1:';
 const CHAPTER_LIST_KEY = 'tts-cache-chapters';
 const MAX_CACHED_CHAPTERS = 3;
+// 缓存版本：与云函数 CACHE_VERSION 保持一致；升级模型/音色品质时 +1，全站旧缓存自动作废
+const CACHE_VERSION = 'v1';
 
 function getVoices() { return VOICES; }
 
@@ -129,7 +131,7 @@ function createEngine(opts) {
 
   function _key(text, v, r) {
     const rt = Math.round((r || 1) * 10) / 10;
-    return _hash(`${(v || voice).voiceType}|${rt}|${text}`);
+    return _hash(`${CACHE_VERSION}|${(v || voice).voiceType}|${rt}|${text}`);
   }
 
   // 云函数返回（url 或 base64）→ 本地文件路径

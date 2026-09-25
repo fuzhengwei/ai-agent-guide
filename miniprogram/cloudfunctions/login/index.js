@@ -20,7 +20,19 @@ exports.main = async (event) => {
 
   try {
   // 查档案，没有则创建（默认昵称脱敏）
-  const { data } = await profiles.where({ _openid: OPENID }).limit(1).get();
+  let queryRes;
+  try {
+    queryRes = await profiles.where({ _openid: OPENID }).limit(1).get();
+  } catch (e) {
+    // 集合不存在时自动建集合并重试一次（绕过控制台手工建集合）
+    if (/collection not exists|COLLECTION_NOT_EXIST/i.test((e && e.message) || String(e))) {
+      try { await db.createCollection('user_profiles'); } catch (_) { /* 已存在则忽略 */ }
+      queryRes = await profiles.where({ _openid: OPENID }).limit(1).get();
+    } else {
+      throw e;
+    }
+  }
+  const { data } = queryRes;
   let profile = data[0];
 
   if (event.action === 'setNickname') {

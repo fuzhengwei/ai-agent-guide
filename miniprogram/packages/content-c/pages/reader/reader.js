@@ -378,6 +378,8 @@ Page({
     this.setData({ ttsPanelOpen: !this.data.ttsPanelOpen });
   },
 
+  noop() {},
+
   setVoice(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;

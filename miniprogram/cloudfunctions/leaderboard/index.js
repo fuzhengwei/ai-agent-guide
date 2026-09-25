@@ -7,7 +7,7 @@ const db = cloud.database();
 function friendlyError(err) {
   const msg = (err && err.message) || String(err);
   if (/collection not exists|COLLECTION_NOT_EXIST/i.test(msg)) {
-    return '数据库集合未创建：请到云开发控制台「数据库」新建 user_profiles 集合';
+    return '排行榜暂未开放（数据库初始化中），稍后再试';
   }
   if (/permission denied|PERMISSION_DENIED/i.test(msg)) {
     return '数据库权限不足：请到云开发控制台「数据库 → 集合权限」放开读权限';
@@ -15,10 +15,22 @@ function friendlyError(err) {
   return msg;
 }
 
+// 集合不存在时自动创建（建一次后续就不再触发）
+async function ensureCollection(name) {
+  try {
+    await db.collection(name).limit(1).get();
+  } catch (e) {
+    if (/collection not exists|COLLECTION_NOT_EXIST/i.test((e && e.message) || String(e))) {
+      try { await db.createCollection(name); } catch (_) { /* 并发/已存在则忽略 */ }
+    }
+  }
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const profiles = db.collection('user_profiles');
   const { action } = event;
+  await ensureCollection('user_profiles');
 
   try {
   // 上报：累计学习时长 + 阅读数 + 积分/星数（客户端本地统计汇总后上传，全量覆盖）

@@ -14,10 +14,22 @@ function friendlyError(err) {
   return msg;
 }
 
+// 集合不存在时自动创建（建一次后续就不再触发）
+async function ensureCollection(name) {
+  try {
+    await db.collection(name).limit(1).get();
+  } catch (e) {
+    if (/collection not exists|COLLECTION_NOT_EXIST/i.test((e && e.message) || String(e))) {
+      try { await db.createCollection(name); } catch (_) { /* 并发/已存在则忽略 */ }
+    }
+  }
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const notes = db.collection('user_notes');
   const { action } = event;
+  await ensureCollection('user_notes');
 
   try {
   if (action === 'add') {
