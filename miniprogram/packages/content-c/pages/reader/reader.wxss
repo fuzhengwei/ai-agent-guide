@@ -437,6 +437,22 @@
 .fav-act.primary { background: linear-gradient(135deg, #5a7cf7, #4353c9); color: #fff; border: none; }
 .fav-btn { font-size: 34rpx; }
 
+/* 正文可选中时的长按反馈 */
+.nd-p, .nd-h, .nd-quote, .nd-li-txt, .nd-qaq, .reader-title, .reader-sub {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.reader-wrap.selectable-on .nd-p,
+.reader-wrap.selectable-on .nd-h,
+.reader-wrap.selectable-on .nd-quote,
+.reader-wrap.selectable-on .nd-li-txt,
+.reader-wrap.selectable-on .nd-qaq,
+.reader-wrap.selectable-on .reader-title,
+.reader-wrap.selectable-on .reader-sub {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* ===== 语音朗读（底部抽屉 + 内部滚动） ===== */
 .tool-btn.tts-btn { font-size: 30rpx; }
 .tts-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 46; background: rgba(15, 23, 42, 0.38); }

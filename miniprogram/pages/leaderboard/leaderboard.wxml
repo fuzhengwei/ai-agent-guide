@@ -1,15 +1,21 @@
 <view class="page">
   <!-- 我的数据卡 -->
   <view class="me-card" wx:if="{{me}}">
+    <button class="me-avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+      <image class="me-avatar" wx:if="{{me.avatarUrl}}" src="{{me.avatarUrl}}" mode="aspectFill" />
+      <view class="me-avatar me-avatar-fb" wx:else style="background:linear-gradient(135deg,{{me.avatarBg[0]}},{{me.avatarBg[1]}})">{{me.initial}}</view>
+      <view class="me-avatar-tip">换头像</view>
+    </button>
     <view class="me-left">
-      <view class="me-name">👤 {{me.nickname}}</view>
+      <view class="me-name">{{me.nickname}}</view>
       <view class="me-sub">本地累计学习 {{studyText}}</view>
     </view>
     <view class="me-rank" wx:if="{{myRank}}">第 {{myRank}} 名</view>
   </view>
   <view class="me-card" wx:elif="{{online && !loading}}">
+    <view class="me-avatar me-avatar-fb" style="background:rgba(255,255,255,.18)">👤</view>
     <view class="me-left">
-      <view class="me-name">👤 未登录</view>
+      <view class="me-name">未登录</view>
       <view class="me-sub">打开小程序即自动登录</view>
     </view>
   </view>
@@ -35,7 +41,12 @@
   </view>
 
   <view class="row {{item.isMe ? 'me' : ''}}" wx:for="{{list}}" wx:key="rank">
-    <view class="medal">{{item.medal}}</view>
+    <view class="avatar-wrap">
+      <image class="avatar" wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+      <view class="avatar avatar-fb" wx:else style="background:linear-gradient(135deg,{{item.avatarBg[0]}},{{item.avatarBg[1]}})">{{item.initial}}</view>
+      <view class="medal-badge" wx:if="{{item.rank <= 3}}">{{item.medal}}</view>
+    </view>
+    <view class="rank-num" wx:if="{{item.rank > 3}}">{{item.rank}}</view>
     <view class="name">{{item.nickname}}</view>
     <view class="val">{{item.valueText}}</view>
   </view>

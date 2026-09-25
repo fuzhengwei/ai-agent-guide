@@ -1,4 +1,4 @@
-<view class="reader-wrap {{nightMode ? 'night' : ''}}">
+<view class="reader-wrap {{nightMode ? 'night' : ''}} {{selectable ? 'selectable-on' : ''}}">
 
   <!-- 顶部阅读进度条 -->
   <view class="read-progress">
@@ -58,6 +58,11 @@
       </view>
     </view>
     <view class="set-hint">范围 22 ~ 38，当前 {{fontPercent}}%，自动保存</view>
+    <view class="set-row">
+      <view class="set-label">文本选择</view>
+      <switch checked="{{selectable}}" bindchange="toggleSelectable" color="#5a7cf7" />
+    </view>
+    <view class="set-hint">开启后长按正文可选中复制；复制后点 ☆ 收藏/写笔记。关闭时改为长按弹出收藏菜单</view>
   </view>
 
   <!-- 朗读面板（底部抽屉，内容超出可滚动） -->
@@ -134,8 +139,8 @@
       <text class="reader-bread-sep">›</text>
       <text class="reader-bread-num">第 {{chapterNum}} 章</text>
     </view>
-    <view class="reader-title">{{titleMain || title}}</view>
-    <view class="reader-sub" wx:if="{{subtitle}}">{{subtitle}}</view>
+    <view class="reader-title" selectable="{{selectable}}" data-text="{{titleMain || title}}" bindlongpress="onNodeLongPress">{{titleMain || title}}</view>
+    <view class="reader-sub" wx:if="{{subtitle}}" selectable="{{selectable}}" data-text="{{subtitle}}" bindlongpress="onNodeLongPress">{{subtitle}}</view>
   </view>
 
   <!--
@@ -149,16 +154,16 @@
   <view class="fs-c" style="--fs: {{fontSize}}rpx;">
     <block wx:for="{{nodes}}" wx:key="index">
       <!-- 段落 -->
-      <view wx:if="{{item.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
+      <view wx:if="{{item.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{item.tts}}" selectable="{{selectable}}" data-text="{{item.text}}" bindlongpress="onNodeLongPress">{{item.text}}</view>
       <!-- 小节标题（目录锚点：真实节点 id，可 scroll 定位） -->
-      <view wx:elif="{{item.type === 'h'}}" id="{{item.anchor}}" class="nd-h lv{{item.level}}">{{item.text}}</view>
+      <view wx:elif="{{item.type === 'h'}}" id="{{item.anchor}}" class="nd-h lv{{item.level}}" selectable="{{selectable}}" data-text="{{item.text}}" bindlongpress="onNodeLongPress">{{item.text}}</view>
       <!-- 引用 -->
-      <view wx:elif="{{item.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
+      <view wx:elif="{{item.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{item.tts}}" selectable="{{selectable}}" data-text="{{item.text}}" bindlongpress="onNodeLongPress">{{item.text}}</view>
       <!-- 列表 -->
       <view wx:elif="{{item.type === 'list'}}" class="nd-list">
         <view wx:for="{{item.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z" data-tts-idx="{{li.tts}}">
           <text class="nd-li-dot">{{item.ordered ? (index + 1) + '.' : '•'}}</text>
-          <text class="nd-li-txt">{{li.text}}</text>
+          <text class="nd-li-txt" selectable="{{selectable}}" data-text="{{li.text}}" bindlongpress="onNodeLongPress">{{li.text}}</text>
         </view>
       </view>
       <!-- 代码块（独立横滑） -->
@@ -188,27 +193,27 @@
       <view wx:elif="{{item.type === 'card'}}" class="nd-card {{item.accent}} {{item.qa ? 'nd-qa' : ''}}">
         <view class="nd-card-title" wx:if="{{item.title}}">{{item.title}}</view>
         <block wx:for="{{item.children}}" wx:for-item="c" wx:key="index">
-          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
-          <view wx:elif="{{c.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
+          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}" selectable="{{selectable}}" data-text="{{c.text}}" bindlongpress="onNodeLongPress">{{c.text}}</view>
+          <view wx:elif="{{c.type === 'quote'}}" class="nd-quote fs-z" data-tts-idx="{{c.tts}}" selectable="{{selectable}}" data-text="{{c.text}}" bindlongpress="onNodeLongPress">{{c.text}}</view>
           <view wx:elif="{{c.type === 'list'}}" class="nd-list">
             <view wx:for="{{c.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z">
               <text class="nd-li-dot">{{c.ordered ? (index + 1) + '.' : '•'}}</text>
-              <text class="nd-li-txt">{{li.text}}</text>
+              <text class="nd-li-txt" selectable="{{selectable}}" data-text="{{li.text}}" bindlongpress="onNodeLongPress">{{li.text}}</text>
             </view>
           </view>
         </block>
       </view>
       <!-- 问答问句行 -->
-      <view wx:elif="{{item.type === 'qaq'}}" class="nd-qaq fs-z" data-tts-idx="{{item.tts}}">{{item.text}}</view>
+      <view wx:elif="{{item.type === 'qaq'}}" class="nd-qaq fs-z" data-tts-idx="{{item.tts}}" selectable="{{selectable}}" data-text="{{item.text}}" bindlongpress="onNodeLongPress">{{item.text}}</view>
       <!-- 对话模拟气泡 -->
       <view wx:elif="{{item.type === 'chat'}}" class="nd-chat {{item.tone}}">
         <view class="nd-chat-label" wx:if="{{item.label}}">{{item.label}}</view>
         <block wx:for="{{item.children}}" wx:for-item="c" wx:key="index">
-          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}">{{c.text}}</view>
+          <view wx:if="{{c.type === 'p'}}" class="nd-p fs-z" data-tts-idx="{{c.tts}}" selectable="{{selectable}}" data-text="{{c.text}}" bindlongpress="onNodeLongPress">{{c.text}}</view>
           <view wx:elif="{{c.type === 'list'}}" class="nd-list">
             <view wx:for="{{c.items}}" wx:for-item="li" wx:key="index" class="nd-li fs-z">
               <text class="nd-li-dot">{{c.ordered ? (index + 1) + '.' : '•'}}</text>
-              <text class="nd-li-txt">{{li.text}}</text>
+              <text class="nd-li-txt" selectable="{{selectable}}" data-text="{{li.text}}" bindlongpress="onNodeLongPress">{{li.text}}</text>
             </view>
           </view>
         </block>

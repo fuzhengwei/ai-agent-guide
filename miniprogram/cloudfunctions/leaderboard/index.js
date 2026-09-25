@@ -58,11 +58,12 @@ exports.main = async (event) => {
       .where({ [field]: db.command.gt(0) })
       .orderBy(field, 'desc')
       .limit(50)
-      .field({ nickname: true, totalStudyMs: true, readCount: true, xp: true, stars: true })
+      .field({ nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true })
       .get();
     // 只返回公开字段（无 openid），并标记是否本人
     const list = data.map(p => ({
       nickname: p.nickname,
+      avatarUrl: p.avatarUrl || '',
       totalStudyMs: p.totalStudyMs || 0,
       readCount: p.readCount || 0,
       xp: p.xp || 0,
@@ -70,7 +71,7 @@ exports.main = async (event) => {
     }));
     // 我的名次
     const mine = await profiles.where({ _openid: OPENID }).limit(1)
-      .field({ nickname: true, totalStudyMs: true, readCount: true, xp: true, stars: true }).get();
+      .field({ nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true }).get();
     let myRank = 0;
     if (mine.data[0]) {
       const myVal = mine.data[0][field] || 0;

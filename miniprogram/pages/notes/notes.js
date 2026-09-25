@@ -1,4 +1,5 @@
 const cloud = require('../../utils/cloud.js');
+const chapters = require('../../data/chapters.js');
 
 Page({
   data: {
@@ -28,6 +29,21 @@ Page({
       } else {
         this.setData({ loading: false, online: false });
       }
+    });
+  },
+
+  // 点击笔记卡片：跳转到对应章节继续阅读
+  goChapter(e) {
+    const key = e.currentTarget.dataset.chapter;
+    if (!key) return;
+    const idx = chapters.findIndex(c => c.key === key);
+    if (idx === -1) {
+      wx.showToast({ title: '章节已不存在', icon: 'none' });
+      return;
+    }
+    const c = chapters[idx];
+    wx.navigateTo({
+      url: `/packages/${c.pkg}/pages/reader/reader?key=${c.key}&slug=${c.slug}`,
     });
   },
 

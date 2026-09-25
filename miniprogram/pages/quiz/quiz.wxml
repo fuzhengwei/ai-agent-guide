@@ -22,6 +22,18 @@
     </view>
   </view>
 
+  <!-- 语音讲解入口：面试区域上方 -->
+  <view class="listen-entry" bindtap="goListen" hover-class="press">
+    <view class="listen-left">
+      <view class="listen-emoji">🎧</view>
+      <view class="listen-info">
+        <view class="listen-title">面试题讲解</view>
+        <view class="listen-sub">老师念题 · 同学讲解 · 可续听</view>
+      </view>
+    </view>
+    <view class="listen-go">去听 ›</view>
+  </view>
+
   <!-- 面试官风格：紧凑横排 -->
   <view class="sec">
     <view class="sec-title">面试官风格</view>

@@ -911,7 +911,13 @@ function main() {
   ['runner.js', 'runner.wxml', 'runner.wxss', 'runner.json'].forEach(f => {
     fs.copyFileSync(path.join(quizTpl, f), path.join(quizRunnerDir, f));
   });
-  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner'] });
+  // 语音讲解页（老师/同学双角色朗读面试题）：模板源在 mp-templates/quiz/qa-listen/
+  const qaListenDir = path.join(quizPkg, 'pages', 'qa-listen');
+  fs.mkdirSync(qaListenDir, { recursive: true });
+  ['qa-listen.js', 'qa-listen.wxml', 'qa-listen.wxss', 'qa-listen.json'].forEach(f => {
+    fs.copyFileSync(path.join(quizTpl, 'qa-listen', f), path.join(qaListenDir, f));
+  });
+  subpkgPages.push({ root: 'packages/quiz', pages: ['pages/runner/runner', 'pages/qa-listen/qa-listen'] });
 
   // 大厂真题场次追加到主包章节注册表（排在教程章节之后，复用同一套面试 runner）
   BOSS_QUIZZES.forEach(b => {

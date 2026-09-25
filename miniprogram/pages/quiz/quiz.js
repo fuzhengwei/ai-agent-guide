@@ -107,6 +107,12 @@ Page({
     wx.vibrateShort({ type: 'light' });
   },
 
+  // 语音讲解入口
+  goListen() {
+    wx.vibrateShort({ type: 'light' });
+    wx.navigateTo({ url: '/packages/quiz/pages/qa-listen/qa-listen' });
+  },
+
   startChapter(e) {
     const key = e.currentTarget.dataset.key;
     const title = e.currentTarget.dataset.title;

@@ -1,4 +1,4 @@
 {
-  "version": "20260925.3",
-  "changelog": "新增第11章「工业级 Harness 解剖：deepseek-harness-java」（事件溯源/审批双防线/ArchUnit 等 8 八股+15题），后续17章节编号全量顺延+1"
+  "version": "20260925.9",
+  "changelog": "语音讲解：修复气泡列表不渲染的根因（wx:key 保留字冲突与内外层 index 遮蔽），题目/答案对话全文常驻显示"
 }

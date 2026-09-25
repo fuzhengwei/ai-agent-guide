@@ -15,6 +15,7 @@
 - 构建脚本转换器为递归渲染（renderFlow/renderContainer），容器内表格/代码/问答均可转换；新容器类型在 renderContainer 加分支，勿回退为「拍平文本」
 - rich-text 白名单限制：禁用 view/img本地路径/id；代码块多语言只保留一个 pane（active 或首个），是有意设计
 - 校验内容完整性用分句+中段探针法（/tmp/coverage2.py 思路）：代码多语言版与动画文案会造成匹配假象
+- ⚠️ 构建环境：cheerio 只在 ~/.workbuddy/binaries/node/workspace/node_modules，构建命令：`NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules <managed-node-22> tools/build-miniprogram.js`
 - 阅读体验（2026-09-24 晚起）：**正文渲染已从 rich-text 改为节点树**——chapter data 是 `nodes + ttsSegs + toc`（不再有 html 字段），reader.wxml 用 wx:for/递归 block 渲染 nd-* 节点；代码块/表格是独立 scroll-view 横滑；h2/h3 锚点是真实 view 的 id="h-N"，目录点击 createSelectorQuery 定位。tts 序号由构建期 assignTts/flattenTts 分配。⚠️ 不要回退 rich-text（它会拦截整页竖滑、CSS 变量穿不进内部节点、丢弃节点 id）。阅读位置存 store（dsh_read_pos/dsh_last_chapter），首页 onShow 弹「继续上次阅读」
 
 ## 最高优先级约定（2026-09-24 用户明确）

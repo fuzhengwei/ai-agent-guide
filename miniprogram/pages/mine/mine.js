@@ -2,6 +2,7 @@ const chapters = require('../../data/chapters.js');
 const store = require('../../utils/store.js');
 const pay = require('../../utils/pay.js');
 const share = require('../../utils/share.js');
+const cloud = require('../../utils/cloud.js');
 
 Page({
   data: {
@@ -16,6 +17,9 @@ Page({
     unlocked: true,
     studyTimeText: '尚未开始',
     studyDays: 0,
+    nickname: '',
+    avatarUrl: '',
+    initial: '友',
   },
 
   onShow() {
@@ -37,7 +41,54 @@ Page({
       studyTimeText: this._fmtMs(st.total),
       studyDays: st.days,
     });
+    // 登录完成后填充头像昵称
+    const app = getApp();
+    if (app && app.onLoginReady) {
+      app.onLoginReady(({ profile }) => {
+        if (!profile) return;
+        this.setData({
+          nickname: profile.nickname || '',
+          avatarUrl: profile.avatarUrl || '',
+          initial: (profile.nickname || '友').slice(0, 1),
+        });
+      });
+    }
   },
+
+  // 微信「头像昵称填写」：选择头像后上传云端档案
+  onChooseAvatar(e) {
+    const avatarUrl = (e.detail && e.detail.avatarUrl) || '';
+    if (!avatarUrl) return;
+    this.setData({ avatarUrl });
+    this._saveProfile({ avatarUrl });
+  },
+
+  // 昵称输入框（type="nickname"）失焦后保存
+  onNicknameBlur(e) {
+    const nickname = String((e.detail && e.detail.value) || '').trim().slice(0, 12);
+    if (!nickname || nickname === this.data.nickname) return;
+    this.setData({ nickname, initial: nickname.slice(0, 1) });
+    this._saveProfile({ nickname });
+  },
+
+  _saveProfile(patch) {
+    if (!cloud.ready()) return;
+    cloud.saveProfile({
+      nickname: this.data.nickname,
+      avatarUrl: this.data.avatarUrl,
+    }).then((r) => {
+      if (r && r.ok) {
+        const app = getApp();
+        if (app && app.globalData) {
+          app.globalData.profile = Object.assign({}, app.globalData.profile, patch);
+        }
+        wx.showToast({ title: '已保存', icon: 'success' });
+      } else {
+        wx.showToast({ title: (r && r.msg) || '保存失败', icon: 'none' });
+      }
+    });
+  },
+
 
   goNotes() {
     wx.navigateTo({ url: '/pages/notes/notes' });

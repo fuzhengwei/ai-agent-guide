@@ -129,6 +129,59 @@ function createEngine(opts) {
       .slice(0, 300);
   }
 
+  // 分段合成播放：单段文本超限时按句子切成多段连续播（双角色对话的长解析用）
+  // sub 上下文登记到引擎，stop/pause 时一并停掉
+  function _speakLong(text, v, onDone) {
+    const chunks = _splitLong(text);
+    let ci = 0;
+    const gen = _gen;
+    function next() {
+      if (gen !== _gen) return; // stop/seek 后放弃旧序列
+      if (state !== 'playing' && state !== 'synthesizing') return;
+      if (ci >= chunks.length) { onDone && onDone(); return; }
+      const part = chunks[ci++];
+      _fetch(part, v, rate, (err, filePath) => {
+        if (err || gen !== _gen) { if (err) onDone && onDone(err); return; }
+        const sub = wx.createInnerAudioContext();
+        engine._subCtx = sub;
+        sub.obeyMuteSwitch = false;
+        sub.src = filePath;
+        sub.playbackRate = rate;
+        sub.onEnded(() => {
+          try { sub.destroy(); } catch (e) {}
+          if (engine._subCtx === sub) engine._subCtx = null;
+          next();
+        });
+        sub.onError(() => {
+          try { sub.destroy(); } catch (e) {}
+          if (engine._subCtx === sub) engine._subCtx = null;
+          onDone && onDone(new Error('play-failed'));
+        });
+        sub.play();
+      });
+    }
+    next();
+  }
+  function _splitLong(text) {
+    const t = String(text || '').trim();
+    if (t.length <= 280) return [t];
+    const parts = t.split(/(?<=[。！？；!?;])/);
+    const out = [];
+    let cur = '';
+    parts.forEach(p => {
+      if ((cur + p).length > 280) { if (cur) out.push(cur); cur = p; }
+      else cur += p;
+    });
+    if (cur) out.push(cur);
+    // 兜底：单句仍超限则硬切
+    const final = [];
+    out.forEach(p => {
+      while (p.length > 280) { final.push(p.slice(0, 280)); p = p.slice(280); }
+      if (p) final.push(p);
+    });
+    return final;
+  }
+
   function _key(text, v, r) {
     const rt = Math.round((r || 1) * 10) / 10;
     return _hash(`${CACHE_VERSION}|${(v || voice).voiceType}|${rt}|${text}`);
@@ -190,6 +243,14 @@ function createEngine(opts) {
     });
   }
 
+  function _segVoice(seg) {
+    // 段级音色（双角色对话讲解用）：段对象带 voice 字段则按段合成，否则用引擎当前音色
+    if (seg && seg.voice) {
+      return VOICES.find(x => x.id === seg.voice) || voice;
+    }
+    return voice;
+  }
+
   // 播放中后台预取接下来两段
   function _prefetch(fromIdx) {
     if (state !== 'playing' && state !== 'synthesizing') return;
@@ -198,7 +259,7 @@ function createEngine(opts) {
       if (!seg) continue;
       const text = _cleanText(seg.text);
       if (!text) continue;
-      _fetch(text, voice, rate, () => {});
+      _fetch(text, _segVoice(seg), rate, () => {});
     }
   }
 
@@ -218,12 +279,37 @@ function createEngine(opts) {
     if (state !== 'playing') return;
     const seg = segments[index];
     if (!seg) { stop(); onState({ state: 'finished', index, total: segments.length }); return; }
+    // 长文本（如面试讲解的完整解析）走分段合成，不再被 300 字截断
+    const rawText = String(seg.text || '').trim();
+    if (rawText.length > 280) {
+      state = 'synthesizing';
+      notify();
+      _speakLong(rawText, _segVoice(seg), (err) => {
+        if (err) {
+          engine._failCount = (engine._failCount || 0) + 1;
+          if (engine._failCount >= 3 || engine._synthOk !== true) {
+            stop();
+            wx.showToast({ title: _errMsg(err), icon: 'none', duration: 3000 });
+            return;
+          }
+        } else {
+          engine._failCount = 0;
+          engine._synthOk = true;
+        }
+        if (state !== 'playing' && state !== 'synthesizing') return;
+        state = 'playing';
+        index++;
+        notify();
+        _speakCurrent();
+      });
+      return;
+    }
     const text = _cleanText(seg.text);
     if (!text) { index++; return _speakCurrent(); }
 
     state = 'synthesizing';
     notify();
-    _fetch(text, voice, rate, (err, filePath) => {
+    _fetch(text, _segVoice(seg), rate, (err, filePath) => {
       if (err) {
         engine._failCount = (engine._failCount || 0) + 1;
         // 首段失败 = 服务整体不可用，直接报真实原因；中途偶发失败跳段，连错 3 段中止
@@ -296,13 +382,23 @@ function createEngine(opts) {
     },
 
     pause() {
-      if (state === 'playing') { ctx.pause(); state = 'paused'; notify(); }
+      if (state === 'playing') {
+        ctx.pause();
+        if (engine._subCtx) { try { engine._subCtx.pause(); } catch (e) {} }
+        state = 'paused'; notify();
+      }
       else if (state === 'synthesizing') { state = 'paused'; notify(); }
     },
 
     resume() {
       if (state !== 'paused') return;
       state = 'playing';
+      if (engine._subCtx) {
+        // 长文本分段播放中被暂停：直接续播 sub 上下文
+        try { engine._subCtx.play(); } catch (e) {}
+        notify();
+        return;
+      }
       notify();
       _speakCurrent();
     },
@@ -327,6 +423,11 @@ function createEngine(opts) {
   function stop() {
     _gen++;
     ctx.stop();
+    // 长文本分段播放的 sub 上下文一并停掉
+    if (engine._subCtx) {
+      try { engine._subCtx.stop(); engine._subCtx.destroy(); } catch (e) {}
+      engine._subCtx = null;
+    }
     state = 'idle';
     index = 0;
     notify();

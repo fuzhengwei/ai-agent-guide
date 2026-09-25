@@ -8,6 +8,11 @@ const tts = require('../../../../utils/tts.js');
 // 阅读偏好持久化
 const PREF_KEY = 'dsh_reader_pref';
 
+// 归一化：去掉所有空白（含换行），用于「剪贴板选段 ↔ 本章正文」模糊匹配
+function normText(s) {
+  return String(s || '').replace(/\s+/g, '');
+}
+
 function loadPref() {
   try {
     return wx.getStorageSync(PREF_KEY) || {};
@@ -36,6 +41,7 @@ Page({
     fontSize: 28,        // 正文字号 rpx（22~38 连续调节）
     fontPercent: 100,
     panelOpen: false,
+    selectable: true,    // 文本选择开关（开启后可长按选中文字）
     // 语音朗读
     ttsPanelOpen: false,
     ttsSupported: false,
@@ -95,6 +101,7 @@ Page({
       nightMode: !!pref.nightMode,
       fontSize,
       fontPercent: Math.round(fontSize / 28 * 100),
+      selectable: pref.selectable !== false, // 默认开启
       ttsSupported: tts.isSupported(),
       voices: tts.getVoices(),
       ttsVoice: pref.ttsVoice || 'standard',
@@ -164,6 +171,8 @@ Page({
       ttsTotal: 0,
       ttsState: 'idle',
     });
+    // 构建本章正文的归一化文本集合（供收藏时匹配剪贴板内容是否出自本章）
+    this._bodyTexts = this._collectBodyTexts(ch);
     this._tocStamp = Date.now();
     this._resumeDone = false;
     this._docHeight = 0;
@@ -228,6 +237,7 @@ Page({
     this._reportStats();
   },
 
+  // 页面隐藏时：暂停计时与朗读（保留位置，回来可继续）
   onHide() {
     clearTimeout(this._posT);
     clearInterval(this._studyTick);
@@ -243,14 +253,56 @@ Page({
     if (!this._studyTick && this.data.title) this._startStudyTimer();
   },
 
+  // 文本选择开关：开启后正文段落/引用/列表项可长按选中复制
+  toggleSelectable(e) {
+    const on = !!e.detail.value;
+    this._pref = savePref({ selectable: on }, this._pref || {});
+    this.setData({ selectable: on });
+    if (on) {
+      wx.showToast({ title: '已开启，长按文字可选中', icon: 'none' });
+    }
+  },
+
   /* ===== 收藏与笔记 ===== */
 
-  // 点收藏按钮：尝试取剪贴板里刚复制的选段
+  // 收集本章所有可选文本，归一化后用于匹配剪贴板内容是否「出自本章」。
+  // 长选段（跨段选择）无法整段命中单个块，再用「长片段包含」兜底判断。
+  _collectBodyTexts(ch) {
+    const texts = [];
+    const push = (t) => { if (t) texts.push(normText(t)); };
+    (ch.nodes || []).forEach((n) => {
+      if (n.type === 'p' || n.type === 'quote' || n.type === 'h' || n.type === 'qaq') push(n.text);
+      else if (n.type === 'list') (n.items || []).forEach(li => push(li.text));
+      else if (n.type === 'card' || n.type === 'chat') (n.children || []).forEach(c => {
+        if (c.type === 'p' || c.type === 'quote') push(c.text);
+        else if (c.type === 'list') (c.items || []).forEach(li => push(li.text));
+      });
+    });
+    return texts;
+  },
+
+  // 判断剪贴板文本是否出自本章正文
+  _isFromChapter(text) {
+    const t = normText(text);
+    if (t.length < 2) return false;
+    if (this._bodyTexts && this._bodyTexts.some(b => b.includes(t))) return true;
+    // 长选段兜底：取选段中段 30 字做包含判断（首尾可能截断跨块）
+    if (t.length >= 40) {
+      const mid = t.slice(Math.floor(t.length / 2) - 15, Math.floor(t.length / 2) + 15);
+      return !!(this._bodyTexts && this._bodyTexts.some(b => b.includes(mid)));
+    }
+    return false;
+  },
+
+  // 点收藏按钮 ☆：取剪贴板，若内容出自本章正文则直接进收藏弹窗。
+  // 不再依赖「2.5 秒内刚复制」的时间戳判断——原生选中菜单里点「复制」并不会
+  // 触发页面 onHide，老方案的时间戳永远不生效；改为内容匹配，任何时刻复制
+  // 的本章内容都能收藏（仅要求与上次收藏的不是同一段）。
   onFavTap() {
     wx.getClipboardData({
       success: (res) => {
         const text = (res.data || '').trim();
-        if (text && text.length >= 4 && text.length <= 2000 && text !== this._lastFavText) {
+        if (text && text.length >= 2 && text.length <= 2000 && text !== this._lastFavText && this._isFromChapter(text)) {
           this._openFavModal(text);
         } else {
           this.onFavHelp();
@@ -263,9 +315,32 @@ Page({
   onFavHelp() {
     wx.showModal({
       title: '如何收藏段落',
-      content: '长按正文选中一段文字 → 点「复制」→ 再点这里 ☆，即可收藏并写笔记',
+      content: this.data.selectable
+        ? '长按正文选中一段文字 → 点「复制」→ 点右上角 ☆ 即可收藏/写笔记（复制的内容出自本章即可，不限时间）'
+        : '请先在阅读设置（Aa）中开启「文本选择」，之后长按正文选中文字即可复制收藏',
       showCancel: false,
       confirmText: '知道了',
+    });
+  },
+
+  // 长按段落/标题/引用：仅当「文本选择」关闭时弹快捷菜单。
+  // 开启文本选择时让路——长按要交给系统原生选中（用户先看到选区，
+  // 自己决定点「复制」还是取消），自定义弹窗会顶掉原生选区导致没法选字。
+  onNodeLongPress(e) {
+    if (this.data.selectable) return;
+    const text = (e.currentTarget.dataset.text || '').trim();
+    if (!text || text.length < 2) return;
+    wx.showActionSheet({
+      itemList: ['⭐ 收藏/写笔记', '📋 复制该段'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          const clipped = text.length > 2000 ? text.slice(0, 2000) : text;
+          this._openFavModal(clipped);
+        } else if (res.tapIndex === 1) {
+          wx.setClipboardData({ data: text });
+        }
+      },
+      fail: () => {},
     });
   },
 

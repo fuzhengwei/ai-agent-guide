@@ -12,6 +12,28 @@ page {
 
 .press { opacity: 0.7; transform: scale(0.98); }
 
+/* ---------- 语音讲解入口 ---------- */
+.listen-entry {
+  margin: 24rpx 24rpx 0;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1rpx solid #bfdbfe;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.listen-left { display: flex; align-items: center; min-width: 0; }
+.listen-emoji { font-size: 48rpx; margin-right: 20rpx; }
+.listen-title { font-size: 30rpx; font-weight: 700; color: #1e40af; }
+.listen-sub { font-size: 22rpx; color: #3b82f6; margin-top: 4rpx; }
+.listen-go {
+  font-size: 26rpx;
+  color: #2563eb;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* ---------- Hero ---------- */
 .hero {
   background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);

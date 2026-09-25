@@ -1,7 +1,32 @@
 <view class="wrap">
+  <!-- 个人资料卡 -->
+  <view class="profile-card">
+    <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+      <image class="avatar" wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
+      <view class="avatar avatar-fb" wx:else style="background:rgba(255,255,255,.18)">{{initial}}</view>
+      <view class="avatar-edit">✏️</view>
+    </button>
+    <view class="profile-info">
+      <input
+        class="nickname-input"
+        type="nickname"
+        value="{{nickname}}"
+        placeholder="点我设置昵称"
+        placeholder-class="nickname-ph"
+        bindblur="onNicknameBlur"
+        confirm-type="done"
+      />
+      <view class="profile-sub">
+        <text>⏱ {{studyTimeText}}</text>
+        <text wx:if="{{studyDays > 0}}"> · 连续 {{studyDays}} 天</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据统计 -->
   <view class="stats">
     <view class="stat-card">
-      <view class="stat-num">{{readCount}}/{{total}}</view>
+      <view class="stat-num">{{readCount}}<text class="stat-max">/{{total}}</text></view>
       <view class="stat-label">已读章节</view>
     </view>
     <view class="stat-card">
@@ -14,41 +39,38 @@
     </view>
   </view>
 
-  <!-- 学习时长 -->
-  <view class="study-time-card">
-    <view class="st-main">⏱ {{studyTimeText}}</view>
-    <view class="st-sub" wx:if="{{studyDays > 0}}">已连续学习 {{studyDays}} 天</view>
-  </view>
-
+  <!-- 学习入口 -->
   <view class="menu">
     <view class="menu-item" bindtap="goNotes">
-      <view>⭐ 我的收藏与笔记</view>
+      <view class="menu-title"><text class="menu-icon icon-amber">⭐</text>我的收藏与笔记</view>
       <view class="arrow">›</view>
     </view>
     <view class="menu-item" bindtap="goLeaderboard">
-      <view>🏆 排行榜</view>
+      <view class="menu-title"><text class="menu-icon icon-gold">🏆</text>排行榜</view>
       <view class="arrow">›</view>
     </view>
   </view>
 
+  <!-- 解锁（付费开关开启时） -->
   <view class="menu" wx:if="{{payEnabled}}">
     <view class="menu-item" bindtap="toggleUnlock">
-      <view>{{unlocked ? '已解锁全部章节 ✓' : '解锁全部章节'}}</view>
+      <view class="menu-title"><text class="menu-icon icon-violet">🔓</text>{{unlocked ? '已解锁全部章节 ✓' : '解锁全部章节'}}</view>
       <view class="arrow">›</view>
     </view>
   </view>
 
+  <!-- 通用 -->
   <view class="menu">
     <button class="menu-item share-item" open-type="share">
-      <view>推荐给朋友</view>
+      <view class="menu-title"><text class="menu-icon icon-blue">📤</text>推荐给朋友</view>
       <view class="arrow">›</view>
     </button>
     <view class="menu-item" bindtap="about">
-      <view>关于本教程</view>
+      <view class="menu-title"><text class="menu-icon icon-teal">ℹ️</text>关于本教程</view>
       <view class="arrow">›</view>
     </view>
     <view class="menu-item danger" bindtap="clearData">
-      <view>清除学习记录</view>
+      <view class="menu-title"><text class="menu-icon icon-red">🗑</text>清除学习记录</view>
       <view class="arrow">›</view>
     </view>
   </view>

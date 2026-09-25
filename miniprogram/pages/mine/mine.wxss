@@ -1,20 +1,78 @@
-.wrap { padding: 24rpx; 
+.wrap { padding: 24rpx;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
     "HarmonyOS Sans SC", "MiSans", "OPPO Sans", "HONOR Sans", "Source Han Sans SC",
     "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.stats { display: flex; gap: 16rpx; margin-bottom: 28rpx; }
-.stat-card { flex: 1; background: #ffffff; border-radius: 16rpx; padding: 28rpx 0; text-align: center; }
+/* ===== 个人资料卡 ===== */
+.profile-card {
+  display: flex; align-items: center;
+  background: linear-gradient(135deg, #5a7cf7, #4353c9);
+  border-radius: 20rpx; padding: 36rpx 28rpx; margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(67, 83, 201, .22);
+}
+.avatar-btn {
+  position: relative; margin: 0; padding: 0;
+  background: transparent; line-height: 1; border-radius: 50%; flex-shrink: 0;
+}
+.avatar-btn::after { border: none; }
+.avatar {
+  width: 112rpx; height: 112rpx; border-radius: 50%;
+  border: 4rpx solid rgba(255,255,255,.55);
+}
+.avatar-fb {
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 44rpx; font-weight: 700;
+}
+.avatar-edit {
+  position: absolute; right: -4rpx; bottom: -4rpx;
+  width: 36rpx; height: 36rpx; border-radius: 50%;
+  background: #fff; font-size: 20rpx; line-height: 36rpx; text-align: center;
+}
+.profile-info { flex: 1; margin-left: 26rpx; overflow: hidden; }
+.nickname-input {
+  color: #fff; font-size: 34rpx; font-weight: 700;
+  min-height: 48rpx; padding: 0;
+}
+.nickname-ph { color: rgba(255,255,255,.65); font-weight: 400; }
+.profile-sub { font-size: 22rpx; color: rgba(255,255,255,.82); margin-top: 10rpx; }
+
+/* ===== 数据统计 ===== */
+.stats { display: flex; gap: 16rpx; margin-bottom: 24rpx; }
+.stat-card {
+  flex: 1; background: #ffffff; border-radius: 16rpx;
+  padding: 28rpx 0; text-align: center;
+  box-shadow: 0 2rpx 8rpx rgba(17, 24, 39, .04);
+}
 .stat-num { font-size: 36rpx; font-weight: 700; color: #2563eb; }
 .stat-max { font-size: 22rpx; font-weight: 400; color: #9ca3af; }
 .stat-label { font-size: 24rpx; color: #9ca3af; margin-top: 8rpx; }
 
-.menu { background: #ffffff; border-radius: 16rpx; overflow: hidden; }
-.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 28rpx; border-bottom: 2rpx solid #f3f4f6; font-size: 29rpx; }
+/* ===== 菜单 ===== */
+.menu {
+  background: #ffffff; border-radius: 16rpx; overflow: hidden;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(17, 24, 39, .04);
+}
+.menu-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 26rpx 28rpx; border-bottom: 2rpx solid #f3f4f6; font-size: 29rpx;
+}
 .menu-item:last-child { border-bottom: none; }
 .menu-item.danger { color: #dc2626; }
+.menu-title { display: flex; align-items: center; }
+.menu-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48rpx; height: 48rpx; border-radius: 12rpx;
+  font-size: 26rpx; margin-right: 18rpx;
+}
+.icon-amber { background: #fef3c7; }
+.icon-gold { background: #fef9c3; }
+.icon-violet { background: #ede9fe; }
+.icon-blue { background: #dbeafe; }
+.icon-teal { background: #ccfbf1; }
+.icon-red { background: #fee2e2; }
 /* button 版菜单项（分享给朋友）：清掉微信 button 默认样式 */
 .menu-item.share-item {
   width: 100%; background: transparent; border-radius: 0; margin: 0;
