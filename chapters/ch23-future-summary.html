@@ -33,7 +33,7 @@
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-warning);">
       <strong style="color: var(--color-warning);">趋势4：GUI Agent 走向实用</strong>
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0;">
-        随着多模态模型（GPT-5/Claude 4）能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+。能可靠操作任意软件的 Agent 将打开"通用自动化"的大门。RPA（机器人流程自动化）将被 GUI Agent 重塑。
+        随着多模态模型（AI-5/Claude 4）能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+。能可靠操作任意软件的 Agent 将打开"通用自动化"的大门。RPA（机器人流程自动化）将被 GUI Agent 重塑。
       </p>
     </div>
     
@@ -705,7 +705,7 @@ setTimeout(() => {
 <li><strong>Ollama</strong>：一键部署本地模型，Mac/PC 即可，适合个人开发和快速验证</li>
 <li><strong>vLLM</strong>：企业级推理引擎，PagedAttention 显存利用率 90%+，适合高并发生产</li>
 <li><strong>SGLang</strong>：结构化生成新秀，RadixAttention + 压缩 FSM，JSON/SQL 输出快 3-7 倍</li>
-<li><strong>量化技术</strong>：INT4/INT8/GGUF/GPTQ/AWQ，让大模型跑在小机器上</li>
+<li><strong>量化技术</strong>：INT4/INT8/GGUF/QuantQ/AWQ，让大模型跑在小机器上</li>
 <li><strong>分布式推理</strong>：Tensor Parallel + Pipeline Parallel 多 GPU 方案</li>
 <li><strong>Agent 接入实战</strong>：模型路由器、混合部署策略、生产级监控</li>
 </ul>
@@ -1050,7 +1050,7 @@ setTimeout(() => {
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">GPT-4o</td>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">AI-4o</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$5</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$15</td>
         <td style="padding: 10px 8px; font-weight: 600; color: var(--color-warning);">≈$0.41</td>
@@ -1064,7 +1064,7 @@ setTimeout(() => {
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码能力突出，性价比高</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">GPT-4o-mini</td>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">AI-4o-mini</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.15</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.6</td>
         <td style="padding: 10px 8px; font-weight: 600; color: var(--color-success);">≈$0.02</td>
@@ -1086,7 +1086,7 @@ setTimeout(() => {
       </tr>
     </tbody>
   </table>
-  <div class="quote" style="margin-top: 12px;">计算示例：用 GPT-4o 写1000行代码，输入8000token + 输出25000token = 8000×$5/1M + 25000×$15/1M = $0.04 + $0.375 ≈ <strong>$0.41</strong>。用 DeepSeek V3 同样任务只需 ≈<strong>$0.03</strong>，相差13倍。选模型时，能力够用就行——别用旗舰模型做简单问答。</div>
+  <div class="quote" style="margin-top: 12px;">计算示例：用 AI-4o 写1000行代码，输入8000token + 输出25000token = 8000×$5/1M + 25000×$15/1M = $0.04 + $0.375 ≈ <strong>$0.41</strong>。用 DeepSeek V3 同样任务只需 ≈<strong>$0.03</strong>，相差13倍。选模型时，能力够用就行——别用旗舰模型做简单问答。</div>
 </div>
 
 <div class="card" style="margin-top: 16px;">
@@ -1102,7 +1102,7 @@ setTimeout(() => {
       <p style="font-size: 13px; color: var(--color-text-secondary); margin: 6px 0 0;">第1轮正常计费（8000 token），后续4轮命中缓存，输入成本降低90%。总输入计费：8000 + 800×4 = 11,200 token，节省<strong>72%</strong>。</p>
     </div>
   </div>
-  <div class="quote" style="margin-top: 12px;">Claude 的 Prompt Caching 和 GPT-4o 的 Cached Content 都支持此机制。Agent 设计时要尽量让<strong>静态内容前置</strong>（系统提示、知识库片段），这样后续轮次可以命中缓存。</div>
+  <div class="quote" style="margin-top: 12px;">Claude 的 Prompt Caching 和 AI-4o 的 Cached Content 都支持此机制。Agent 设计时要尽量让<strong>静态内容前置</strong>（系统提示、知识库片段），这样后续轮次可以命中缓存。</div>
 </div>
 
 <div class="card" style="margin-top: 16px; border-left: 3px solid var(--color-accent);">
@@ -1118,7 +1118,7 @@ setTimeout(() => {
     </div>
     <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
       <strong style="color: var(--color-success);">3. 模型分级（Model Tiering）</strong>
-      <span style="font-size: 13px; color: var(--color-text-secondary);"> — 简单任务用小模型（GPT-4o-mini），复杂推理用大模型（GPT-4o）。不是所有任务都需要旗舰模型。一个客服 Agent：80%问题用mini处理，只有20%复杂问题升级到大模型。</span>
+      <span style="font-size: 13px; color: var(--color-text-secondary);"> — 简单任务用小模型（AI-4o-mini），复杂推理用大模型（AI-4o）。不是所有任务都需要旗舰模型。一个客服 Agent：80%问题用mini处理，只有20%复杂问题升级到大模型。</span>
     </div>
     <div style="padding: 12px; border: 1px solid var(--color-border); border-radius: 8px;">
       <strong style="color: var(--color-warning);">4. 量化部署（Quantization）</strong>
@@ -1130,7 +1130,7 @@ setTimeout(() => {
 <!-- ===== 25.12 场景化LLM模型选型指南 ===== -->
 <h2 class="section-heading">29.12 场景化 LLM 模型选型指南</h2>
 
-<p>面试中常问："不同场景下 LLM 模型如何选型？"——选型不是"哪个模型最强"，而是<strong>哪个模型最适合当前任务</strong>。用 GPT-4o 做简单问答是浪费钱，用 mini 模型做复杂推理是浪费精度。</p>
+<p>面试中常问："不同场景下 LLM 模型如何选型？"——选型不是"哪个模型最强"，而是<strong>哪个模型最适合当前任务</strong>。用 AI-4o 做简单问答是浪费钱，用 mini 模型做复杂推理是浪费精度。</p>
 
 <div class="card">
   <div class="card-title">🎯 决策矩阵：场景 × 模型推荐</div>
@@ -1146,25 +1146,25 @@ setTimeout(() => {
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">简单问答/闲聊</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4o-mini / Qwen2-7B</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4o-mini / Qwen2-7B</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">低成本快速响应，能力够用</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">≈$0.02/M次</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">代码生成/解释</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Claude 3.5 Sonnet / GPT-4o</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Claude 3.5 Sonnet / AI-4o</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">代码能力强，理解复杂逻辑</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">≈$0.32-0.41/千行</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-success);">复杂推理/数学</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4o / o1</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4o / o1</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">推理链强，多步推导准确</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">≈$0.4+/次</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-warning);">多模态理解</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Gemini 1.5 Pro / GPT-4o</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">Gemini 1.5 Pro / AI-4o</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">图片+文本+视频联合理解</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">≈$1.25-2.5/M</td>
       </tr>
@@ -1193,12 +1193,12 @@ setTimeout(() => {
     nodes: [
       { id: 'task', label: '明确任务类型', type: 'start' },
       { id: 'latency', label: '延迟要求\n<500ms? >2s?', type: 'decision' },
-      { id: 'fast', label: '低延迟优先\n→ GPT-4o-mini\n→ Qwen2-7B本地', type: 'tool' },
+      { id: 'fast', label: '低延迟优先\n→ AI-4o-mini\n→ Qwen2-7B本地', type: 'tool' },
       { id: 'cost', label: '成本预算\n<$0.05/M? >$0.3/M?', type: 'decision' },
-      { id: 'cheap', label: '低成本优先\n→ DeepSeek V3\n→ GPT-4o-mini', type: 'tool' },
+      { id: 'cheap', label: '低成本优先\n→ DeepSeek V3\n→ AI-4o-mini', type: 'tool' },
       { id: 'privacy', label: '隐私合规?\n数据不能出域?', type: 'decision' },
       { id: 'local', label: '本地部署\n→ Qwen2/Llama3\n+ Ollama/vLLM\n+ INT4量化', type: 'process' },
-      { id: 'cloud', label: '云端API\n→ Claude 3.5 Sonnet(代码)\n→ GPT-4o/o1(推理)\n→ Gemini 1.5 Pro(多模态)', type: 'end' }
+      { id: 'cloud', label: '云端API\n→ Claude 3.5 Sonnet(代码)\n→ AI-4o/o1(推理)\n→ Gemini 1.5 Pro(多模态)', type: 'end' }
     ],
     edges: [
       { from: 'task', to: 'latency' },
@@ -1475,11 +1475,11 @@ setTimeout(() => {
     <div class="qa-question">Q12: 主流LLM的百万token计费规则是什么？写1000行代码分别多少钱？</div>
     <div class="qa-answer">
       百万token（/M）计费，输入和输出价格不同：<br>
-      • <strong>GPT-4o</strong>：输入$5/M，输出$15/M → 写1000行代码 ≈ $0.41<br>
+      • <strong>AI-4o</strong>：输入$5/M，输出$15/M → 写1000行代码 ≈ $0.41<br>
       • <strong>Claude 3.5 Sonnet</strong>：输入$3/M，输出$15/M → 写1000行代码 ≈ $0.32<br>
-      • <strong>GPT-4o-mini</strong>：输入$0.15/M，输出$0.6/M → 写1000行代码 ≈ $0.02<br>
+      • <strong>AI-4o-mini</strong>：输入$0.15/M，输出$0.6/M → 写1000行代码 ≈ $0.02<br>
       • <strong>DeepSeek V3</strong>：输入$0.27/M，输出$1.1/M → 写1000行代码 ≈ $0.03<br><br>
-      计算示例（GPT-4o）：8000输入token × $5/M + 25000输出token × $15/M = $0.04 + $0.375 ≈ $0.41。<br><br>
+      计算示例（AI-4o）：8000输入token × $5/M + 25000输出token × $15/M = $0.04 + $0.375 ≈ $0.41。<br><br>
       <strong>成本优化策略</strong>：缓存命中（输入成本降低90%）、上下文压缩（减少重复发送）、模型分级（80%简单问题用mini，20%复杂问题用旗舰）、量化部署（本地无API成本）。
     </div>
   </div>
@@ -1489,10 +1489,10 @@ setTimeout(() => {
     <div class="qa-answer">
       选型核心原则：<strong>能力够用、成本可控、延迟达标</strong>。<br><br>
       <strong>决策矩阵</strong>：<br>
-      • 简单问答/闲聊 → GPT-4o-mini / Qwen2-7B（低成本快速响应）<br>
-      • 代码生成/解释 → Claude 3.5 Sonnet / GPT-4o（代码能力强）<br>
-      • 复杂推理/数学 → GPT-4o / o1（推理链强）<br>
-      • 多模态理解 → Gemini 1.5 Pro / GPT-4o（图片+文本+视频）<br>
+      • 简单问答/闲聊 → AI-4o-mini / Qwen2-7B（低成本快速响应）<br>
+      • 代码生成/解释 → Claude 3.5 Sonnet / AI-4o（代码能力强）<br>
+      • 复杂推理/数学 → AI-4o / o1（推理链强）<br>
+      • 多模态理解 → Gemini 1.5 Pro / AI-4o（图片+文本+视频）<br>
       • 长文档处理 → Gemini 1.5 Pro（1M上下文）/ Claude 3.5（200K）<br>
       • 本地部署/隐私 → Qwen2 / Llama3 / DeepSeek（开源可私有化）<br><br>
       <strong>决策流程</strong>：任务类型 → 延迟要求 → 成本预算 → 隐私需求 → 最终推荐。<br>
@@ -1505,7 +1505,7 @@ setTimeout(() => {
     <div class="qa-answer">
       ① <strong>缓存命中（Prompt Caching）</strong>：把静态内容前置（系统提示、知识库），后续轮次命中缓存，输入成本降低90%。这是最直接有效的优化。<br>
       ② <strong>上下文压缩（Context Compression）</strong>：不塞完整历史对话，用摘要压缩——只保留关键决策、重要事实、当前任务上下文。历史细节用RAG按需检索。<br>
-      ③ <strong>模型分级（Model Tiering）</strong>：简单任务用小模型（GPT-4o-mini），复杂推理用大模型（GPT-4o）。80%问题用mini，20%升级到大模型。<br>
+      ③ <strong>模型分级（Model Tiering）</strong>：简单任务用小模型（AI-4o-mini），复杂推理用大模型（AI-4o）。80%问题用mini，20%升级到大模型。<br>
       ④ <strong>量化部署（Quantization）</strong>：本地部署时用INT4/INT8量化，推理速度提升2-4倍，显存降低4倍。隐私合规场景首选，无API成本。
     </div>
   </div>
@@ -1593,7 +1593,7 @@ setTimeout(() => {
 
 <h3 class="sub-heading">29.14.4 端侧与语音 Agent：新的交互入口</h3>
 
-<p><strong>端侧 Agent</strong>把模型部署到手机、车机、IoT 设备本地（如 AppAgent 操控手机 UI)，无需联网即可响应，兼顾隐私与低延迟。<strong>语音 Agent</strong>依托 GPT-4o Realtime、ElevenLabs 等实时语音技术，实现"听说"一体的自然对话，延迟从秒级降到毫秒级，正在重塑客服、车载、陪伴等场景。这两个方向的共同点，是让 Agent 突破"网页聊天框"的物理限制，走向真实物理世界的入口。</p>
+<p><strong>端侧 Agent</strong>把模型部署到手机、车机、IoT 设备本地（如 AppAgent 操控手机 UI)，无需联网即可响应，兼顾隐私与低延迟。<strong>语音 Agent</strong>依托 AI-4o Realtime、ElevenLabs 等实时语音技术，实现"听说"一体的自然对话，延迟从秒级降到毫秒级，正在重塑客服、车载、陪伴等场景。这两个方向的共同点，是让 Agent 突破"网页聊天框"的物理限制，走向真实物理世界的入口。</p>
 
 <h3 class="sub-heading">29.14.5 Agent 支付与商业化协议（AP2 / x402)</h3>
 
@@ -1637,7 +1637,7 @@ var ch23Questions = [
     question: 'GUI Agent 在 2026 年的准确率预期是？',
     options: ['50-70%', '90%+', '100%', '30-50%'],
     answer: [1],
-    explanation: '随着多模态模型（GPT-5/Claude 4）能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+。'
+    explanation: '随着多模态模型（AI-5/Claude 4）能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+。'
   },
   {
     type: 'single',

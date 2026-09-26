@@ -22,7 +22,7 @@
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-accent);">
       <strong style="color: var(--color-accent);">低代码平台</strong>
       <ul style="font-size: 13px; color: var(--color-text-secondary); padding-left: 18px; line-height: 1.8; margin: 8px 0 0;">
-        <li>Dify / Coze / FastGPT</li>
+        <li>Dify / Coze / FastAI</li>
         <li>拖拽搭建，可视化配置</li>
         <li>无需写代码</li>
         <li>适合：快速原型、中小团队</li>
@@ -417,7 +417,7 @@ workflow:
               text: 你是专业客服，基于以下知识库内容回答用户问题。如果知识库中没有相关信息，请如实告知。
           model:
             provider: openai
-            name: gpt-4o-mini
+            name: ai-4o-mini
             mode: chat
           type: llm
         id: llm_001
@@ -670,7 +670,7 @@ public class DifyClient {
 <p>Coze 作为字节跳动的 Bot 工厂，在多端发布和插件生态方面有独特优势。本节将详细介绍如何在 Coze 上创建一个功能完整的 Bot，包括插件配置、工作流编排，以及使用 Coze 的多 Agent 模式实现复杂的协作场景。</p>
 
 <h3 class="sub-heading">Bot 创建与插件配置</h3>
-<p>在 Coze 平台上创建 Bot 只需要四个步骤：第一步，点击「创建 Bot」，填写名称和描述；第二步，选择底层模型（如豆包 Pro、GPT-4o 等）；第三步，编写 System Prompt 定义 Bot 的人设和能力边界；第四步，添加插件和知识库。Coze 的插件市场提供了搜索、天气、新闻、画图、代码执行等 100+ 开箱即用的插件，勾选即可启用，无需编写任何代码。</p>
+<p>在 Coze 平台上创建 Bot 只需要四个步骤：第一步，点击「创建 Bot」，填写名称和描述；第二步，选择底层模型（如豆包 Pro、AI-4o 等）；第三步，编写 System Prompt 定义 Bot 的人设和能力边界；第四步，添加插件和知识库。Coze 的插件市场提供了搜索、天气、新闻、画图、代码执行等 100+ 开箱即用的插件，勾选即可启用，无需编写任何代码。</p>
 
 <h3 class="sub-heading">Coze 的三层架构</h3>
 <p>理解 Coze Bot 的运行机制，需要把握其三层架构设计。触发层负责接收用户消息、定时任务和 Webhook 回调；决策层由 LLM 节点承担意图识别和路由选择的职责；执行层则包含插件调用、工作流执行、知识库检索和多 Agent 协作。这种分层设计使得每个层级可以独立配置和扩展。</p>

@@ -1,0 +1,94 @@
+<view class="page">
+
+  <!-- Hero -->
+  <view class="hero">
+    <view class="hero-deco d1"></view>
+    <view class="hero-deco d2"></view>
+    <view class="hero-badge">🚀 PROJECT</view>
+    <view class="hero-title">AI Agent 项目实战</view>
+    <view class="hero-sub">🧑‍💻 带你学习 25 个+ 实战项目，提高编程思维，锻炼编码能力，增强简历竞争力！</view>
+  </view>
+
+  <!-- 加入星球（行动卡上移，紧贴作者卡） -->
+  <view class="join-wrap">
+    <view class="go-card" bindtap="openProject" hover-class="press">
+      <view class="go-left">
+        <view class="go-emoji">🪐</view>
+        <view class="go-info">
+          <view class="go-title">加入知识星球</view>
+          <view class="go-sub">25+ 项目源码 · 教程 · 1v1 指导</view>
+        </view>
+      </view>
+      <view class="go-btn">前往 ›</view>
+    </view>
+    <view class="ios-tip">⚠️ iOS 用户请在公众号「bugstack虫洞栈」回复「星球」加入/续费</view>
+  </view>
+
+  <!-- 作者卡 -->
+  <view class="author-card">
+    <view class="author-avatar">傅</view>
+    <view class="author-info">
+      <view class="author-name">小傅哥 <text class="author-tag">一线互联网大厂架构师</text></view>
+      <view class="author-desc">13 年+ 职业生涯，晋升到码农职业最顶部，亲自运营维护。把自己在大厂的技术经验分享给你，让你少走弯路，夯实能力，快速提高自己。</view>
+    </view>
+  </view>
+
+  <!-- 星球提供的服务 -->
+  <view class="sec">
+    <view class="sec-title">星球提供</view>
+    <view class="serve-grid">
+      <view class="serve-cell"><text class="serve-emoji">📖</text><text>基础教程</text></view>
+      <view class="serve-cell"><text class="serve-emoji">🛠️</text><text>环境配置</text></view>
+      <view class="serve-cell"><text class="serve-emoji">🚀</text><text>实战项目</text></view>
+      <view class="serve-cell"><text class="serve-emoji">💬</text><text>问题解答</text></view>
+      <view class="serve-cell"><text class="serve-emoji">🧭</text><text>就业指导</text></view>
+      <view class="serve-cell"><text class="serve-emoji">📄</text><text>简历评审</text></view>
+    </view>
+    <view class="serve-note">循序渐进，进阶学习；1v1 指导学习📖，无灌水、无拼凑。加入星球的用户会拉入专属星球 VIP 交流群。</view>
+  </view>
+
+  <!-- 项目学习 -->
+  <view class="sec">
+    <view class="sec-title">🧑‍💻 项目学习 <text class="sec-sub">完整 AI 进阶路线</text></view>
+    <view class="proj-feat">
+      <view class="pf-card hot">
+        <view class="pf-name">DeepSeek Harness Java <text class="pf-flag">AI 运行时</text></view>
+        <view class="pf-desc">Java + DDD 1:1 复刻智能体运行时基座：ReAct 循环、26 个内置工具、27 个领域模块、Java/Node/MCP 三套插件扩展、任务审批治理、事件溯源，附 Web 控制台。</view>
+      </view>
+      <view class="pf-card">
+        <view class="pf-name">WaLi 系列 · AI 工具生态</view>
+        <view class="pf-desc">WaLiOffice（办公）、WaLiAPI（LLM 网关 + RAG + LLM-Wiki）、WaLiCode / WaLiSSH（AI Coding 与可持续交付助手）——像一家公司里的真实场景一样逐个构建。</view>
+      </view>
+      <view class="pf-card">
+        <view class="pf-name">AI MCP 网关 · AI Agent 平台</view>
+        <view class="pf-desc">AI MCP Gateway 构建 AI Infra 基础设施；AI Agent 脚手架 + 场景应用；AI Agent 拖拉拽 + 动态配置。</view>
+      </view>
+      <view class="pf-card">
+        <view class="pf-name">业务向硬核项目</view>
+        <view class="pf-desc">拼团交易系统（拼多多 C 端场景）、小型支付商城（双架构）、大营销（超级大课）、Lottery 分布式抽奖秒杀【含上百个面试题】、API 网关、IM 通信系统（Netty）、SpringBoot Starter 中间件、动态线程池、支付 SDK、透视业务监控、OpenAI 代码评审等。</view>
+      </view>
+      <view class="pf-card">
+        <view class="pf-name">手撕源码 · 技术小册</view>
+        <view class="pf-desc">手写 Mybatis，从零手写源码级复杂项目；IDEA Plugin 开发手册、Java 面经手册、字节码编程、程序员数学、DDD 小册、分布式技术栈等。</view>
+      </view>
+    </view>
+    <view class="preview-tip" bindtap="openSite" hover-class="press">👣 进入 bugstack.cn【实战项目】，预览课程详细信息 ›</view>
+  </view>
+
+  <!-- 就业指导 -->
+  <view class="sec">
+    <view class="sec-title">🧭 就业指导</view>
+    <view class="gain-list">
+      <view class="gain-row"><text class="gain-dot">✦</text><text>简历投递到小傅哥邮箱，提供简历批阅服务</text></view>
+      <view class="gain-row"><text class="gain-dot">✦</text><text>就业辅导与未来发展指引</text></view>
+      <view class="gain-row"><text class="gain-dot">✦</text><text>AI 八股 + 面试题库，配合本小程序的模拟面试检验掌握度</text></view>
+    </view>
+  </view>
+
+  <!-- 底部再次引导 -->
+  <view class="bottom-cta" bindtap="openProject" hover-class="press">
+    🪐 准备好了？加入知识星球开始项目实战 ›
+  </view>
+
+  <view class="tail">教程打基础 · 项目练实战 · 双管齐下</view>
+</view>

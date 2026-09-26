@@ -860,7 +860,7 @@ class MemorySystem:
         """用 LLM 对旧对话生成摘要"""
         text = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini",  # 用便宜模型做摘要
+            model="ai-4o-mini",  # 用便宜模型做摘要
             messages=[
                 {"role": "system", "content":
                  "将以下对话压缩为简洁摘要。保留所有关键决策、"
@@ -949,7 +949,7 @@ class MemorySystem:
 
         # 4. 调用 LLM 生成响应
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="ai-4o",
             messages=messages
         )
         answer = response.choices[0].message.content
@@ -1025,7 +1025,7 @@ class MemorySystem {
   private async summarize(messages: Message[]): Promise<string> {
     const text = messages.map(m => `${m.role}: ${m.content}`).join('\n');
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'ai-4o-mini',
       messages: [
         { role: 'system', content:
           '将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。丢弃闲聊和重复内容。' },
@@ -1083,7 +1083,7 @@ class MemorySystem {
     ];
 
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'ai-4o',
       messages: messages as any
     });
     const answer = response.choices[0].message.content || '';
@@ -1189,7 +1189,7 @@ func (m *MemorySystem) summarize(messages []Message) string {
     }
     resp, err := m.client.CreateChatCompletion(context.Background(),
         openai.ChatCompletionRequest{
-            Model: openai.GPT4oMini,
+            Model: openai.AIModelMini,
             Messages: []openai.ChatCompletionMessage{
                 {Role: "system", Content: "将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。丢弃闲聊和重复内容。"},
                 {Role: "user", Content: text},
@@ -1264,7 +1264,7 @@ func (m *MemorySystem) respond(userInput string) string {
 
     resp, err := m.client.CreateChatCompletion(context.Background(),
         openai.ChatCompletionRequest{
-            Model:    openai.GPT4o,
+            Model:    openai.AIModel,
             Messages: toOpenAIMessages(messages),
         })
     if err != nil {
@@ -1362,7 +1362,7 @@ public class MemorySystem {
             text.append(m.role).append(": ").append(m.content).append("\n");
         }
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-            .model("gpt-4o-mini")
+            .model("ai-4o-mini")
             .addMessage(ChatCompletionMessageParam.builder()
                 .role(ChatCompletionMessageParam.Role.SYSTEM)
                 .content("将以下对话压缩为简洁摘要。保留所有关键决策、用户偏好、事实信息和约束条件。")
@@ -5757,9 +5757,9 @@ if (lost.length &gt; 0) {
 
 <p>Mem0 的工作流程:<strong>对话输入 → LLM 提取记忆 → 分类（episodic/semantic/procedural）→ 去重/合并 → 存储</strong>。检索时按当前意图从三层记忆分别召回,合并后注入上下文。面试要点:Mem0 的三层不是物理分区,而是<strong>逻辑分类</strong>,底层可以共用同一个向量库。</p>
 
-<h3 class="sub-heading">Letta（原 MemGPT）:自编辑记忆 + 记忆分页</h3>
+<h3 class="sub-heading">Letta（原 MemAgent）:自编辑记忆 + 记忆分页</h3>
 
-<p>Letta 是 MemGPT 团队的商业化产品,核心创新是<strong>把操作系统的虚拟内存概念引入 Agent 记忆</strong>:</p>
+<p>Letta 是 MemAgent 团队的商业化产品,核心创新是<strong>把操作系统的虚拟内存概念引入 Agent 记忆</strong>:</p>
 
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">💡 Letta 的两大核心机制</div>
@@ -5793,7 +5793,7 @@ if (lost.length &gt; 0) {
       <tr style="border-bottom: 2px solid var(--color-border);">
       <th style="text-align: left; padding: 10px 8px;">维度</th>
       <th style="text-align: left; padding: 10px 8px;">Mem0</th>
-      <th style="text-align: left; padding: 10px 8px;">Letta (MemGPT)</th>
+      <th style="text-align: left; padding: 10px 8px;">Letta (MemAgent)</th>
       <th style="text-align: left; padding: 10px 8px;">Zep</th>
       </tr>
     </thead>
@@ -6154,7 +6154,7 @@ if (lost.length &gt; 0) {
   </div>
 
   <div class="qa-item">
-    <div class="qa-question">Q17: Letta（MemGPT）如何实现记忆分页？Zep 的时序知识图谱有什么优势？</div>
+    <div class="qa-question">Q17: Letta（MemAgent）如何实现记忆分页？Zep 的时序知识图谱有什么优势？</div>
     <div class="qa-answer">
       <strong>Letta 记忆分页</strong>:借鉴 OS 虚拟内存机制,把记忆分为 Core Memory（常驻上下文,类似 RAM,放最关键的用户信息和任务状态,通常 &lt; 2000 token）和 Archival Memory（外部存储,类似磁盘,放历史交互）。Core 满了自动把低优先级记忆"换出"到 Archival,需要时通过 search_archival 工具"换入"。Agent 还能通过 edit_core_memory 工具<strong>自编辑</strong>记忆,纠正过时信息。<br><br>
       <strong>Zep 时序知识图谱</strong>:把对话中的实体、关系、事件抽取为带时间戳的三元组,如 (用户, 换设备, Mac, 2025-06)。优势:①支持时序查询（"用户什么时候换的电脑"）,向量检索做不到;②支持关系查询（"X和Y什么关系"）;③自动摘要随时间衰减,新摘要权重更高,解决旧摘要和新摘要同等权重的问题。代价是图谱构建质量依赖 NLP 抽取能力。<br><br>
@@ -6378,7 +6378,7 @@ var ch05Questions = [
   },
   {
     type: 'single',
-    question: 'Letta（MemGPT）的记忆分页机制中,Core Memory 和 Archival Memory 的关系类似操作系统的什么概念?',
+    question: 'Letta（MemAgent）的记忆分页机制中,Core Memory 和 Archival Memory 的关系类似操作系统的什么概念?',
     options: [
       '进程和线程',
       'RAM（内存）和磁盘（外部存储）',

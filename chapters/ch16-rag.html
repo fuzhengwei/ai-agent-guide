@@ -535,7 +535,7 @@ results = collection.query(
 
 <h3 class="sub-heading">12.3.2 进阶：混合检索（BM25 + 向量）</h3>
 
-<p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"GPT-4o"，向量检索可能返回"GPT-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
+<p>纯向量检索的弱点：<strong>关键词匹配能力差</strong>。比如搜"AI-4o"，向量检索可能返回"AI-4"的内容（语义相似但不是同一个模型）。<strong>BM25</strong>（关键词检索）正好互补。</p>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain.retrievers import EnsembleRetriever
@@ -559,7 +559,7 @@ ensemble_retriever = EnsembleRetriever(
 )
 
 # 混合检索效果最好：语义匹配 + 关键词精准匹配
-docs = ensemble_retriever.get_relevant_documents("GPT-4o 的多模态能力")</pre></div>
+docs = ensemble_retriever.get_relevant_documents("AI-4o 的多模态能力")</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import { EnsembleRetriever } from 'langchain/retrievers/ensemble';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { BM25Retriever } from '@langchain/community/retrievers/bm25';
@@ -582,7 +582,7 @@ const ensembleRetriever = new EnsembleRetriever({
 });
 
 // 混合检索效果最好：语义匹配 + 关键词精准匹配
-const docs = await ensembleRetriever.getRelevantDocuments('GPT-4o 的多模态能力');</pre></div>
+const docs = await ensembleRetriever.getRelevantDocuments('AI-4o 的多模态能力');</pre></div>
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
 
 import (
@@ -906,7 +906,7 @@ public class RerankExample {
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o-mini")
+llm = ChatOpenAI(model="ai-4o-mini")
 
 # 改写策略
 rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
@@ -927,7 +927,7 @@ rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问
 # 多查询并行检索，结果合并去重 → 召回率大幅提升</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>import {ChatOpenAI} from 'langchain_openai';
 
-  const llm = ChatOpenAI(model="gpt-4o-mini");
+  const llm = ChatOpenAI(model="ai-4o-mini");
 
 // 改写策略
   const rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。;
@@ -957,7 +957,7 @@ import (
 
 // from langchain_openai import ChatOpenAI
 
-	// Python: llm = ChatOpenAI(model="gpt-4o-mini")
+	// Python: llm = ChatOpenAI(model="ai-4o-mini")
 
 // 改写策略
 	// Python: rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
@@ -982,7 +982,7 @@ import java.io.*;
 
     // from langchain_openai import ChatOpenAI
 
-        // Python: llm = ChatOpenAI(model="gpt-4o-mini")
+        // Python: llm = ChatOpenAI(model="ai-4o-mini")
 
     // 改写策略
         // Python: rewrite_prompt = """你是一个搜索查询优化器。将用户的口语化问题改写为更适合检索的查询。
@@ -1282,7 +1282,7 @@ from llama_index.core.graph_stores import SimpleGraphStore
 from llama_index.llms.openai import OpenAI
 
 # 1. 实体抽取 + 关系构建（LLM 自动完成）
-llm = OpenAI(model="gpt-4o-mini")
+llm = OpenAI(model="ai-4o-mini")
 
 # KnowledgeGraphIndex 自动从文档中抽取实体和关系
 kg_index = KnowledgeGraphIndex.from_documents(
@@ -1313,7 +1313,7 @@ import {SimpleGraphStore} from 'llama_index.core.graph_stores';
 import {OpenAI} from 'llama_index.llms.openai';
 
 // 1. 实体抽取 + 关系构建（LLM 自动完成）
-  const llm = OpenAI(model="gpt-4o-mini");
+  const llm = OpenAI(model="ai-4o-mini");
 
 // KnowledgeGraphIndex 自动从文档中抽取实体和关系
   const kg_index = KnowledgeGraphIndex.from_documents(;
@@ -1353,7 +1353,7 @@ import (
 // from llama_index.llms.openai import OpenAI
 
 // 1. 实体抽取 + 关系构建（LLM 自动完成）
-	// Python: llm = OpenAI(model="gpt-4o-mini")
+	// Python: llm = OpenAI(model="ai-4o-mini")
 
 // KnowledgeGraphIndex 自动从文档中抽取实体和关系
 	// Python: kg_index = KnowledgeGraphIndex.from_documents(
@@ -1389,7 +1389,7 @@ import java.io.*;
     // from llama_index.llms.openai import OpenAI
 
     // 1. 实体抽取 + 关系构建（LLM 自动完成）
-        // Python: llm = OpenAI(model="gpt-4o-mini")
+        // Python: llm = OpenAI(model="ai-4o-mini")
 
     // KnowledgeGraphIndex 自动从文档中抽取实体和关系
         // Python: kg_index = KnowledgeGraphIndex.from_documents(
@@ -2712,7 +2712,7 @@ public class HnswIndex {
 <div class="card" style="border-left: 3px solid var(--color-danger);">
   <div class="card-title">⚠️ 痛点：Prompt 超长被拒</div>
   <p style="font-size: 13px;">
-    GPT-4o 上下文窗口 128K Token，GPT-3.5 只有 16K。如果检索结果 + 历史 + 问题总共 180K Token，API 直接报错 <code>context_length_exceeded</code>。<br><br>
+    AI-4o 上下文窗口 128K Token，AI-3.5 只有 16K。如果检索结果 + 历史 + 问题总共 180K Token，API 直接报错 <code>context_length_exceeded</code>。<br><br>
     更隐蔽的问题：即使没超限，超长 Prompt 也会导致<strong>注意力稀释</strong>——模型可能忽略中间位置的关键上下文（Lost in the Middle 问题）。
   </p>
 </div>
@@ -2773,9 +2773,9 @@ def estimate_tokens(text: str) -> int:
 
 # 模型上下文窗口限制
 MODEL_LIMITS = {
-    "gpt-4o": 128_000,
-    "gpt-4o-mini": 128_000,
-    "gpt-3.5-turbo": 16_000,
+    "ai-4o": 128_000,
+    "ai-4o-mini": 128_000,
+    "ai-3.5-turbo": 16_000,
     "claude-3.5-sonnet": 200_000,
     "deepseek-chat": 64_000,
 }
@@ -2836,7 +2836,7 @@ prompt = build_prompt_with_fallback(
     results=[(0.95, chunk1), (0.87, chunk2), ...],
     query="如何配置渠道重试",
     history=[("user", "之前问的"), ("assistant", "之前答的")],
-    model="gpt-4o",
+    model="ai-4o",
 )</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Token 估算
 function estimateTokens(text: string): number {
@@ -2847,8 +2847,8 @@ function estimateTokens(text: string): number {
 
 // 模型限制
 const MODEL_LIMITS: Record<string, number> = {
-  'gpt-4o': 128000,
-  'gpt-3.5-turbo': 16000,
+  'ai-4o': 128000,
+  'ai-3.5-turbo': 16000,
   'claude-3.5-sonnet': 200000,
 };
 
@@ -2984,7 +2984,7 @@ public class TokenBudget {
     }
     
     private static int getModelLimit(String model) {
-        if (model.contains("gpt-4o")) return 128000;
+        if (model.contains("ai-4o")) return 128000;
         if (model.contains("claude")) return 200000;
         return 16000;
     }
@@ -2994,7 +2994,7 @@ public class TokenBudget {
 <div class="card" style="border-left: 3px solid var(--color-info);">
   <div class="card-title">📊 模型上下文窗口映射表</div>
   <div style="font-size: 13px; color: var(--color-text-secondary);">
-    <code>GPT-4o</code> = 128K &nbsp;|&nbsp; <code>Claude 3.5 Sonnet</code> = 200K &nbsp;|&nbsp; <code>GPT-3.5</code> = 16K &nbsp;|&nbsp; <code>DeepSeek</code> = 64K<br>
+    <code>AI-4o</code> = 128K &nbsp;|&nbsp; <code>Claude 3.5 Sonnet</code> = 200K &nbsp;|&nbsp; <code>AI-3.5</code> = 16K &nbsp;|&nbsp; <code>DeepSeek</code> = 64K<br>
     context_limit = model_limit × 0.7（30% 留给 Response）
   </div>
 </div>
@@ -3462,7 +3462,7 @@ MCP_TOOLS = [
             "properties": {
                 "question": {"type": "string", "description": "问题"},
                 "kb_id": {"type": "string"},
-                "model": {"type": "string", "default": "gpt-4o"},
+                "model": {"type": "string", "default": "ai-4o"},
                 "history": {"type": "array", "items": {"type": "object"}},
             },
             "required": ["question"],
@@ -3499,7 +3499,7 @@ async def handle_mcp_request(method: str, params: dict) -> dict:
             answer = await rag.ask(
                 pool, arguments.get("kb_id", ""),
                 arguments["question"],
-                embedding_model, arguments.get("model", "gpt-4o"),
+                embedding_model, arguments.get("model", "ai-4o"),
                 top_k=5, mcp_only=True,
                 history=arguments.get("history", []),
             )
@@ -3534,7 +3534,7 @@ const MCP_TOOLS = [
       properties: {
         question: { type: 'string' },
         kb_id: { type: 'string' },
-        model: { type: 'string', default: 'gpt-4o' },
+        model: { type: 'string', default: 'ai-4o' },
       },
       required: ['question'],
     },
@@ -3552,7 +3552,7 @@ async function handleMcpRequest(method: string, params: any): Promise<any> {
         const results = await searchAll(args.query, args.top_k || 5);
         return { content: [{ type: 'text', text: JSON.stringify(results) }] };
       case 'ask':
-        const answer = await ragAsk(args.question, args.model || 'gpt-4o');
+        const answer = await ragAsk(args.question, args.model || 'ai-4o');
         return { content: [{ type: 'text', text: answer }] };
       case 'build_index':
         await buildIndex(args.kb_id);
@@ -3911,7 +3911,7 @@ public String deepResearch(String question, String kbId, int maxRounds) {
   <div class="qa-item">
     <div class="qa-question">Q3: 什么是混合检索？为什么要做重排序？</div>
     <div class="qa-answer">
-      <strong>混合检索</strong>：BM25（关键词匹配）+ 向量检索（语义匹配）加权融合。BM25 擅长精确关键词（如"GPT-4o"），向量擅长语义（如"大语言模型"）。<br><br>
+      <strong>混合检索</strong>：BM25（关键词匹配）+ 向量检索（语义匹配）加权融合。BM25 擅长精确关键词（如"AI-4o"），向量擅长语义（如"大语言模型"）。<br><br>
       <strong>重排序</strong>：向量检索召回快但精度有限，用 Cross-Encoder 对候选集逐一精细打分。两阶段：先快召回 Top-50（毫秒级），再精排序 Top-5（百毫秒级），兼顾速度和精度。
     </div>
   </div>
@@ -4118,7 +4118,7 @@ var ch16Questions = [
       '不需要 Embedding 模型'
     ],
     answer: [1],
-    explanation: 'BM25 擅长精确关键词匹配（如"GPT-4o"），向量检索擅长语义匹配。混合检索取两者之长。'
+    explanation: 'BM25 擅长精确关键词匹配（如"AI-4o"），向量检索擅长语义匹配。混合检索取两者之长。'
   },
   {
     type: 'single',

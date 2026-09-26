@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "tencentcloud-sdk-nodejs": "^4.1.316",
+    "wx-server-sdk": "^4.0.2"
+  }
+}

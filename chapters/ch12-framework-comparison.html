@@ -85,7 +85,7 @@
 
 # 配置 LLM
 llm_config = {
-    "config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}],
+    "config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}],
     "temperature": 0.7
 }
 
@@ -122,7 +122,7 @@ const client = new OpenAI({ apiKey: 'sk-xxx' });
 
 // AssistantAgent 角色 —— 通过 system prompt 定义
 const assistantConfig = {
-  model: 'gpt-4o',
+  model: 'ai-4o',
   temperature: 0.7,
   systemMessage: `You are a helpful AI assistant.
     Write TypeScript code to solve problems.
@@ -202,7 +202,7 @@ func main() {
 
 	for {
 		resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-			Model:       openai.GPT4o,
+			Model:       openai.AIModel,
 			Temperature: 0.7,
 			Messages:    messages,
 		})
@@ -263,7 +263,7 @@ public class AutoGenDualAgent {
         // 对话循环
         while (true) {
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o")
+                .model("ai-4o")
                 .temperature(0.7)
                 .messages(messages)
                 .build();
@@ -399,7 +399,7 @@ import java.io.*;
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
-llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]}
+llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]}
 
 # 研究员 Agent：负责搜集信息
 researcher = AssistantAgent(
@@ -485,7 +485,7 @@ async function groupChat(task: string, maxRound: number = 10) {
     ];
 
     const response = await client.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'ai-4o',
       messages
     });
 
@@ -545,7 +545,7 @@ func main() {
 		messages = append(messages, conversation...)
 
 		resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-			Model:    openai.GPT4o,
+			Model:    openai.AIModel,
 			Messages: messages,
 		})
 		if err != nil {
@@ -614,7 +614,7 @@ public class GroupChatSimulation {
             messages.addAll(conversation);
 
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o")
+                .model("ai-4o")
                 .messages(messages)
                 .build();
 
@@ -685,7 +685,7 @@ public class GroupChatSimulation {
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from autogen import AssistantAgent, UserProxyAgent
 
-llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]}
+llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]}
 
 # 创建需要人工确认的 UserProxyAgent
 user_proxy = UserProxyAgent(
@@ -732,7 +732,7 @@ async function humanInLoop(message: string) {
 
   while (true) {
     const response = await client.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'ai-4o',
       messages
     });
 
@@ -787,7 +787,7 @@ func main() {
 
 	for {
 		resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-			Model:    openai.GPT4o,
+			Model:    openai.AIModel,
 			Messages: messages,
 		})
 		if err != nil {
@@ -852,7 +852,7 @@ public class HumanInLoop {
 
         while (true) {
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o")
+                .model("ai-4o")
                 .messages(messages)
                 .build();
 
@@ -909,7 +909,7 @@ public class HumanInLoop {
         AutoGen 支持 LLM 响应缓存：相同 prompt 的 LLM 调用直接返回缓存结果，跳过 API 请求。<br><br>
         <strong>配置方式</strong>：<code>llm_config["cache_seed"] = 42</code>，设置缓存种子即可启用。<br>
         <strong>适用场景</strong>：调试阶段反复测试、多轮对话中重复问题。<br>
-        <strong>节省成本</strong>：GPT-4 每次调用约 $0.03-0.06，缓存可避免大量重复消耗。
+        <strong>节省成本</strong>：AI-4 每次调用约 $0.03-0.06，缓存可避免大量重复消耗。
       </p>
     </div>
     <div style="padding: 14px; border: 1px solid var(--color-border); border-radius: 8px; border-left: 3px solid var(--color-success);">
@@ -929,7 +929,7 @@ public class HumanInLoop {
 
 # 启用缓存（相同 prompt 不重复调用 LLM）
 llm_config = {
-    "config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}],
+    "config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}],
     "cache_seed": 42,  # 设置缓存种子，启用缓存
     "temperature": 0   # temperature=0 时缓存效果最好
 }
@@ -970,7 +970,7 @@ async function cachedChat(messages: OpenAI.Chat.Completions.ChatCompletionMessag
     return cache.get(cacheKey)!;
   }
   const response = await client.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'ai-4o',
     temperature: 0,  // temperature=0 时缓存效果最好
     messages
   });
@@ -1040,7 +1040,7 @@ func cachedChat(ctx context.Context, client *openai.Client, messages []openai.Ch
 	}
 
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model:       openai.GPT4o,
+		Model:       openai.AIModel,
 		Temperature: 0, // temperature=0 时缓存效果最好
 		Messages:    messages,
 	})
@@ -1125,7 +1125,7 @@ public class CacheAndSandbox {
         String reply = cache.get(cacheKey);
         if (reply == null) {
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o")
+                .model("ai-4o")
                 .temperature(0.0)  // temperature=0 时缓存效果最好
                 .messages(messages)
                 .build();
@@ -3414,7 +3414,7 @@ spring:
       api-key: sk-xxx
       chat:
         options:
-          model: gpt-4o
+          model: ai-4o
           temperature: 0.7</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>  // // ===== 1. 配置 ChatClient =====
   // @Configuration
@@ -3471,7 +3471,7 @@ spring:
   // api-key: sk-xxx
   // chat:
   // options:
-  // model: gpt-4o
+  // model: ai-4o
   // temperature: 0.7</pre></div>
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
 
@@ -3528,7 +3528,7 @@ import (
 	// Python: api-key: sk-xxx
 	// Python: chat:
 	// Python: options:
-	// Python: model: gpt-4o
+	// Python: model: ai-4o
 	// Python: temperature: 0.7</pre></div>
 <div class="code-lang-pane" data-lang="java" data-label="Java"><pre>import java.util.*;
 import java.util.concurrent.*;
@@ -3581,7 +3581,7 @@ import java.io.*;
         // Python: api-key: sk-xxx
         // Python: chat:
         // Python: options:
-        // Python: model: gpt-4o
+        // Python: model: ai-4o
         // Python: temperature: 0.7
 }</pre></div>
 </div>
@@ -4741,7 +4741,7 @@ import java.io.*;
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre># ===== AutoGen 版本（对话式） =====
 from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
-llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]}
+llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]}
 
 researcher = AssistantAgent("researcher", system_message="...", llm_config=llm_config)
 writer = AssistantAgent("writer", system_message="...", llm_config=llm_config)
@@ -4759,7 +4759,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict, Annotated
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model="ai-4o")
 
 class AgentState(TypedDict):
     query: str
@@ -4797,7 +4797,7 @@ result = app.invoke({"query": "Research AI trends"})</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// ===== AutoGen 版本（对话式） =====
 import {AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager} from 'autogen';
 
-  const llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]};
+  const llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]};
 
   const researcher = AssistantAgent("researcher", system_message="...", llm_config=llm_config);
   const writer = AssistantAgent("writer", system_message="...", llm_config=llm_config);
@@ -4815,7 +4815,7 @@ import {MemorySaver} from 'langgraph.checkpoint.memory';
 // TypeScript has built-in types, no import needed for TypedDict, Annotated
 import {ChatOpenAI} from 'langchain_openai';
 
-  const llm = ChatOpenAI(model="gpt-4o");
+  const llm = ChatOpenAI(model="ai-4o");
 
 class AgentState {
   // query: str
@@ -4863,7 +4863,7 @@ import (
 // ===== AutoGen 版本（对话式） =====
 // from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
-	// Python: llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]}
+	// Python: llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]}
 
 	// Python: researcher = AssistantAgent("researcher", system_message="...", llm_config=llm_config)
 	// Python: writer = AssistantAgent("writer", system_message="...", llm_config=llm_config)
@@ -4881,7 +4881,7 @@ import (
 // from typing import TypedDict, Annotated
 // from langchain_openai import ChatOpenAI
 
-	// Python: llm = ChatOpenAI(model="gpt-4o")
+	// Python: llm = ChatOpenAI(model="ai-4o")
 
 // AgentState - CLI Agent class
 type AgentState struct {
@@ -4926,7 +4926,7 @@ import java.io.*;
     // ===== AutoGen 版本（对话式） =====
     // from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
-        // Python: llm_config = {"config_list": [{"model": "gpt-4o", "api_key": "sk-xxx"}]}
+        // Python: llm_config = {"config_list": [{"model": "ai-4o", "api_key": "sk-xxx"}]}
 
         // Python: researcher = AssistantAgent("researcher", system_message="...", llm_config=llm_config)
         // Python: writer = AssistantAgent("writer", system_message="...", llm_config=llm_config)
@@ -4944,7 +4944,7 @@ import java.io.*;
     // from typing import TypedDict, Annotated
     // from langchain_openai import ChatOpenAI
 
-        // Python: llm = ChatOpenAI(model="gpt-4o")
+        // Python: llm = ChatOpenAI(model="ai-4o")
 
 public class AgentState {
         // Python: query: str

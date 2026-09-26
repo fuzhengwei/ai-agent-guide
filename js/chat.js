@@ -916,7 +916,7 @@ const AIChat = {
       const config = {
         id: oldConfigs[i]?.id || `config_${Date.now()}_${i}`,
         name: fields[0]?.value || `配置${i + 1}`,
-        model: fields[1]?.value || 'gpt-4o',
+        model: fields[1]?.value || 'ai-4o',
         baseUrl: fields[2]?.value || '',
         apiKey: fields[3]?.value || ''
       };
@@ -956,7 +956,7 @@ const AIChat = {
         name: '自定义 LLM',
         baseUrl: '',
         apiKey: '',
-        model: 'gpt-4o'
+        model: 'ai-4o'
       };
     }
     

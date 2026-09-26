@@ -66,7 +66,7 @@ const ToolEvo = {
   current: 0,
   steps: [
     { num: 1, title: '第一代：Prompt 工程（2022-2023）', desc: '在 System Prompt 中描述工具格式，让 LLM 输出特定格式的文本（如 "Action: search(query)"），框架再解析执行。代表：ReAct 原始论文、LangChain Agent。问题：格式不稳定，LLM 可能输出错误格式导致解析失败。' },
-    { num: 2, title: '第二代：Function Calling（2023+）', desc: 'OpenAI 在 GPT-4 中原生支持 Function Calling。传入工具的 JSON Schema，LLM 直接输出结构化的函数调用。格式可靠，支持并行调用。随后 Claude、Gemini 等模型纷纷跟进，成为行业标准。' },
+    { num: 2, title: '第二代：Function Calling（2023+）', desc: 'OpenAI 在 AI-4 中原生支持 Function Calling。传入工具的 JSON Schema，LLM 直接输出结构化的函数调用。格式可靠，支持并行调用。随后 Claude、Gemini 等模型纷纷跟进，成为行业标准。' },
     { num: 3, title: '第三代：MCP 协议（2024+）', desc: 'Anthropic 推出 MCP（Model Context Protocol），标准化了工具的定义、发现和调用。一个 MCP Server 可被任何支持 MCP 的框架使用。工具从"框架私有"变为"生态共享"。' }
   ],
   render() {
@@ -167,7 +167,7 @@ const tools = [
 
 // 调用 LLM
 const response = await openai.chat.completions.create({
-  model: "gpt-4o",
+  model: "ai-4o",
   messages: [{ role: "user", content: "北京明天天气怎么样？" }],
   tools: tools  // 传入工具定义
 });
@@ -181,7 +181,7 @@ const result = await getWeather("北京", "2026-07-02");
 
 // 结果回传 LLM 生成自然语言回答
 const finalResponse = await openai.chat.completions.create({
-  model: "gpt-4o",
+  model: "ai-4o",
   messages: [
     { role: "user", content: "北京明天天气怎么样？" },
     response.choices[0].message,
@@ -232,7 +232,7 @@ const finalResponse = await openai.chat.completions.create({
 
   // // 调用 LLM
   // const response = await openai.chat.completions.create({
-  // model: "gpt-4o",
+  // model: "ai-4o",
   // messages: [{ role: "user", content: "北京明天天气怎么样？" }],
   // tools: tools  // 传入工具定义
   // });
@@ -246,7 +246,7 @@ const finalResponse = await openai.chat.completions.create({
 
   // // 结果回传 LLM 生成自然语言回答
   // const finalResponse = await openai.chat.completions.create({
-  // model: "gpt-4o",
+  // model: "ai-4o",
   // messages: [
   // { role: "user", content: "北京明天天气怎么样？" },
   // response.choices[0].message,
@@ -306,7 +306,7 @@ import (
 
 	// Python: // 调用 LLM
 	// Python: const response = await openai.chat.completions.create({
-	// Python: model: "gpt-4o",
+	// Python: model: "ai-4o",
 	// Python: messages: [{ role: "user", content: "北京明天天气怎么样？" }],
 	// Python: tools: tools  // 传入工具定义
 	// Python: });
@@ -320,7 +320,7 @@ import (
 
 	// Python: // 结果回传 LLM 生成自然语言回答
 	// Python: const finalResponse = await openai.chat.completions.create({
-	// Python: model: "gpt-4o",
+	// Python: model: "ai-4o",
 	// Python: messages: [
 	// Python: { role: "user", content: "北京明天天气怎么样？" },
 	// Python: response.choices[0].message,
@@ -376,7 +376,7 @@ import java.io.*;
 
         // Python: // 调用 LLM
         // Python: const response = await openai.chat.completions.create({
-        // Python: model: "gpt-4o",
+        // Python: model: "ai-4o",
         // Python: messages: [{ role: "user", content: "北京明天天气怎么样？" }],
         // Python: tools: tools  // 传入工具定义
         // Python: });
@@ -390,7 +390,7 @@ import java.io.*;
 
         // Python: // 结果回传 LLM 生成自然语言回答
         // Python: const finalResponse = await openai.chat.completions.create({
-        // Python: model: "gpt-4o",
+        // Python: model: "ai-4o",
         // Python: messages: [
         // Python: { role: "user", content: "北京明天天气怎么样？" },
         // Python: response.choices[0].message,
@@ -1139,7 +1139,7 @@ relevant_tools = tool_rag.retrieve(user_query, top_k=3)
 
 # 只把相关工具传给 LLM
 response = openai.chat.completions.create(
-    model="gpt-4o",
+    model="ai-4o",
     messages=[{"role": "user", "content": user_query}],
     tools=relevant_tools  # ← 只传3个，而非全部50个
 )</pre></div>
@@ -1210,7 +1210,7 @@ const relevantTools = toolRag.retrieve(userQuery, 3);
 
 const openai = new OpenAI();
 const response = await openai.chat.completions.create({
-  model: 'gpt-4o',
+  model: 'ai-4o',
   messages: [{ role: 'user', content: userQuery }],
   tools: relevantTools
 });</pre></div>
@@ -3480,7 +3480,7 @@ class OpenAIProtocol(ProtocolStrategy):
         msgs = messages.copy()
         if system:
             msgs = [{"role": "system", "content": system}] + msgs
-        body = {"model": kwargs.get("model", "gpt-4o"), "messages": msgs}
+        body = {"model": kwargs.get("model", "ai-4o"), "messages": msgs}
         if tools:
             body["tools"] = [{"type": "function", "function": t} for t in tools]
         return body
@@ -3557,7 +3557,7 @@ class ResponsesProtocol(ProtocolStrategy):
     def build_request(self, messages, tools=None, system=None, **kwargs):
         # Responses API 使用 input 字段
         body = {
-            "model": kwargs.get("model", "gpt-4.1"),
+            "model": kwargs.get("model", "ai-4.1"),
             "input": messages,  # 直接使用 messages 数组
         }
         if system:
@@ -3649,7 +3649,7 @@ protocol = get_protocol("openai")
 request = protocol.build_request(
     messages=[{"role": "user", "content": "你好"}],
     system="你是一个助手",
-    model="gpt-4.1"
+    model="ai-4.1"
 )</code></pre>
 </div>
 <div class="lang-pane" data-lang="typescript">
@@ -3664,7 +3664,7 @@ interface ProtocolStrategy {
 class OpenAIProtocol implements ProtocolStrategy {
   buildRequest(messages: Message[], tools?: Tool[], system?: string) {
     const msgs = system ? [{ role: "system", content: system }, ...messages] : messages;
-    return { model: "gpt-4.1", messages: msgs, tools: tools?.map(t => ({ type: "function", function: t })) };
+    return { model: "ai-4.1", messages: msgs, tools: tools?.map(t => ({ type: "function", function: t })) };
   }
   parseResponse(res: any): UnifiedResponse {
     return { content: res.choices[0].message.content, role: "assistant", finishReason: res.choices[0].finish_reason };
@@ -3747,7 +3747,7 @@ func (p *OpenAIProtocol) BuildRequest(messages []Message, tools []Tool, system s
 		msgs = append(msgs, map[string]interface{}{"role": m.Role, "content": m.Content})
 	}
 	body := map[string]interface{}{
-		"model":    "gpt-4.1",
+		"model":    "ai-4.1",
 		"messages": msgs,
 	}
 	if len(tools) > 0 {
@@ -3926,7 +3926,7 @@ class OpenAIProtocol implements ProtocolStrategy {
             msgs.add(new HashMap<>(m));
         }
         Map<String, Object> body = new HashMap<>();
-        body.put("model", "gpt-4.1");
+        body.put("model", "ai-4.1");
         body.put("messages", msgs);
         if (tools != null && !tools.isEmpty()) {
             List<Map<String, Object>> toolDefs = new ArrayList<>();
@@ -5046,7 +5046,7 @@ public class ToolConcurrencyController {
 
 <h3 class="sub-heading">14.13.4 弱模型兼容层</h3>
 
-<p>不是所有模型都像 Claude/GPT-4 那样输出干净的结构化 tool_calls。弱模型（如 DeepSeek、Qwen、Llama）经常出问题。WaLiCode 设计了两道防线：</p>
+<p>不是所有模型都像 Claude/AI-4 那样输出干净的结构化 tool_calls。弱模型（如 DeepSeek、Qwen、Llama）经常出问题。WaLiCode 设计了两道防线：</p>
 
 <h4 style="color: var(--color-accent);">问题 1：畸形 tool_call name</h4>
 <p>弱模型有时把参数拼到 name 字段里：</p>

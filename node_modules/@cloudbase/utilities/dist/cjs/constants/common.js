@@ -1,0 +1,24 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.COMMUNITY_SITE_URL = exports.IS_DEBUG_MODE = exports.getProtocol = exports.setProtocol = exports.getSdkName = exports.setSdkName = void 0;
+var sdkName = '@cloudbase/js-sdk';
+function setSdkName(name) {
+    sdkName = name;
+}
+exports.setSdkName = setSdkName;
+function getSdkName() {
+    return sdkName;
+}
+exports.getSdkName = getSdkName;
+var PROTOCOL = 'https:';
+function setProtocol(protocol) {
+    PROTOCOL = protocol;
+}
+exports.setProtocol = setProtocol;
+function getProtocol() {
+    return PROTOCOL;
+}
+exports.getProtocol = getProtocol;
+exports.IS_DEBUG_MODE = typeof process === 'undefined' || typeof process.env === 'undefined' ? false : process.env.NODE_ENV === 'development';
+exports.COMMUNITY_SITE_URL = 'https://support.qq.com/products/148793';
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29tbW9uLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL2NvbnN0YW50cy9jb21tb24udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsSUFBSSxPQUFPLEdBQUcsbUJBQW1CLENBQUE7QUFDakMsU0FBZ0IsVUFBVSxDQUFDLElBQVk7SUFDckMsT0FBTyxHQUFHLElBQUksQ0FBQTtBQUNoQixDQUFDO0FBRkQsZ0NBRUM7QUFDRCxTQUFnQixVQUFVO0lBQ3hCLE9BQU8sT0FBTyxDQUFBO0FBQ2hCLENBQUM7QUFGRCxnQ0FFQztBQUVELElBQUksUUFBUSxHQUFHLFFBQVEsQ0FBQTtBQUV2QixTQUFnQixXQUFXLENBQUMsUUFBNEI7SUFDdEQsUUFBUSxHQUFHLFFBQVEsQ0FBQTtBQUNyQixDQUFDO0FBRkQsa0NBRUM7QUFFRCxTQUFnQixXQUFXO0lBQ3pCLE9BQU8sUUFBUSxDQUFBO0FBQ2pCLENBQUM7QUFGRCxrQ0FFQztBQUVZLFFBQUEsYUFBYSxHQUFHLE9BQU8sT0FBTyxLQUFLLFdBQVcsSUFBSSxPQUFPLE9BQU8sQ0FBQyxHQUFHLEtBQUssV0FBVyxDQUFDLENBQUMsQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxHQUFHLENBQUMsUUFBUSxLQUFLLGFBQWEsQ0FBQTtBQUVySSxRQUFBLGtCQUFrQixHQUFHLHdDQUF3QyxDQUFBIiwic291cmNlc0NvbnRlbnQiOlsibGV0IHNka05hbWUgPSAnQGNsb3VkYmFzZS9qcy1zZGsnXG5leHBvcnQgZnVuY3Rpb24gc2V0U2RrTmFtZShuYW1lOiBzdHJpbmcpIHtcbiAgc2RrTmFtZSA9IG5hbWVcbn1cbmV4cG9ydCBmdW5jdGlvbiBnZXRTZGtOYW1lKCkge1xuICByZXR1cm4gc2RrTmFtZVxufVxuXG5sZXQgUFJPVE9DT0wgPSAnaHR0cHM6J1xuXG5leHBvcnQgZnVuY3Rpb24gc2V0UHJvdG9jb2wocHJvdG9jb2w6ICdodHRwOicgfCAnaHR0cHM6Jykge1xuICBQUk9UT0NPTCA9IHByb3RvY29sXG59XG5cbmV4cG9ydCBmdW5jdGlvbiBnZXRQcm90b2NvbCgpIHtcbiAgcmV0dXJuIFBST1RPQ09MXG59XG4vLyDmmK/lkKbkuLrlvIDlj5HmqKHlvI9cbmV4cG9ydCBjb25zdCBJU19ERUJVR19NT0RFID0gdHlwZW9mIHByb2Nlc3MgPT09ICd1bmRlZmluZWQnIHx8IHR5cGVvZiBwcm9jZXNzLmVudiA9PT0gJ3VuZGVmaW5lZCcgPyBmYWxzZSA6IHByb2Nlc3MuZW52Lk5PREVfRU5WID09PSAnZGV2ZWxvcG1lbnQnXG4vLyDpl67nrZTnpL7ljLrpk77mjqVcbmV4cG9ydCBjb25zdCBDT01NVU5JVFlfU0lURV9VUkwgPSAnaHR0cHM6Ly9zdXBwb3J0LnFxLmNvbS9wcm9kdWN0cy8xNDg3OTMnXG4iXX0=

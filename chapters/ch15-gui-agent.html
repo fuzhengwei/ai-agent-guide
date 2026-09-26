@@ -80,7 +80,7 @@ setTimeout(() => {
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">视觉理解</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">看懂屏幕截图，识别按钮、输入框、文字</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4o Vision / Claude Vision</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4o Vision / Claude Vision</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500; color: var(--color-accent);">操作执行</td>
@@ -167,7 +167,7 @@ setTimeout(() => {
 </div>
 
 <div class="card" style="border-left: 3px solid var(--color-success); margin-top: 16px;">
-  <strong>未来方向</strong>：随着多模态模型能力提升（GPT-5/Claude 4），GUI Agent 准确率将显著提高。结合 API Agent（有API的用API，没API的用GUI），将成为通用自动化的终极方案。
+  <strong>未来方向</strong>：随着多模态模型能力提升（AI-5/Claude 4），GUI Agent 准确率将显著提高。结合 API Agent（有API的用API，没API的用GUI），将成为通用自动化的终极方案。
 </div>
 
 <!-- ===== 19.5 GUI Agent 技术栈详解 ===== -->
@@ -190,7 +190,7 @@ setTimeout(() => {
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">GPT-4o Vision</td>
+        <td style="padding: 10px 8px; font-weight: 500; color: var(--color-info);">AI-4o Vision</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">2048×2048</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$2.50 / 1M tokens</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-4 秒</td>
@@ -310,10 +310,10 @@ setTimeout(() => {
 <!-- ===== 19.6 Playwright + LLM 实战代码 ===== -->
 <h2 class="section-heading">23.6 Playwright + LLM 实战代码</h2>
 
-<p>下面展示一个完整的 Playwright + OpenAI Vision 浏览器自动化 Agent。它实现了截图→识别→操作的循环：先用 Playwright 截取网页画面，将截图发送给 GPT-4o Vision 模型分析界面，模型返回要执行的操作指令，Agent 解析指令并用 Playwright 执行，循环直到任务完成或达到最大步数限制。</p>
+<p>下面展示一个完整的 Playwright + OpenAI Vision 浏览器自动化 Agent。它实现了截图→识别→操作的循环：先用 Playwright 截取网页画面，将截图发送给 AI-4o Vision 模型分析界面，模型返回要执行的操作指令，Agent 解析指令并用 Playwright 执行，循环直到任务完成或达到最大步数限制。</p>
 
 <div class="card">
-  <div class="card-title">📦 完整示例：Playwright + GPT-4o Vision 自动填表</div>
+  <div class="card-title">📦 完整示例：Playwright + AI-4o Vision 自动填表</div>
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>import base64, json, openai
 from playwright.sync_api import sync_playwright
@@ -325,8 +325,8 @@ def screenshot_to_base64(page):
     screenshot_bytes = page.screenshot(full_page=False)
     return base64.b64encode(screenshot_bytes).decode("utf-8")
 
-def ask_gpt4o_for_action(screenshot_b64, user_goal, history):
-    """将截图和目标发给 GPT-4o Vision，获取下一步操作"""
+def ask_ai_model_for_action(screenshot_b64, user_goal, history):
+    """将截图和目标发给 AI-4o Vision，获取下一步操作"""
     messages = [
         {"role": "system", "content": (
             "你是一个浏览器自动化 Agent。根据截图决定下一步操作。"
@@ -343,12 +343,12 @@ def ask_gpt4o_for_action(screenshot_b64, user_goal, history):
         ]}
     ]
     resp = client.chat.completions.create(
-        model="gpt-4o", messages=messages, max_tokens=300
+        model="ai-4o", messages=messages, max_tokens=300
     )
     return json.loads(resp.choices[0].message.content)
 
 def execute_action(page, action_data):
-    """根据 GPT 返回的指令执行 Playwright 操作"""
+    """根据 AI 返回的指令执行 Playwright 操作"""
     action = action_data["action"]
     selector = action_data.get("selector", "")
     if action == "click":
@@ -370,7 +370,7 @@ def run_gui_agent(url, goal, max_steps=10):
         history = []
         for step in range(max_steps):
             screenshot_b64 = screenshot_to_base64(page)
-            action_data = ask_gpt4o_for_action(screenshot_b64, goal, history)
+            action_data = ask_ai_model_for_action(screenshot_b64, goal, history)
             history.append(f"Step {step+1}: {action_data}")
             print(f"Step {step+1}: {action_data['action']} → {action_data.get('reason','')}")
             if execute_action(page, action_data):
@@ -392,7 +392,7 @@ function screenshotToBase64(page: import('playwright').Page): string {
   return screenshotBytes.toString('base64');
 }
 
-async function askGpt4oForAction(screenshotB64: string, userGoal: string, history: string[]): Promise&lt;any&gt; {
+async function askAiModelForAction(screenshotB64: string, userGoal: string, history: string[]): Promise&lt;any&gt; {
   const messages = [
     { role: 'system' as const, content: (
       '你是一个浏览器自动化 Agent。根据截图决定下一步操作。'
@@ -409,7 +409,7 @@ async function askGpt4oForAction(screenshotB64: string, userGoal: string, histor
     ]}
   ];
   const resp = await client.chat.completions.create({
-    model: 'gpt-4o', messages, max_tokens: 300
+    model: 'ai-4o', messages, max_tokens: 300
   });
   return JSON.parse(resp.choices[0].message.content!);
 }
@@ -436,7 +436,7 @@ async function runGuiAgent(url: string, goal: string, maxSteps = 10): Promise&lt
   const history: string[] = [];
   for (let step = 0; step &lt; maxSteps; step++) {
     const screenshotB64 = screenshotToBase64(page);
-    const actionData = await askGpt4oForAction(screenshotB64, goal, history);
+    const actionData = await askAiModelForAction(screenshotB64, goal, history);
     history.push(`Step ${step + 1}: ${JSON.stringify(actionData)}`);
     console.log(`Step ${step + 1}: ${actionData.action} → ${actionData.reason || ''}`);
     if (executeAction(page, actionData)) {
@@ -472,7 +472,7 @@ func screenshotToBase64(page playwright.Page) string {
 	return base64.StdEncoding.EncodeToString(screenshotBytes)
 }
 
-func askGpt4oForAction(client *openai.Client, screenshotB64, userGoal string, history []string) map[string]interface{} {
+func askAiModelForAction(client *openai.Client, screenshotB64, userGoal string, history []string) map[string]interface{} {
 	messages := []openai.ChatCompletionMessage{
 		{Role: openai.ChatMessageRoleSystem, Content: (
 			"你是一个浏览器自动化 Agent。根据截图决定下一步操作。" +
@@ -484,7 +484,7 @@ func askGpt4oForAction(client *openai.Client, screenshotB64, userGoal string, hi
 	// 构造多模态消息（图片+文本）
 	content := fmt.Sprintf("用户目标：%s\n操作历史：%v", userGoal, history)
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model:     openai.GPT4o,
+		Model:     openai.AIModel,
 		MaxTokens: 300,
 		Messages:  append(messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleUser,
@@ -528,7 +528,7 @@ func runGuiAgent(url, goal string, maxSteps int) {
 	var history []string
 	for step := 0; step &lt; maxSteps; step++ {
 		screenshotB64 := screenshotToBase64(page)
-		actionData := askGpt4oForAction(client, screenshotB64, goal, history)
+		actionData := askAiModelForAction(client, screenshotB64, goal, history)
 		history = append(history, fmt.Sprintf("Step %d: %v", step+1, actionData))
 		fmt.Printf("Step %d: %v → %v\n", step+1, actionData["action"], actionData["reason"])
 		if executeAction(page, actionData) {
@@ -559,7 +559,7 @@ public class GuiAgent {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    static Map&lt;String, Object&gt; askGpt4oForAction(String screenshotB64, String userGoal, List&lt;String&gt; history) {
+    static Map&lt;String, Object&gt; askAiModelForAction(String screenshotB64, String userGoal, List&lt;String&gt; history) {
         List&lt;ChatCompletionMessageParam&gt; messages = new ArrayList&lt;&gt;();
         messages.add(ChatCompletionMessageParam.builder()
             .role(ChatCompletionMessageParam.Role.SYSTEM)
@@ -574,7 +574,7 @@ public class GuiAgent {
             .build());
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .messages(messages)
             .maxTokens(300)
             .build();
@@ -614,7 +614,7 @@ public class GuiAgent {
             List&lt;String&gt; history = new ArrayList&lt;&gt;();
             for (int step = 0; step &lt; maxSteps; step++) {
                 String screenshotB64 = screenshotToBase64(page);
-                Map&lt;String, Object&gt; actionData = askGpt4oForAction(screenshotB64, goal, history);
+                Map&lt;String, Object&gt; actionData = askAiModelForAction(screenshotB64, goal, history);
                 history.add(String.format("Step %d: %s", step + 1, actionData));
                 System.out.printf("Step %d: %s → %s%n", step + 1,
                     actionData.get("action"), actionData.getOrDefault("reason", ""));
@@ -634,7 +634,7 @@ public class GuiAgent {
 }
 </pre></div>
 </div>
-  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">这段代码展示了 GUI Agent 的核心循环：截取页面截图 → 发送给 GPT-4o Vision 分析 → 解析返回的 JSON 指令 → 用 Playwright 执行操作 → 等待页面更新 → 进入下一轮。实际生产中还需要加入错误处理、重试逻辑、操作白名单校验等安全机制。</p>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">这段代码展示了 GUI Agent 的核心循环：截取页面截图 → 发送给 AI-4o Vision 分析 → 解析返回的 JSON 指令 → 用 Playwright 执行操作 → 等待页面更新 → 进入下一轮。实际生产中还需要加入错误处理、重试逻辑、操作白名单校验等安全机制。</p>
 </div>
 
 <!-- ===== 19.7 Claude Computer Use API 实战 ===== -->
@@ -3577,7 +3577,7 @@ public class ComputerUseSandbox {
   <div class="qa-item">
     <div class="qa-question">Q4: GUI Agent 的核心技术栈是什么？</div>
     <div class="qa-answer">
-      ① <strong>视觉理解</strong>：GPT-4o Vision / Claude Vision / Gemini Vision<br>
+      ① <strong>视觉理解</strong>：AI-4o Vision / Claude Vision / Gemini Vision<br>
       ② <strong>操作执行</strong>：Playwright（Web）/ PyAutoGUI（桌面）/ ADB（手机）<br>
       ③ <strong>决策推理</strong>：ReAct 模式 + 规划<br>
       ④ <strong>结果验证</strong>：截图对比 + DOM 分析<br>

@@ -13,7 +13,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 8px;">点赞最高的评论只有四个字：<strong>方向错了</strong>。</p>
 </div>
 
-<p>这条动态揭示了一个反直觉的事实：<strong>变量是 Harness，不是 Model</strong>。过去两年，行业都在追更强的模型——GPT-5、Claude 4.5、Gemini 2.5。但三组实验给行业泼了一盆冷水。</p>
+<p>这条动态揭示了一个反直觉的事实：<strong>变量是 Harness，不是 Model</strong>。过去两年，行业都在追更强的模型——AI-5、Claude 4.5、Gemini 2.5。但三组实验给行业泼了一盆冷水。</p>
 
 <h3 class="sub-heading">10.1.1 三组关键实验</h3>
 
@@ -36,7 +36,7 @@
       </tr>
       <tr>
         <td><strong>Trivedy (2026)</strong></td>
-        <td>固定 GPT-5.2-Codex，重构系统提示 + 中间件上下文 + 自验证钩子</td>
+        <td>固定 AI-5.2-Codex，重构系统提示 + 中间件上下文 + 自验证钩子</td>
         <td>Terminal-Bench 2.0 从 52.8% 拉到 66.5%（<strong>+13.7pp</strong>）</td>
         <td>Harness 优化 > 模型升级（代际通常只 +2-4pp）</td>
       </tr>
@@ -90,7 +90,7 @@
       <tr><td><strong>关注点</strong></td><td>怎么写指令</td><td>怎么管理对话上下文</td><td>怎么搭建整套基础设施</td></tr>
       <tr><td><strong>典型操作</strong></td><td>改措辞、加示例、调格式</td><td>设计窗口策略、注入中间件</td><td>选沙箱、配权限、搭可观测</td></tr>
       <tr><td><strong>边际产出</strong></td><td>低（调3个月只+20%）</td><td>中（+30-50%）</td><td>高（2周+47pp）</td></tr>
-      <tr><td><strong>代表项目</strong></td><td>ChatGPT prompt 模板</td><td>RAG、滑动窗口</td><td>Claude Code、Codex、Cursor</td></tr>
+      <tr><td><strong>代表项目</strong></td><td>AI 聊天助手 prompt 模板</td><td>RAG、滑动窗口</td><td>Claude Code、Codex、Cursor</td></tr>
       <tr><td><strong>裸模型硬伤</strong></td><td>输出格式不稳定</td><td>无记忆、信息腐烂</td><td>无工作环境、不能执行代码</td></tr>
     </tbody>
   </table>
@@ -322,7 +322,7 @@ client = openai.OpenAI()
 def ask_bare_model(question: str) -> str:
     """纯 Prompt 调用，无工具、无记忆、无验证"""
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[{"role": "user", "content": question}]
     )
     return response.choices[0].message.content
@@ -340,7 +340,7 @@ const client = new OpenAI();
 async function askBareModel(question: string): Promise<string> {
   // 纯 Prompt 调用，无工具、无记忆、无验证
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "ai-4o",
     messages: [{ role: "user", content: question }],
   });
   return response.choices[0].message.content || "";
@@ -365,7 +365,7 @@ func askBareModel(question string) (string, error) {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:    openai.GPT4o,
+			Model:    openai.AIModel,
 			Messages: []openai.ChatCompletionMessage{
 				{Role: openai.ChatMessageRoleUser, Content: question},
 			},
@@ -390,7 +390,7 @@ public class BareModel {
 
     static String askBareModel(String question) {
         ChatCompletionRequest req = ChatCompletionRequest.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .messages(List.of(
                 new ChatMessage("user", question)
             ))
@@ -427,7 +427,7 @@ AGENTS_MD = """# 项目规则
 def ask_with_system_prompt(question: str) -> str:
     """加入 System Prompt，注入项目知识"""
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[
             {"role": "system", "content": AGENTS_MD},
             {"role": "user", "content": question}
@@ -452,7 +452,7 @@ const AGENTS_MD = `# 项目规则
 
 async function askWithSystemPrompt(question: string): Promise<string> {
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "ai-4o",
     messages: [
       { role: "system", content: AGENTS_MD },
       { role: "user", content: question },
@@ -485,7 +485,7 @@ func askWithSystemPrompt(question string) (string, error) {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT4o,
+			Model: openai.AIModel,
 			Messages: []openai.ChatCompletionMessage{
 				{Role: openai.ChatMessageRoleSystem, Content: agentsMD},
 				{Role: openai.ChatMessageRoleUser, Content: question},
@@ -514,7 +514,7 @@ public class SystemPromptAgent {
 
     static String askWithSystemPrompt(String question) {
         ChatCompletionRequest req = ChatCompletionRequest.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .messages(List.of(
                 new ChatMessage("system", AGENTS_MD),
                 new ChatMessage("user", question)
@@ -570,7 +570,7 @@ def ask_with_tools(question: str) -> str:
         {"role": "user", "content": question}
     ]
     response = client.chat.completions.create(
-        model="gpt-4o", messages=messages, tools=tools
+        model="ai-4o", messages=messages, tools=tools
     )
     msg = response.choices[0].message
     if msg.tool_calls:
@@ -584,7 +584,7 @@ def ask_with_tools(question: str) -> str:
                 "content": result
             })
         response = client.chat.completions.create(
-            model="gpt-4o", messages=messages, tools=tools
+            model="ai-4o", messages=messages, tools=tools
         )
         return response.choices[0].message.content
     return msg.content
@@ -625,7 +625,7 @@ async function askWithTools(question: string): Promise<string> {
     { role: "user", content: question },
   ];
   const response = await client.chat.completions.create({
-    model: "gpt-4o", messages, tools,
+    model: "ai-4o", messages, tools,
   });
   const msg = response.choices[0].message;
   if (msg.tool_calls) {
@@ -636,7 +636,7 @@ async function askWithTools(question: string): Promise<string> {
       messages.push({ role: "tool", tool_call_id: tc.id, content: result });
     }
     const r2 = await client.chat.completions.create({
-      model: "gpt-4o", messages, tools,
+      model: "ai-4o", messages, tools,
     });
     return r2.choices[0].message.content || "";
   }
@@ -773,7 +773,7 @@ def harness_agent(question: str, max_turns: int = 5) -> str:
     ]
     for _ in range(max_turns):
         response = client.chat.completions.create(
-            model="gpt-4o", messages=messages, tools=tools
+            model="ai-4o", messages=messages, tools=tools
         )
         msg = response.choices[0].message
         if msg.tool_calls:
@@ -869,7 +869,7 @@ async function harnessAgent(question: string, maxTurns = 5) {
   ];
   for (let i = 0; i < maxTurns; i++) {
     const r = await client.chat.completions.create({
-      model: "gpt-4o", messages, tools,
+      model: "ai-4o", messages, tools,
     });
     const msg = r.choices[0].message;
     if (msg.tool_calls) {
@@ -1095,7 +1095,7 @@ public class FullHarnessAgent {
 <p><strong>Trae 的核心差异化：</strong></p>
 <ul>
 <li><strong>中文原生支持</strong>：UI 全中文、中文意图识别准确率高、国内文档/博客覆盖率好</li>
-<li><strong>多模型免费策略</strong>：内置 Claude 3.5 Sonnet、GPT-4o、DeepSeek 等模型，新用户免费额度充足</li>
+<li><strong>多模型免费策略</strong>：内置 Claude 3.5 Sonnet、AI-4o、DeepSeek 等模型，新用户免费额度充足</li>
 <li><strong>Builder 模式</strong>：类似 Cursor 的 Composer，支持多文件编辑、项目级代码生成</li>
 <li><strong>Chat 模式</strong>：对话式编程，支持 @file、@codebase、@web 等上下文引用</li>
 <li><strong>免费使用</strong>：对标 Cursor $20/月的订阅，Trae 目前免费，对国内开发者吸引力极大</li>
@@ -1161,7 +1161,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
 <ul>
 <li><strong> Cascade 功能</strong>：类似 Cursor 的 Composer，支持多文件编辑和项目级重构</li>
 <li><strong>企业安全</strong>：SOC 2 Type II 合规，代码不上传云端，支持私有化部署</li>
-<li><strong>多模型支持</strong>：Claude、GPT、自研 Codeium 模型可切换</li>
+<li><strong>多模型支持</strong>：Claude、AI、自研 Codeium 模型可切换</li>
 <li><strong>上下文理解</strong>：自动索引项目代码，精准定位相关文件</li>
 </ul>
 
@@ -1289,7 +1289,7 @@ WaLiCode 最大的差异化是<strong>SSH DevOps 能力</strong>——你可以�
       <strong>绑定约束论</strong>：对于长程任务，跨可比的前沿模型，Benchmark 方差由 Harness 主导，而非模型本身。类比：赛车再快，赛道坑坑洼洼成绩也不会好。<br><br>
       <strong>三组实验证据</strong>：<br>
       ① Bölük (2026a)：模型不动，只调 edit-tool 格式与脚手架 → 最高 10 倍提升<br>
-      ② Trivedy (2026)：固定 GPT-5.2，重构系统提示 + 中间件 + 自验证 → +13.7pp<br>
+      ② Trivedy (2026)：固定 AI-5.2，重构系统提示 + 中间件 + 自验证 → +13.7pp<br>
       ③ Meta-Harness (Lee et al., 2026)：自动化 Harness 优化 → 76.4%，超越所有手工方案，模型权重一个字节没改<br><br>
       面试要点：对比数据——模型代际升级通常只 +2-4pp，Harness 优化可以 +10pp 以上甚至 10 倍差距。变量是 Harness，不是 Model。
     </div>

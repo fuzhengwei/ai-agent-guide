@@ -1,0 +1,206 @@
+/**
+ * SentenceCorrection返回参数结构体
+ */
+export interface SentenceCorrectionResponse {
+    /**
+     * 纠错结果列表。
+  （注意仅展示错误句子的纠错结果，若句子无错则不展示，若全部待纠错句子都被认为无错，则可能返回数组为空）
+     */
+    CorrectionList?: Array<CorrectionItem>;
+    /**
+     * 唯一请求 ID，由服务端生成，每次请求都会返回（若请求因其他原因未能抵达服务端，则该次请求不会获得 RequestId）。定位问题时需要提供该次请求的 RequestId。
+     */
+    RequestId?: string;
+}
+/**
+ * ParseWords请求参数结构体
+ */
+export interface ParseWordsRequest {
+    /**
+     * 待分析的文本（支持中英文文本，不超过500字符）
+     */
+    Text: string;
+}
+/**
+ * 实体识别结果。
+ */
+export interface Entity {
+    /**
+     * 基础词。
+     */
+    Word?: string;
+    /**
+     * 基础词在NormalText中的起始位置。
+     */
+    BeginOffset?: number;
+    /**
+     * 基础词的长度。
+     */
+    Length?: number;
+    /**
+     * 实体类型的标准名字。
+     */
+    Type?: string;
+    /**
+     * 类型名字的自然语言表达。（中文或英文）
+     */
+    Name?: string;
+}
+/**
+ * SentenceCorrection请求参数结构体
+ */
+export interface SentenceCorrectionRequest {
+    /**
+     * 待纠错的句子列表。可以以数组方式在一次请求中填写多个待纠错的句子。文本统一使用utf-8格式编码，每个中文句子的长度不超过150字符，每个英文句子的长度不超过100个单词，且数组长度需小于30，即句子总数需少于30句。
+     */
+    TextList: Array<string>;
+}
+/**
+ * AnalyzeSentiment请求参数结构体
+ */
+export interface AnalyzeSentimentRequest {
+    /**
+     * 待分析的文本（仅支持UTF-8格式，不超过200字）。
+     */
+    Text: string;
+}
+/**
+ * AnalyzeSentiment返回参数结构体
+ */
+export interface AnalyzeSentimentResponse {
+    /**
+     * 正面情感概率。
+     */
+    Positive?: number;
+    /**
+     * 中性情感概率。
+     */
+    Neutral?: number;
+    /**
+     * 负面情感概率。
+     */
+    Negative?: number;
+    /**
+     * 情感分类结果：
+  positive：正面情感
+  negative：负面情感
+  neutral：中性、无情感
+     */
+    Sentiment?: string;
+    /**
+     * 唯一请求 ID，由服务端生成，每次请求都会返回（若请求因其他原因未能抵达服务端，则该次请求不会获得 RequestId）。定位问题时需要提供该次请求的 RequestId。
+     */
+    RequestId?: string;
+}
+/**
+ * ParseWords返回参数结构体
+ */
+export interface ParseWordsResponse {
+    /**
+     * 输入文本正则化的结果。（包括对英文文本中的开头和实体进行大写等）
+     */
+    NormalText?: string;
+    /**
+     * 基础粒度分词和词性标注的结果。（请参见附录[词性表](https://cloud.tencent.com/document/product/271/36460)）
+     */
+    BasicParticiples?: Array<BasicParticiple>;
+    /**
+     * 复合粒度分词和词性标注的结果。（请参见附录[词性表](https://cloud.tencent.com/document/product/271/36460)）
+     */
+    CompoundParticiples?: Array<CompoundParticiple>;
+    /**
+     * 实体识别结果。（请参见附录[实体类型数据](https://cloud.tencent.com/document/product/271/90592)）
+  
+     */
+    Entities?: Array<Entity>;
+    /**
+     * 唯一请求 ID，由服务端生成，每次请求都会返回（若请求因其他原因未能抵达服务端，则该次请求不会获得 RequestId）。定位问题时需要提供该次请求的 RequestId。
+     */
+    RequestId?: string;
+}
+/**
+ * 基础粒度分词和词性标注的结果
+ */
+export interface BasicParticiple {
+    /**
+     * 基础词。
+     */
+    Word?: string;
+    /**
+     * 基础词在NormalText中的起始位置。
+     */
+    BeginOffset?: number;
+    /**
+     * 基础词的长度。
+     */
+    Length?: number;
+    /**
+     * 词性。
+     */
+    Pos?: string;
+}
+/**
+ * 纠错结果列表
+ */
+export interface CorrectionItem {
+    /**
+     * 纠错句子的序号。
+     */
+    Order?: number;
+    /**
+     * 错误的起始位置，从0开始。
+     */
+    BeginOffset?: number;
+    /**
+     * 错误内容长度。
+     */
+    Len?: number;
+    /**
+     * 错误内容。
+     */
+    Word?: string;
+    /**
+     * 纠错结果，当为删除类错误时，结果为null。
+  注意：此字段可能返回 null，表示取不到有效值。
+     */
+    CorrectWord?: Array<string>;
+    /**
+     * 纠错类型。0：替换；1：插入；2：删除。
+     */
+    CorrectionType?: number;
+    /**
+     * 纠错信息置信度。0：error；1：warning；error的置信度更高。（仅供参考）
+     */
+    Confidence?: number;
+    /**
+     * 纠错信息中文描述。
+  注意：此字段可能返回 null，表示取不到有效值。
+     */
+    DescriptionZh?: string;
+    /**
+     * 纠错信息英文描述。
+  注意：此字段可能返回 null，表示取不到有效值。
+     */
+    DescriptionEn?: string;
+}
+/**
+ * 复合粒度分词和词性标注的结果。
+ */
+export interface CompoundParticiple {
+    /**
+     * 基础词。
+     */
+    Word?: string;
+    /**
+     * 基础词在NormalText中的起始位置。
+     */
+    BeginOffset?: number;
+    /**
+     * 基础词的长度。
+     */
+    Length?: number;
+    /**
+     * 词性。
+     */
+    Pos?: string;
+}

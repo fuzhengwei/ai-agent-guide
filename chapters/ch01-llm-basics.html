@@ -26,7 +26,7 @@
 
 <p>简单来说，<strong>Token 是大语言模型处理文本的基本单位</strong>。但 Token 不等于"一个字"，也不等于"一个词"——它介于两者之间，由分词器（Tokenizer）根据 BPE（Byte Pair Encoding）算法自动切分。切分规则取决于模型使用的词表，不同模型的词表不同，Token 粒度也不同。</p>
 
-<p>举个例子，同样一句话"我爱学习人工智能"，GPT-4 的 Tokenizer 可能切分为 6 个 Token，而 Claude 可能切分为 4 个。这就是为什么同样长的文本在不同模型上的费用不同——计费是按 Token 数算的，不是按字符数。</p>
+<p>举个例子，同样一句话"我爱学习人工智能"，AI-4 的 Tokenizer 可能切分为 6 个 Token，而 Claude 可能切分为 4 个。这就是为什么同样长的文本在不同模型上的费用不同——计费是按 Token 数算的，不是按字符数。</p>
 
 <h3 class="sub-heading">中英文 Token 差异</h3>
 
@@ -39,7 +39,7 @@
       <tr style="border-bottom: 2px solid var(--color-border);">
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">文本内容</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">字符数</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4.1 Token 数</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">AI-4.1 Token 数</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">每字符 Token 比</th>
       </tr>
     </thead>
@@ -95,13 +95,13 @@
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;">GPT-4.1</td>
+        <td style="padding: 10px 8px;">AI-4.1</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">1M</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">~670K 字</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">长文档分析、代码理解</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;">GPT-4.1-mini</td>
+        <td style="padding: 10px 8px;">AI-4.1-mini</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">1M</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">~670K 字</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">高性价比长文本处理</td>
@@ -154,14 +154,14 @@
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;">GPT-4.1</td>
+        <td style="padding: 10px 8px;">AI-4.1</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$2.00</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$8.00</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">4x</td>
         <td style="padding: 10px 8px;"><span class="tag tag-orange">中</span></td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;">GPT-4.1-mini</td>
+        <td style="padding: 10px 8px;">AI-4.1-mini</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$0.40</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">$1.60</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">4x</td>
@@ -267,7 +267,7 @@ setTimeout(() => {
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">语言/内容</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">1行 ≈ Token数</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">1000行 ≈ Token数</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4.1 输入成本</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">AI-4.1 输入成本</th>
       </tr>
     </thead>
     <tbody>
@@ -306,7 +306,7 @@ setTimeout(() => {
   <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">估算公式：Token 数 ≈ 字符数 ÷ 4（英文）或 字符数 ÷ 2（中文）。Python代码偏英文密度，1行≈15 Token；Java冗长1行≈25 Token。</p>
 </div>
 
-<p><strong>关键结论</strong>：1000 行 Python 代码大约消耗 15,000 Token，在 GPT-4.1 上输入成本约 $0.030（约3美分）。但如果模型需要<strong>生成</strong>1000行代码（输出Token），成本约 $0.15（输出价格是输入的4倍）。</p>
+<p><strong>关键结论</strong>：1000 行 Python 代码大约消耗 15,000 Token，在 AI-4.1 上输入成本约 $0.030（约3美分）。但如果模型需要<strong>生成</strong>1000行代码（输出Token），成本约 $0.15（输出价格是输入的4倍）。</p>
 
 <h4 style="color: var(--color-primary); margin-top: 16px;">💰 典型 Agent 场景 Token 消耗案例</h4>
 
@@ -318,8 +318,8 @@ setTimeout(() => {
         <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">场景</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-info);">输入Token</th>
         <th style="text-align: left; padding: 12px 8px; color: var(--color-warning);">输出Token</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4.1 总成本</th>
-        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">GPT-4.1-mini 总成本</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">AI-4.1 总成本</th>
+        <th style="text-align: left; padding: 12px 8px; color: var(--color-primary);">AI-4.1-mini 总成本</th>
       </tr>
     </thead>
     <tbody>
@@ -360,7 +360,7 @@ setTimeout(() => {
       </tr>
     </tbody>
   </table>
-  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">成本计算公式：总成本 = 输入Token×输入单价 + 输出Token×输出单价。GPT-4.1: $2.0/M输入 + $8/M输出；GPT-4.1-mini: $0.40/M输入 + $1.60/M输出。</p>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">成本计算公式：总成本 = 输入Token×输入单价 + 输出Token×输出单价。AI-4.1: $2.0/M输入 + $8/M输出；AI-4.1-mini: $0.40/M输入 + $1.60/M输出。</p>
 </div>
 
 <div class="quote">
@@ -374,8 +374,8 @@ setTimeout(() => {
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">📋 计费规则五条核心</div>
   <ol style="font-size: 14px; color: var(--color-text-secondary); line-height: 1.8; padding-left: 18px; margin: 8px 0 0;">
-    <li><strong>输入和输出分别计费</strong>：输入Token（你发给模型的）和输出Token（模型返回的）价格不同，输出通常是输入的3-5倍。如GPT-4.1输入$2.0/M、输出$8/M（4倍）。</li>
-    <li><strong>缓存Token半价</strong>：OpenAI 和 Anthropic 都支持 Prompt Caching——重复出现的输入前缀可以缓存，缓存命中的Token价格约为正常输入的50%。如GPT-4.1缓存输入$1.0/M（正常的一半）。</li>
+    <li><strong>输入和输出分别计费</strong>：输入Token（你发给模型的）和输出Token（模型返回的）价格不同，输出通常是输入的3-5倍。如AI-4.1输入$2.0/M、输出$8/M（4倍）。</li>
+    <li><strong>缓存Token半价</strong>：OpenAI 和 Anthropic 都支持 Prompt Caching——重复出现的输入前缀可以缓存，缓存命中的Token价格约为正常输入的50%。如AI-4.1缓存输入$1.0/M（正常的一半）。</li>
     <li><strong>按实际消耗计费，不按字符</strong>：计费单位是Token而非字符。同样1000字符，中文比英文消耗更多Token，所以中文费用更高。</li>
     <li><strong>工具调用的Token也算</strong>：Function Calling返回的JSON参数是输出Token，工具执行结果是输入Token（下次发给模型）。一个5轮工具调用的Agent任务，Token消耗是累积的。</li>
     <li><strong>流式输出不省钱</strong>：Streaming模式只是"边生成边返回"让用户感觉更快，Token总数和费用与非流式完全相同。</li>
@@ -390,12 +390,12 @@ setTimeout(() => {
     rounds: int = 5,
     avg_input_per_round: int = 1000,
     avg_output_per_round: int = 800,
-    model: str = "gpt-4o"
+    model: str = "ai-4o"
 ):
     """估算 Agent 任务的 Token 消耗和成本"""
     pricing = {
-        "gpt-4o":      {"input": 2.50,  "output": 10.00, "cached": 1.25},
-        "gpt-4o-mini": {"input": 0.15,  "output": 0.60,  "cached": 0.075},
+        "ai-4o":      {"input": 2.50,  "output": 10.00, "cached": 1.25},
+        "ai-4o-mini": {"input": 0.15,  "output": 0.60,  "cached": 0.075},
         "claude-3.5":  {"input": 3.00,  "output": 15.00, "cached": 1.50},
     }
     p = pricing[model]
@@ -424,12 +424,12 @@ setTimeout(() => {
         "per_round_avg": round(total_input + total_output / rounds),
     }
 
-# 示例：5轮代码修改任务，GPT-4.1
-result = estimate_agent_cost(rounds=5, model="gpt-4o")
+# 示例：5轮代码修改任务，AI-4.1
+result = estimate_agent_cost(rounds=5, model="ai-4o")
 # → {"total_input": 11500, "total_output": 4000, "cost": "$0.059"}
 
-# 示例：20轮全项目重构，GPT-4.1-mini
-result = estimate_agent_cost(rounds=20, model="gpt-4o-mini")
+# 示例：20轮全项目重构，AI-4.1-mini
+result = estimate_agent_cost(rounds=20, model="ai-4o-mini")
 # → {"total_input": 24500, "total_output": 16000, "cost": "$0.014"}</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>// Token 消耗估算工具
 function estimateAgentCost(opts: {
@@ -448,12 +448,12 @@ function estimateAgentCost(opts: {
     rounds = 5,
     avgInputPerRound = 1000,
     avgOutputPerRound = 800,
-    model = 'gpt-4o'
+    model = 'ai-4o'
   } = opts;
 
   const pricing: Record<string, { input: number; output: number; cached: number }> = {
-    'gpt-4o':      { input: 2.50, output: 10.00, cached: 1.25 },
-    'gpt-4o-mini': { input: 0.15, output: 0.60, cached: 0.075 },
+    'ai-4o':      { input: 2.50, output: 10.00, cached: 1.25 },
+    'ai-4o-mini': { input: 0.15, output: 0.60, cached: 0.075 },
     'claude-3.5':  { input: 3.00, output: 15.00, cached: 1.50 },
   };
   const p = pricing[model];
@@ -483,12 +483,12 @@ function estimateAgentCost(opts: {
   };
 }
 
-// 示例：5轮代码修改任务，GPT-4.1
-const result1 = estimateAgentCost({ rounds: 5, model: 'gpt-4o' });
+// 示例：5轮代码修改任务，AI-4.1
+const result1 = estimateAgentCost({ rounds: 5, model: 'ai-4o' });
 // → {total_input: 11500, total_output: 4000, cost: "$0.059"}
 
-// 示例：20轮全项目重构，GPT-4.1-mini
-const result2 = estimateAgentCost({ rounds: 20, model: 'gpt-4o-mini' });
+// 示例：20轮全项目重构，AI-4.1-mini
+const result2 = estimateAgentCost({ rounds: 20, model: 'ai-4o-mini' });
 // → {total_input: 24500, total_output: 16000, cost: "$0.014"}</pre></div>
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>// Token 消耗估算工具
 func estimateAgentCost(systemPromptTokens, toolSchemasTokens, memoryInjectTokens, rounds, avgInputPerRound, avgOutputPerRound int, model string) map[string]float64 {
@@ -498,11 +498,11 @@ func estimateAgentCost(systemPromptTokens, toolSchemasTokens, memoryInjectTokens
 	if rounds == 0 { rounds = 5 }
 	if avgInputPerRound == 0 { avgInputPerRound = 1000 }
 	if avgOutputPerRound == 0 { avgOutputPerRound = 800 }
-	if model == "" { model = "gpt-4o" }
+	if model == "" { model = "ai-4o" }
 
 	pricing := map[string]map[string]float64{
-		"gpt-4o":      {"input": 2.50, "output": 10.00, "cached": 1.25},
-		"gpt-4o-mini": {"input": 0.15, "output": 0.60, "cached": 0.075},
+		"ai-4o":      {"input": 2.50, "output": 10.00, "cached": 1.25},
+		"ai-4o-mini": {"input": 0.15, "output": 0.60, "cached": 0.075},
 		"claude-3.5":  {"input": 3.00, "output": 15.00, "cached": 1.50},
 	}
 	p := pricing[model]
@@ -532,12 +532,12 @@ func estimateAgentCost(systemPromptTokens, toolSchemasTokens, memoryInjectTokens
 	}
 }
 
-// 示例：5轮代码修改任务，GPT-4.1
-result1 := estimateAgentCost(0, 0, 0, 5, 0, 0, "gpt-4o")
+// 示例：5轮代码修改任务，AI-4.1
+result1 := estimateAgentCost(0, 0, 0, 5, 0, 0, "ai-4o")
 // → {total_input: 11500, total_output: 4000, cost: "$0.059"}
 
-// 示例：20轮全项目重构，GPT-4.1-mini
-result2 := estimateAgentCost(0, 0, 0, 20, 0, 0, "gpt-4o-mini")
+// 示例：20轮全项目重构，AI-4.1-mini
+result2 := estimateAgentCost(0, 0, 0, 20, 0, 0, "ai-4o-mini")
 // → {total_input: 24500, total_output: 16000, cost: "$0.014"}</pre></div>
 <div class="code-lang-pane" data-lang="java" data-label="Java"><pre>// Token 消耗估算工具
 import java.util.*;
@@ -552,15 +552,15 @@ public class TokenCostEstimator {
         if (rounds == 0) rounds = 5;
         if (avgInputPerRound == 0) avgInputPerRound = 1000;
         if (avgOutputPerRound == 0) avgOutputPerRound = 800;
-        if (model == null || model.isEmpty()) model = "gpt-4o";
+        if (model == null || model.isEmpty()) model = "ai-4o";
 
         Map&lt;String, Double&gt; pricing = Map.of(
-            "gpt-4o",      2.50,
-            "gpt-4o-mini", 0.15,
+            "ai-4o",      2.50,
+            "ai-4o-mini", 0.15,
             "claude-3.5",  3.00
         );
-        double inputPrice = model.equals("gpt-4o") ? 2.50 : model.equals("gpt-4o-mini") ? 0.15 : 3.00;
-        double outputPrice = model.equals("gpt-4o") ? 10.00 : model.equals("gpt-4o-mini") ? 0.60 : 15.00;
+        double inputPrice = model.equals("ai-4o") ? 2.50 : model.equals("ai-4o-mini") ? 0.15 : 3.00;
+        double outputPrice = model.equals("ai-4o") ? 10.00 : model.equals("ai-4o-mini") ? 0.60 : 15.00;
         double cachedPrice = inputPrice / 2;
 
         // 第一轮：System Prompt + 工具Schema + 记忆注入 + 用户输入
@@ -588,13 +588,13 @@ public class TokenCostEstimator {
     }
 
     public static void main(String[] args) {
-        // 示例：5轮代码修改任务，GPT-4.1
-        Map&lt;String, Double&gt; result1 = estimateAgentCost(0, 0, 0, 5, 0, 0, "gpt-4o");
+        // 示例：5轮代码修改任务，AI-4.1
+        Map&lt;String, Double&gt; result1 = estimateAgentCost(0, 0, 0, 5, 0, 0, "ai-4o");
         System.out.println(result1);
         // → {total_input: 11500, total_output: 4000, cost: "$0.059"}
 
-        // 示例：20轮全项目重构，GPT-4.1-mini
-        Map&lt;String, Double&gt; result2 = estimateAgentCost(0, 0, 0, 20, 0, 0, "gpt-4o-mini");
+        // 示例：20轮全项目重构，AI-4.1-mini
+        Map&lt;String, Double&gt; result2 = estimateAgentCost(0, 0, 0, 20, 0, 0, "ai-4o-mini");
         System.out.println(result2);
         // → {total_input: 24500, total_output: 16000, cost: "$0.014"}
     }
@@ -865,7 +865,7 @@ public class CacheFriendlyPromptBuilder {
 
 <p>面试中被问到"大模型底层是什么架构"，90% 的人会回答"Transformer"，但能讲清楚 Transformer 到底怎么工作的却不到 10%。这一节不深入数学推导，而是帮你建立<strong>足够应对面试的架构直觉</strong>。</p>
 
-<p>Transformer 是 2017 年 Google 论文《Attention Is All You Need》提出的架构，核心创新是<strong>完全抛弃 RNN 和 CNN，仅用 Attention 机制处理序列</strong>。所有现代大模型（GPT、Claude、Gemini、DeepSeek、Qwen）都基于 Transformer，区别在于细节变体（Decoder-Only、RoPE 位置编码、GQA 注意力等）。</p>
+<p>Transformer 是 2017 年 Google 论文《Attention Is All You Need》提出的架构，核心创新是<strong>完全抛弃 RNN 和 CNN，仅用 Attention 机制处理序列</strong>。所有现代大模型（AI、Claude、Gemini、DeepSeek、Qwen）都基于 Transformer，区别在于细节变体（Decoder-Only、RoPE 位置编码、GQA 注意力等）。</p>
 
 <h3 class="sub-heading">为什么要用 Attention？——RNN 的致命缺陷</h3>
 
@@ -967,7 +967,7 @@ public class CacheFriendlyPromptBuilder {
       </tr>
     </tbody>
   </table>
-  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">GPT-4 使用 96 个头，每个头独立学习一种关注模式。头数越多，模型能捕捉的关系越丰富，但计算量也线性增长。</p>
+  <p style="font-size: 13px; color: var(--color-text-tertiary); margin-top: 8px;">AI-4 使用 96 个头，每个头独立学习一种关注模式。头数越多，模型能捕捉的关系越丰富，但计算量也线性增长。</p>
 </div>
 
 <p>实际实现中，Multi-Head Attention 把 Q、K、V 分成 h 份（如 8 头、96 头），每份独立做 Self-Attention，最后拼接后做一次线性变换输出。计算量与单头相同（因为每个头的维度缩小了），但表达能力大幅提升。</p>
@@ -997,7 +997,7 @@ public class CacheFriendlyPromptBuilder {
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">可学习位置编码</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">每个位置一个可训练的向量参数，随训练优化</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-2 / BERT</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-2 / BERT</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 简单有效 ❌ 无法外推到训练时没见过的长度</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
@@ -1009,7 +1009,7 @@ public class CacheFriendlyPromptBuilder {
       <tr>
         <td style="padding: 10px 8px; font-weight: 500;">RoPE（旋转位置编码）</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">用旋转矩阵编码相对位置，在 Q/K 上施加旋转变换</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 / Llama / Qwen / DeepSeek</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4 / Llama / Qwen / DeepSeek</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">✅ 相对位置+外推性强 ✅ 当前主流 ❌ 实现稍复杂</td>
       </tr>
     </tbody>
@@ -1050,7 +1050,7 @@ public class CacheFriendlyPromptBuilder {
       <tr>
         <td style="padding: 10px 8px; font-weight: 500;">Decoder-Only</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">只有 Decoder，单向注意力（每个词只看到前面的词）</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT / Claude / Llama / DeepSeek / Qwen</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI / Claude / Llama / DeepSeek / Qwen</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">文本生成、对话、Agent（几乎所有生成任务）</td>
       </tr>
     </tbody>
@@ -1071,7 +1071,7 @@ setTimeout(() => {
       { id: 'mha', label: 'Multi-Head\nSelf-Attention', type: 'process' },
       { id: 'ffn', label: 'Feed-Forward\nNetwork (MLP)', type: 'process' },
       { id: 'layer', label: '残差连接 + LayerNorm', type: 'process' },
-      { id: 'repeat', label: '× N 层堆叠\n(GPT-4: 120层)', type: 'tool' },
+      { id: 'repeat', label: '× N 层堆叠\n(AI-4: 120层)', type: 'tool' },
       { id: 'output', label: '输出概率分布\n(下一个 Token)', type: 'end' }
     ],
     edges: [
@@ -1094,7 +1094,7 @@ setTimeout(() => {
 <!-- ===== 1.3 模型训练流程 ===== -->
 <h2 class="section-heading">1.3 模型训练流程：从海量文本到智能对话</h2>
 
-<p>面试官问"GPT 是怎么训练出来的"，如果你只回答"用大数据训练"，基本就凉了。大模型训练是一个<strong>三阶段流水线</strong>：预训练（Pre-training）→ 监督微调（SFT）→ 人类反馈强化学习（RLHF）。每个阶段的目标、数据、方法都不同，理解三者的区别是面试核心考点。</p>
+<p>面试官问"AI 是怎么训练出来的"，如果你只回答"用大数据训练"，基本就凉了。大模型训练是一个<strong>三阶段流水线</strong>：预训练（Pre-training）→ 监督微调（SFT）→ 人类反馈强化学习（RLHF）。每个阶段的目标、数据、方法都不同，理解三者的区别是面试核心考点。</p>
 
 <h3 class="sub-heading">阶段一：预训练（Pre-training）——"读万卷书"</h3>
 
@@ -1116,12 +1116,12 @@ setTimeout(() => {
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px;">训练数据量</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">10~15 万亿 Token</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 级别模型约 13T Token，包括网页、书籍、代码、论文</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4 级别模型约 13T Token，包括网页、书籍、代码、论文</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px;">GPU 消耗</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">数万张 H100 × 数月</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPT-4 预训练估算 ~$63M，Llama 3 70B ~$30M</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">AI-4 预训练估算 ~$63M，Llama 3 70B ~$30M</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px;">数据来源</td>
@@ -1297,12 +1297,12 @@ setTimeout(() => {
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q2：Multi-Head Attention 为什么要用多个头？头数越多越好吗？</strong></div>
-    <div class="qa-a">Multi-Head Attention 用多个头的目的是让模型<strong>从不同维度同时关注不同的关系模式</strong>。不同头可能分别学到语法关系、指代关系、因果关系等，拼接后得到更丰富的表示。<br><br>头数不是越多越好。头数增加时，每个头的维度相应减小（总维度不变），单个头的表达能力下降。如果头数过多，每个头维度太小，反而学不到有意义的模式。实践中的经验值：d_model=4096 时用 32 头（每头 128 维）比较合适。GPT-4 使用 96 头。另外，近年 GQA（Grouped Query Attention）和 MQA（Multi-Query Attention）通过共享 K/V 头来减少推理时的 KV Cache 内存占用，是在头数和效率之间的权衡。</div>
+    <div class="qa-a">Multi-Head Attention 用多个头的目的是让模型<strong>从不同维度同时关注不同的关系模式</strong>。不同头可能分别学到语法关系、指代关系、因果关系等，拼接后得到更丰富的表示。<br><br>头数不是越多越好。头数增加时，每个头的维度相应减小（总维度不变），单个头的表达能力下降。如果头数过多，每个头维度太小，反而学不到有意义的模式。实践中的经验值：d_model=4096 时用 32 头（每头 128 维）比较合适。AI-4 使用 96 头。另外，近年 GQA（Grouped Query Attention）和 MQA（Multi-Query Attention）通过共享 K/V 头来减少推理时的 KV Cache 内存占用，是在头数和效率之间的权衡。</div>
   </div>
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q3：位置编码的作用是什么？RoPE（旋转位置编码）怎么工作？为什么现在主流模型都用 RoPE？</strong></div>
-    <div class="qa-a"><strong>作用</strong>：Self-Attention 本身是位置无关的（打乱词序结果不变），位置编码给每个词注入位置信息，让模型知道"谁在前谁在后"。<br><br><strong>RoPE 原理</strong>：把 Q 和 K 向量看作二维平面上的点，根据词的位置旋转不同角度。两个词距离越远，旋转角度差越大，点积（注意力分数）越小。这巧妙地让 Attention 分数自然包含了<strong>相对位置</strong>信息。<br><br><strong>RoPE 成为主流的原因</strong>：① <strong>外推性强</strong>——训练时只见过 4K 位置，推理时可扩展到 128K+（配合 YaRN 等缩放技术）；② <strong>编码相对位置</strong>——不像绝对位置编码那样需要学习固定向量；③ <strong>不增加参数</strong>——旋转矩阵是计算时施加的，不引入额外可训练参数。GPT-4、Llama、Qwen、DeepSeek 等所有主流模型都使用 RoPE。</div>
+    <div class="qa-a"><strong>作用</strong>：Self-Attention 本身是位置无关的（打乱词序结果不变），位置编码给每个词注入位置信息，让模型知道"谁在前谁在后"。<br><br><strong>RoPE 原理</strong>：把 Q 和 K 向量看作二维平面上的点，根据词的位置旋转不同角度。两个词距离越远，旋转角度差越大，点积（注意力分数）越小。这巧妙地让 Attention 分数自然包含了<strong>相对位置</strong>信息。<br><br><strong>RoPE 成为主流的原因</strong>：① <strong>外推性强</strong>——训练时只见过 4K 位置，推理时可扩展到 128K+（配合 YaRN 等缩放技术）；② <strong>编码相对位置</strong>——不像绝对位置编码那样需要学习固定向量；③ <strong>不增加参数</strong>——旋转矩阵是计算时施加的，不引入额外可训练参数。AI-4、Llama、Qwen、DeepSeek 等所有主流模型都使用 RoPE。</div>
   </div>
 
   <div class="qa-item">
@@ -1814,11 +1814,11 @@ setTimeout(() => {
 
 <h2 class="section-heading">1.7 开源 vs 闭源 LLM</h2>
 
-<p>2025-2026 年的大模型格局已经从"OpenAI 一家独大"变成了"群雄并起"。闭源阵营有 OpenAI GPT 系列、Anthropic Claude、Google Gemini；开源阵营有 Meta Llama、DeepSeek、Qwen（通义千问）、Mistral 等。选择开源还是闭源，不再是"能力差距"问题，而是"成本、隐私、可控性"的权衡。</p>
+<p>2025-2026 年的大模型格局已经从"OpenAI 一家独大"变成了"群雄并起"。闭源阵营有 OpenAI AI 系列、Anthropic Claude、Google Gemini；开源阵营有 Meta Llama、DeepSeek、Qwen（通义千问）、Mistral 等。选择开源还是闭源，不再是"能力差距"问题，而是"成本、隐私、可控性"的权衡。</p>
 
-<p>闭源模型的优势在于<strong>能力上限高、开箱即用、无需运维</strong>。GPT-4.1 和 Claude Sonnet 4.5 在推理、代码、多模态等维度依然是标杆。开源模型的优势在于<strong>数据隐私、可微调、无 API 依赖、成本低</strong>。如果你的业务涉及敏感数据、需要私有化部署、或者想深度定制模型行为，开源是更好的选择。</p>
+<p>闭源模型的优势在于<strong>能力上限高、开箱即用、无需运维</strong>。AI-4.1 和 Claude Sonnet 4.5 在推理、代码、多模态等维度依然是标杆。开源模型的优势在于<strong>数据隐私、可微调、无 API 依赖、成本低</strong>。如果你的业务涉及敏感数据、需要私有化部署、或者想深度定制模型行为，开源是更好的选择。</p>
 
-<p>对于 Agent 开发者来说，一个务实的策略是：<strong>用闭源模型做原型验证，用开源模型做生产部署</strong>。开发阶段用 GPT-4.1 快速验证 Agent 逻辑，上线后切换到 DeepSeek 或 Qwen 降低成本。好的 Agent 框架（如 LangGraph）都支持模型切换，只需要改一行配置。</p>
+<p>对于 Agent 开发者来说，一个务实的策略是：<strong>用闭源模型做原型验证，用开源模型做生产部署</strong>。开发阶段用 AI-4.1 快速验证 Agent 逻辑，上线后切换到 DeepSeek 或 Qwen 降低成本。好的 Agent 框架（如 LangGraph）都支持模型切换，只需要改一行配置。</p>
 
 <h3 class="sub-heading">主要模型家族概览</h3>
 
@@ -1837,7 +1837,7 @@ setTimeout(() => {
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;">GPT-4.1</td>
+        <td style="padding: 10px 8px;">AI-4.1</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">OpenAI</td>
         <td style="padding: 10px 8px;"><span class="tag tag-red">闭源</span></td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">128K</td>
@@ -1917,7 +1917,7 @@ setTimeout(() => {
     </thead>
     <tbody>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px;"><strong>GPT-4.1</strong></td>
+        <td style="padding: 10px 8px;"><strong>AI-4.1</strong></td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">OpenAI</td>
         <td style="padding: 10px 8px;"><span class="tag tag-red">闭源</span></td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">1M</td>
@@ -1953,7 +1953,7 @@ setTimeout(() => {
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">深度求索</td>
         <td style="padding: 10px 8px;"><span class="tag tag-green">开源</span></td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">128K</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">R1 推理模型开源里程碑，成本仅 GPT-4.1 的 1/10</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">R1 推理模型开源里程碑，成本仅 AI-4.1 的 1/10</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">低成本推理 Agent、私有化部署</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
@@ -1978,11 +1978,11 @@ setTimeout(() => {
 
 <div class="info-box">
 <strong>📊 2026 模型选型速查</strong>：<br>
-• <strong>编码 Agent</strong>：Claude Sonnet 4 + Claude Code > GPT-4.1 + Codex > DeepSeek V3<br>
+• <strong>编码 Agent</strong>：Claude Sonnet 4 + Claude Code > AI-4.1 + Codex > DeepSeek V3<br>
 • <strong>推理任务</strong>：o3 > DeepSeek R1 > Claude Sonnet 4<br>
 • <strong>中文 Agent</strong>：Qwen 3 > GLM-5 > DeepSeek V3<br>
-• <strong>超长文档</strong>：Llama 4 (10M) > Gemini 2.5 (2M) > GPT-4.1 (1M)<br>
-• <strong>低成本 Agent</strong>：DeepSeek V3 (GPT-4.1 1/10 价格) > Qwen 3 > GLM-5<br>
+• <strong>超长文档</strong>：Llama 4 (10M) > Gemini 2.5 (2M) > AI-4.1 (1M)<br>
+• <strong>低成本 Agent</strong>：DeepSeek V3 (AI-4.1 1/10 价格) > Qwen 3 > GLM-5<br>
 • <strong>私有化部署</strong>：Llama 4 > DeepSeek V3 > Qwen 3（均为开源，可本地部署）
 </div>
 
@@ -2014,14 +2014,14 @@ messages = [
 ]
 # 需要手动循环：调 API → 检查 tool_calls → 执行工具 → 追加结果 → 再调 API...
 response = client.chat.completions.create(
-    model="gpt-4.1",
+    model="ai-4.1",
     messages=messages,
     tools=[{"type": "function", "function": {...}}]
 )
 
 # === 新方式：Responses API（内置工具 + 状态管理） ===
 response = client.responses.create(
-    model="gpt-4.1",
+    model="ai-4.1",
     input="北京天气怎么样？",
     tools=[{"type": "web_search_preview"}],  # 内置 Web Search
 )
@@ -2037,7 +2037,7 @@ const client = new OpenAI();
 
 // 内置工具 + 状态管理，无需手动 Function Calling 循环
 const response = await client.responses.create({
-  model: "gpt-4.1",
+  model: "ai-4.1",
   input: "北京天气怎么样？",
   tools: [{ type: "web_search_preview" }],
 });
@@ -2059,7 +2059,7 @@ setTimeout(() => {
       { id: 'root', label: 'LLM 生态', type: 'start' },
       { id: 'closed', label: '闭源模型', type: 'process' },
       { id: 'open', label: '开源模型', type: 'process' },
-      { id: 'gpt', label: 'GPT-4.1 / o3', type: 'tool' },
+      { id: 'ai', label: 'AI-4.1 / o3', type: 'tool' },
       { id: 'claude', label: 'Claude 4.5', type: 'tool' },
       { id: 'gemini', label: 'Gemini 2.5', type: 'tool' },
       { id: 'llama', label: 'Llama 3/4', type: 'tool' },
@@ -2069,7 +2069,7 @@ setTimeout(() => {
     edges: [
       { from: 'root', to: 'closed' },
       { from: 'root', to: 'open' },
-      { from: 'closed', to: 'gpt' },
+      { from: 'closed', to: 'ai' },
       { from: 'closed', to: 'claude' },
       { from: 'closed', to: 'gemini' },
       { from: 'open', to: 'llama' },
@@ -2158,12 +2158,12 @@ setTimeout(() => {
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q13：开源模型和闭源模型怎么选？</strong></div>
-    <div class="qa-a">选择维度：① <strong>数据隐私</strong>——金融、医疗等敏感场景必须选开源模型私有化部署；② <strong>成本</strong>——高频调用场景开源模型长期更划算，低频场景闭源模型按量付费更省；③ <strong>能力上限</strong>——闭源模型（GPT-4、Claude）在推理能力和工具调用上通常领先；④ <strong>可控性</strong>——需要微调或定制行为时选开源；⑤ <strong>生态</strong>——闭源模型 API 更稳定，开源模型需要自己维护推理服务。实际项目中常见混合策略：关键场景用闭源，辅助场景用开源。</div>
+    <div class="qa-a">选择维度：① <strong>数据隐私</strong>——金融、医疗等敏感场景必须选开源模型私有化部署；② <strong>成本</strong>——高频调用场景开源模型长期更划算，低频场景闭源模型按量付费更省；③ <strong>能力上限</strong>——闭源模型（AI-4、Claude）在推理能力和工具调用上通常领先；④ <strong>可控性</strong>——需要微调或定制行为时选开源；⑤ <strong>生态</strong>——闭源模型 API 更稳定，开源模型需要自己维护推理服务。实际项目中常见混合策略：关键场景用闭源，辅助场景用开源。</div>
   </div>
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q14：1000行代码大概消耗多少Token？百万Token计费规则是什么？</strong></div>
-    <div class="qa-a"><strong>Token消耗估算</strong>：Python 1000行≈15,000 Token（GPT-4.1输入约$0.030），Java≈25,000 Token。中文内容Token密度更高，1行≈20 Token。<br><br><strong>百万Token计费规则</strong>：<br>① 输入和输出分别计费，输出通常是输入的3-5倍（GPT-4.1: $2.0/M输入, $8/M输出）<br>② 缓存Token半价——Prompt Caching命中时输入价格约50%（GPT-4.1缓存输入$1.0/M）<br>③ 按Token计费不按字符，中文比英文更贵<br>④ 工具调用Token也累积，5轮Agent任务≈50K Token<br>⑤ 流式输出不省钱，Token总数与非流式相同<br><br><strong>典型场景锚点</strong>：简单问答≈500 Token≈$0.003，代码修改≈8K Token≈$0.06，复杂Agent≈50K Token≈$0.27。</div>
+    <div class="qa-a"><strong>Token消耗估算</strong>：Python 1000行≈15,000 Token（AI-4.1输入约$0.030），Java≈25,000 Token。中文内容Token密度更高，1行≈20 Token。<br><br><strong>百万Token计费规则</strong>：<br>① 输入和输出分别计费，输出通常是输入的3-5倍（AI-4.1: $2.0/M输入, $8/M输出）<br>② 缓存Token半价——Prompt Caching命中时输入价格约50%（AI-4.1缓存输入$1.0/M）<br>③ 按Token计费不按字符，中文比英文更贵<br>④ 工具调用Token也累积，5轮Agent任务≈50K Token<br>⑤ 流式输出不省钱，Token总数与非流式相同<br><br><strong>典型场景锚点</strong>：简单问答≈500 Token≈$0.003，代码修改≈8K Token≈$0.06，复杂Agent≈50K Token≈$0.27。</div>
   </div>
 
   <div class="qa-item">
@@ -2275,7 +2275,7 @@ var ch01Questions = [
   },
   {
     type: 'single',
-    question: '1000 行 Python 代码大约消耗多少 Token？在 GPT-4.1 上的输入成本约是多少？',
+    question: '1000 行 Python 代码大约消耗多少 Token？在 AI-4.1 上的输入成本约是多少？',
     options: [
       '约 5,000 Token，成本约 $0.013',
       '约 15,000 Token，成本约 $0.030',
@@ -2283,7 +2283,7 @@ var ch01Questions = [
       '约 100,000 Token，成本约 $0.250'
     ],
     answer: [1],
-    explanation: 'Python代码1行≈15 Token，1000行≈15,000 Token。GPT-4.1输入价格$2.0/M Token，所以15,000 Token的输入成本≈15,000×2.0/1,000,000=$0.030。'
+    explanation: 'Python代码1行≈15 Token，1000行≈15,000 Token。AI-4.1输入价格$2.0/M Token，所以15,000 Token的输入成本≈15,000×2.0/1,000,000=$0.030。'
   },
   {
     type: 'single',

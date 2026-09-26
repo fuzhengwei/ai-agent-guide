@@ -534,7 +534,7 @@ class CLIAgent {
   async execute(userInput: string, context: Record&lt;string, unknown&gt;): Promise&lt;string&gt; {
     // Step 1: 意图理解 + 命令生成（Function Calling）
     const response = await this.llm.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'ai-4o',
       messages: [
         { role: 'system', content: this.buildSystemPrompt() },
         { role: 'user', content: userInput }
@@ -576,7 +576,7 @@ class CLIAgent {
 
     // Step 5: 结果格式化返回
     return this.llm.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'ai-4o',
       messages: [
         { role: 'system', content: '请将以下命令执行结果格式化为用户友好的回复。' },
         { role: 'user', content: JSON.stringify(results) }
@@ -620,7 +620,7 @@ func NewCLIAgent(llmClient *openai.Client, toolSchemas []interface{}) *CLIAgent 
 func (a *CLIAgent) Execute(ctx context.Context, userInput string, contextData map[string]interface{}) (string, error) {
 	// Step 1: 意图理解 + 命令生成（Function Calling）
 	resp, err := a.LLM.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: openai.GPT4o,
+		Model: openai.AIModel,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: a.buildSystemPrompt()},
 			{Role: openai.ChatMessageRoleUser, Content: userInput},
@@ -665,7 +665,7 @@ func (a *CLIAgent) Execute(ctx context.Context, userInput string, contextData ma
 	// Step 5: 结果格式化返回
 	resultsJSON, _ := json.Marshal(results)
 	summaryResp, err := a.LLM.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: openai.GPT4o,
+		Model: openai.AIModel,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: "请将以下命令执行结果格式化为用户友好的回复。"},
 			{Role: openai.ChatMessageRoleUser, Content: string(resultsJSON)},
@@ -698,7 +698,7 @@ public class CLIAgent {
     public String execute(String userInput, Map&lt;String, Object&gt; context) {
         // Step 1: 意图理解 + 命令生成（Function Calling）
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .addSystemMessage(buildSystemPrompt())
             .addUserMessage(userInput)
             .tools(schemas)  // 注入 CLI Schema 作为 Function Calling 工具
@@ -738,7 +738,7 @@ public class CLIAgent {
 
         // Step 5: 结果格式化返回
         return llm.chat().completions().create(ChatCompletionCreateParams.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .addSystemMessage("请将以下命令执行结果格式化为用户友好的回复。")
             .addUserMessage(results.toString())
             .build()

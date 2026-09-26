@@ -578,21 +578,21 @@ public class AgentMetrics {
     
     # 简单问答 → mini 模型（便宜 30 倍）
     if not has_tools and len(query) < 100:
-        return "gpt-4o-mini"
+        return "ai-4o-mini"
     
     # 需要工具调用 → 标准模型
     if has_tools and not is_complex_task(query):
-        return "gpt-4o"
+        return "ai-4o"
     
     # 复杂推理 → 旗舰模型
     return "claude-3.5-sonnet"
 
 # 成本对比（每百万 Token）：
-# gpt-4o-mini:  $0.15  ← 80% 请求用这个
-# gpt-4o:       $2.50  ← 15% 请求用这个
+# ai-4o-mini:  $0.15  ← 80% 请求用这个
+# ai-4o:       $2.50  ← 15% 请求用这个
 # claude-3.5:   $3.00  ← 5% 请求用这个
 # 
-# 不分级：100% 用 gpt-4o = $2.50/M
+# 不分级：100% 用 ai-4o = $2.50/M
 # 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
 # 节省 77%！</pre></div>
 <div class="code-lang-pane" data-lang="typescript" data-label="TypeScript"><pre>function routeModel(query: string, hasTools: boolean): string {
@@ -600,12 +600,12 @@ public class AgentMetrics {
 
   // 简单问答 → mini 模型（便宜 30 倍）
   if (!hasTools && query.length < 100) {
-    return 'gpt-4o-mini';
+    return 'ai-4o-mini';
   }
 
   // 需要工具调用 → 标准模型
   if (hasTools && !isComplexTask(query)) {
-    return 'gpt-4o';
+    return 'ai-4o';
   }
 
   // 复杂推理 → 旗舰模型
@@ -613,11 +613,11 @@ public class AgentMetrics {
 }
 
 // 成本对比（每百万 Token）：
-// gpt-4o-mini:  $0.15  ← 80% 请求用这个
-// gpt-4o:       $2.50  ← 15% 请求用这个
+// ai-4o-mini:  $0.15  ← 80% 请求用这个
+// ai-4o:       $2.50  ← 15% 请求用这个
 // claude-3.5:   $3.00  ← 5% 请求用这个
 //
-// 不分级：100% 用 gpt-4o = $2.50/M
+// 不分级：100% 用 ai-4o = $2.50/M
 // 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
 // 节省 77%！</pre></div>
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
@@ -630,12 +630,12 @@ import (
 func RouteModel(query string, hasTools bool) string {
     // 简单问答 → mini 模型（便宜 30 倍）
     if !hasTools && len(query) < 100 {
-        return "gpt-4o-mini"
+        return "ai-4o-mini"
     }
 
     // 需要工具调用 → 标准模型
     if hasTools && !isComplexTask(query) {
-        return "gpt-4o"
+        return "ai-4o"
     }
 
     // 复杂推理 → 旗舰模型
@@ -643,16 +643,16 @@ func RouteModel(query string, hasTools bool) string {
 }
 
 // 成本对比（每百万 Token）：
-// gpt-4o-mini:  $0.15  ← 80% 请求用这个
-// gpt-4o:       $2.50  ← 15% 请求用这个
+// ai-4o-mini:  $0.15  ← 80% 请求用这个
+// ai-4o:       $2.50  ← 15% 请求用这个
 // claude-3.5:   $3.00  ← 5% 请求用这个
 //
-// 不分级：100% 用 gpt-4o = $2.50/M
+// 不分级：100% 用 ai-4o = $2.50/M
 // 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
 // 节省 77%！
 func main() {
     model := RouteModel("你好", false)
-    fmt.Println(model) // gpt-4o-mini
+    fmt.Println(model) // ai-4o-mini
 }</pre></div>
 <div class="code-lang-pane" data-lang="java" data-label="Java"><pre>public class ModelRouter {
 
@@ -660,12 +660,12 @@ func main() {
     public static String routeModel(String query, boolean hasTools) {
         // 简单问答 → mini 模型（便宜 30 倍）
         if (!hasTools && query.length() &lt; 100) {
-            return "gpt-4o-mini";
+            return "ai-4o-mini";
         }
 
         // 需要工具调用 → 标准模型
         if (hasTools && !isComplexTask(query)) {
-            return "gpt-4o";
+            return "ai-4o";
         }
 
         // 复杂推理 → 旗舰模型
@@ -673,11 +673,11 @@ func main() {
     }
 
     // 成本对比（每百万 Token）：
-    // gpt-4o-mini:  $0.15  ← 80% 请求用这个
-    // gpt-4o:       $2.50  ← 15% 请求用这个
+    // ai-4o-mini:  $0.15  ← 80% 请求用这个
+    // ai-4o:       $2.50  ← 15% 请求用这个
     // claude-3.5:   $3.00  ← 5% 请求用这个
     //
-    // 不分级：100% 用 gpt-4o = $2.50/M
+    // 不分级：100% 用 ai-4o = $2.50/M
     // 分级后：80%×$0.15 + 15%×$2.50 + 5%×$3.00 = $0.57/M
     // 节省 77%！
 }</pre></div>

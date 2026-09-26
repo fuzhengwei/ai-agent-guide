@@ -1,0 +1,170 @@
+import { AbstractClient } from "../../../common/abstract_client";
+import { ClientConfig } from "../../../common/interface";
+import { QueryAsyncBindVpcStatusResponse, CreatePrivateZoneRecordListRequest, DescribeAccountVpcListRequest, DescribePrivateZoneRequest, DescribeAccountVpcListResponse, DeletePrivateDNSAccountRequest, AddSpecifyPrivateZoneVpcRequest, DescribeCreateRecordListResultResponse, ModifyInboundEndpointRequest, CreatePrivateDNSAccountResponse, SubscribePrivateZoneServiceRequest, DescribeCreateZoneListResultResponse, CreatePrivateDNSAccountRequest, CreateForwardRuleResponse, ModifyPrivateZoneVpcRequest, DescribePrivateDNSAccountListResponse, CreateExtendEndpointRequest, DescribeCreateRecordListResultRequest, CreatePrivateZoneRecordRequest, ModifyPrivateZoneRecordResponse, DescribePrivateZoneRecordListResponse, DescribeRequestDataResponse, DeleteInboundEndpointResponse, DescribeRecordRequest, DeleteForwardRuleRequest, ModifyPrivateZoneResponse, DeleteSpecifyPrivateZoneVpcRequest, ModifyPrivateZoneRequest, DescribeRecordResponse, DescribeDashboardResponse, ModifyForwardRuleResponse, SubscribePrivateZoneServiceResponse, ModifyRecordsStatusRequest, CreateInboundEndpointResponse, ModifyPrivateZoneRecordRequest, DescribePrivateDNSAccountListRequest, DescribePrivateZoneRecordListRequest, DescribeForwardRuleListRequest, ModifyRecordsStatusResponse, DeleteSpecifyPrivateZoneVpcResponse, DeleteEndPointResponse, DeleteEndPointRequest, DescribePrivateZoneListRequest, DescribeExtendEndpointListRequest, CreatePrivateZoneRecordListResponse, CreatePrivateZoneRequest, ModifyForwardRuleRequest, DescribePrivateZoneResponse, DescribeRequestDataRequest, DescribePrivateZoneServiceResponse, DescribeDashboardRequest, DescribeInboundEndpointListResponse, DeletePrivateZoneResponse, DescribePrivateZoneListResponse, DescribePrivateZoneServiceRequest, CreatePrivateZoneListResponse, DeleteInboundEndpointRequest, ModifyPrivateZoneVpcResponse, DescribeQuotaUsageResponse, DescribeAuditLogResponse, CreateForwardRuleRequest, CreatePrivateZoneListRequest, AddSpecifyPrivateZoneVpcResponse, CreateExtendEndpointResponse, CreateInboundEndpointRequest, DescribeCreateZoneListResultRequest, CreatePrivateZoneResponse, CreatePrivateZoneRecordResponse, DescribeForwardRuleListResponse, DescribeExtendEndpointListResponse, DescribeAuditLogRequest, DescribeQuotaUsageRequest, DescribeInboundEndpointListRequest, DeletePrivateZoneRequest, DeletePrivateZoneRecordRequest, DeleteForwardRuleResponse, ModifyInboundEndpointResponse, QueryAsyncBindVpcStatusRequest, DeletePrivateDNSAccountResponse, DeletePrivateZoneRecordResponse } from "./privatedns_models";
+/**
+ * privatedns client
+ * @class
+ */
+export declare class Client extends AbstractClient {
+    constructor(clientConfig: ClientConfig);
+    /**
+     * 跨账号关联VPC时，可通过该API接口添加关联账号
+     */
+    CreatePrivateDNSAccount(req: CreatePrivateDNSAccountRequest, cb?: (error: string, rep: CreatePrivateDNSAccountResponse) => void): Promise<CreatePrivateDNSAccountResponse>;
+    /**
+     * 获取私有域信息
+     */
+    DescribePrivateZone(req: DescribePrivateZoneRequest, cb?: (error: string, rep: DescribePrivateZoneResponse) => void): Promise<DescribePrivateZoneResponse>;
+    /**
+     * 删除转发规则并停止转发
+     */
+    DeleteForwardRule(req: DeleteForwardRuleRequest, cb?: (error: string, rep: DeleteForwardRuleResponse) => void): Promise<DeleteForwardRuleResponse>;
+    /**
+     * 删除终端节点
+     */
+    DeleteEndPoint(req: DeleteEndPointRequest, cb?: (error: string, rep: DeleteEndPointResponse) => void): Promise<DeleteEndPointResponse>;
+    /**
+     * 查询额度使用情况
+     */
+    DescribeQuotaUsage(req?: DescribeQuotaUsageRequest, cb?: (error: string, rep: DescribeQuotaUsageResponse) => void): Promise<DescribeQuotaUsageResponse>;
+    /**
+     * 查询批量添加私有域结果
+     */
+    DescribeCreateZoneListResult(req: DescribeCreateZoneListResultRequest, cb?: (error: string, rep: DescribeCreateZoneListResultResponse) => void): Promise<DescribeCreateZoneListResultResponse>;
+    /**
+     * 添加私有域解析记录
+     */
+    CreatePrivateZoneRecord(req: CreatePrivateZoneRecordRequest, cb?: (error: string, rep: CreatePrivateZoneRecordResponse) => void): Promise<CreatePrivateZoneRecordResponse>;
+    /**
+     * 创建私有域
+     */
+    CreatePrivateZone(req: CreatePrivateZoneRequest, cb?: (error: string, rep: CreatePrivateZoneResponse) => void): Promise<CreatePrivateZoneResponse>;
+    /**
+     * 获取私有域列表
+     */
+    DescribePrivateZoneList(req: DescribePrivateZoneListRequest, cb?: (error: string, rep: DescribePrivateZoneListResponse) => void): Promise<DescribePrivateZoneListResponse>;
+    /**
+     * 删除入站终端节点
+     */
+    ModifyInboundEndpoint(req: ModifyInboundEndpointRequest, cb?: (error: string, rep: ModifyInboundEndpointResponse) => void): Promise<ModifyInboundEndpointResponse>;
+    /**
+     * 获取私有域记录列表
+     */
+    DescribePrivateZoneRecordList(req: DescribePrivateZoneRecordListRequest, cb?: (error: string, rep: DescribePrivateZoneRecordListResponse) => void): Promise<DescribePrivateZoneRecordListResponse>;
+    /**
+     * 追加与私有域关联的VPC
+     */
+    AddSpecifyPrivateZoneVpc(req: AddSpecifyPrivateZoneVpcRequest, cb?: (error: string, rep: AddSpecifyPrivateZoneVpcResponse) => void): Promise<AddSpecifyPrivateZoneVpcResponse>;
+    /**
+     * 修改转发规则
+     */
+    ModifyForwardRule(req: ModifyForwardRuleRequest, cb?: (error: string, rep: ModifyForwardRuleResponse) => void): Promise<ModifyForwardRuleResponse>;
+    /**
+     * 批量添加私有域解析记录
+     */
+    CreatePrivateZoneRecordList(req: CreatePrivateZoneRecordListRequest, cb?: (error: string, rep: CreatePrivateZoneRecordListResponse) => void): Promise<CreatePrivateZoneRecordListResponse>;
+    /**
+     * 修改私有域信息
+     */
+    ModifyPrivateZone(req: ModifyPrivateZoneRequest, cb?: (error: string, rep: ModifyPrivateZoneResponse) => void): Promise<ModifyPrivateZoneResponse>;
+    /**
+     * 修改私有域解析记录
+     */
+    ModifyPrivateZoneRecord(req: ModifyPrivateZoneRecordRequest, cb?: (error: string, rep: ModifyPrivateZoneRecordResponse) => void): Promise<ModifyPrivateZoneRecordResponse>;
+    /**
+     * 适用于跨账号绑定VPC时需要移除关联账号的场景，解除账号关联后，将无法获取对应账号下的 VPC资源。
+     */
+    DeletePrivateDNSAccount(req: DeletePrivateDNSAccountRequest, cb?: (error: string, rep: DeletePrivateDNSAccountResponse) => void): Promise<DeletePrivateDNSAccountResponse>;
+    /**
+     * 创建终端节点
+     */
+    CreateExtendEndpoint(req?: CreateExtendEndpointRequest, cb?: (error: string, rep: CreateExtendEndpointResponse) => void): Promise<CreateExtendEndpointResponse>;
+    /**
+     * 开通私有域解析
+     */
+    SubscribePrivateZoneService(req?: SubscribePrivateZoneServiceRequest, cb?: (error: string, rep: SubscribePrivateZoneServiceResponse) => void): Promise<SubscribePrivateZoneServiceResponse>;
+    /**
+     * 获取私有域解析概览
+     */
+    DescribeDashboard(req?: DescribeDashboardRequest, cb?: (error: string, rep: DescribeDashboardResponse) => void): Promise<DescribeDashboardResponse>;
+    /**
+     * 修改私有域关联的VPC
+     */
+    ModifyPrivateZoneVpc(req: ModifyPrivateZoneVpcRequest, cb?: (error: string, rep: ModifyPrivateZoneVpcResponse) => void): Promise<ModifyPrivateZoneVpcResponse>;
+    /**
+     * 删除私有域并停止解析
+     */
+    DeletePrivateZone(req: DeletePrivateZoneRequest, cb?: (error: string, rep: DeletePrivateZoneResponse) => void): Promise<DeletePrivateZoneResponse>;
+    /**
+     * 查询异步绑定vpc操作状态
+     */
+    QueryAsyncBindVpcStatus(req: QueryAsyncBindVpcStatusRequest, cb?: (error: string, rep: QueryAsyncBindVpcStatusResponse) => void): Promise<QueryAsyncBindVpcStatusResponse>;
+    /**
+     * 获取操作日志列表
+     */
+    DescribeAuditLog(req: DescribeAuditLogRequest, cb?: (error: string, rep: DescribeAuditLogResponse) => void): Promise<DescribeAuditLogResponse>;
+    /**
+     * 获取关联账号的VPC列表
+     */
+    DescribeAccountVpcList(req: DescribeAccountVpcListRequest, cb?: (error: string, rep: DescribeAccountVpcListResponse) => void): Promise<DescribeAccountVpcListResponse>;
+    /**
+     * 获取私有域记录
+     */
+    DescribeRecord(req: DescribeRecordRequest, cb?: (error: string, rep: DescribeRecordResponse) => void): Promise<DescribeRecordResponse>;
+    /**
+     * 删除入站终端节点
+     */
+    CreateInboundEndpoint(req: CreateInboundEndpointRequest, cb?: (error: string, rep: CreateInboundEndpointResponse) => void): Promise<CreateInboundEndpointResponse>;
+    /**
+     * 修改解析记录状态
+     */
+    ModifyRecordsStatus(req: ModifyRecordsStatusRequest, cb?: (error: string, rep: ModifyRecordsStatusResponse) => void): Promise<ModifyRecordsStatusResponse>;
+    /**
+     * 批量创建私有域
+     */
+    CreatePrivateZoneList(req: CreatePrivateZoneListRequest, cb?: (error: string, rep: CreatePrivateZoneListResponse) => void): Promise<CreatePrivateZoneListResponse>;
+    /**
+     * 删除与私有域关联的VPC
+     */
+    DeleteSpecifyPrivateZoneVpc(req: DeleteSpecifyPrivateZoneVpcRequest, cb?: (error: string, rep: DeleteSpecifyPrivateZoneVpcResponse) => void): Promise<DeleteSpecifyPrivateZoneVpcResponse>;
+    /**
+     * 创建自定义转发规则
+     */
+    CreateForwardRule(req: CreateForwardRuleRequest, cb?: (error: string, rep: CreateForwardRuleResponse) => void): Promise<CreateForwardRuleResponse>;
+    /**
+     * 查询私有域解析开通状态
+     */
+    DescribePrivateZoneService(req?: DescribePrivateZoneServiceRequest, cb?: (error: string, rep: DescribePrivateZoneServiceResponse) => void): Promise<DescribePrivateZoneServiceResponse>;
+    /**
+     * 获取终端节点列表
+     */
+    DescribeExtendEndpointList(req: DescribeExtendEndpointListRequest, cb?: (error: string, rep: DescribeExtendEndpointListResponse) => void): Promise<DescribeExtendEndpointListResponse>;
+    /**
+     * 查询批量添加私有域解析记录结果
+     */
+    DescribeCreateRecordListResult(req: DescribeCreateRecordListResultRequest, cb?: (error: string, rep: DescribeCreateRecordListResultResponse) => void): Promise<DescribeCreateRecordListResultResponse>;
+    /**
+     * 查询转发规则列表
+     */
+    DescribeForwardRuleList(req: DescribeForwardRuleListRequest, cb?: (error: string, rep: DescribeForwardRuleListResponse) => void): Promise<DescribeForwardRuleListResponse>;
+    /**
+     * 获取入站终端节点列表
+     */
+    DescribeInboundEndpointList(req: DescribeInboundEndpointListRequest, cb?: (error: string, rep: DescribeInboundEndpointListResponse) => void): Promise<DescribeInboundEndpointListResponse>;
+    /**
+     * 删除私有域解析记录
+     */
+    DeletePrivateZoneRecord(req: DeletePrivateZoneRecordRequest, cb?: (error: string, rep: DeletePrivateZoneRecordResponse) => void): Promise<DeletePrivateZoneRecordResponse>;
+    /**
+     * 获取私有域解析请求量
+     */
+    DescribeRequestData(req: DescribeRequestDataRequest, cb?: (error: string, rep: DescribeRequestDataResponse) => void): Promise<DescribeRequestDataResponse>;
+    /**
+     * 删除入站终端节点
+     */
+    DeleteInboundEndpoint(req: DeleteInboundEndpointRequest, cb?: (error: string, rep: DeleteInboundEndpointResponse) => void): Promise<DeleteInboundEndpointResponse>;
+    /**
+     * 在跨账号绑定VPC的场景下，可通过该API接口获取所有已关联账号的列表
+     */
+    DescribePrivateDNSAccountList(req: DescribePrivateDNSAccountListRequest, cb?: (error: string, rep: DescribePrivateDNSAccountListResponse) => void): Promise<DescribePrivateDNSAccountListResponse>;
+}

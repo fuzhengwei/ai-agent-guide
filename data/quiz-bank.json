@@ -3,7 +3,7 @@
     {
       "id": "ch00_q01",
       "type": "single",
-      "question": "在 GPT 系列模型中，中文文本的 Token 消耗通常比英文多约多少倍？",
+      "question": "在 AI 系列模型中，中文文本的 Token 消耗通常比英文多约多少倍？",
       "options": [
         "约 0.5 倍，中文更省 Token",
         "约 1.5-2 倍，中文分词效率较低",
@@ -13,7 +13,7 @@
       "answer": [
         1
       ],
-      "explanation": "由于 GPT 系列模型的分词器主要基于 BPE 算法训练，英文文本通常一个单词对应 1-2 个 Token，而中文一个汉字往往需要 1.5-2 个 Token，因此中文文本的 Token 消耗通常比英文多约 1.5-2 倍。"
+      "explanation": "由于 AI 系列模型的分词器主要基于 BPE 算法训练，英文文本通常一个单词对应 1-2 个 Token，而中文一个汉字往往需要 1.5-2 个 Token，因此中文文本的 Token 消耗通常比英文多约 1.5-2 倍。"
     },
     {
       "id": "ch00_q02",
@@ -65,7 +65,7 @@
       "type": "single",
       "question": "以下哪个模型的开源协议允许商业使用？",
       "options": [
-        "GPT-4o（OpenAI 闭源）",
+        "AI-4o（OpenAI 闭源）",
         "Claude Sonnet（Anthropic 闭源）",
         "Llama 3（Meta 开源，有商业限制）",
         "Gemini Ultra（Google 闭源）"
@@ -73,7 +73,7 @@
       "answer": [
         2
       ],
-      "explanation": "Llama 3 是 Meta 开源的模型，允许商业使用但有月活用户限制（7亿）。GPT-4o、Claude、Gemini 均为闭源模型，只能通过 API 调用。开源模型还包括 Qwen、DeepSeek 等，多数允许商业使用。"
+      "explanation": "Llama 3 是 Meta 开源的模型，允许商业使用但有月活用户限制（7亿）。AI-4o、Claude、Gemini 均为闭源模型，只能通过 API 调用。开源模型还包括 Qwen、DeepSeek 等，多数允许商业使用。"
     },
     {
       "id": "ch00_q06",
@@ -100,7 +100,7 @@
       "options": [
         "上下文窗口越大，模型理解能力一定越强",
         "上下文窗口满了可以通过摘要压缩历史对话",
-        "GPT-4o 最大支持 128K Token 的上下文窗口",
+        "AI-4o 最大支持 128K Token 的上下文窗口",
         "上下文窗口内的信息模型一定能完美记住",
         "Claude 3.5 Sonnet 支持 200K Token 的上下文窗口"
       ],
@@ -109,7 +109,7 @@
         2,
         4
       ],
-      "explanation": "上下文窗口大小不等于理解能力，过长的上下文可能丢失中间信息（Lost in the Middle 问题）。窗口满时可通过摘要压缩历史对话。GPT-4o 支持 128K，Claude 3.5 Sonnet 支持 200K，但模型不保证完美记住窗口内所有信息。"
+      "explanation": "上下文窗口大小不等于理解能力，过长的上下文可能丢失中间信息（Lost in the Middle 问题）。窗口满时可通过摘要压缩历史对话。AI-4o 支持 128K，Claude 3.5 Sonnet 支持 200K，但模型不保证完美记住窗口内所有信息。"
     },
     {
       "id": "ch00_q08",
@@ -145,7 +145,7 @@
         2,
         3
       ],
-      "explanation": "Output Token 确实通常比 Input 贵 3-4 倍（因为生成需要逐 Token 自回归）。缓存命中的 Input Token 可享折扣（如 OpenAI 的 Prompt Caching）。不同模型价格差异巨大，如 GPT-4 比 GPT-3.5 贵 10+ 倍。Token 是按分词计算而非字符数。"
+      "explanation": "Output Token 确实通常比 Input 贵 3-4 倍（因为生成需要逐 Token 自回归）。缓存命中的 Input Token 可享折扣（如 OpenAI 的 Prompt Caching）。不同模型价格差异巨大，如 AI-4 比 AI-3.5 贵 10+ 倍。Token 是按分词计算而非字符数。"
     },
     {
       "id": "ch00_q10",
@@ -294,9 +294,9 @@
     {
       "id": "ch01_q04",
       "type": "single",
-      "question": "AutoGPT 被认为是 AI Agent 发展史上的里程碑，主要因为？",
+      "question": "AutoAgent 被认为是 AI Agent 发展史上的里程碑，主要因为？",
       "options": [
-        "它是第一个基于 GPT-4 的应用",
+        "它是第一个基于 AI-4 的应用",
         "它首次展示了 Agent 自主分解任务、上网搜索、执行代码的闭环能力",
         "它的代码量最大最复杂",
         "它是 OpenAI 官方发布的产品"
@@ -304,7 +304,7 @@
       "answer": [
         1
       ],
-      "explanation": "AutoGPT 于 2023 年开源，首次在公众面前展示了 Agent 的自主循环能力：自动分解目标任务→上网搜索信息→编写和执行代码→根据结果调整策略。虽然效果不完美，但验证了 Agent 范式的可行性，激发了整个 Agent 生态的发展。"
+      "explanation": "AutoAgent 于 2023 年开源，首次在公众面前展示了 Agent 的自主循环能力：自动分解目标任务→上网搜索信息→编写和执行代码→根据结果调整策略。虽然效果不完美，但验证了 Agent 范式的可行性，激发了整个 Agent 生态的发展。"
     },
     {
       "id": "ch01_q05",
@@ -555,7 +555,7 @@
         1,
         3
       ],
-      "explanation": "模块化架构的优势：各模块可独立优化替换（如规划用 GPT-4，执行用小模型）、便于调试定位问题、可为不同环节选择不同模型。但模块化架构比端到端更复杂，代码量更大，且模块间通信有开销，不一定更快。"
+      "explanation": "模块化架构的优势：各模块可独立优化替换（如规划用 AI-4，执行用小模型）、便于调试定位问题、可为不同环节选择不同模型。但模块化架构比端到端更复杂，代码量更大，且模块间通信有开销，不一定更快。"
     },
     {
       "id": "ch01_q20",
@@ -3578,7 +3578,7 @@
         "Subagents 共享记忆，Teams 不共享",
         "Subagents 是主 Agent 按需创建的临时助手，Teams 是预定义的固定协作团队",
         "Subagents 只能有一个，Teams 可以有多个",
-        "Subagents 用 GPT，Teams 用 Claude"
+        "Subagents 用 AI，Teams 用 Claude"
       ],
       "answer": [
         1
@@ -5066,7 +5066,7 @@
       "answer": [
         1
       ],
-      "explanation": "GUI Agent 通过截取屏幕截图，使用多模态 LLM（如 GPT-4V、Claude）理解界面元素位置和含义，然后模拟鼠标点击、键盘输入等操作完成任务。类似人类操作电脑的方式。"
+      "explanation": "GUI Agent 通过截取屏幕截图，使用多模态 LLM（如 AI-4V、Claude）理解界面元素位置和含义，然后模拟鼠标点击、键盘输入等操作完成任务。类似人类操作电脑的方式。"
     },
     {
       "id": "ch19_q02",
@@ -5074,7 +5074,7 @@
       "question": "GUI Agent 的视觉理解依赖什么技术？",
       "options": [
         "只使用 OCR 识别文字",
-        "多模态 LLM（如 GPT-4V、Claude 3.5 Sonnet）的视觉理解能力",
+        "多模态 LLM（如 AI-4V、Claude 3.5 Sonnet）的视觉理解能力",
         "传统计算机视觉算法（如边缘检测）",
         "浏览器的 DOM 树解析"
       ],
@@ -5212,7 +5212,7 @@
         "Claude Computer Use（Anthropic）",
         "OpenAI Operator",
         "Google Project Mariner",
-        "AutoGPT（自主 Agent 框架）",
+        "AutoAgent（自主 Agent 框架）",
         "Stable Diffusion（AI 绘画）"
       ],
       "answer": [
@@ -5220,7 +5220,7 @@
         1,
         2
       ],
-      "explanation": "GUI Agent 代表产品：Claude Computer Use、OpenAI Operator、Google Project Mariner。AutoGPT 是通用 Agent 框架但不是专门的 GUI Agent。Stable Diffusion 是图像生成模型不是 GUI Agent。"
+      "explanation": "GUI Agent 代表产品：Claude Computer Use、OpenAI Operator、Google Project Mariner。AutoAgent 是通用 Agent 框架但不是专门的 GUI Agent。Stable Diffusion 是图像生成模型不是 GUI Agent。"
     },
     {
       "id": "ch19_q11",
@@ -5339,14 +5339,14 @@
       "question": "为什么纯向量检索需要混合 BM25 关键词检索？",
       "options": [
         "向量速度太慢，需要 BM25 加速",
-        "向量检索关键词匹配能力差，如搜'GPT-4o'可能返回'GPT-4'的内容",
+        "向量检索关键词匹配能力差，如搜'AI-4o'可能返回'AI-4'的内容",
         "BM25 不需要任何计算资源",
         "向量检索只能处理英文，中文必须用 BM25"
       ],
       "answer": [
         1
       ],
-      "explanation": "纯向量检索的弱点是关键词匹配能力差——搜'GPT-4o'可能返回语义相似的'GPT-4'内容。BM25 基于关键词精确匹配，正好互补。混合检索（BM25 + 向量）加权融合后效果最好。"
+      "explanation": "纯向量检索的弱点是关键词匹配能力差——搜'AI-4o'可能返回语义相似的'AI-4'内容。BM25 基于关键词精确匹配，正好互补。混合检索（BM25 + 向量）加权融合后效果最好。"
     },
     {
       "id": "ch20_q04",
@@ -5800,7 +5800,7 @@
       "answer": [
         1
       ],
-      "explanation": "LLM-as-Judge：用一个强 LLM（如 GPT-4）作为裁判，对 Agent 的输出进行评分。优点是可规模化、成本低；缺点是裁判模型本身可能偏差。常结合人工标注做校准，是当前 Agent 评估的主流方法。"
+      "explanation": "LLM-as-Judge：用一个强 LLM（如 AI-4）作为裁判，对 Agent 的输出进行评分。优点是可规模化、成本低；缺点是裁判模型本身可能偏差。常结合人工标注做校准，是当前 Agent 评估的主流方法。"
     },
     {
       "id": "ch21_q03",
@@ -6530,7 +6530,7 @@
     {
       "id": "ch24_q05",
       "type": "single",
-      "question": "为什么 Agent 从 GPT 切换到本地模型只需要改一行 base_url？",
+      "question": "为什么 Agent 从 AI 切换到本地模型只需要改一行 base_url？",
       "options": [
         "因为所有模型完全相同",
         "因为 Ollama/vLLM 都提供 OpenAI 兼容 API，只需改 base_url 指向本地服务即可",
@@ -6649,7 +6649,7 @@
     {
       "id": "ch24_q12",
       "type": "single",
-      "question": "Agent 从调用 GPT 切换到本地模型只需改 base_url，得益于？",
+      "question": "Agent 从调用 AI 切换到本地模型只需改 base_url，得益于？",
       "options": [
         "本地模型更强",
         "本地推理框架（如 Ollama/vLLM）提供了 OpenAI 兼容 API 接口",
@@ -6699,14 +6699,14 @@
       "question": "GUI Agent 在 2026 年走向实用的关键技术驱动力是什么？",
       "options": [
         "CPU 性能提升",
-        "多模态模型（GPT-5/Claude 4）能力提升，使 GUI Agent 准确率从 50-70% 提升到 90%+",
+        "多模态模型（AI-5/Claude 4）能力提升，使 GUI Agent 准确率从 50-70% 提升到 90%+",
         "屏幕分辨率提高",
         "鼠标精度提升"
       ],
       "answer": [
         1
       ],
-      "explanation": "GUI Agent 依赖多模态视觉理解能力（截图→理解界面→决定操作）。随着 GPT-5/Claude 4 等多模态模型能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+，能可靠操作任意软件，将重塑 RPA（机器人流程自动化）行业。"
+      "explanation": "GUI Agent 依赖多模态视觉理解能力（截图→理解界面→决定操作）。随着 AI-5/Claude 4 等多模态模型能力提升，GUI Agent 准确率将从 50-70% 提升到 90%+，能可靠操作任意软件，将重塑 RPA（机器人流程自动化）行业。"
     },
     {
       "id": "ch25_q04",
@@ -6729,7 +6729,7 @@
       "question": "模型分级（Model Tiering）策略的核心思想是什么？",
       "options": [
         "所有任务都用最强模型",
-        "简单任务用小模型（GPT-4o-mini），复杂推理用大模型（GPT-4o），按任务难度动态选择",
+        "简单任务用小模型（AI-4o-mini），复杂推理用大模型（AI-4o），按任务难度动态选择",
         "一个中等模型处理所有任务",
         "随机选择模型"
       ],
@@ -7681,7 +7681,7 @@
       "type": "single",
       "question": "字节面经真题：量化后模型理解能力下降，下列哪种『精度补偿』思路是正确的？",
       "options": [
-        "量化后再用少量代表性数据做量化感知训练（QAT）或 GPTQ 等校准，恢复关键层精度",
+        "量化后再用少量代表性数据做量化感知训练（QAT）或 QuantQ 等校准，恢复关键层精度",
         "把量化位宽从 4bit 升回 32bit，放弃所有压缩收益",
         "在量化模型上增大温度参数，让输出更随机",
         "把所有注意力头替换成平均值池化"
@@ -7689,7 +7689,7 @@
       "answer": [
         0
       ],
-      "explanation": "量化的精度损失可通过 QAT（训练中模拟量化）、GPTQ/AWQ 等校准算法、对敏感层（如部分 FFN/Attention）保留高精度混精度等手段补偿。工程上还要在精度与吞吐之间做 tradeoff——字节面试常追问『响应速度与推理精度如何权衡』，可答先召回再精排的级联或量化+蒸馏组合。"
+      "explanation": "量化的精度损失可通过 QAT（训练中模拟量化）、QuantQ/AWQ 等校准算法、对敏感层（如部分 FFN/Attention）保留高精度混精度等手段补偿。工程上还要在精度与吞吐之间做 tradeoff——字节面试常追问『响应速度与推理精度如何权衡』，可答先召回再精排的级联或量化+蒸馏组合。"
     },
     {
       "id": "by_q09",

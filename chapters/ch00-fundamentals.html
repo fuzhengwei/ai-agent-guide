@@ -650,7 +650,7 @@ setTimeout(() => {
     <span class="evo-gen-label">第一代 · 2022-2023</span>
     <div class="evo-title">💬 纯聊天（ChatOnly）—— 只能对话，不能行动</div>
     <div class="evo-desc">
-      代表产品：ChatGPT 早期版本。这一代的 AI 只有一个能力——<strong>生成文本</strong>。它能和你聊天、写文章、翻译、回答问题，但所有回答都<strong>基于训练时的历史数据</strong>。它不能查实时天气、不能调用 API、不能执行代码、不能帮你订机票。<strong>它只是一个"会说话的百科全书"</strong>。
+      代表产品：AI 聊天助手 早期版本。这一代的 AI 只有一个能力——<strong>生成文本</strong>。它能和你聊天、写文章、翻译、回答问题，但所有回答都<strong>基于训练时的历史数据</strong>。它不能查实时天气、不能调用 API、不能执行代码、不能帮你订机票。<strong>它只是一个"会说话的百科全书"</strong>。
     </div>
     <div class="evo-desc">
       <strong>核心限制：</strong>没有行动能力，只能"想"不能"做"。训练数据截止后，所有实时信息都是猜测。回答质量完全取决于训练数据和 Prompt 质量。
@@ -661,7 +661,7 @@ setTimeout(() => {
         北京今天天气怎么样？
       </div>
       <div class="chat-msg chat-msg-ai">
-        <span class="chat-role chat-role-ai">🤖 ChatGPT (早期)</span><br>
+        <span class="chat-role chat-role-ai">🤖 AI 聊天助手 (早期)</span><br>
         我无法提供实时天气信息，因为我的数据只更新到 2023 年。建议你查看天气预报网站或 App 获取北京今天的天气。<br><br>
         ❌ <em>没有行动能力，只能建议用户自己去查</em>
       </div>
@@ -862,7 +862,7 @@ setTimeout(() => {
   <div class="qa-item">
     <div class="qa-question">Q8: 从 ChatBot 到 Agent 经历了哪三次进化？</div>
     <div class="qa-answer">
-      三次进化：①<strong>第一代纯聊天</strong>（2022-2023，ChatGPT 早期）——只能对话，所有回答基于训练数据，无法获取实时信息；②<strong>第二代+工具</strong>（2023-2024，Function Calling）——能调用外部 API 获取实时数据，但仍是一问一答模式；③<strong>第三代+循环+记忆</strong>（2024-2026，ReAct Agent）——自主规划多步任务、循环调用工具、自我纠错、持续记忆。每次进化都解锁了全新的能力维度。
+      三次进化：①<strong>第一代纯聊天</strong>（2022-2023，AI 聊天助手 早期）——只能对话，所有回答基于训练数据，无法获取实时信息；②<strong>第二代+工具</strong>（2023-2024，Function Calling）——能调用外部 API 获取实时数据，但仍是一问一答模式；③<strong>第三代+循环+记忆</strong>（2024-2026，ReAct Agent）——自主规划多步任务、循环调用工具、自我纠错、持续记忆。每次进化都解锁了全新的能力维度。
     </div>
   </div>
 
@@ -1051,7 +1051,7 @@ var ch00Questions = [
       '所有模型的上下文窗口大小都是 128K'
     ],
     answer: [2],
-    explanation: '上下文窗口 = 输入 Token + 输出 Token 的总和上限。超过时需要截断、摘要或向量检索。窗口大小不影响推理能力，只影响能处理多长的文本。不同模型窗口不同：GPT-4o 128K，Claude 200K，Gemini 1M。'
+    explanation: '上下文窗口 = 输入 Token + 输出 Token 的总和上限。超过时需要截断、摘要或向量检索。窗口大小不影响推理能力，只影响能处理多长的文本。不同模型窗口不同：AI-4o 128K，Claude 200K，Gemini 1M。'
   },
   {
     type: 'single',
@@ -1118,12 +1118,12 @@ var ch00Questions = [
     question: '以下哪些属于开源大语言模型？（多选）',
     options: [
       'Meta Llama 3.1',
-      'OpenAI GPT-4o',
+      'OpenAI AI-4o',
       'DeepSeek-V3',
       '阿里云 Qwen 2.5'
     ],
     answer: [0, 2, 3],
-    explanation: 'Llama 3.1（Meta）、DeepSeek-V3（深度求索）、Qwen 2.5（阿里云）都是开源模型，可以下载权重私有部署。GPT-4o 是 OpenAI 的闭源模型，只能通过 API 调用。'
+    explanation: 'Llama 3.1（Meta）、DeepSeek-V3（深度求索）、Qwen 2.5（阿里云）都是开源模型，可以下载权重私有部署。AI-4o 是 OpenAI 的闭源模型，只能通过 API 调用。'
   },
   {
     type: 'multiple',

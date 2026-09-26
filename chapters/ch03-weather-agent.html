@@ -308,7 +308,7 @@ def run_agent(user_message: str) -> str:
     while True:
         # 1. 感知 + 决策：AI 决定是否调用工具
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="ai-4o-mini",
             messages=messages,
             tools=tools_schema,
         )
@@ -367,7 +367,7 @@ async function runAgent(userMessage: string): Promise&lt;string&gt; {
   while (true) {
     // 1. 感知 + 决策：AI 决定是否调用工具
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "ai-4o-mini",
       messages,
       tools: toolsSchema,
     });
@@ -433,7 +433,7 @@ func runAgent(userMessage string) (string, error) {
 		resp, err := client.CreateChatCompletion(
 			context.Background(),
 			openai.ChatCompletionRequest{
-				Model:    "gpt-4o-mini",
+				Model:    "ai-4o-mini",
 				Messages: messages,
 				Tools:    toolsSchema, // 工具 Schema 定义
 			},
@@ -501,7 +501,7 @@ public class WeatherAgentApp {
         while (true) {
             // 1. 感知 + 决策
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o-mini")
+                .model("ai-4o-mini")
                 .messages(messages)
                 .tools(toolSchemas) // 工具 Schema 定义
                 .build();
@@ -590,7 +590,7 @@ public class WeatherAgentApp {
         # Agent 循环（和之前一样）
         while True:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="ai-4o-mini",
                 messages=messages,
                 tools=tools_schema,
             )
@@ -659,7 +659,7 @@ async function runAgentLoop(): Promise&lt;void&gt; {
     // Agent 循环（和之前一样）
     while (true) {
       const response = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "ai-4o-mini",
         messages,
         tools: toolsSchema,
       });
@@ -742,7 +742,7 @@ func runAgentLoop() {
 			resp, err := client.CreateChatCompletion(
 				context.Background(),
 				openai.ChatCompletionRequest{
-					Model:    "gpt-4o-mini",
+					Model:    "ai-4o-mini",
 					Messages: messages,
 					Tools:    toolsSchema,
 				},
@@ -830,7 +830,7 @@ public class WeatherAgentLoop {
             // Agent 循环（和之前一样）
             while (true) {
                 ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                    .model("gpt-4o-mini")
+                    .model("ai-4o-mini")
                     .messages(messages)
                     .tools(toolSchemas)
                     .build();
@@ -1039,7 +1039,7 @@ def run_agent_robust(user_message: str) -> str:
     while True:
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="ai-4o-mini",
                 messages=messages,
                 tools=tools_schema,
             )
@@ -1200,7 +1200,7 @@ async function runAgentRobust(userMessage: string): Promise&lt;string&gt; {
   while (true) {
     try {
       const response = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "ai-4o-mini",
         messages,
         tools: toolsSchema,
       });
@@ -1359,7 +1359,7 @@ func runAgentRobust(userMessage string) string {
 		resp, err := client.CreateChatCompletion(
 			context.Background(),
 			openai.ChatCompletionRequest{
-				Model:    "gpt-4o-mini",
+				Model:    "ai-4o-mini",
 				Messages: messages,
 				Tools:    toolsSchema,
 			},
@@ -1516,7 +1516,7 @@ import java.io.*;
         // Python: while True:
         // Python: try:
         // Python: response = client.chat.completions.create(
-        // Python: model="gpt-4o-mini",
+        // Python: model="ai-4o-mini",
         // Python: messages=messages,
         // Python: tools=tools_schema,
         // Python: )
@@ -1966,7 +1966,7 @@ import java.io.*;
     while True:
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="ai-4o-mini",
                 messages=messages,
                 tools=tools_schema,
             )
@@ -2029,7 +2029,7 @@ print(run_multi_tool_agent("帮我规划一下上海的行程"))</pre></div>
   while (true) {
   try {
   const response = client.chat.completions.create(;
-  const model = "gpt-4o-mini",;
+  const model = "ai-4o-mini",;
   const messages = messages,;
   const tools = tools_schema,;
   // )
@@ -2100,7 +2100,7 @@ import (
 	// Python: while True:
 	// try block
 	// Python: response = client.chat.completions.create(
-	// Python: model="gpt-4o-mini",
+	// Python: model="ai-4o-mini",
 	// Python: messages=messages,
 	// Python: tools=tools_schema,
 	// Python: )
@@ -2167,7 +2167,7 @@ import java.io.*;
         // Python: while True:
         // Python: try:
         // Python: response = client.chat.completions.create(
-        // Python: model="gpt-4o-mini",
+        // Python: model="ai-4o-mini",
         // Python: messages=messages,
         // Python: tools=tools_schema,
         // Python: )
@@ -2330,7 +2330,7 @@ class AgentTracer:
                 print(f"    工具: {', '.join(loop['tool_calls'])}")
         print("="*50)
 
-        # 成本估算（以 GPT-4o-mini 为例）
+        # 成本估算（以 AI-4o-mini 为例）
         cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
         cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
 
@@ -2363,7 +2363,7 @@ def run_agent_with_tracer(user_message: str) -> str:
         start_time = time.time()
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="ai-4o-mini",
             messages=messages,
             tools=tools_schema,
         )
@@ -2449,7 +2449,7 @@ class AgentTracer {
   console.log(`    工具: {', '.join(loop['tool_calls'])}`);
   console.log("="*50);
 
-// 成本估算（以 GPT-4o-mini 为例）
+// 成本估算（以 AI-4o-mini 为例）
   // cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
   // cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
 
@@ -2482,7 +2482,7 @@ class AgentTracer {
   // start_time = time.time()
 
   // response = client.chat.completions.create(
-  // model = "gpt-4o-mini",
+  // model = "ai-4o-mini",
   // messages = messages,
   // tools = tools_schema,
   // )
@@ -2578,7 +2578,7 @@ func print_report() {
 	fmt.Println(f"    工具: {', '.join(loop['tool_calls'])}")
 	fmt.Println("="*50)
 
-// 成本估算（以 GPT-4o-mini 为例）
+// 成本估算（以 AI-4o-mini 为例）
 	// Python: cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
 	// Python: cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
 
@@ -2610,7 +2610,7 @@ func print_report() {
 	// Python: start_time = time.time()
 
 	// Python: response = client.chat.completions.create(
-	// Python: model="gpt-4o-mini",
+	// Python: model="ai-4o-mini",
 	// Python: messages=messages,
 	// Python: tools=tools_schema,
 	// Python: )
@@ -2699,7 +2699,7 @@ public class AgentTracer {
         System.out.println(String.format("$1"));
         System.out.println("="*50);
 
-    // 成本估算（以 GPT-4o-mini 为例）
+    // 成本估算（以 AI-4o-mini 为例）
         // Python: cost_per_1k_input = 0.15 / 1000   # $0.15/1M tokens → $0.00015/1K
         // Python: cost_per_1k_output = 0.60 / 1000  # $0.60/1M tokens → $0.0006/1K
 
@@ -2731,7 +2731,7 @@ public class AgentTracer {
         // Python: start_time = time.time()
 
         // Python: response = client.chat.completions.create(
-        // Python: model="gpt-4o-mini",
+        // Python: model="ai-4o-mini",
         // Python: messages=messages,
         // Python: tools=tools_schema,
         // Python: )
@@ -2822,7 +2822,7 @@ public class AgentTracer {
 <li><strong>设置最大循环次数</strong>：防止无限循环（如 max_loops=10）</li>
 <li><strong>设置最大 token 预算</strong>：超过预算就停止（如 max_tokens=5000）</li>
 <li><strong>压缩历史消息</strong>：循环超过 N 次后，摘要之前的对话</li>
-<li><strong>选择合适的模型</strong>：简单任务用 gpt-4o-mini，复杂任务用 gpt-4o</li>
+<li><strong>选择合适的模型</strong>：简单任务用 ai-4o-mini，复杂任务用 ai-4o</li>
 </ul>
 </div>
 
@@ -2964,7 +2964,7 @@ def run_hybrid_agent(user_message: str) -> str:
 
     while True:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="ai-4o-mini",
             messages=messages,
             tools=hybrid_tools,
         )
@@ -3066,7 +3066,7 @@ print(run_hybrid_agent("我想从北京去上海玩两天，帮我规划一下")
 
   while (true) {
   const response = client.chat.completions.create(;
-  const model = "gpt-4o-mini",;
+  const model = "ai-4o-mini",;
   const messages = messages,;
   const tools = hybrid_tools,;
   // )
@@ -3174,7 +3174,7 @@ import (
 
 	// Python: while True:
 	// Python: response = client.chat.completions.create(
-	// Python: model="gpt-4o-mini",
+	// Python: model="ai-4o-mini",
 	// Python: messages=messages,
 	// Python: tools=hybrid_tools,
 	// Python: )
@@ -3278,7 +3278,7 @@ import java.io.*;
 
         // Python: while True:
         // Python: response = client.chat.completions.create(
-        // Python: model="gpt-4o-mini",
+        // Python: model="ai-4o-mini",
         // Python: messages=messages,
         // Python: tools=hybrid_tools,
         // Python: )
@@ -3435,7 +3435,7 @@ import java.io.*;
   </div>
   <div class="qa-item">
     <div class="qa-question">思考3: 成本优化</div>
-    <div class="qa-answer">你的天气 Agent 每天处理 50000 次请求，每次平均消耗 800 tokens。按 GPT-4o-mini 价格（$0.15/1M input, $0.60/1M output），月成本是多少？如果 80% 的请求只是"北京今天天气"这种简单查询，如何用混合架构降低成本？</div>
+    <div class="qa-answer">你的天气 Agent 每天处理 50000 次请求，每次平均消耗 800 tokens。按 AI-4o-mini 价格（$0.15/1M input, $0.60/1M output），月成本是多少？如果 80% 的请求只是"北京今天天气"这种简单查询，如何用混合架构降低成本？</div>
   </div>
 </div>
 

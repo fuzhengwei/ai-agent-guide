@@ -13,7 +13,7 @@
   <div class="card-title">🎤 面试官更爱这样追问</div>
   <p>比起问"什么是 Ollama"，更真实的问法通常是：</p>
   <ul style="margin: 10px 0 0 20px; color: var(--color-text-secondary);">
-    <li>为什么 Agent 从 GPT 切换到本地模型只需要改一行 base_url？</li>
+    <li>为什么 Agent 从 AI 切换到本地模型只需要改一行 base_url？</li>
     <li>PagedAttention 解决了什么问题？为什么 vLLM 的显存利用率能达到 90%？</li>
     <li>INT4 量化后精度损失多少？什么场景下量化不可接受？</li>
     <li>多 GPU 推理时，模型怎么切分？通信开销怎么优化？</li>
@@ -119,7 +119,7 @@ ollama cp qwen2:7b my-agent # 复制模型（用于自定义 Modelfile）
 
 <h3 class="sub-heading">Agent 代码接入</h3>
 
-<p>Ollama 最强大的地方在于<strong>API 兼容 OpenAI 格式</strong>。你原来用 GPT-4 的 Agent 代码，只需要改一行配置就能切换到本地模型：</p>
+<p>Ollama 最强大的地方在于<strong>API 兼容 OpenAI 格式</strong>。你原来用 AI-4 的 Agent 代码，只需要改一行配置就能切换到本地模型：</p>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
@@ -129,7 +129,7 @@ ollama cp qwen2:7b my-agent # 复制模型（用于自定义 Modelfile）
 #     base_url="https://api.openai.com/v1",
 #     api_key="sk-xxx"
 # )
-# model = "gpt-4o"
+# model = "ai-4o"
 
 # ========== 方案B：本地 Ollama — 只改这两行 ==========
 client = OpenAI(
@@ -185,7 +185,7 @@ if response.choices[0].message.tool_calls:
 //   baseURL: 'https://api.openai.com/v1',
 //   apiKey: 'sk-xxx'
 // });
-// const model = 'gpt-4o';
+// const model = 'ai-4o';
 
 // ========== 方案B：本地 Ollama — 只改这两行 ==========
 const client = new OpenAI({
@@ -512,7 +512,7 @@ curl http://localhost:8000/v1/chat/completions \
         HuggingFace 的 Text Generation Inference，Docker 一键部署。<br><br>
         <strong>适合</strong>：需要快速搭建企业推理服务的团队<br>
         <strong>优势</strong>：HuggingFace 生态天然集成、Flash Attention、水印检测<br>
-        <strong>特点</strong>：Docker 部署最简单，量化支持完善（GPTQ/AWQ/bitsandbytes）
+        <strong>特点</strong>：Docker 部署最简单，量化支持完善（QuantQ/AWQ/bitsandbytes）
       </p>
     </div>
   </div>
@@ -624,7 +624,7 @@ curl http://localhost:8000/v1/chat/completions \
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPU 集群生产部署</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">INT8 (GPTQ/AWQ)</td>
+        <td style="padding: 10px 8px; font-weight: 500;">INT8 (QuantQ/AWQ)</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">1 byte</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">7 GB</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">2-3x 加速</td>
@@ -658,7 +658,7 @@ curl http://localhost:8000/v1/chat/completions \
 <h3 class="sub-heading">主流量化格式</h3>
 
 <div class="card">
-  <div class="card-title">🔧 GGUF vs GPTQ vs AWQ — 三种量化格式对比</div>
+  <div class="card-title">🔧 GGUF vs QuantQ vs AWQ — 三种量化格式对比</div>
   <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
     <thead>
       <tr style="border-bottom: 2px solid var(--color-border);">
@@ -678,8 +678,8 @@ curl http://localhost:8000/v1/chat/completions \
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">CPU/GPU 混合推理、单文件分发</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
-        <td style="padding: 10px 8px; font-weight: 500;">GPTQ</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM / TGI / AutoGPTQ</td>
+        <td style="padding: 10px 8px; font-weight: 500;">QuantQ</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM / TGI / AutoQuantQ</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">基于校准数据集的一阶量化</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">INT4 / INT8</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">GPU-only、精度好、vLLM原生支持</td>
@@ -689,7 +689,7 @@ curl http://localhost:8000/v1/chat/completions \
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">vLLM / TGI</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">激活感知的加权量化</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">INT4 / INT8</td>
-        <td style="padding: 10px 8px; color: var(--color-text-secondary);">保留重要通道权重、精度优于GPTQ</td>
+        <td style="padding: 10px 8px; color: var(--color-text-secondary);">保留重要通道权重、精度优于QuantQ</td>
       </tr>
     </tbody>
   </table>
@@ -723,7 +723,7 @@ curl http://localhost:8000/v1/chat/completions \
       <tr style="border-bottom: 1px solid var(--color-border-light);">
         <td style="padding: 10px 8px; font-weight: 500;">工具调用型 Agent（API 路由）</td>
         <td style="padding: 10px 8px;">vLLM</td>
-        <td style="padding: 10px 8px;">GPTQ-AWQ INT8</td>
+        <td style="padding: 10px 8px;">QuantQ-AWQ INT8</td>
         <td style="padding: 10px 8px; color: var(--color-text-secondary);">Function Calling 需要更高精度，INT8 + 高并发</td>
       </tr>
       <tr style="border-bottom: 1px solid var(--color-border-light);">
@@ -795,7 +795,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 <h3 class="sub-heading">统一接入架构</h3>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"Agent 代码\n（OpenAI SDK）","type":"start"},{"id":"router","label":"模型路由层\n（base_url切换）","type":"process"},{"id":"cloud","label":"GPT-4o\napi.openai.com","type":"tool"},{"id":"ollama","label":"Qwen2:7b\nlocalhost:11434","type":"tool"},{"id":"vllm","label":"DeepSeek-V3\ngpu-server:8000","type":"tool"},{"id":"sglang","label":"Llama3\nsglang-server:30000","type":"tool"}],"edges":[{"from":"agent","to":"router"},{"from":"router","to":"cloud"},{"from":"router","to":"ollama"},{"from":"router","to":"vllm"},{"from":"router","to":"sglang"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"Agent 代码\n（OpenAI SDK）","type":"start"},{"id":"router","label":"模型路由层\n（base_url切换）","type":"process"},{"id":"cloud","label":"AI-4o\napi.openai.com","type":"tool"},{"id":"ollama","label":"Qwen2:7b\nlocalhost:11434","type":"tool"},{"id":"vllm","label":"DeepSeek-V3\ngpu-server:8000","type":"tool"},{"id":"sglang","label":"Llama3\nsglang-server:30000","type":"tool"}],"edges":[{"from":"agent","to":"router"},{"from":"router","to":"cloud"},{"from":"router","to":"ollama"},{"from":"router","to":"vllm"},{"from":"router","to":"sglang"}]}'></div>
 
 <div class="code-block" data-multi-lang>
 <div class="code-lang-pane" data-lang="python" data-label="Python"><pre>from openai import OpenAI
@@ -811,7 +811,7 @@ class AgentModelRouter:
     """Agent 模型路由器：根据任务类型自动选择推理后端"""
 
     BACKEND_CONFIG = {
-        ModelBackend.OPENAI: {"api_key": "sk-xxx", "model": "gpt-4o"},
+        ModelBackend.OPENAI: {"api_key": "sk-xxx", "model": "ai-4o"},
         ModelBackend.OLLAMA: {"api_key": "ollama", "model": "qwen2:7b"},
         ModelBackend.VLLM:  {"api_key": "EMPTY", "model": "deepseek-v3"},
         ModelBackend.SGLANG: {"api_key": "EMPTY", "model": "llama3-8b"},
@@ -882,7 +882,7 @@ enum ModelBackend {
 }
 
 const BACKEND_CONFIG: Record&lt;ModelBackend, { apiKey: string; model: string }&gt; = {
-  [ModelBackend.OPENAI]: { apiKey: 'sk-xxx', model: 'gpt-4o' },
+  [ModelBackend.OPENAI]: { apiKey: 'sk-xxx', model: 'ai-4o' },
   [ModelBackend.OLLAMA]: { apiKey: 'ollama', model: 'qwen2:7b' },
   [ModelBackend.VLLM]: { apiKey: 'EMPTY', model: 'deepseek-v3' },
   [ModelBackend.SGLANG]: { apiKey: 'EMPTY', model: 'llama3-8b' },
@@ -973,7 +973,7 @@ type AgentModelRouter struct {
 }
 
 var backendConfigs = map[ModelBackend]BackendConfig{
-    BackendOpenAI: {APIKey: "sk-xxx", Model: "gpt-4o"},
+    BackendOpenAI: {APIKey: "sk-xxx", Model: "ai-4o"},
     BackendOllama: {APIKey: "ollama", Model: "qwen2:7b"},
     BackendVLLM:   {APIKey: "EMPTY", Model: "deepseek-v3"},
     BackendSGLang: {APIKey: "EMPTY", Model: "llama3-8b"},
@@ -1028,7 +1028,7 @@ public class AgentModelRouter {
     }
 
     static final Map&lt;ModelBackend, String[]&gt; BACKEND_CONFIG = Map.of(
-        ModelBackend.OPENAI, new String[]{"sk-xxx", "gpt-4o"},
+        ModelBackend.OPENAI, new String[]{"sk-xxx", "ai-4o"},
         ModelBackend.OLLAMA, new String[]{"ollama", "qwen2:7b"},
         ModelBackend.VLLM, new String[]{"EMPTY", "deepseek-v3"},
         ModelBackend.SGLANG, new String[]{"EMPTY", "llama3-8b"}
@@ -1078,9 +1078,9 @@ public class AgentModelRouter {
   <ul>
     <li><strong>80% 简单任务</strong>（FAQ、分类、简单提取）→ 本地模型 Qwen2:7b (Ollama/vLLM)，成本 ≈ 0</li>
     <li><strong>15% 中等任务</strong>（多轮对话、工具调用）→ 本地模型 DeepSeek-V3 (vLLM INT8)，成本 ≈ GPU 电费</li>
-    <li><strong>5% 复杂任务</strong>（复杂推理、关键决策）→ 云端 GPT-4o，按量付费，但只有 5% 的调用</li>
+    <li><strong>5% 复杂任务</strong>（复杂推理、关键决策）→ 云端 AI-4o，按量付费，但只有 5% 的调用</li>
   </ul>
-  <p style="margin-top: 12px; font-size: 14px;">总成本 ≈ 5% × GPT-4o 价格 + GPU 运维费，比纯云端方案节省 70%+。</p>
+  <p style="margin-top: 12px; font-size: 14px;">总成本 ≈ 5% × AI-4o 价格 + GPU 运维费，比纯云端方案节省 70%+。</p>
 </div>
 
 <!-- ===== 24.9 生产级部署 ===== -->
@@ -1288,13 +1288,13 @@ services:
   <div class="card-title">🔬 DeepSeek-V3 MoE 架构实践</div>
   <p>DeepSeek-V3 是 2025 年 MoE 推理优化的标杆案例：</p>
   <ul>
-    <li><strong>总参数 671B，激活参数仅 37B</strong>——用 Dense 模型的推理成本跑出接近 GPT-4o 的效果</li>
+    <li><strong>总参数 671B，激活参数仅 37B</strong>——用 Dense 模型的推理成本跑出接近 AI-4o 的效果</li>
     <li><strong>256 个路由专家 + 1 个共享专家</strong>，每个 Token 选 Top-8 路由专家</li>
     <li><strong>共享专家始终激活</strong>，处理通用语言知识；路由专家处理 specialized 领域能力</li>
     <li><strong>无辅助损失的负载均衡</strong>：创新性地用偏置项动态调整路由概率，避免 aux loss 对主任务的干扰</li>
     <li><strong>多 Token 预测（MTP）</strong>：训练时同时预测多个未来 Token，推理时可配合投机解码加速</li>
   </ul>
-  <p style="margin-top: 12px; font-size: 14px;">实际推理成本：DeepSeek-V3 的每百万 Token 价格约为 GPT-4o 的 1/10，这就是 MoE 架构的威力。</p>
+  <p style="margin-top: 12px; font-size: 14px;">实际推理成本：DeepSeek-V3 的每百万 Token 价格约为 AI-4o 的 1/10，这就是 MoE 架构的威力。</p>
 </div>
 
 <h3 class="sub-heading">27.10.2 Speculative Decoding（投机解码）</h3>
@@ -1535,8 +1535,8 @@ python -m vllm.entrypoints.openai.api_server \
   </div>
 
   <div class="qa-item">
-    <div class="qa-q"><strong>Q5：Agent 从 GPT 切换到本地模型为什么只需改一行？</strong></div>
-    <div class="qa-a">因为所有主流推理框架（Ollama/vLLM/SGLang/TGI）都兼容 OpenAI API 格式。Agent 代码用的是 OpenAI SDK，只需把 base_url 从 api.openai.com 改为 localhost:11434（Ollama）或 gpu-server:8000（vLLM），model 从 gpt-4o 改为本地模型名，其余代码完全不变。</div>
+    <div class="qa-q"><strong>Q5：Agent 从 AI 切换到本地模型为什么只需改一行？</strong></div>
+    <div class="qa-a">因为所有主流推理框架（Ollama/vLLM/SGLang/TGI）都兼容 OpenAI API 格式。Agent 代码用的是 OpenAI SDK，只需把 base_url 从 api.openai.com 改为 localhost:11434（Ollama）或 gpu-server:8000（vLLM），model 从 ai-4o 改为本地模型名，其余代码完全不变。</div>
   </div>
 
   <div class="qa-item">
@@ -1551,12 +1551,12 @@ python -m vllm.entrypoints.openai.api_server \
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q8：混合部署策略为什么能节省 70% 成本？</strong></div>
-    <div class="qa-a">核心逻辑：80% 简单任务（FAQ/分类/提取）用本地开源模型（成本≈GPU运维费），15% 中等任务用本地 INT8 量化模型，只有 5% 复杂推理任务才调用 GPT-4o。总成本 = 5%×GPT价格 + GPU费，远低于 100% 用 GPT。关键是 Agent 框架要支持动态模型路由。</div>
+    <div class="qa-a">核心逻辑：80% 简单任务（FAQ/分类/提取）用本地开源模型（成本≈GPU运维费），15% 中等任务用本地 INT8 量化模型，只有 5% 复杂推理任务才调用 AI-4o。总成本 = 5%×AI价格 + GPU费，远低于 100% 用 AI。关键是 Agent 框架要支持动态模型路由。</div>
   </div>
 
   <div class="qa-item">
     <div class="qa-q"><strong>Q9：MoE 模型参数量 671B，为什么推理成本却能和 70B Dense 模型差不多？</strong></div>
-    <div class="qa-a">MoE 的核心是<strong>稀疏激活</strong>：虽然总参数 671B，但每个 Token 只路由到 Top-K 个专家（如 K=8），激活参数仅 ~37B。推理计算量 ∝ 激活参数量而非总参数量，所以计算成本相当于 37B Dense 模型。<strong>代价是显存</strong>——所有 671B 参数都要常驻显存（因为不知道哪个专家会被选中），所以 MoE 是"计算便宜、显存贵"。DeepSeek-V3 通过共享专家 + 无辅助损失负载均衡进一步优化，实际推理成本约为 GPT-4o 的 1/10。</div>
+    <div class="qa-a">MoE 的核心是<strong>稀疏激活</strong>：虽然总参数 671B，但每个 Token 只路由到 Top-K 个专家（如 K=8），激活参数仅 ~37B。推理计算量 ∝ 激活参数量而非总参数量，所以计算成本相当于 37B Dense 模型。<strong>代价是显存</strong>——所有 671B 参数都要常驻显存（因为不知道哪个专家会被选中），所以 MoE 是"计算便宜、显存贵"。DeepSeek-V3 通过共享专家 + 无辅助损失负载均衡进一步优化，实际推理成本约为 AI-4o 的 1/10。</div>
   </div>
 
   <div class="qa-item">
@@ -1613,7 +1613,7 @@ var ch20Questions = [
   },
   {
     type: 'single',
-    question: 'Agent 从 GPT-4o 切换到本地 Ollama，最少需要改几行代码？',
+    question: 'Agent 从 AI-4o 切换到本地 Ollama，最少需要改几行代码？',
     options: [
       '需要改全部代码重新适配',
       '2行：base_url 和 model 名',
@@ -1640,12 +1640,12 @@ var ch20Questions = [
     question: '混合部署策略能节省 70% 成本的逻辑是？',
     options: [
       '全部用免费开源模型',
-      '80% 简单任务用本地模型，只有 5% 复杂任务才调用 GPT-4o',
+      '80% 简单任务用本地模型，只有 5% 复杂任务才调用 AI-4o',
       '量化到 INT2',
       '减少 GPU 数量'
     ],
     answer: [1],
-    explanation: '80% 简单任务（FAQ/分类）成本≈0（本地），15% 中等任务用 INT8（成本≈GPU费），5% 复杂任务用 GPT-4o。总成本远低于纯云端。'
+    explanation: '80% 简单任务（FAQ/分类）成本≈0（本地），15% 中等任务用 INT8（成本≈GPU费），5% 复杂任务用 AI-4o。总成本远低于纯云端。'
   },
   {
     type: 'multiple',

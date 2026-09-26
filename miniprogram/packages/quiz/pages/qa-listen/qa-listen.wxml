@@ -1,0 +1,148 @@
+<view class="page">
+
+  <!-- 顶部：进度条 + 当前讲解状态 -->
+  <view class="top">
+    <view class="top-row">
+      <view class="top-title">{{chTitle || '面试题语音讲解'}}</view>
+      <view class="top-count" wx:if="{{qCount}}">{{qIndex + 1}} / {{qCount}} 题</view>
+    </view>
+    <view class="progress">
+      <view class="progress-inner" style="width: {{pct}}%"></view>
+    </view>
+    <view class="top-role" wx:if="{{playing}}">
+      <text class="role-avatar {{role}}">{{role === 'teacher' ? cast.teacher.emoji : cast.student.emoji}}</text>
+      {{role === 'teacher' ? cast.teacher.name + ' 念题中…' : cast.student.name + ' 讲解中…'}}
+    </view>
+    <view class="top-role idle" wx:elif="{{state === 'paused'}}">已暂停，点播放继续</view>
+    <view class="top-role idle" wx:else>{{quizKey ? '点播放收听 · 文字已全部就绪' : '正在载入章节…'}}</view>
+  </view>
+
+  <!-- 章节选择 -->
+  <view class="sec">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="ch-scroll">
+      <view class="ch-row">
+        <view
+          wx:for="{{chapters}}"
+          wx:for-item="chap"
+          wx:for-index="ci"
+          wx:key="quizKey"
+          class="ch-chip {{quizKey === chap.quizKey ? 'on' : ''}}"
+          data-key="{{chap.quizKey}}"
+          bindtap="pickChapter"
+          hover-class="press"
+        >{{chap.num}} · {{chap.shortTitle}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 聊天记录区：全文常驻显示，语音播到哪就高亮滚动到哪 -->
+  <scroll-view
+    wx:if="{{qCount}}"
+    class="chat"
+    scroll-y
+    scroll-into-view="{{scrollId}}"
+    scroll-with-animation
+  >
+    <view class="chat-inner">
+      <view class="chat-day">🎧 共 {{bubbles.length}} 条 · 点击气泡可重听</view>
+
+      <view
+        wx:for="{{bubbles}}"
+        wx:for-item="msg"
+        wx:for-index="bi"
+        wx:key="mid"
+        id="bb-{{bi}}"
+        class="msg {{msg.role}} {{curBubble === bi ? 'live' : ''}} {{bi < saidCount ? 'said' : ''}}"
+        data-bi="{{bi}}"
+        bindtap="replayBubble"
+        hover-class="msg-press"
+      >
+        <!-- 小傅哥（左）：题目 + 选项 -->
+        <block wx:if="{{msg.role === 'teacher'}}">
+          <view class="avatar">{{cast.teacher.emoji}}</view>
+          <view class="bubble">
+            <view class="who">{{cast.teacher.name}} · 出题</view>
+            <view class="b-title">{{msg.title}}</view>
+            <view class="b-q">{{msg.question}}</view>
+            <view
+              wx:for="{{msg.options}}"
+              wx:for-item="opt"
+              wx:for-index="oi"
+              wx:key="*this"
+              class="b-opt"
+            >{{opt}}</view>
+            <view class="b-tip" wx:if="{{curBubble === bi}}">🔊 朗读中…</view>
+          </view>
+        </block>
+        <!-- 咖辣米（右）：答案 + 讲解 -->
+        <block wx:else>
+          <view class="bubble">
+            <view class="who">{{cast.student.name}} · 讲解</view>
+            <view class="b-ans">正确答案：<text class="ans-letter">{{msg.answer}}</text></view>
+            <view class="b-expl" wx:if="{{msg.explanation}}">{{msg.explanation}}</view>
+            <view class="b-tip" wx:if="{{curBubble === bi}}">🔊 讲解中…</view>
+          </view>
+          <view class="avatar">{{cast.student.emoji}}</view>
+        </block>
+      </view>
+      <view class="chat-tail"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 题目跳转条 -->
+  <view class="sec" wx:if="{{qCount}}">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="q-scroll">
+      <view class="q-row">
+        <view
+          wx:for="{{qCount}}"
+          wx:for-item="qn"
+          wx:for-index="qi"
+          wx:key="*this"
+          class="q-cell {{qIndex === qi ? 'cur' : ''}}"
+          data-qi="{{qi}}"
+          bindtap="jumpQuestion"
+          hover-class="press"
+        >{{qn}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 底部控制条：四个等大胶囊按钮 -->
+  <view class="dock">
+    <view class="dock-main">
+      <view class="dock-btn" bindtap="prevQuestion" hover-class="press">
+        <view class="ico-prev"><view class="d-tri l"></view><view class="d-tri l"></view></view>
+        <view class="dock-label">上一题</view>
+      </view>
+
+      <view class="play-btn {{playing ? 'is-pause' : ''}}" bindtap="togglePlay" hover-class="press">
+        <view wx:if="{{!playing}}" class="ico-play"></view>
+        <view wx:else class="ico-pause"><view class="d-bar"></view><view class="d-bar"></view></view>
+        <view class="play-label">{{playing ? '暂停' : '播放'}}</view>
+      </view>
+
+      <view class="dock-btn" bindtap="nextQuestion" hover-class="press">
+        <view class="dock-label">下一题</view>
+        <view class="ico-next"><view class="d-tri r"></view><view class="d-tri r"></view></view>
+      </view>
+
+      <view class="dock-btn stop-btn" bindtap="stopPlay" hover-class="press">
+        <view class="ico-stop"></view>
+        <view class="dock-label">停止</view>
+      </view>
+    </view>
+    <view class="dock-rate">
+      <view
+        wx:for="{{[0.8, 1.0, 1.2, 1.5]}}"
+        wx:for-item="rv"
+        wx:for-index="ri"
+        wx:key="*this"
+        class="rate-chip {{rate === rv ? 'on' : ''}}"
+        data-rate="{{rv}}"
+        bindtap="setRate"
+        hover-class="press"
+      >{{rv}}x</view>
+    </view>
+  </view>
+
+</view>

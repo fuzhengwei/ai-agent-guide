@@ -627,7 +627,7 @@ calc_tool = Tool(
 # 3. 装饰需要追踪的函数
 @traceable(run_type="chain", name="qa_agent")
 def run_qa_agent(question: str) -> str:
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="ai-4o", temperature=0)
     prompt = hub.pull("hwchase17/react")
     tools = [search_tool, calc_tool]
     agent = create_react_agent(llm, tools, prompt)
@@ -669,7 +669,7 @@ results = evaluate(
     run_qa_agent,
     data=dataset.name,
     evaluators=[correctness, conciseness],
-    experiment_prefix="gpt4o-baseline"
+    experiment_prefix="ai4o-baseline"
 )
 print(f"评估结果: {results}")
 # 输出示例：正确率 0.67 | 简洁性 1.0</pre></div>
@@ -695,7 +695,7 @@ const calcTool = new Tool({
 
 // 3. 需要追踪的函数
 async function runQaAgent(question: string): Promise&lt;string&gt; {
-  const llm = new ChatOpenAI({ model: 'gpt-4o', temperature: 0 });
+  const llm = new ChatOpenAI({ model: 'ai-4o', temperature: 0 });
   const tools = [searchTool, calcTool];
   const agent = createReactAgent({ llm, tools });
   const executor = new AgentExecutor({ agent, tools, verbose: true });
@@ -736,7 +736,7 @@ import { evaluate } from 'langsmith/evaluation';
 const results = await evaluate(runQaAgent, {
   data: dataset.name,
   evaluators: [correctness, conciseness],
-  experimentPrefix: 'gpt4o-baseline',
+  experimentPrefix: 'ai4o-baseline',
 });
 console.log(`评估结果: ${JSON.stringify(results)}`);</pre></div>
 <div class="code-lang-pane" data-lang="go" data-label="Go"><pre>package main
@@ -1134,8 +1134,8 @@ from typing import Optional
 class ABTestConfig:
     """A/B 测试配置"""
     experiment_name: str
-    variant_a_name: str  # 对照组（如 gpt-4o）
-    variant_b_name: str  # 实验组（如 gpt-4o-mini）
+    variant_a_name: str  # 对照组（如 ai-4o）
+    variant_b_name: str  # 实验组（如 ai-4o-mini）
     traffic_split: float  # B 组流量比例，如 0.2 表示 20%
     min_sample_size: int = 100  # 最小样本量
     metrics: list = None  # 关注的指标列表
@@ -1700,7 +1700,7 @@ dataset = Dataset.from_dict(eval_data)
 result = evaluate(
     dataset=dataset,
     metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
-    llm=ChatOpenAI(model="gpt-4o"),        # 评估用的 LLM
+    llm=ChatOpenAI(model="ai-4o"),        # 评估用的 LLM
     embeddings=OpenAIEmbeddings(),           # 用于 answer_relevancy
 )
 
@@ -1740,7 +1740,7 @@ const evalData = {
 const result = await evaluate({
   dataset: evalData,
   metrics: [faithfulness, answerRelevancy, contextPrecision, contextRecall],
-  llm: new ChatOpenAI({ model: 'gpt-4o' }),
+  llm: new ChatOpenAI({ model: 'ai-4o' }),
   embeddings: new OpenAIEmbeddings(),
 });
 
@@ -2305,9 +2305,9 @@ public class AgentEvalTest {
 </thead>
 <tbody>
 <tr><td>Claude Sonnet 4 + Claude Code</td><td>72.7%</td><td>2025.05</td><td>Harness + 工具调用 + 自验证</td></tr>
-<tr><td>GPT-4.1 + Codex</td><td>68.3%</td><td>2025.04</td><td>云沙箱 + 异步执行</td></tr>
+<tr><td>AI-4.1 + Codex</td><td>68.3%</td><td>2025.04</td><td>云沙箱 + 异步执行</td></tr>
 <tr><td>DeepSeek V3 + Agent</td><td>38.8%</td><td>2025.01</td><td>开源模型最佳</td></tr>
-<tr><td>纯 GPT-4o（无工具）</td><td>8.4%</td><td>2024.10</td><td>无 Harness 基线</td></tr>
+<tr><td>纯 AI-4o（无工具）</td><td>8.4%</td><td>2024.10</td><td>无 Harness 基线</td></tr>
 </tbody>
 </table>
 
@@ -2680,7 +2680,7 @@ var ch17Questions = [
       '设置评估的超时时间'
     ],
     answer: [1],
-    explanation: 'experiment_prefix 用于标记实验版本（如 "gpt4o-baseline"、"gpt4o-mini-v2"），在 LangSmith 平台上可以直观对比不同实验的指标差异。'
+    explanation: 'experiment_prefix 用于标记实验版本（如 "ai4o-baseline"、"ai4o-mini-v2"），在 LangSmith 平台上可以直观对比不同实验的指标差异。'
   },
   {
     type: 'multiple',

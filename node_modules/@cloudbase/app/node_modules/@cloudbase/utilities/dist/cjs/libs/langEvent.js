@@ -1,0 +1,7 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LANG_CHANGE_EVENT = exports.bus = void 0;
+var events_1 = require("./events");
+exports.bus = new events_1.CloudbaseEventEmitter();
+exports.LANG_CHANGE_EVENT = 'lang_change';
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibGFuZ0V2ZW50LmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL2xpYnMvbGFuZ0V2ZW50LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLG1DQUFnRDtBQUVuQyxRQUFBLEdBQUcsR0FBRyxJQUFJLDhCQUFxQixFQUFFLENBQUE7QUFFakMsUUFBQSxpQkFBaUIsR0FBRyxhQUFhLENBQUEiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBDbG91ZGJhc2VFdmVudEVtaXR0ZXIgfSBmcm9tICcuL2V2ZW50cydcblxuZXhwb3J0IGNvbnN0IGJ1cyA9IG5ldyBDbG91ZGJhc2VFdmVudEVtaXR0ZXIoKVxuXG5leHBvcnQgY29uc3QgTEFOR19DSEFOR0VfRVZFTlQgPSAnbGFuZ19jaGFuZ2UnXG4iXX0=

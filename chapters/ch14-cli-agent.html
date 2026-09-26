@@ -1003,7 +1003,7 @@ class NL2Shell:
         return full_prompt  # 简化示例
 
 # 使用示例
-nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="ai-4")
 cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
 print(f"生成的命令：{cmd}")
 </pre></div>
@@ -1083,7 +1083,7 @@ class NL2Shell {
   return full_prompt  # 简化示例;
 
 // 使用示例
-  // nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+  // nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="ai-4")
   // cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
   console.log(`生成的命令：${$1}`);
 }</pre></div>
@@ -1171,7 +1171,7 @@ func New__init__() *__init__ {
 	return full_prompt  # 简化示例
 
 // 使用示例
-	// Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+	// Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="ai-4")
 	// Python: cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
 	fmt.Println(f"生成的命令：{cmd}")
 }</pre></div>
@@ -1252,7 +1252,7 @@ public class NL2Shell {
         return full_prompt  # 简化示例;
 
     // 使用示例
-        // Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="gpt-4")
+        // Python: nl2shell = NL2Shell(api_key="sk-xxx", base_url="https://api.openai.com/v1", model="ai-4")
         // Python: cmd = nl2shell.generate_command("查看当前目录下所有大于100MB的文件")
         System.out.println(String.format("$1"));
     }
@@ -2256,8 +2256,8 @@ gateway_config = {
 # 2. LLM Router 层配置
 llm_router_config = {
     "models": {
-        "complex": "gpt-4o",         # 复杂推理：强模型
-        "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+        "complex": "ai-4o",         # 复杂推理：强模型
+        "simple": "ai-4o-mini",     # 简单对话：便宜模型
         "fallback": "qwen-turbo"      # 降级：国产模型兜底
     },
     "cache": {
@@ -2365,8 +2365,8 @@ agent = EnterpriseAgent(
 // 2. LLM Router 层配置
   const llm_router_config = {;
   // "models": {
-  // "complex": "gpt-4o",         # 复杂推理：强模型
-  // "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+  // "complex": "ai-4o",         # 复杂推理：强模型
+  // "simple": "ai-4o-mini",     # 简单对话：便宜模型
   // "fallback": "qwen-turbo"      # 降级：国产模型兜底
   // },
   // "cache": {
@@ -2483,8 +2483,8 @@ import (
 // 2. LLM Router 层配置
 	// Python: llm_router_config = {
 	// Python: "models": {
-	// Python: "complex": "gpt-4o",         # 复杂推理：强模型
-	// Python: "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+	// Python: "complex": "ai-4o",         # 复杂推理：强模型
+	// Python: "simple": "ai-4o-mini",     # 简单对话：便宜模型
 	// Python: "fallback": "qwen-turbo"      # 降级：国产模型兜底
 	// Python: },
 	// Python: "cache": {
@@ -2597,8 +2597,8 @@ import java.io.*;
     // 2. LLM Router 层配置
         // Python: llm_router_config = {
         // Python: "models": {
-        // Python: "complex": "gpt-4o",         # 复杂推理：强模型
-        // Python: "simple": "gpt-4o-mini",     # 简单对话：便宜模型
+        // Python: "complex": "ai-4o",         # 复杂推理：强模型
+        // Python: "simple": "ai-4o-mini",     # 简单对话：便宜模型
         // Python: "fallback": "qwen-turbo"      # 降级：国产模型兜底
         // Python: },
         // Python: "cache": {
@@ -2707,7 +2707,7 @@ import java.io.*;
     </div>
     <div style="padding: 16px; border: 1px solid var(--color-border); border-radius: 8px;">
       <strong style="color: var(--color-success); font-size: 15px;">可替换性</strong>
-      <p style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.8; margin-top: 8px;">任何模块<strong>都可以替换实现</strong>。LLM从GPT换到Claude不影响其他模块；Memory从Redis换到Milvus不影响Engine。关键：接口稳定，实现可变。</p>
+      <p style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.8; margin-top: 8px;">任何模块<strong>都可以替换实现</strong>。LLM从AI换到Claude不影响其他模块；Memory从Redis换到Milvus不影响Engine。关键：接口稳定，实现可变。</p>
     </div>
   </div>
 </div>

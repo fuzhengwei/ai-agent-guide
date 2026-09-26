@@ -15,7 +15,7 @@
 
 <p>在前三章中，你已经见过了很多提示词——天气 Agent 的 System Prompt、Function Calling 的工具描述、ReAct 模式的 Thought/Action/Observation 模板。但你可能还没意识到：<strong>提示词决定了 Agent 的能力上限</strong>。</p>
 
-<p>同一个 LLM、同一套工具、同一个记忆系统，换一套提示词，Agent 的表现可能天差地别。这不是夸张——研究表明，精心设计的提示词能让 LLM 的准确率提升 30%-50%，而糟糕的提示词会让 GPT-4 表现得像随机生成器。</p>
+<p>同一个 LLM、同一套工具、同一个记忆系统，换一套提示词，Agent 的表现可能天差地别。这不是夸张——研究表明，精心设计的提示词能让 LLM 的准确率提升 30%-50%，而糟糕的提示词会让 AI-4 表现得像随机生成器。</p>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">💡 一句话理解</div>
@@ -299,7 +299,7 @@ class WeatherResponse(BaseModel):
 
 # LLM 输出直接解析为结构化对象
 response = client.chat.completions.create(
-    model="gpt-4",
+    model="ai-4",
     messages=[{"role": "system", "content": system_prompt},
               {"role": "user", "content": "北京今天天气怎么样？"}],
     response_format={"type": "json_schema",
@@ -329,7 +329,7 @@ type Weather = z.infer<typeof WeatherResponse>;
 
 // 调用 LLM 并解析
 const response = await client.chat.completions.create({
-  model: "gpt-4",
+  model: "ai-4",
   messages: [
     { role: "system", content: systemPrompt },
     { role: "user", content: "北京今天天气怎么样？" },
@@ -354,7 +354,7 @@ console.log(`穿衣: ${result.clothing.join(", ")}`);</code></pre>
 
 // 调用 LLM
 resp, err := client.Chat.Create(ctx, &openai.ChatCompletionRequest{
-    Model: "gpt-4",
+    Model: "ai-4",
     Messages: []openai.ChatMessage{
         {Role: "system", Content: systemPrompt},
         {Role: "user", Content: "北京今天天气怎么样？"},
@@ -386,7 +386,7 @@ public record WeatherResponse(
 
 // 调用 LLM
 ChatCompletionRequest request = ChatCompletionRequest.builder()
-    .model("gpt-4")
+    .model("ai-4")
     .message(SystemMessage.of(systemPrompt))
     .message(UserMessage.of("北京今天天气怎么样？"))
     .responseFormat(ResponseFormat.jsonObject())
@@ -474,7 +474,7 @@ System.out.printf("穿衣: %s%n", String.join(", ", result.clothing()));</code><
 
 <h3 class="sub-heading">结构化输出：让 LLM "说 JSON"</h3>
 
-<p>在 Agent 系统中，最重要的输出配置不是 Temperature，而是<strong>结构化输出</strong>。现代 LLM（GPT-4、Claude、GLM）都支持原生 JSON 模式：</p>
+<p>在 Agent 系统中，最重要的输出配置不是 Temperature，而是<strong>结构化输出</strong>。现代 LLM（AI-4、Claude、GLM）都支持原生 JSON 模式：</p>
 
 <div class="code-block" data-multi-lang>
   <div class="lang-tabs">
@@ -486,7 +486,7 @@ System.out.printf("穿衣: %s%n", String.join(", ", result.clothing()));</code><
   <div class="code-lang-pane active" data-lang="python" data-label="Python">
 <pre><code class="language-python"># OpenAI Structured Output
 response = client.chat.completions.create(
-    model="gpt-4o",
+    model="ai-4o",
     messages=[...],
     response_format={
         "type": "json_schema",
@@ -513,7 +513,7 @@ decision = json.loads(response.choices[0].message.content)</code></pre>
   <div class="code-lang-pane" data-lang="typescript" data-label="Typescript">
 <pre><code class="language-typescript">// OpenAI Structured Output
 const response = await client.chat.completions.create({
-  model: "gpt-4o",
+  model: "ai-4o",
   messages: [...],
   response_format: {
     type: "json_schema",
@@ -540,7 +540,7 @@ const decision = JSON.parse(response.choices[0].message.content);</code></pre>
   <div class="code-lang-pane" data-lang="go" data-label="Go">
 <pre><code class="language-go">// OpenAI Structured Output
 resp, _ := client.Chat.Create(ctx, &openai.ChatCompletionRequest{
-    Model:    "gpt-4o",
+    Model:    "ai-4o",
     Messages: msgs,
     ResponseFormat: &openai.ResponseFormat{
         Type: "json_schema",
@@ -568,7 +568,7 @@ json.Unmarshal([]byte(resp.Choices[0].Message.Content), &decision)</code></pre>
   <div class="code-lang-pane" data-lang="java" data-label="Java">
 <pre><code class="language-java">// OpenAI Structured Output
 ChatCompletionRequest request = ChatCompletionRequest.builder()
-    .model("gpt-4o")
+    .model("ai-4o")
     .messages(msgs)
     .responseFormat(ResponseFormat.jsonSchema(
         JsonSchema.builder()
@@ -1394,7 +1394,7 @@ public class PromptRegistry {
   "timestamp": "2026-07-13T10:00:00Z",
   "prompt_name": "weather_agent_system",
   "prompt_version": "1.2.0",
-  "model": "gpt-4o",
+  "model": "ai-4o",
   "temperature": 0.2,
   "input_tokens": 350,
   "output_tokens": 180,

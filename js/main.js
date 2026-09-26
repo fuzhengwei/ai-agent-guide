@@ -788,7 +788,7 @@ const App = {
                 </div>
                 <span class="project-arrow">↗</span>
               </a>
-              <a class="project-card" href="https://bugstack.cn/md/zsxq/project/chatgpt.html" target="_blank">
+              <a class="project-card" href="https://bugstack.cn/md/zsxq/project/chatbot-api.html" target="_blank">
                 <span class="project-icon">🔑</span>
                 <div class="project-info">
                   <span class="project-name">OpenAI 大模型微服务应用体系构建</span>
@@ -799,7 +799,7 @@ const App = {
               <a class="project-card" href="https://bugstack.cn/md/zsxq/project/chatbot-api.html" target="_blank">
                 <span class="project-icon">💬</span>
                 <div class="project-info">
-                  <span class="project-name">ChatGPT AI 问答助手</span>
+                  <span class="project-name">AI 智能问答助手</span>
                   <span class="project-desc">小型项目，对接知识星球</span>
                 </div>
                 <span class="project-arrow">↗</span>
@@ -2334,7 +2334,7 @@ const App = {
       const allWrongAdvice = [
         '别慌！每个Agent大师都从零开始，这恰好说明你的成长空间无限大。',
         '全错的概率比全对还低呢！从第0章开始，我们一起逆袭。',
-        '没关系，GPT刚出来的时候也啥都不会，现在不照样当红炸子鸡？',
+        '没关系，AI刚出来的时候也啥都不会，现在不照样当红炸子鸡？',
         '这是好事——你即将体验从0到100的完整爽感。开启第0章吧！',
         '全错也是一种天赋：说明你完全没有错误知识需要卸载。'
       ];

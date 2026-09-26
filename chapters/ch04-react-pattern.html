@@ -336,7 +336,7 @@ Plan: 第二步的推理（可引用 #E1 的结果）
 def plan_steps(question):
     """Phase 1: LLM 一次性规划所有步骤"""
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[{"role": "system", "content": PLANNER_PROMPT},
                   {"role": "user", "content": question}]
     )
@@ -376,7 +376,7 @@ def solve_answer(plan_text, results):
         filled_plan = filled_plan.replace(key, f"[结果: {value}]")
     
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[{"role": "system", "content": SOLVER_PROMPT},
                   {"role": "user", "content": 
                    f"规划:\n{plan_text}\n\n执行结果:\n{filled_plan}"}]
@@ -421,7 +421,7 @@ Plan: 第二步的推理（可引用 #E1 的结果）
 async function plan_steps(question: string): Promise<string> {
   // Phase 1: LLM 一次性规划所有步骤
   const resp = await client.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'ai-4o',
     messages: [
       { role: 'system', content: PLANNER_PROMPT },
       { role: 'user', content: question }
@@ -471,7 +471,7 @@ async function solve_answer(
   }
 
   const resp = await client.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'ai-4o',
     messages: [
       { role: 'system', content: SOLVER_PROMPT },
       { role: 'user', content: `规划:\n${planText}\n\n执行结果:\n${filledPlan}` }
@@ -530,7 +530,7 @@ Plan: 第二步的推理（可引用 #E1 的结果）
 func planSteps(question string) (string, error) {
 	// Phase 1: LLM 一次性规划所有步骤
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model: openai.GPT4o,
+		Model: openai.AIModel,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: fmt.Sprintf(plannerPrompt, "{question}")},
 			{Role: openai.ChatMessageRoleUser, Content: question},
@@ -583,7 +583,7 @@ func solveAnswer(planText string, results map[string]string) (string, error) {
 	}
 
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model: openai.GPT4o,
+		Model: openai.AIModel,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: solverPrompt},
 			{Role: openai.ChatMessageRoleUser, Content: fmt.Sprintf("规划:\n%s\n\n执行结果:\n%s", planText, filledPlan)},
@@ -651,7 +651,7 @@ public class AgentCode {
     static String planSteps(String question) {
         // Phase 1: LLM 一次性规划所有步骤
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .addMessage(ChatCompletionMessage.builder()
                 .role(ChatCompletionMessage.Role.SYSTEM)
                 .content(String.format(PLANNER_PROMPT, "{question}"))
@@ -705,7 +705,7 @@ public class AgentCode {
         }
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-            .model("gpt-4o")
+            .model("ai-4o")
             .addMessage(ChatCompletionMessage.builder()
                 .role(ChatCompletionMessage.Role.SYSTEM)
                 .content(SOLVER_PROMPT)
@@ -837,7 +837,7 @@ COMPILER_PROMPT = """根据用户问题，生成工具调用计划。
 async def compile_plan(question):
     """LLM 编译：生成带依赖关系的工具调用计划"""
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[{"role": "system", "content": COMPILER_PROMPT},
                   {"role": "user", "content": question}],
         response_format={"type": "json_object"}
@@ -889,7 +889,7 @@ async def call_tool_async(tool_name, args, prev_results):
 async def solve_with_results(question, plan, results):
     """Solver：根据工具调用结果综合最终答案"""
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[
             {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
             {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
@@ -932,7 +932,7 @@ import OpenAI from 'openai';
   // async def compile_plan(question):
   /** docstring */
   const resp = client.chat.completions.create(;
-  const model = "gpt-4o",;
+  const model = "ai-4o",;
   const messages = [{"role": "system", "content": COMPILER_PROMPT},;
   // {"role": "user", "content": question}],
   const response_format = {"type": "json_object"};
@@ -984,7 +984,7 @@ import OpenAI from 'openai';
   // async def solve_with_results(question, plan, results):
   /** docstring */
   const resp = client.chat.completions.create(;
-  const model = "gpt-4o",;
+  const model = "ai-4o",;
   const messages = [;
   // {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
   // {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
@@ -1035,7 +1035,7 @@ import (
 
 	// Python: async def compile_plan(question):
 	// Python: resp = client.chat.completions.create(
-	// Python: model="gpt-4o",
+	// Python: model="ai-4o",
 	// Python: messages=[{"role": "system", "content": COMPILER_PROMPT},
 	// Python: {"role": "user", "content": question}],
 	// Python: response_format={"type": "json_object"}
@@ -1084,7 +1084,7 @@ import (
 // ===== Step 3: Solver 综合答案 =====
 	// Python: async def solve_with_results(question, plan, results):
 	// Python: resp = client.chat.completions.create(
-	// Python: model="gpt-4o",
+	// Python: model="ai-4o",
 	// Python: messages=[
 	// Python: {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
 	// Python: {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
@@ -1130,7 +1130,7 @@ import java.io.*;
 
         // Python: async def compile_plan(question):
         // Python: resp = client.chat.completions.create(
-        // Python: model="gpt-4o",
+        // Python: model="ai-4o",
         // Python: messages=[{"role": "system", "content": COMPILER_PROMPT},
         // Python: {"role": "user", "content": question}],
         // Python: response_format={"type": "json_object"}
@@ -1179,7 +1179,7 @@ import java.io.*;
     // ===== Step 3: Solver 综合答案 =====
         // Python: async def solve_with_results(question, plan, results):
         // Python: resp = client.chat.completions.create(
-        // Python: model="gpt-4o",
+        // Python: model="ai-4o",
         // Python: messages=[
         // Python: {"role": "system", "content": "根据以下工具调用结果，回答用户问题。"},
         // Python: {"role": "user", "content": f"问题: {question}\n\n结果: {results}"}
@@ -1326,7 +1326,7 @@ def react_agent_with_context(question, context=""):
     messages.append({"role": "user", "content": question})
     trajectory = []
     for step in range(10):
-        resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+        resp = client.chat.completions.create(model="ai-4o", messages=messages)
         thought = resp.choices[0].message.content
         trajectory.append(thought)
         if "finish" in thought.lower():
@@ -1354,7 +1354,7 @@ def reflexion_agent(question, max_trials=3):
         
         # 3. 反思推理过程
         reflection = client.chat.completions.create(
-            model="gpt-4o",
+            model="ai-4o",
             messages=[
                 {"role": "system", "content": REFLECT_PROMPT},
                 {"role": "user", "content": 
@@ -1372,7 +1372,7 @@ def reflexion_agent(question, max_trials=3):
 def evaluate_result(question, result):
     """LLM 评估答案质量"""
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model="ai-4o",
         messages=[
             {"role": "system", "content": 
              "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
@@ -1415,7 +1415,7 @@ function react_agent_with_context(question, context="") {
   // messages.append({"role": "user", "content": question})
   const trajectory = [];
   for (const step of range(10)) {
-  const resp = client.chat.completions.create(model="gpt-4o", messages=messages);
+  const resp = client.chat.completions.create(model="ai-4o", messages=messages);
   const thought = resp.choices[0].message.content;
   // trajectory.append(thought)
   if ("finish" in thought.lower()) {
@@ -1443,7 +1443,7 @@ function reflexion_agent(question, max_trials=3) {
 
 // 3. 反思推理过程
   const reflection = client.chat.completions.create(;
-  const model = "gpt-4o",;
+  const model = "ai-4o",;
   const messages = [;
   // {"role": "system", "content": REFLECT_PROMPT},
   // {"role": "user", "content":
@@ -1461,7 +1461,7 @@ function reflexion_agent(question, max_trials=3) {
 function evaluate_result(question, result) {
   /** docstring */
   const resp = client.chat.completions.create(;
-  const model = "gpt-4o",;
+  const model = "ai-4o",;
   const messages = [;
   // {"role": "system", "content":
   // "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
@@ -1512,7 +1512,7 @@ func react_agent_with_context() {
 	// Python: messages.append({"role": "user", "content": question})
 	// Python: trajectory = []
 	for _, step := range range(10) {
-	// Python: resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+	// Python: resp = client.chat.completions.create(model="ai-4o", messages=messages)
 	// Python: thought = resp.choices[0].message.content
 	// Python: trajectory.append(thought)
 	if "finish" in thought.lower() {
@@ -1539,7 +1539,7 @@ func reflexion_agent() {
 
 // 3. 反思推理过程
 	// Python: reflection = client.chat.completions.create(
-	// Python: model="gpt-4o",
+	// Python: model="ai-4o",
 	// Python: messages=[
 	// Python: {"role": "system", "content": REFLECT_PROMPT},
 	// Python: {"role": "user", "content":
@@ -1556,7 +1556,7 @@ func reflexion_agent() {
 
 func evaluate_result() {
 	// Python: resp = client.chat.completions.create(
-	// Python: model="gpt-4o",
+	// Python: model="ai-4o",
 	// Python: messages=[
 	// Python: {"role": "system", "content":
 	// Python: "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
@@ -1603,7 +1603,7 @@ import java.io.*;
         // Python: messages.append({"role": "user", "content": question})
         // Python: trajectory = []
         for (var step : range(10)) {
-        // Python: resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+        // Python: resp = client.chat.completions.create(model="ai-4o", messages=messages)
         // Python: thought = resp.choices[0].message.content
         // Python: trajectory.append(thought)
         if ("finish" in thought.lower()) {
@@ -1630,7 +1630,7 @@ import java.io.*;
 
     // 3. 反思推理过程
         // Python: reflection = client.chat.completions.create(
-        // Python: model="gpt-4o",
+        // Python: model="ai-4o",
         // Python: messages=[
         // Python: {"role": "system", "content": REFLECT_PROMPT},
         // Python: {"role": "user", "content":
@@ -1647,7 +1647,7 @@ import java.io.*;
 
     public static void evaluate_result() {
         // Python: resp = client.chat.completions.create(
-        // Python: model="gpt-4o",
+        // Python: model="ai-4o",
         // Python: messages=[
         // Python: {"role": "system", "content":
         // Python: "评估以下答案的质量。输出JSON: {\"score\": 0-1, \"feedback\": \"...\"}"},
@@ -1767,7 +1767,7 @@ class AgentResponse(BaseModel):
 def structured_agent(question):
     """使用 Structured Output 的 Agent"""
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-2024-08-06",
+        model="ai-4o-2024-08-06",
         messages=[
             {"role": "system", "content": 
              "你是一个研究助手。分析问题并给出推理步骤。"},
@@ -1849,7 +1849,7 @@ class AgentResponse {
 function structured_agent(question) {
   /** docstring */
   // response = client.beta.chat.completions.parse(
-  // model = "gpt-4o-2024-08-06",
+  // model = "ai-4o-2024-08-06",
   // messages = [
   // {"role": "system", "content":
   // "你是一个研究助手。分析问题并给出推理步骤。"},
@@ -1940,7 +1940,7 @@ type AgentResponse struct {
 // ===== 2. 用 OpenAI Structured Output 调用 =====
 func structured_agent() {
 	// Python: response = client.beta.chat.completions.parse(
-	// Python: model="gpt-4o-2024-08-06",
+	// Python: model="ai-4o-2024-08-06",
 	// Python: messages=[
 	// Python: {"role": "system", "content":
 	// Python: "你是一个研究助手。分析问题并给出推理步骤。"},
@@ -2024,7 +2024,7 @@ public class AgentResponse {
     // ===== 2. 用 OpenAI Structured Output 调用 =====
     public static void structured_agent() {
         // Python: response = client.beta.chat.completions.parse(
-        // Python: model="gpt-4o-2024-08-06",
+        // Python: model="ai-4o-2024-08-06",
         // Python: messages=[
         // Python: {"role": "system", "content":
         // Python: "你是一个研究助手。分析问题并给出推理步骤。"},
@@ -2172,7 +2172,7 @@ def semantic_compress(messages, keep_recent=3):
     
     if len(middle) > 6:  # 只有中间步骤足够多才压缩
         summary = client.chat.completions.create(
-            model="gpt-4o-mini",  # 用小模型压缩，节省成本
+            model="ai-4o-mini",  # 用小模型压缩，节省成本
             messages=[
                 {"role": "system", "content": 
                  "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
@@ -2249,7 +2249,7 @@ function semantic_compress(messages, keep_recent=3) {
 
   if (len(middle) > 6) {
   const summary = client.chat.completions.create(;
-  const model = "gpt-4o-mini",  # 用小模型压缩，节省成本;
+  const model = "ai-4o-mini",  # 用小模型压缩，节省成本;
   const messages = [;
   // {"role": "system", "content":
   // "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
@@ -2334,7 +2334,7 @@ func semantic_compress() {
 
 	if len(middle) > 6 {
 	// Python: summary = client.chat.completions.create(
-	// Python: model="gpt-4o-mini",  # 用小模型压缩，节省成本
+	// Python: model="ai-4o-mini",  # 用小模型压缩，节省成本
 	// Python: messages=[
 	// Python: {"role": "system", "content":
 	// Python: "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
@@ -2413,7 +2413,7 @@ import java.io.*;
 
         if (len(middle) > 6) {
         // Python: summary = client.chat.completions.create(
-        // Python: model="gpt-4o-mini",  # 用小模型压缩，节省成本
+        // Python: model="ai-4o-mini",  # 用小模型压缩，节省成本
         // Python: messages=[
         // Python: {"role": "system", "content":
         // Python: "将以下对话历史压缩为简短摘要，保留关键决策和发现。"
@@ -2535,7 +2535,7 @@ def react_agent(question, max_steps=10):
     for step in range(max_steps):
         # 1. LLM 生成 Thought + Action
         response = client.chat.completions.create(
-            model="gpt-4o", messages=messages
+            model="ai-4o", messages=messages
         )
         output = response.choices[0].message.content
         messages.append({"role": "assistant", "content": output})
@@ -2584,7 +2584,7 @@ async function reactAgent(question: string, maxSteps = 10): Promise&lt;string&gt
   for (let step = 0; step &lt; maxSteps; step++) {
     // 1. LLM 生成 Thought + Action
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
+      model: "ai-4o",
       messages,
     });
     const output = response.choices[0].message.content || "";
@@ -2642,7 +2642,7 @@ func reactAgent(question string, maxSteps int) string {
 		// 1. LLM 生成 Thought + Action
 		resp, err := client.CreateChatCompletion(context.Background(),
 			openai.ChatCompletionRequest{
-				Model:gpt-4o",
+				Model:ai-4o",
 				Messages: messages,
 			})
 		if err != nil {
@@ -2715,7 +2715,7 @@ public class ReActAgent {
         for (int step = 0; step &lt; maxSteps; step++) {
             // 1. LLM 生成 Thought + Action
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-4o")
+                .model("ai-4o")
                 .messages(messages)
                 .build();
             ChatCompletion response = client.chat().completions().create(params);
