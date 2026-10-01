@@ -48,6 +48,9 @@
   },
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
+  "requiredBackgroundModes": [
+    "audio"
+  ],
   "subpackages": [
     {
       "root": "packages/content-a",

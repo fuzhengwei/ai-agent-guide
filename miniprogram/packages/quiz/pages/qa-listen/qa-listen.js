@@ -92,7 +92,31 @@ Page({
     rate: 1.0,
     cast: { teacher: TEACHER, student: STUDENT },
     scrollId: '',        // 气泡自动滚动锚点
+    hscroll: {},         // PC 端拖拽横滑的 scroll-left 状态（hkey -> scrollLeft）
   },
+
+  /* PC 端鼠标拖拽横滑兼容：scroll-view scroll-x 在 PC 微信不响应鼠标拖拽，
+     由 touch 系列事件（PC 微信模拟）驱动 scroll-left；手机端走原生滚动不受影响 */
+  onHDragStart(e) {
+    try {
+      const sys = this._sysInfo || (this._sysInfo = wx.getSystemInfoSync());
+      if (sys.platform !== 'windows' && sys.platform !== 'mac' && sys.platform !== 'devtools') return;
+    } catch (err) { return; }
+    if (!e.touches || !e.touches.length) return;
+    const t = e.touches[0];
+    this._hDrag = { x: t.clientX, key: e.currentTarget.dataset.hkey };
+  },
+  onHDragMove(e) {
+    if (!this._hDrag || !e.touches || !e.touches.length) return;
+    const t = e.touches[0];
+    const dx = t.clientX - this._hDrag.x;
+    if (Math.abs(dx) < 2) return;
+    const key = this._hDrag.key;
+    const next = Math.max(0, (this.data.hscroll[key] || 0) - dx);
+    this._hDrag.x = t.clientX;
+    this.setData({ ['hscroll.' + key]: next });
+  },
+  onHDragEnd() { this._hDrag = null; },
 
   onLoad(options) {
     const ttsOk = tts.isSupported();
@@ -104,6 +128,7 @@ Page({
 
     this._engine = tts.createEngine({
       chapterId: 'qa-listen',
+      title: '面试题语音讲解',
       onState: (s) => this._onState(s),
     });
     this._engine.setVoice(TEACHER.voice);

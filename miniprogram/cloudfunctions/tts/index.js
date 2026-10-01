@@ -4,6 +4,10 @@
 // 缓存策略：以 voice+rate+text 的 md5 为 key，
 // 合成结果上传到云存储 tts-audio/{hash}.mp3，命中直接返临时 URL，
 // 避免重复调腾讯云 TTS API（省钱 + 秒回）。
+//
+// 整章合并模式（action: 'chapter'）：把全章段落各自合成后二进制拼接为一个
+// mp3 上传 tts-chapter/{chapterHash}.mp3。前端用背景音频一次播整章，
+// 熄屏/切后台不依赖 JS 接力（后台 JS 挂起后逐段 onEnded 不触发会断播）。
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const crypto = require('crypto');
@@ -70,7 +74,108 @@ async function lookupCache(key) {
   return null;
 }
 
+// 确保单段音频内容可用：命中缓存则下载内容，未命中则合成+上传缓存，返回 mp3 Buffer
+async function ensureSegmentBuffer(client, voiceType, rate, text) {
+  const key = cacheKey(voiceType, rate, text);
+  const envId = process.env.TCB_ENV || process.env.SCF_NAMESPACE || '';
+  const fileID = `cloud://${envId}.tts-audio/${key}.mp3`;
+  // ① 命中缓存：下载内容
+  try {
+    const dl = await cloud.downloadFile({ fileID });
+    if (dl.fileContent && dl.fileContent.length > 100) return dl.fileContent;
+  } catch (e) { /* 未命中，继续合成 */ }
+  // ② 合成
+  const res = await client.TextToVoice({
+    Text: text,
+    SessionId: `tts-${key.slice(0, 12)}`,
+    VoiceType: voiceType,
+    Codec: 'mp3',
+    SampleRate: 16000,
+    Speed: rateToSpeed(rate),
+    Volume: 5,
+    ModelType: 1,
+    PrimaryLanguage: 1,
+  });
+  if (!res.Audio) throw new Error('合成结果为空');
+  const buf = Buffer.from(res.Audio, 'base64');
+  // ③ 上传单段缓存（失败不影响本次拼接）
+  try {
+    await cloud.uploadFile({ cloudPath: `tts-audio/${key}.mp3`, fileContent: buf });
+  } catch (e) { /* 忽略 */ }
+  return buf;
+}
+
+// 并发跑任务（限量并发，避免触发 TTS QPS 限制）
+async function mapLimited(list, limit, fn) {
+  const out = new Array(list.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < list.length) {
+      const i = cursor++;
+      out[i] = await fn(list[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+  return out;
+}
+
+// 整章合并：全部段落各自确保有 mp3 → 二进制拼接 → 上传整章缓存 → 返回临时 URL
+async function synthesizeChapter(event) {
+  const items = Array.isArray(event.items) ? event.items.slice(0, 500) : [];
+  if (!items.length) return { ok: false, msg: '章节内容为空' };
+
+  const rate = Math.max(0.6, Math.min(1.8, Number(event.rate) || 1));
+  const client = getClient();
+
+  // 归一化 + 章节级 hash（音色/语速/全部文本共同决定，任一变化 = 新音频）
+  const norm = [];
+  for (const it of items) {
+    const text = String(it && it.text || '').trim().slice(0, 300);
+    if (!text) continue;
+    norm.push({ voiceType: VOICE_MAP[it.voice] || VOICE_MAP.standard, text });
+  }
+  if (!norm.length) return { ok: false, msg: '章节内容为空' };
+  const chapterHash = crypto.createHash('md5')
+    .update(`${CACHE_VERSION}|ch|${Math.round(rate * 10) / 10}|` +
+      norm.map(n => `${n.voiceType}:${n.text}`).join('\u0001'))
+    .digest('hex');
+
+  // ① 整章缓存命中：直接返回
+  const envId = process.env.TCB_ENV || process.env.SCF_NAMESPACE || '';
+  const chapterFileID = `cloud://${envId}.tts-chapter/${chapterHash}.mp3`;
+  try {
+    const res = await cloud.getTempFileURL({ fileList: [chapterFileID] });
+    const f = (res.fileList || [])[0];
+    if (f && f.status === 0 && f.tempFileURL) {
+      return { ok: true, url: f.tempFileURL, cached: true, segments: norm.length };
+    }
+  } catch (e) { /* 未命中 */ }
+
+  // ② 并发确保每段内容（多数段应已在前端逐段播放时缓存）
+  const buffers = await mapLimited(norm, 6, (n) => ensureSegmentBuffer(client, n.voiceType, rate, n.text));
+
+  // ③ 拼接（同参数裸 mp3 帧可直接顺序拼接）+ 上传整章缓存
+  const whole = Buffer.concat(buffers);
+  if (whole.length < 100) return { ok: false, msg: '拼接结果异常' };
+  await cloud.uploadFile({ cloudPath: `tts-chapter/${chapterHash}.mp3`, fileContent: whole });
+  const res = await cloud.getTempFileURL({ fileList: [chapterFileID] });
+  const f = (res.fileList || [])[0];
+  if (f && f.status === 0 && f.tempFileURL) {
+    return { ok: true, url: f.tempFileURL, cached: false, segments: norm.length };
+  }
+  return { ok: false, msg: '整章上传失败' };
+}
+
 exports.main = async (event) => {
+  // 整章合并模式：供背景音频一次播整章（熄屏/切后台不断播）
+  if (event.action === 'chapter') {
+    try {
+      return await synthesizeChapter(event);
+    } catch (err) {
+      return { ok: false, msg: '整章合成失败: ' + (err.message || err.code || 'unknown') };
+    }
+  }
+
   const text = String(event.text || '').trim().slice(0, 300);
   if (!text) return { ok: false, msg: '文本为空' };
 

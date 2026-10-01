@@ -19,7 +19,14 @@
 
   <!-- 章节选择 -->
   <view class="sec">
-    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="ch-scroll">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="ch-scroll"
+      scroll-left="{{hscroll.ch || 0}}"
+      data-hkey="ch"
+      bindtouchstart="onHDragStart"
+      bindtouchmove="onHDragMove"
+      bindtouchend="onHDragEnd"
+      bindtouchcancel="onHDragEnd"
+    >
       <view class="ch-row">
         <view
           wx:for="{{chapters}}"
@@ -91,7 +98,14 @@
 
   <!-- 题目跳转条 -->
   <view class="sec" wx:if="{{qCount}}">
-    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="q-scroll">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="q-scroll"
+      scroll-left="{{hscroll.q || 0}}"
+      data-hkey="q"
+      bindtouchstart="onHDragStart"
+      bindtouchmove="onHDragMove"
+      bindtouchend="onHDragEnd"
+      bindtouchcancel="onHDragEnd"
+    >
       <view class="q-row">
         <view
           wx:for="{{qCount}}"

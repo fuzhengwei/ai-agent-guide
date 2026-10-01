@@ -76,7 +76,14 @@
       <view class="tts-body" wx:if="{{ttsSupported}}">
         <view class="tts-row">
           <view class="tts-label">音色 <text class="tts-label-sub">· 点卡片选中，点试听小圆钮试听</text></view>
-          <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="tts-voices">
+          <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="tts-voices"
+            scroll-left="{{hscroll.voices || 0}}"
+            data-hkey="voices"
+            bindtouchstart="onHDragStart"
+            bindtouchmove="onHDragMove"
+            bindtouchend="onHDragEnd"
+            bindtouchcancel="onHDragEnd"
+          >
             <view
               wx:for="{{voices}}"
               wx:key="id"
@@ -121,7 +128,7 @@
         <view class="tts-status" wx:if="{{ttsState !== 'idle'}}">
           {{ttsState === 'synthesizing' ? '合成中…' : '正在朗读 ' + (ttsIndex + 1) + ' / ' + ttsTotal + ' 段'}}
         </view>
-        <view class="tts-hint">朗读时当前段落会高亮变色并自动滚动跟随；离开本章自动停止</view>
+        <view class="tts-hint">朗读时当前段落会高亮变色并自动滚动跟随；熄屏或切到微信后台也能继续播放，离开本章自动停止</view>
       </view>
       <view class="tts-body" wx:else>
         <view class="tts-unsupported">
@@ -165,7 +172,7 @@
           <text class="nd-li-txt" selectable="{{selectable}}" data-text="{{li.text}}" bindlongpress="onNodeLongPress">{{li.text}}</text>
         </view>
       </view>
-      <!-- 代码块（独立横滑） -->
+      <!-- 代码块（独立横滑；PC 端支持鼠标拖拽滚动） -->
       <view wx:elif="{{item.type === 'code'}}" class="nd-codeblock">
         <view class="nd-code-head">
           <view class="nd-code-dots">
@@ -174,14 +181,37 @@
             <view class="nd-code-dot d3"></view>
           </view>
           <view class="nd-code-lang" wx:if="{{item.lang}}">{{item.lang}}</view>
-          <view class="nd-code-hint">‹ 左右滑动 ›</view>
+          <view class="nd-code-hint" wx:if="{{item.hDrag}}">‹ 按住拖动可左右滑动 ›</view>
         </view>
-        <scroll-view scroll-x class="nd-code-scroll" enhanced show-scrollbar="{{false}}">
+        <scroll-view
+          scroll-x
+          class="nd-code-scroll"
+          enhanced
+          show-scrollbar="{{false}}"
+          scroll-left="{{hscroll['c' + index] || 0}}"
+          data-hkey="c{{index}}"
+          bindtouchstart="onHDragStart"
+          bindtouchmove="onHDragMove"
+          bindtouchend="onHDragEnd"
+          bindtouchcancel="onHDragEnd"
+        >
           <view class="nd-code-body">{{item.code}}</view>
         </scroll-view>
       </view>
-      <!-- 表格（独立横滑） -->
-      <scroll-view wx:elif="{{item.type === 'table'}}" scroll-x class="nd-table-scroll" enhanced show-scrollbar="{{false}}">
+      <!-- 表格（独立横滑；PC 端支持鼠标拖拽滚动） -->
+      <scroll-view
+        wx:elif="{{item.type === 'table'}}"
+        scroll-x
+        class="nd-table-scroll"
+        enhanced
+        show-scrollbar="{{false}}"
+        scroll-left="{{hscroll['t' + index] || 0}}"
+        data-hkey="t{{index}}"
+        bindtouchstart="onHDragStart"
+        bindtouchmove="onHDragMove"
+        bindtouchend="onHDragEnd"
+        bindtouchcancel="onHDragEnd"
+      >
         <view class="nd-table">
           <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="index" class="nd-tr {{row.head ? 'nd-tr-head' : ''}}">
             <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="index" class="nd-td">{{cell}}</view>

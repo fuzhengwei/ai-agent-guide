@@ -69,6 +69,9 @@ Page({
     favModal: false,
     favText: '',
     favNoteInput: '',
+    // PC 端横向拖拽滚动（scroll-view scroll-x 在 PC 微信不响应鼠标拖拽，需自行驱动 scroll-left）
+    hDragEnabled: false,
+    hscroll: {},       // hkey -> scrollLeft
   },
 
   onLoad(query) {
@@ -171,7 +174,60 @@ Page({
     this.setData({ tocStamp: this._tocStamp });
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     this._restorePos(meta.key);
+    // 渲染完成后检测各代码块/表格是否真的超宽（决定是否显示「左右滑动」提示）
+    setTimeout(() => this._detectOverflow(), 400);
   },
+
+  /* ===== 横向滚动兼容 =====
+     1) 手机端：代码块/表格内容不超宽时「‹ 左右滑动 ›」提示是误导，改为
+        渲染后实测内容宽度，只有真溢出才显示提示（hDrag 标记）。
+     2) PC 端：scroll-view scroll-x 不响应鼠标拖拽（官方已知限制），
+        微信 PC 会把鼠标拖动模拟成 touch 事件，这里监听 touch 系列事件
+        驱动 scroll-left，实现 PC 鼠标拖拽横滑；手机端原生滚动不受影响。 */
+  _detectOverflow() {
+    const q = wx.createSelectorQuery().in(this);
+    // 容器（scroll-view）与内容块一一对应：每个 code 容器内有 .nd-code-body，每个表格容器内有 .nd-table
+    q.selectAll('.nd-code-scroll, .nd-table-scroll').boundingClientRect();
+    q.selectAll('.nd-code-body, .nd-table').boundingClientRect();
+    q.exec((res) => {
+      if (!res || !res[0]) return;
+      const boxes = res[0] || [];
+      const inners = res[1] || [];
+      const nodes = this.data.nodes || [];
+      let ki = 0;
+      const patch = {};
+      nodes.forEach((n, i) => {
+        if (n.type !== 'code' && n.type !== 'table') return;
+        const box = boxes[ki], inner = inners[ki]; ki++;
+        if (box && inner && inner.width > box.width + 4) patch['nodes[' + i + '].hDrag'] = true;
+      });
+      if (Object.keys(patch).length) this.setData(patch);
+    });
+  },
+
+  // PC 端鼠标拖拽横滑：按住左键拖动内容即可滚动（touch 事件由 PC 微信模拟）
+  onHDragStart(e) {
+    // 仅 PC 端启用（手机端走原生滚动，避免与 scroll-left 双通道冲突）
+    try {
+      const sys = this._sysInfo || (this._sysInfo = wx.getSystemInfoSync());
+      if (sys.platform !== 'windows' && sys.platform !== 'mac' && sys.platform !== 'devtools') return;
+    } catch (err) { return; }
+    if (!e.touches || !e.touches.length) return;
+    const t = e.touches[0];
+    this._hDrag = { x: t.clientX, key: e.currentTarget.dataset.hkey };
+  },
+  onHDragMove(e) {
+    if (!this._hDrag || !e.touches || !e.touches.length) return;
+    const t = e.touches[0];
+    const dx = t.clientX - this._hDrag.x;
+    if (Math.abs(dx) < 2) return;
+    const key = this._hDrag.key;
+    const cur = (this.data.hscroll[key] || 0);
+    const next = Math.max(0, cur - dx);
+    this._hDrag.x = t.clientX;
+    this.setData({ ['hscroll.' + key]: next });
+  },
+  onHDragEnd() { this._hDrag = null; },
 
   // 分享/转发：标题与路径随当前章节动态变化（含朋友圈入口）
   ...share.attach(
@@ -229,20 +285,39 @@ Page({
     this._reportStats();
   },
 
-  // 页面隐藏时：暂停计时与朗读（保留位置，回来可继续）
+  // 页面隐藏时：仅暂停学习计时，朗读继续播（熄屏/切微信后台不中断，依赖
+  // app.json requiredBackgroundModes: ["audio"]；定时停止由 _armTtsTimer 的
+  // 音频事件兜底，页面定时器停走不影响后台播放）
   onHide() {
     clearTimeout(this._posT);
     clearInterval(this._studyTick);
-    this._clearTtsTimer();
-    // 页面隐藏时暂停朗读（保留位置，回来可继续）
-    if (this._ttsEngine && this._ttsEngine.getState() === 'playing') {
-      this._ttsEngine.pause();
-    }
+    this._studyTick = null;
+    // 只停倒计时 UI，不打断朗读本身
+    if (this._ttsTimer) { clearInterval(this._ttsTimer); this._ttsTimer = null; }
   },
 
   onShow() {
     // 从后台切回继续计时
     if (!this._studyTick && this.data.title) this._startStudyTimer();
+    // 朗读仍在进行时恢复定时倒计时显示（隐藏期间计数冻结在剩余时长上）
+    if (this._ttsTimerEndAt && !this._ttsTimer &&
+        (this.data.ttsState === 'playing' || this.data.ttsState === 'synthesizing')) {
+      const endAt = this._ttsTimerEndAt;
+      const tick = () => {
+        const remain = endAt - Date.now();
+        if (remain <= 0) {
+          this._clearTtsTimer();
+          this.setData({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
+          this._stopTts();
+          return;
+        }
+        const m = Math.floor(remain / 60000);
+        const s = Math.floor((remain % 60000) / 1000);
+        this.setData({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
+      };
+      tick();
+      this._ttsTimer = setInterval(tick, 1000);
+    }
   },
 
   // 文本选择开关：开启后正文段落/引用/列表项可长按选中复制
@@ -488,10 +563,16 @@ Page({
   },
 
   _ensureTtsEngine() {
-    if (this._ttsEngine) return this._ttsEngine;
+    if (this._ttsEngine) {
+      // 同页切章时同步锁屏面板标题（bgm title 引擎创建时固定）
+      const meta = chapters[this.data.currentIndex] || {};
+      if (meta.title && this._ttsEngine.setTitle) this._ttsEngine.setTitle(meta.title);
+      return this._ttsEngine;
+    }
     if (!tts.isSupported()) return null;
     this._ttsEngine = tts.createEngine({
       chapterId: (chapters[this.data.currentIndex] || {}).key || '',
+      title: (chapters[this.data.currentIndex] || {}).title || '语音朗读',
       onState: (s) => {
         const patch = {
           ttsState: s.state === 'finished' ? 'idle' : s.state,
