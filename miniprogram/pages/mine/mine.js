@@ -42,14 +42,14 @@ Page({
       studyTimeText: this._fmtMs(st.total),
       studyDays: st.days,
     });
-    // 登录完成后填充头像昵称
+    // 登录完成后填充头像昵称（历史脏数据的临时路径视为无头像）
     const app = getApp();
     if (app && app.onLoginReady) {
       app.onLoginReady(({ profile }) => {
         if (!profile) return;
         this.setData({
           nickname: profile.nickname || '',
-          avatarUrl: profile.avatarUrl || '',
+          avatarUrl: cloud.validAvatar(profile.avatarUrl),
           initial: (profile.nickname || '友').slice(0, 1),
         });
       });
@@ -57,11 +57,23 @@ Page({
   },
 
   // 微信「头像昵称填写」：选择头像后上传云端档案
+  // ⚠️ chooseAvatar 返回的是临时路径，必须先传云存储换 fileID（直接存会过期，过段时间自己都看不到）
   onChooseAvatar(e) {
-    const avatarUrl = (e.detail && e.detail.avatarUrl) || '';
-    if (!avatarUrl) return;
-    this.setData({ avatarUrl });
-    this._saveProfile({ avatarUrl });
+    const tempUrl = (e.detail && e.detail.avatarUrl) || '';
+    if (!tempUrl) return;
+    // 先本地展示，提升体验
+    this.setData({ avatarUrl: tempUrl });
+
+    wx.showLoading({ title: '上传中…', mask: true });
+    cloud.uploadAvatar(tempUrl).then((fileID) => {
+      this.setData({ avatarUrl: fileID });
+      this._saveProfile({ avatarUrl: fileID });
+      wx.hideLoading();
+      wx.showToast({ title: '头像已更新', icon: 'success' });
+    }).catch(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+    });
   },
 
   // 昵称输入框（type="nickname"）实时同步输入值

@@ -49,6 +49,31 @@ function removeNote(_id) {
 
 /* ===== 排行榜与数据上报 ===== */
 
+// 头像统一上传云存储换 fileID：chooseAvatar 返回的临时路径会过期，绝不能直接存
+// 三个入口（首页/我的/排行榜）都必须走这里
+function uploadAvatar(filePath) {
+  return new Promise((resolve, reject) => {
+    if (!wx.cloud || !wx.cloud.uploadFile) return reject(new Error('当前环境不支持云存储'));
+    const cloudPath = `avatars/${Date.now()}-${Math.floor(Math.random() * 10000)}.png`;
+    wx.cloud.uploadFile({
+      cloudPath,
+      filePath,
+      success: (r) => {
+        if (r && r.fileID) resolve(r.fileID);
+        else reject(new Error((r && r.errMsg) || 'upload failed'));
+      },
+      fail: (err) => reject(new Error((err && err.errMsg) || 'upload failed')),
+    });
+  });
+}
+
+// 头像展示校验：只认 cloud:// fileID 与 https 临时链接；
+// 历史脏数据（wx.chooseAvatar 的 wxfile://、http://tmp 临时路径）已失效，视为无头像
+function validAvatar(url) {
+  const u = String(url || '');
+  return u.startsWith('cloud://') || u.startsWith('https://') ? u : '';
+}
+
 function reportStats(payload) {
   return call('leaderboard', Object.assign({ action: 'report' }, payload));
 }
@@ -70,4 +95,5 @@ module.exports = {
   ready,
   addNote, listNotes, updateNoteText, removeNote,
   reportStats, getLeaderboard, setNickname, saveProfile,
+  uploadAvatar, validAvatar,
 };

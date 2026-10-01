@@ -14,6 +14,27 @@ function friendlyError(err) {
   return msg;
 }
 
+// 头像 cloud:// fileID → https 临时链接（服务端管理员权限，任何人可见；约 2h 有效）
+// 历史脏数据（wx.chooseAvatar 的 wxfile://、http://tmp 临时路径）已失效，顺手从档案清掉
+async function fixAvatarUrl(profile) {
+  const url = (profile && profile.avatarUrl) || '';
+  if (!url) return profile;
+  if (url.indexOf('cloud://') === 0) {
+    try {
+      const res = await cloud.getTempFileURL({ fileList: [url] });
+      const f = (res.fileList || [])[0];
+      if (f && f.status === 0 && f.tempFileURL) {
+        return Object.assign({}, profile, { avatarUrl: f.tempFileURL });
+      }
+    } catch (e) { /* 换链接失败退回原值 */ }
+    return profile;
+  }
+  if (url.indexOf('https://') === 0) return profile;   // 有效外链，保留
+  // wxfile:// / http://tmp 等临时路径：已失效，清掉
+  try { await db.collection('user_profiles').doc(profile._id).update({ data: { avatarUrl: '' } }); } catch (e) {}
+  return Object.assign({}, profile, { avatarUrl: '' });
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const profiles = db.collection('user_profiles');
@@ -68,7 +89,7 @@ exports.main = async (event) => {
       const res = await profiles.add({ data: init });
       profile = Object.assign({ _id: res._id }, init);
     }
-    return { ok: true, profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || '' } };
+    return { ok: true, profile: await fixAvatarUrl(profile) };
   }
 
   if (!profile) {
@@ -88,7 +109,7 @@ exports.main = async (event) => {
     profile = { _id: res._id, nickname: '学习者' + OPENID.slice(-4), avatarUrl: '', totalStudyMs: 0, readCount: 0, xp: 0, stars: 0 };
   }
 
-  return { ok: true, openid: OPENID, profile };
+  return { ok: true, openid: OPENID, profile: await fixAvatarUrl(profile) };
   } catch (err) {
     return { ok: false, msg: friendlyError(err) };
   }

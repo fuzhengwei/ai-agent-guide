@@ -167,7 +167,7 @@ Page({
 
   // 微信「头像昵称填写」：用户点自己卡片的头像选择新头像
   // 注意：chooseAvatar 返回的是 http 临时链接，直接保存会过期
-  // 需要先上传到云存储换成 fileID，再保存到档案
+  // 必须先上传到云存储换成 fileID，再保存到档案（统一走 cloud.uploadAvatar）
   onChooseAvatar(e) {
     const tempUrl = (e.detail && e.detail.avatarUrl) || '';
     if (!tempUrl) return;
@@ -175,32 +175,20 @@ Page({
     // 先本地展示，提升体验
     this.setData({ 'me.avatarUrl': tempUrl });
 
-    if (!wx.cloud || !wx.cloud.uploadFile) {
-      wx.showToast({ title: '当前环境不支持云存储', icon: 'none' });
-      return;
-    }
-
     wx.showLoading({ title: '上传中…', mask: true });
-    const cloudPath = `avatars/${Date.now()}-${Math.floor(Math.random() * 10000)}.png`;
-    wx.cloud.uploadFile({
-      cloudPath,
-      filePath: tempUrl,
-      success: (uploadRes) => {
-        const fileID = uploadRes.fileID;
-        cloud.saveProfile({ nickname, avatarUrl: fileID }).then((r) => {
-          wx.hideLoading();
-          if (r && r.ok) {
-            wx.showToast({ title: '头像已更新', icon: 'success' });
-            this.load();
-          } else {
-            wx.showToast({ title: (r && r.msg) || '保存失败', icon: 'none' });
-          }
-        });
-      },
-      fail: () => {
+    cloud.uploadAvatar(tempUrl).then((fileID) => {
+      return cloud.saveProfile({ nickname, avatarUrl: fileID }).then((r) => {
         wx.hideLoading();
-        wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
-      },
+        if (r && r.ok) {
+          wx.showToast({ title: '头像已更新', icon: 'success' });
+          this.load();
+        } else {
+          wx.showToast({ title: (r && r.msg) || '保存失败', icon: 'none' });
+        }
+      });
+    }).catch(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
     });
   },
 

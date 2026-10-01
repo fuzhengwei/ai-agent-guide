@@ -208,22 +208,23 @@ Page({
     const p = (app.globalData && app.globalData.profile) || null;
     // 「微信用户」是旧版 wx.getUserProfile 的默认昵称，视为未登录，强制重新授权
     const isLegacyDefault = (n) => !n || n === '微信用户' || n === '微信用户 ';
-    if (p && p.avatarUrl && !isLegacyDefault(p.nickname)) {
-      this.setData({ userAvatar: p.avatarUrl, userName: p.nickname });
+    // 历史脏数据：wx.chooseAvatar 的临时路径（wxfile://、http://tmp）已失效，视为未设置头像
+    if (p && cloud.validAvatar(p.avatarUrl) && !isLegacyDefault(p.nickname)) {
+      this.setData({ userAvatar: cloud.validAvatar(p.avatarUrl), userName: p.nickname });
       return;
     }
-    // 本地缓存兜底（同样过滤旧版默认昵称）
+    // 本地缓存兜底（同样过滤旧版默认昵称与失效临时路径）
     const cached = store.getUserProfile();
-    if (cached && cached.avatarUrl && !isLegacyDefault(cached.nickname)) {
-      this.setData({ userAvatar: cached.avatarUrl, userName: cached.nickname });
+    if (cached && cloud.validAvatar(cached.avatarUrl) && !isLegacyDefault(cached.nickname)) {
+      this.setData({ userAvatar: cloud.validAvatar(cached.avatarUrl), userName: cached.nickname });
       return;
     }
     // 静默登录完成后回填
     if (app && app.onLoginReady) {
       app.onLoginReady((res) => {
         const prof = res && res.profile;
-        if (prof && prof.avatarUrl && !isLegacyDefault(prof.nickname)) {
-          this.setData({ userAvatar: prof.avatarUrl, userName: prof.nickname });
+        if (prof && cloud.validAvatar(prof.avatarUrl) && !isLegacyDefault(prof.nickname)) {
+          this.setData({ userAvatar: cloud.validAvatar(prof.avatarUrl), userName: prof.nickname });
         }
       });
     }
@@ -241,9 +242,10 @@ Page({
   },
 
   // 微信新授权流程：chooseAvatar 返回头像临时路径
+  // ⚠️ 临时路径会过期：必须先上传云存储换 fileID 再保存（与「我的」页/排行榜入口一致）
   onChooseAvatar(e) {
-    const avatarUrl = e.detail.avatarUrl;
-    if (!avatarUrl) return;
+    const tempUrl = e.detail.avatarUrl;
+    if (!tempUrl) return;
     // 弹出昵称输入框
     wx.showModal({
       title: '设置昵称',
@@ -251,7 +253,18 @@ Page({
       placeholderText: '输入你的昵称',
       success: (res) => {
         const nickname = (res.content || '').trim() || '学习者';
-        this._finishLogin({ nickname, avatarUrl });
+        if (!res.confirm) return;
+        // 本地先展示临时图提升体验，上传完成后落库 fileID
+        this.setData({ userAvatar: tempUrl });
+        wx.showLoading({ title: '上传中…', mask: true });
+        cloud.uploadAvatar(tempUrl).then((fileID) => {
+          wx.hideLoading();
+          this._finishLogin({ nickname, avatarUrl: fileID });
+        }).catch(() => {
+          wx.hideLoading();
+          wx.showToast({ title: '头像上传失败，请重试', icon: 'none' });
+          this.setData({ userAvatar: '' });
+        });
       },
     });
   },

@@ -26,6 +26,26 @@ async function ensureCollection(name) {
   }
 }
 
+// 头像 cloud:// fileID 批量换 https 临时链接：
+// 客户端 image 组件解析 fileID 受云存储权限规则限制（默认仅创建者可读 → 别人看不到），
+// 服务端 getTempFileURL 走管理员权限不受限，换出的 https 链接任何人可见。
+// 临时链接约 2h 有效，每次拉榜重新换（批量最多 50 个/次）。
+async function resolveAvatarUrls(items) {
+  const ids = [...new Set(items.map(p => p.avatarUrl).filter(u => u && u.indexOf('cloud://') === 0))];
+  if (!ids.length) return;
+  for (let i = 0; i < ids.length; i += 50) {
+    const batch = ids.slice(i, i + 50);
+    try {
+      const res = await cloud.getTempFileURL({ fileList: batch });
+      const map = {};
+      (res.fileList || []).forEach(f => {
+        if (f.fileID && f.tempFileURL && f.status === 0) map[f.fileID] = f.tempFileURL;
+      });
+      items.forEach(p => { if (map[p.avatarUrl]) p.avatarUrl = map[p.avatarUrl]; });
+    } catch (e) { /* 换链接失败退回原值，不影响榜单主体 */ }
+  }
+}
+
 // 当前月份 key：YYYY-MM（按服务器时间）
 function curMonthKey() {
   const n = new Date();
@@ -147,7 +167,11 @@ exports.main = async (event) => {
         myRank = 0; // 没成绩不排名
       }
     }
-    return { ok: true, list, me: mine[0] ? pub(mine[0]) : null, myRank, totalCount };
+    // 头像 fileID → https 临时链接（所有人可见，约 2h 有效，每次拉榜重换）
+    const mePub = mine[0] ? pub(mine[0]) : null;
+    await resolveAvatarUrls(list);
+    if (mePub) await resolveAvatarUrls([mePub]);
+    return { ok: true, list, me: mePub, myRank, totalCount };
   }
 
   return { ok: false, msg: 'unknown action' };
