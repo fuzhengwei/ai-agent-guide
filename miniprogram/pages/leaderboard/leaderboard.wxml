@@ -38,7 +38,8 @@
   <!-- 榜单切换 + 总人数 -->
   <view class="tabs-wrap">
     <view class="tabs">
-      <view class="tab {{board === 'study' ? 'on' : ''}}" data-board="study" bindtap="switchBoard">⏱ 学习时长</view>
+      <view class="tab {{board === 'month' ? 'on' : ''}}" data-board="month" bindtap="switchBoard">🌙 本月榜</view>
+      <view class="tab {{board === 'study' ? 'on' : ''}}" data-board="study" bindtap="switchBoard">⏱ 总时长</view>
       <view class="tab {{board === 'score' ? 'on' : ''}}" data-board="score" bindtap="switchBoard">📝 考试榜</view>
     </view>
     <view class="total-count" wx:if="{{totalCount > 0}}">👥 共 {{totalCount}} 位同学在学习</view>
@@ -89,6 +90,7 @@
         <view class="detail-close" catchtap="closeDetail">×</view>
       </view>
       <view class="detail-stats">
+        <view class="d-stat"><view class="d-num">{{detailUser.monthStudyText}}</view><view class="d-label">本月学习</view></view>
         <view class="d-stat"><view class="d-num">{{detailUser.totalStudyText}}</view><view class="d-label">累计学习</view></view>
         <view class="d-stat"><view class="d-num">{{detailUser.readCount}}</view><view class="d-label">已读章节</view></view>
         <view class="d-stat"><view class="d-num">{{detailUser.attempts}}</view><view class="d-label">答题次数</view></view>

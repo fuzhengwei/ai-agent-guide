@@ -3,6 +3,7 @@ const store = require('../../utils/store.js');
 const pay = require('../../utils/pay.js');
 const share = require('../../utils/share.js');
 const cloud = require('../../utils/cloud.js');
+const tts = require('../../utils/tts.js');
 
 const app = getApp();
 
@@ -32,6 +33,7 @@ Page({
     freeCount: pay.CONFIG.FREE_CHAPTER_COUNT,
     userAvatar: '',
     userName: '',
+    nowPlaying: null,   // 正在朗读：{ title, state, chapterId, key, pkg, slug }
   },
 
   onShow() {
@@ -88,6 +90,59 @@ Page({
     });
 
     this._promptResume(enriched);
+
+    // 「正在朗读」迷你播放条：订阅全局朗读状态（离开章节页后朗读继续）
+    if (this._unsubTts) this._unsubTts();
+    this._unsubTts = tts.onStateChange((info) => this._syncNowPlaying(info));
+    this._syncNowPlaying(tts.getPlaying());
+  },
+
+  onHide() {
+    if (this._unsubTts) { this._unsubTts(); this._unsubTts = null; }
+  },
+
+  onUnload() {
+    if (this._unsubTts) { this._unsubTts(); this._unsubTts = null; }
+  },
+
+  /* ===== 正在朗读迷你播放条 ===== */
+  _syncNowPlaying(info) {
+    if (!info || !info.state || info.state === 'idle' || info.state === 'finished') {
+      if (this.data.nowPlaying) this.setData({ nowPlaying: null });
+      return;
+    }
+    const ch = chapters.find(c => c.key === info.chapterId);
+    this.setData({
+      nowPlaying: {
+        title: info.title || '语音朗读',
+        state: info.state,
+        chapterId: info.chapterId || '',
+        key: ch ? ch.key : '',
+        pkg: ch ? ch.pkg : '',
+        slug: ch ? ch.slug : '',
+      },
+    });
+  },
+
+  // 点播放条：跳回正在朗读的章节
+  npOpen() {
+    const np = this.data.nowPlaying;
+    if (!np || !np.key) return;
+    wx.navigateTo({ url: `/packages/${np.pkg}/pages/reader/reader?key=${np.key}&slug=${np.slug}` });
+  },
+
+  // 播放/暂停切换
+  npToggle() {
+    const g = tts.getPlaying();
+    if (!g) { this.setData({ nowPlaying: null }); return; }
+    if (g.state === 'paused') tts.resumeActive();
+    else tts.pauseActive();
+  },
+
+  // 停止朗读
+  npStop() {
+    tts.stopActive();
+    this.setData({ nowPlaying: null });
   },
 
   // 微信文章式：再次打开时提示是否继续上次读到的章节/位置

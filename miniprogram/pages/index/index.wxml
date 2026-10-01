@@ -108,4 +108,17 @@
   </view>
 
   <view class="footer">📚 学完一章，去「题库」接受面试官的一对一模拟面试</view>
+
+  <!-- 正在朗读迷你播放条（离开章节页后朗读继续，可在此暂停/停止/跳回） -->
+  <view class="np-bar" wx:if="{{nowPlaying}}" bindtap="npOpen">
+    <view class="np-eq {{nowPlaying.state === 'paused' ? 'paused' : ''}}">
+      <view class="np-eq-b b1"></view><view class="np-eq-b b2"></view><view class="np-eq-b b3"></view>
+    </view>
+    <view class="np-info">
+      <view class="np-title">{{nowPlaying.title}}</view>
+      <view class="np-state">{{nowPlaying.state === 'paused' ? '已暂停' : (nowPlaying.state === 'synthesizing' ? '正在合成…' : '正在朗读 · 点击回章节')}}</view>
+    </view>
+    <view class="np-btn" catchtap="npToggle">{{nowPlaying.state === 'paused' ? '▶' : '⏸'}}</view>
+    <view class="np-btn np-close" catchtap="npStop">✕</view>
+  </view>
 </view>

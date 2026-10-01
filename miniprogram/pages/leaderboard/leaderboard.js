@@ -19,7 +19,7 @@ chapters.forEach(c => {
 
 Page({
   data: {
-    board: 'study',   // study | score
+    board: 'month',   // month（默认）| study | score
     list: [],
     me: null,
     myRank: 0,
@@ -90,7 +90,7 @@ Page({
     this.setData({ loading: true });
     cloud.getLeaderboard(this.data.board).then((res) => {
       if (res.ok) {
-        const field = this.data.board === 'score' ? 'xp' : 'totalStudyMs';
+        const field = this.data.board === 'score' ? 'xp' : this.data.board === 'month' ? 'mStudyMs' : 'totalStudyMs';
         const list = (res.list || []).map((p, i) => this._decorate(p, i + 1, res.me, field));
         const me = res.me
           ? Object.assign({}, res.me, { initial: this._avatarFallback(res.me.nickname), avatarBg: this._avatarBg(res.me.nickname) })
@@ -382,9 +382,14 @@ Page({
     this.setData({ showDetail: false });
   },
 
+  // 时长格式化：>24h 用「天」，其次「小时 分」，否则「分钟」
   _fmtMs(ms) {
     const mins = Math.floor((ms || 0) / 60000);
     if (mins < 60) return mins + ' 分钟';
-    return Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分';
+    if (mins < 1440) return Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分';
+    const d = Math.floor(mins / 1440);
+    const h = Math.floor((mins % 1440) / 60);
+    const m = mins % 60;
+    return d + ' 天 ' + h + ' 小时' + (m ? ' ' + m + ' 分' : '');
   },
 });

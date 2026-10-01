@@ -26,6 +26,12 @@ async function ensureCollection(name) {
   }
 }
 
+// 当前月份 key：YYYY-MM（按服务器时间）
+function curMonthKey() {
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const profiles = db.collection('user_profiles');
@@ -35,11 +41,14 @@ exports.main = async (event) => {
   try {
   // 上报：累计学习时长 + 阅读数 + 积分/星数 + 明细数据（客户端本地统计汇总后上传，全量覆盖）
   if (action === 'report') {
+    const clamp = (v, max) => Math.max(0, Math.min(Number(v) || 0, max));
+    const curStudy = clamp(event.totalStudyMs, 100 * 365 * 86400000);
+    const curXp = clamp(event.xp, 1000000);
     const patch = {
-      totalStudyMs: Math.max(0, Math.min(Number(event.totalStudyMs) || 0, 100 * 365 * 86400000)),
-      readCount: Math.max(0, Math.min(Number(event.readCount) || 0, 10000)),
-      xp: Math.max(0, Math.min(Number(event.xp) || 0, 1000000)),
-      stars: Math.max(0, Math.min(Number(event.stars) || 0, 10000)),
+      totalStudyMs: curStudy,
+      readCount: clamp(event.readCount, 10000),
+      xp: curXp,
+      stars: clamp(event.stars, 10000),
       updatedAt: db.serverDate(),
     };
     // 明细字段（可选）：答题明细、正确率、已读章节
@@ -59,23 +68,51 @@ exports.main = async (event) => {
       patch.readChapters = event.readChapters.slice(0, 100).map(String);
     }
     const { data } = await profiles.where({ _openid: OPENID }).limit(1).get();
-    if (data[0]) {
-      await profiles.doc(data[0]._id).update({ data: patch });
+    // 月榜数据：客户端上报的是累计值，服务端用「上次累计值」算增量，按月累加
+    const monthKey = curMonthKey();
+    const doc = data[0];
+    let monthPatch;
+    if (!doc) {
+      monthPatch = { month: monthKey, mStudyMs: curStudy, mXp: curXp, prevStudyMs: curStudy, prevXp: curXp };
     } else {
-      await profiles.add({ data: Object.assign({ _openid: OPENID, nickname: '学习者' + OPENID.slice(-4), createdAt: db.serverDate() }, patch) });
+      const dStudy = Math.max(0, curStudy - (doc.prevStudyMs || 0));
+      const dXp = Math.max(0, curXp - (doc.prevXp || 0));
+      let mStudyMs, mXp;
+      if (doc.month === monthKey) {
+        // 同一个月：在月累计上叠加本次增量
+        mStudyMs = (doc.mStudyMs || 0) + dStudy;
+        mXp = (doc.mXp || 0) + dXp;
+      } else if (!doc.month) {
+        // 老档案首次迁移：历史时长/积分不计入本月，从现在起算
+        mStudyMs = 0;
+        mXp = 0;
+      } else {
+        // 跨月：月榜清零，只算本月新增量
+        mStudyMs = dStudy;
+        mXp = dXp;
+      }
+      monthPatch = { month: monthKey, mStudyMs, mXp, prevStudyMs: curStudy, prevXp: curXp };
+    }
+    if (data[0]) {
+      await profiles.doc(data[0]._id).update({ data: Object.assign(patch, monthPatch) });
+    } else {
+      await profiles.add({ data: Object.assign({ _openid: OPENID, nickname: '学习者' + OPENID.slice(-4), createdAt: db.serverDate() }, patch, monthPatch) });
     }
     return { ok: true };
   }
 
-  // 排行榜：study=时长榜，score=考试榜
+  // 排行榜：month=本月时长榜（默认），study=时长总榜，score=考试榜
   if (action === 'list') {
-    const field = event.board === 'score' ? 'xp' : 'totalStudyMs';
-    const PUBLIC_FIELDS = { nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true, quizDetail: true, correctTotal: true, answerTotal: true, readChapters: true };
+    const isMonth = event.board === 'month';
+    const field = event.board === 'score' ? 'xp' : isMonth ? 'mStudyMs' : 'totalStudyMs';
+    const PUBLIC_FIELDS = { nickname: true, avatarUrl: true, totalStudyMs: true, readCount: true, xp: true, stars: true, quizDetail: true, correctTotal: true, answerTotal: true, readChapters: true, mStudyMs: true, month: true };
+    // 月榜只统计本月上报过的档案，且按月累计值排序
+    const baseWhere = isMonth ? { month: curMonthKey() } : {};
     // 并行查询：总学习人数 + 前99名 + 我的档案（减少串行等待）
     const [totalCountRes, dataRes, mineRes] = await Promise.all([
       profiles.count(),
       profiles
-        .where({ [field]: db.command.gt(0) })
+        .where(Object.assign({ [field]: db.command.gt(0) }, baseWhere))
         .orderBy(field, 'desc')
         .limit(99)
         .field(PUBLIC_FIELDS)
@@ -104,7 +141,7 @@ exports.main = async (event) => {
     if (mine[0]) {
       const myVal = mine[0][field] || 0;
       if (myVal > 0) {
-        const cnt = await profiles.where({ [field]: db.command.gt(myVal) }).count();
+        const cnt = await profiles.where(Object.assign({ [field]: db.command.gt(myVal) }, baseWhere)).count();
         myRank = cnt.total + 1;
       } else {
         myRank = 0; // 没成绩不排名

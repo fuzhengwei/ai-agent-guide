@@ -247,6 +247,10 @@ Page({
       // 全文常驻：无续听时先看到开头，有续听则定位到上次位置
       scrollId: resumeIdx >= 0 ? 'bb-' + resumeIdx : '',
     });
+    // 「听一听」面板标题跟随当前章节
+    if (this._engine && this._engine.setTitle && ch && ch.title) {
+      this._engine.setTitle(ch.title + ' · 面试题讲解');
+    }
 
     if (resumeIdx >= 0) {
       // 续听：定位到上次气泡位置，弹窗询问

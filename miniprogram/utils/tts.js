@@ -41,6 +41,12 @@ const VOICES = [
 // 试听示例语（一次合成后各级缓存都命中，重复试听几乎免费）
 const PREVIEW_TEXT = '你好，我是你的学习伙伴，让我为你朗读这篇文章吧。';
 
+// 「听一听」后台播放面板（锁屏/下拉的微信原生面板）封面：
+// 需要公网 https 图片 URL（原生面板自行拉取，不走小程序域名白名单）。
+// 与网站 assets/audio-cover.png 同源，随网站发布上线；未上线时面板显示灰色占位，不影响播放。
+const AUDIO_COVER_URL = 'https://ai-agent-guide.xiaofuge.cn/assets/audio-cover.png';
+const ALBUM_NAME = 'AI Agent 通识教程';
+
 const CACHE_PREFIX = 'tts-cache-v1:';
 const CHAPTER_LIST_KEY = 'tts-cache-chapters';
 const MAX_CACHED_CHAPTERS = 3;
@@ -107,11 +113,47 @@ function _saveLocal(chId, key, filePath) {
 let bgm = null;
 let activeEngine = null;
 
+/* ===== 全局播放状态（首页迷你播放条等跨页面 UI 用） ===== */
+const _stateListeners = new Set();
+
+// 订阅全局播放状态变化，返回取消订阅函数
+function onStateChange(fn) {
+  if (typeof fn !== 'function') return () => {};
+  _stateListeners.add(fn);
+  return () => _stateListeners.delete(fn);
+}
+
+function _broadcast(info) {
+  _stateListeners.forEach(fn => { try { fn(info); } catch (e) {} });
+}
+
+// 当前正在播放的引擎信息（含 paused）；无播放返回 null
+function getPlaying() {
+  if (!activeEngine) return null;
+  const st = activeEngine.getState();
+  if (!st || st === 'idle' || st === 'finished') return null;
+  return {
+    engine: activeEngine,
+    chapterId: activeEngine.getChapterId(),
+    title: activeEngine.getTitle(),
+    state: st,
+    index: activeEngine.getIndex(),
+    total: (activeEngine.getSegments() || []).length,
+  };
+}
+
+// 全局停止（首页播放条 ✕ 用）
+function stopActive() { if (activeEngine) activeEngine.stop(); }
+function pauseActive() { if (activeEngine && activeEngine.getState() === 'playing') activeEngine.pause(); }
+function resumeActive() { if (activeEngine && activeEngine.getState() === 'paused') activeEngine.resume(); }
+
 function ensureBgm() {
   if (bgm) return bgm;
   bgm = wx.getBackgroundAudioManager();
-  bgm.epname = 'AI Agent 通识教程';
+  bgm.epname = ALBUM_NAME;
   bgm.singer = 'AI 朗读';
+  bgm.coverImgUrl = AUDIO_COVER_URL;
+  _ensureCoverUrl(() => {});   // 预热封面 URL，播放时就绪
   bgm.onEnded(() => { if (activeEngine) activeEngine._onBgmEnded(); });
   bgm.onError(() => { if (activeEngine) activeEngine._onBgmError(); });
   bgm.onPause(() => { if (activeEngine) activeEngine._onBgmPaused(); });
@@ -120,8 +162,58 @@ function ensureBgm() {
   return bgm;
 }
 
+/* ===== 「听一听」面板封面：包内图片转存云存储换 https URL =====
+ * 原生面板要求公网图片 URL。首选云存储（TTS 同环境，必然可用）；
+ * 静态站点 URL 兜底（站点同步 assets/audio-cover.png 后生效）。
+ * 上传幂等（同 cloudPath 覆盖写），失败下次播放静默重试。 */
+let _coverUrl = '';
+let _coverFetching = false;
+const _coverWaiters = [];
+
+function _ensureCoverUrl(cb) {
+  if (_coverUrl) return cb(_coverUrl);
+  _coverWaiters.push(cb);
+  if (_coverFetching) return;
+  _coverFetching = true;
+  const done = (url) => {
+    if (url) _coverUrl = url;
+    _coverFetching = false;
+    let w;
+    while ((w = _coverWaiters.shift())) { try { w(_coverUrl); } catch (e) {} }
+  };
+  try {
+    if (!isSupported()) return done('');
+    const fsm = wx.getFileSystemManager();
+    if (!fsm || typeof fsm.readFile !== 'function') return done('');
+    fsm.readFile({
+      filePath: 'assets/audio-cover.png',   // 主包内资源可直接读
+      success: (r) => {
+        try {
+          wx.cloud.uploadFile({
+            cloudPath: 'assets/audio-cover.png',
+            fileContent: r.data,
+            success: (up) => {
+              if (!up || !up.fileID) return done('');
+              wx.cloud.getTempFileURL({
+                fileList: [up.fileID],
+                success: (res) => {
+                  const f = (res.fileList || [])[0];
+                  done(f && f.tempFileURL ? f.tempFileURL : '');
+                },
+                fail: () => done(''),
+              });
+            },
+            fail: () => done(''),
+          });
+        } catch (e) { done(''); }
+      },
+      fail: () => done(''),
+    });
+  } catch (e) { done(''); }
+}
+
 function createEngine(opts) {
-  const onState = (opts && opts.onState) || function () {};
+  let onState = (opts && opts.onState) || function () {};
   const chapterId = (opts && opts.chapterId) || '';
   let chapterTitle = (opts && opts.title) || '语音朗读';
 
@@ -148,8 +240,14 @@ function createEngine(opts) {
   let _chapterUrlCache = {};  // chapterHash -> { url, time }（临时 URL 会话缓存）
   let _pendingWhole = false;  // 整章合成进行中标记
 
+  // 统一状态出口：通知页面回调 + 广播给全局订阅者（首页迷你播放条）
+  function _emit(info) {
+    try { onState(info); } catch (e) {}
+    _broadcast(Object.assign({ chapterId, title: chapterTitle }, info));
+  }
+
   function notify() {
-    onState({ state, index, total: segments.length, voice: voice.id, rate });
+    _emit({ state, index, total: segments.length, voice: voice.id, rate });
   }
 
   function _cleanText(t) {
@@ -360,9 +458,13 @@ function createEngine(opts) {
   }
 
   // 背景音频播放：设置 src 即自动播放（勿再调 play()，会打断）
+  // 元数据（title/singer/cover）同步刷新 → 「听一听」面板与所听内容匹配
   function _bgmPlay(url, displayTitle) {
     const m = ensureBgm();
     m.title = displayTitle || `${chapterTitle} ${index + 1}/${segments.length}`;
+    m.singer = `${voice.label} · AI 朗读`;
+    m.epname = ALBUM_NAME;
+    _ensureCoverUrl((cu) => { if (cu) m.coverImgUrl = cu; });
     m.playbackRate = rate;
     m.src = url;
   }
@@ -412,7 +514,7 @@ function createEngine(opts) {
   function _speakCurrent() {
     if (state !== 'playing') return;
     const seg = segments[index];
-    if (!seg) { stop(); onState({ state: 'finished', index, total: segments.length }); return; }
+    if (!seg) { stop(); _emit({ state: 'finished', index, total: segments.length }); return; }
     // 长文本（如面试讲解的完整解析）切句连播，不再被 300 字截断
     const rawText = String(seg.text || '').trim();
     if (rawText.length > 280) {
@@ -482,7 +584,7 @@ function createEngine(opts) {
       if (wholeMode) {
         wholeMode = false;
         stop();
-        onState({ state: 'finished', index: segments.length - 1, total: segments.length });
+        _emit({ state: 'finished', index: segments.length - 1, total: segments.length });
         return;
       }
       if (chunks) {
@@ -562,12 +664,19 @@ function createEngine(opts) {
     getIndex() { return index; },
     getState() { return state; },
 
+    // 引擎元数据（全局迷你播放条 / 页面接管用）
+    getChapterId() { return chapterId; },
+    getTitle() { return chapterTitle; },
+    // 页面接管：把状态回调换绑到当前页面（离开页面的引擎继续播放时用）
+    setOnState(fn) { if (typeof fn === 'function') onState = fn; },
+
     // 同页切章时更新锁屏面板标题
     setTitle(t) { if (t) chapterTitle = String(t); },
 
     setVoice(id) {
       const found = VOICES.find(x => x.id === id);
-      if (found) voice = found;
+      if (!found || found.id === voice.id) { if (found) voice = found; notify(); return; }
+      voice = found;
       if (state === 'playing' || state === 'synthesizing') {
         chunks = null;
         chunkIdx = 0;
@@ -681,11 +790,14 @@ function createEngine(opts) {
     _gen++;
     _chapterJob++;            // 作废在途的整章合成回调
     _pendingWhole = false;
-    // bgm 有音频时 stop() 会触发 onStop 事件，标志交给事件消费；
-    // 无音频时不会有 onStop，直接复位，避免标志残留吞掉后续系统面板停止事件
-    if (bgm && bgm.src) _intentionalStop = true;
-    try { ensureBgm().stop(); } catch (e) {}
-    if (activeEngine === engine) activeEngine = null;
+    // 只有自己是活跃引擎时才真正停 bgm；被其他引擎抢占后调 stop 不能误伤当前播放
+    if (activeEngine === engine) {
+      // bgm 有音频时 stop() 会触发 onStop 事件，标志交给事件消费；
+      // 无音频时不会有 onStop，直接复位，避免标志残留吞掉后续系统面板停止事件
+      if (bgm && bgm.src) _intentionalStop = true;
+      try { ensureBgm().stop(); } catch (e) {}
+      activeEngine = null;
+    }
     state = 'idle';
     index = 0;
     chunks = null;
@@ -702,4 +814,8 @@ function createEngine(opts) {
   return engine;
 }
 
-module.exports = { createEngine, getVoices, isSupported, PREVIEW_TEXT };
+module.exports = {
+  createEngine, getVoices, isSupported, PREVIEW_TEXT,
+  // 跨页面播放状态（首页迷你播放条 / 页面接管）
+  getPlaying, onStateChange, stopActive, pauseActive, resumeActive,
+};

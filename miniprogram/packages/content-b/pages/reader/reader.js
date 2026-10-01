@@ -176,6 +176,8 @@ Page({
     this._restorePos(meta.key);
     // 渲染完成后检测各代码块/表格是否真的超宽（决定是否显示「左右滑动」提示）
     setTimeout(() => this._detectOverflow(), 400);
+    // 若本章朗读正在后台播放（离开页面/重新进入），接管引擎继续显示与控制
+    this._adoptGlobalTts();
   },
 
   /* ===== 横向滚动兼容 =====
@@ -281,7 +283,10 @@ Page({
     // 退出前兜底落盘一次，防止最后一帧滚动还没触发节流回调
     clearTimeout(this._posT);
     clearInterval(this._studyTick);
-    this._stopTts();
+    // ⚠️ 朗读不随页面销毁停止：引擎继续在后台播（背景音频），
+    // 用户回首页/去其他章节时不停，可在首页「正在朗读」条或系统面板停止。
+    // 页面标记 detached：所有 setData/滚动跟随跳过，朗读位置仍落盘。
+    this._detached = true;
     this._reportStats();
   },
 
@@ -307,17 +312,23 @@ Page({
         const remain = endAt - Date.now();
         if (remain <= 0) {
           this._clearTtsTimer();
-          this.setData({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
+          this._safeSet({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
           this._stopTts();
           return;
         }
         const m = Math.floor(remain / 60000);
         const s = Math.floor((remain % 60000) / 1000);
-        this.setData({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
+        this._safeSet({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
       };
       tick();
       this._ttsTimer = setInterval(tick, 1000);
     }
+  },
+
+  // 页面已销毁（detached）后引擎仍可能存活：所有 UI 写入走安全通道
+  _safeSet(patch) {
+    if (this._detached) return;
+    this.setData(patch);
   },
 
   // 文本选择开关：开启后正文段落/引用/列表项可长按选中复制
@@ -533,13 +544,13 @@ Page({
       const remain = endAt - Date.now();
       if (remain <= 0) {
         this._clearTtsTimer();
-        this.setData({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
+        this._safeSet({ timerCountdownText: '⏰ 定时已到，已停止朗读' });
         this._stopTts();
         return;
       }
       const m = Math.floor(remain / 60000);
       const s = Math.floor((remain % 60000) / 1000);
-      this.setData({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
+      this._safeSet({ timerCountdownText: `将在 ${m} 分 ${s < 10 ? '0' : ''}${s} 秒后停止` });
     };
     tick();
     this._ttsTimer = setInterval(tick, 1000);
@@ -573,34 +584,52 @@ Page({
     this._ttsEngine = tts.createEngine({
       chapterId: (chapters[this.data.currentIndex] || {}).key || '',
       title: (chapters[this.data.currentIndex] || {}).title || '语音朗读',
-      onState: (s) => {
-        const patch = {
-          ttsState: s.state === 'finished' ? 'idle' : s.state,
-          ttsIndex: s.index,
-          ttsTotal: s.total,
-        };
-        this.setData(patch);
-        const chKey = (chapters[this.data.currentIndex] || {}).key;
-        // 朗读位置持久化：每读完一段就保存，读完本章清空
-        if (chKey) {
-          if (s.state === 'finished') {
-            store.clearTtsPos(chKey);
-          } else if (s.state === 'playing' || s.state === 'synthesizing') {
-            store.saveTtsPos(chKey, s.index);
-          }
-        }
-        if (s.state === 'finished') {
-          wx.showToast({ title: '✅ 本章朗读完成', icon: 'none' });
-        }
-        // 滚动跟随当前朗读段落（等 setData 渲染完成后再定位，避免查到旧布局）
-        if ((s.state === 'playing' || s.state === 'synthesizing') && s.index >= 0) {
-          wx.nextTick(() => this._scrollToTts(s.index));
-        }
-      },
+      onState: this._makeTtsStateHandler(),
     });
     this._ttsEngine.setVoice(this.data.ttsVoice);
     this._ttsEngine.setRate(this.data.ttsRate);
     return this._ttsEngine;
+  },
+
+  // 全局引擎接管：本章朗读在离开页面后仍在后台播放时，重新进入本章
+  // 不新建引擎，直接接管（换绑状态回调 + 同步当前进度到页面）
+  _adoptGlobalTts() {
+    if (this._ttsEngine) return;
+    if (!tts.isSupported()) return;
+    const meta = chapters[this.data.currentIndex] || {};
+    const g = tts.getPlaying();
+    if (!g || !g.engine || !g.engine.getChapterId || g.engine.getChapterId() !== meta.key) return;
+    this._ttsEngine = g.engine;
+    g.engine.setOnState(this._makeTtsStateHandler());
+    if (meta.title) g.engine.setTitle(meta.title);
+    this.setData({ ttsState: g.state, ttsIndex: g.index, ttsTotal: g.total });
+  },
+
+  // 朗读状态处理（独立成方法，页面销毁后引擎可换绑给新页面）
+  _makeTtsStateHandler() {
+    return (s) => {
+      this._safeSet({
+        ttsState: s.state === 'finished' ? 'idle' : s.state,
+        ttsIndex: s.index,
+        ttsTotal: s.total,
+      });
+      const chKey = (chapters[this.data.currentIndex] || {}).key;
+      // 朗读位置持久化：每读完一段就保存，读完本章清空（页面销毁后仍要落盘）
+      if (chKey) {
+        if (s.state === 'finished') {
+          store.clearTtsPos(chKey);
+        } else if (s.state === 'playing' || s.state === 'synthesizing') {
+          store.saveTtsPos(chKey, s.index);
+        }
+      }
+      if (s.state === 'finished') {
+        if (!this._detached) wx.showToast({ title: '✅ 本章朗读完成', icon: 'none' });
+      }
+      // 滚动跟随当前朗读段落（等 setData 渲染完成后再定位，避免查到旧布局）
+      if (!this._detached && (s.state === 'playing' || s.state === 'synthesizing') && s.index >= 0) {
+        wx.nextTick(() => this._scrollToTts(s.index));
+      }
+    };
   },
 
   /**
@@ -688,7 +717,7 @@ Page({
     if (this._ttsEngine) {
       this._ttsEngine.stop();
     }
-    this.setData({ ttsState: 'idle', ttsIndex: 0, ttsTotal: 0, timerCountdownText: '' });
+    this._safeSet({ ttsState: 'idle', ttsIndex: 0, ttsTotal: 0, timerCountdownText: '' });
   },
 
   applyNavStyle(night) {

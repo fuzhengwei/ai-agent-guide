@@ -168,3 +168,42 @@
   border-radius: 999rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.92);
 }
 .user-chip-btn::after { border: none; }
+
+/* ===== 正在朗读迷你播放条 ===== */
+.np-bar {
+  position: fixed; left: 20rpx; right: 20rpx; bottom: calc(16rpx + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 18rpx 22rpx; border-radius: 20rpx;
+  background: rgba(23, 30, 48, 0.94);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.25);
+  z-index: 50;
+}
+.np-eq {
+  display: flex; align-items: flex-end; gap: 4rpx; height: 36rpx; width: 40rpx;
+  flex-shrink: 0;
+}
+.np-eq-b {
+  width: 7rpx; border-radius: 4rpx; background: #5b8dff;
+  animation: np-eq-b 0.9s ease-in-out infinite;
+}
+.np-eq-b.b1 { height: 40%; animation-delay: 0s; }
+.np-eq-b.b2 { height: 90%; animation-delay: 0.25s; }
+.np-eq-b.b3 { height: 60%; animation-delay: 0.5s; }
+.np-eq.paused .np-eq-b { animation: none; opacity: 0.5; }
+@keyframes np-eq-b {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+.np-info { flex: 1; min-width: 0; }
+.np-title {
+  font-size: 26rpx; font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.np-state { font-size: 20rpx; color: rgba(255, 255, 255, 0.62); margin-top: 4rpx; }
+.np-btn {
+  width: 60rpx; height: 60rpx; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: #fff;
+  font-size: 26rpx; text-align: center; line-height: 60rpx;
+  flex-shrink: 0;
+}
+.np-btn.np-close { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.75); }

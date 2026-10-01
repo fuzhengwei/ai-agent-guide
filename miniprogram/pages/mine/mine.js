@@ -231,7 +231,11 @@ Page({
     const mins = Math.floor((ms || 0) / 60000);
     if (mins < 1) return '尚未开始';
     if (mins < 60) return `累计学习 ${mins} 分钟`;
-    return `累计学习 ${Math.floor(mins / 60)} 小时 ${mins % 60} 分`;
+    if (mins < 1440) return `累计学习 ${Math.floor(mins / 60)} 小时 ${mins % 60} 分`;
+    const d = Math.floor(mins / 1440);
+    const h = Math.floor((mins % 1440) / 60);
+    const m = mins % 60;
+    return `累计学习 ${d} 天 ${h} 小时` + (m ? ` ${m} 分` : '');
   },
 
   toggleUnlock() {
