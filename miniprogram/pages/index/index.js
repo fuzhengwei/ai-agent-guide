@@ -111,11 +111,26 @@ Page({
       if (this.data.nowPlaying) this.setData({ nowPlaying: null });
       return;
     }
+    // source=qa 是面试题语音讲解（无对应章节条目），单独标记跳回讲解页
+    if (info.source === 'qa') {
+      this.setData({
+        nowPlaying: {
+          title: info.title || '面试题语音讲解',
+          state: info.state,
+          source: 'qa',
+          key: '',
+          pkg: '',
+          slug: '',
+        },
+      });
+      return;
+    }
     const ch = chapters.find(c => c.key === info.chapterId);
     this.setData({
       nowPlaying: {
         title: info.title || '语音朗读',
         state: info.state,
+        source: 'reader',
         chapterId: info.chapterId || '',
         key: ch ? ch.key : '',
         pkg: ch ? ch.pkg : '',
@@ -124,10 +139,15 @@ Page({
     });
   },
 
-  // 点播放条：跳回正在朗读的章节
+  // 点播放条：跳回正在朗读的章节 / 面试题讲解页
   npOpen() {
     const np = this.data.nowPlaying;
-    if (!np || !np.key) return;
+    if (!np) return;
+    if (np.source === 'qa') {
+      wx.navigateTo({ url: '/packages/quiz/pages/qa-listen/qa-listen' });
+      return;
+    }
+    if (!np.key) return;
     wx.navigateTo({ url: `/packages/${np.pkg}/pages/reader/reader?key=${np.key}&slug=${np.slug}` });
   },
 

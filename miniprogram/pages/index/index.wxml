@@ -116,7 +116,7 @@
     </view>
     <view class="np-info">
       <view class="np-title">{{nowPlaying.title}}</view>
-      <view class="np-state">{{nowPlaying.state === 'paused' ? '已暂停' : (nowPlaying.state === 'synthesizing' ? '正在合成…' : '正在朗读 · 点击回章节')}}</view>
+      <view class="np-state">{{nowPlaying.state === 'paused' ? '已暂停' : (nowPlaying.state === 'synthesizing' ? '正在合成…' : (nowPlaying.source === 'qa' ? '讲解播放中 · 点击回讲解' : '正在朗读 · 点击回章节'))}}</view>
     </view>
     <view class="np-btn" catchtap="npToggle">{{nowPlaying.state === 'paused' ? '▶' : '⏸'}}</view>
     <view class="np-btn np-close" catchtap="npStop">✕</view>

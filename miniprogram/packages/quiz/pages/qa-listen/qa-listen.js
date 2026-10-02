@@ -129,9 +129,13 @@ Page({
     this._engine = tts.createEngine({
       chapterId: 'qa-listen',
       title: '面试题语音讲解',
+      source: 'qa',
       onState: (s) => this._onState(s),
     });
     this._engine.setVoice(TEACHER.voice);
+    // 全局引擎接管：讲解在离开页面后仍在播放时，重新进入不新建引擎
+    // 直接接管（换绑状态回调 + 同步进度），避免两个引擎抢占 bgm
+    this._adoptGlobalTts();
 
     if (options && options.ch) {
       this._loadChapter(options.ch);
@@ -151,10 +155,46 @@ Page({
 
   onUnload() {
     this._savePos();
-    if (this._engine) this._engine.destroy();
+    // ⚠️ 讲解不随页面销毁停止：引擎继续在后台播（背景音频），
+    // 回首页/去其他页面时不停，可在首页「正在朗读」条或系统面板停止。
+    // 页面标记 detached：所有 setData/滚动跳过，进度仍落盘。
+    this._detached = true;
   },
   onHide() {
     this._savePos();
+  },
+
+  // 页面已销毁（detached）后引擎仍存活：所有 UI 写入走安全通道
+  _safeSet(patch) {
+    if (this._detached) return;
+    this.setData(patch);
+  },
+
+  // 全局引擎接管：离开页面后讲解仍在播放时，重新进入本页直接接管
+  // （换绑状态回调 + 同步当前进度到页面），不再新建第二个引擎
+  _adoptGlobalTts() {
+    const g = tts.getPlaying();
+    if (!g || !g.engine || g.engine === this._engine) return;
+    if (g.engine.getChapterId() !== 'qa-listen') return;
+    this._engine = g.engine;
+    g.engine.setOnState((s) => this._onState(s));
+    // 恢复引擎里的章节与音色到页面视图（段数据仍在引擎里）
+    const segs = g.engine.getSegments() || [];
+    if (segs.length) {
+      const seg = segs[Math.min(g.index, segs.length - 1)];
+      this.setData({
+        bubbles: segs.map(x => x.bubble).filter(Boolean),
+        qCount: segs.filter(x => x.role === 'teacher').length,
+        anchors: questionAnchors(segs),
+        state: g.state,
+        segIndex: g.index,
+        qIndex: seg ? seg.qIndex : 0,
+        playing: g.state === 'playing' || g.state === 'synthesizing',
+        saidCount: g.state === 'playing' || g.state === 'synthesizing' ? g.index + 1 : 0,
+        curBubble: g.state === 'playing' || g.state === 'synthesizing' ? g.index : -1,
+        scrollId: 'bb-' + Math.max(0, Math.min(g.index, segs.length - 1)),
+      });
+    }
   },
 
   _onState(s) {
@@ -179,7 +219,7 @@ Page({
 
     const pct = s.total > 0 ? Math.min(100, Math.round(s.index / s.total * 100)) : 0;
 
-    this.setData({
+    this._safeSet({
       state: s.state,
       segIndex: s.index,
       qIndex,
@@ -192,7 +232,7 @@ Page({
     });
     if (s.state === 'finished') {
       this._clearPos();
-      wx.showToast({ title: '本章讲解完毕 🎉', icon: 'none' });
+      if (!this._detached) wx.showToast({ title: '本章讲解完毕 🎉', icon: 'none' });
     } else if (s.state === 'playing' || s.state === 'synthesizing') {
       this._savePos();
     }
@@ -214,6 +254,11 @@ Page({
     }
     const ch = chapters.find(c => c.quizKey === quizKey);
     const { segs, bubbles } = buildSegments(questions);
+    // 引擎正在播放时换章：先停掉（用户明确选了新章节，旧播放作废）
+    const engState = this._engine.getState();
+    if (engState === 'playing' || engState === 'synthesizing' || engState === 'paused') {
+      this._engine.stop();
+    }
     this._engine.setSegments(segs);
 
     // 查续听位置

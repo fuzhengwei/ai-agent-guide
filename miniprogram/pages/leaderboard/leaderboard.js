@@ -92,8 +92,16 @@ Page({
       if (res.ok) {
         const field = this.data.board === 'score' ? 'xp' : this.data.board === 'month' ? 'mStudyMs' : 'totalStudyMs';
         const list = (res.list || []).map((p, i) => this._decorate(p, i + 1, res.me, field));
+        // 月榜自己卡片显示本月时长（与榜单排序口径一致），其他榜显示累计
+        const myMs = this.data.board === 'month'
+          ? (res.me && res.me.mStudyMs || 0)
+          : (res.me && res.me.totalStudyMs || 0);
         const me = res.me
-          ? Object.assign({}, res.me, { initial: this._avatarFallback(res.me.nickname), avatarBg: this._avatarBg(res.me.nickname) })
+          ? Object.assign({}, res.me, {
+              initial: this._avatarFallback(res.me.nickname),
+              avatarBg: this._avatarBg(res.me.nickname),
+              valueText: this.data.board === 'score' ? `${res.me.xp} 分` : this._fmtMs(myMs),
+            })
           : null;
         // 如果自己在榜单里，标记出来；如果没在榜单里，追加到列表底部显示
         let displayList = list;
@@ -121,6 +129,7 @@ Page({
   // 给一条榜单数据加工出展示字段：排名/头像兜底/徽章/详情
   _decorate(p, rank, me, field) {
     const isScore = this.data.board === 'score';
+    const isMonth = this.data.board === 'month';
     const attempts = Object.values(p.quizDetail || {}).reduce((s, n) => s + n, 0);
     const acc = p.answerTotal > 0 ? Math.round((p.correctTotal / p.answerTotal) * 100) : 0;
     // 最常考章节 top5（按答题次数）
@@ -141,17 +150,23 @@ Page({
       medal: rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank,
       initial: this._avatarFallback(p.nickname),
       avatarBg: this._avatarBg(p.nickname),
-      valueText: isScore ? `${p.xp} 分` : this._fmtMs(p.totalStudyMs),
+      // ⚠️ 排行值必须与排序字段一致：月榜显示本月时长（mStudyMs），
+      // 总时长榜显示累计（totalStudyMs），考试榜显示积分——否则会出现
+      // 「17小时排在1天8小时前面」的观感错乱（排序按本月、显示却是累计）
+      valueText: isScore ? `${p.xp} 分` : this._fmtMs(isMonth ? (p.mStudyMs || 0) : p.totalStudyMs),
       // 徽章行
       badges: isScore
         ? [`📝 ${attempts} 次答题`, `🎯 正确率 ${acc}%`, `⭐ ${p.stars}`]
-        : [`📖 已读 ${p.readCount} 章`, `⭐ ${p.stars}`, `📝 ${attempts} 次答题`],
+        : isMonth
+          ? [`📖 本月已读 ${p.readCount} 章`, `⭐ ${p.stars}`, `📝 ${attempts} 次答题`]
+          : [`📖 已读 ${p.readCount} 章`, `⭐ ${p.stars}`, `📝 ${attempts} 次答题`],
       // 详情弹层数据
       detail: {
         nickname: p.nickname,
         avatarUrl: p.avatarUrl || '',
         initial: this._avatarFallback(p.nickname),
         avatarBg: this._avatarBg(p.nickname),
+        monthStudyText: this._fmtMs(p.mStudyMs || 0),
         totalStudyText: this._fmtMs(p.totalStudyMs),
         readCount: p.readCount,
         xp: p.xp,

@@ -128,6 +128,7 @@ function _broadcast(info) {
 }
 
 // 当前正在播放的引擎信息（含 paused）；无播放返回 null
+// source 标识来源页面类型：reader=章节朗读 / qa=面试题讲解（首页迷你条区分跳转用）
 function getPlaying() {
   if (!activeEngine) return null;
   const st = activeEngine.getState();
@@ -139,6 +140,7 @@ function getPlaying() {
     state: st,
     index: activeEngine.getIndex(),
     total: (activeEngine.getSegments() || []).length,
+    source: activeEngine.getSource ? activeEngine.getSource() : '',
   };
 }
 
@@ -215,6 +217,7 @@ function _ensureCoverUrl(cb) {
 function createEngine(opts) {
   let onState = (opts && opts.onState) || function () {};
   const chapterId = (opts && opts.chapterId) || '';
+  const source = (opts && opts.source) || '';
   let chapterTitle = (opts && opts.title) || '语音朗读';
 
   let segments = [];
@@ -243,7 +246,7 @@ function createEngine(opts) {
   // 统一状态出口：通知页面回调 + 广播给全局订阅者（首页迷你播放条）
   function _emit(info) {
     try { onState(info); } catch (e) {}
-    _broadcast(Object.assign({ chapterId, title: chapterTitle }, info));
+    _broadcast(Object.assign({ chapterId, title: chapterTitle, source }, info));
   }
 
   function notify() {
@@ -667,6 +670,7 @@ function createEngine(opts) {
     // 引擎元数据（全局迷你播放条 / 页面接管用）
     getChapterId() { return chapterId; },
     getTitle() { return chapterTitle; },
+    getSource() { return source; },
     // 页面接管：把状态回调换绑到当前页面（离开页面的引擎继续播放时用）
     setOnState(fn) { if (typeof fn === 'function') onState = fn; },
 

@@ -154,6 +154,9 @@ exports.main = async (event) => {
       correctTotal: p.correctTotal || 0,
       answerTotal: p.answerTotal || 0,
       readChapters: p.readChapters || [],
+      // 月榜展示需要：本月学习时长（前端 valueText/detail 都用它）
+      mStudyMs: p.mStudyMs || 0,
+      month: p.month || '',
     });
     const list = data.map(pub);
     // 我的名次（只在有数据时才 count，避免空跑）
