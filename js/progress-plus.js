@@ -177,52 +177,6 @@ const ProgressPlus = {
     setTimeout(() => { if (tip.isConnected) remove(); }, 10000);
   },
 
-  /* ================= 封面「继续学习」 ================= */
-
-  injectContinueCard() {
-    const btnGroup = document.querySelector('.hero-btn-group');
-    if (!btnGroup || document.getElementById('continueStudyBtn')) return;
-
-    // 找最近学习的章节：优先「学习中」，其次「已完成」里最新的
-    const all = Progress.getAll();
-    let lastId = null, lastTs = 0;
-    Object.keys(all.chapters).forEach(id => {
-      const c = all.chapters[id];
-      const ts = c.completedAt || c.startedAt || 0;
-      if (c.status === 'learning' && ts > lastTs) { lastId = id; lastTs = ts; }
-    });
-    if (!lastId) {
-      Object.keys(all.chapters).forEach(id => {
-        const c = all.chapters[id];
-        const ts = c.completedAt || c.startedAt || 0;
-        if (ts > lastTs) { lastId = id; lastTs = ts; }
-      });
-    }
-
-    const ch = lastId && App.chapters ? App.chapters.find(c => c.id === lastId) : null;
-    const ms = this.data.totalTime || 0;
-    const mins = Math.floor(ms / 60000);
-    const timeText = mins >= 60
-      ? `${Math.floor(mins / 60)} 小时 ${mins % 60} 分`
-      : (mins > 0 ? `${mins} 分钟` : '尚未开始');
-
-    const card = document.createElement('div');
-    card.className = 'hero-continue-card';
-    card.id = 'continueStudyBtn';
-    card.innerHTML = ch
-      ? `<div class="hc-info">
-           <span class="hc-label">📅 上次学习</span>
-           <span class="hc-title">第${ch.num}章 ${ch.title}</span>
-           <span class="hc-meta">⏱ 累计学习 ${timeText} · 已学 ${Object.keys(all.chapters).length} 章</span>
-         </div>
-         <button class="hc-btn" onclick="App.loadChapter('${ch.id}')">继续学习 →</button>`
-      : `<div class="hc-info">
-           <span class="hc-label">👋 欢迎开始学习</span>
-           <span class="hc-meta">⏱ 累计学习 ${timeText}</span>
-         </div>`;
-    btnGroup.parentNode.insertBefore(card, btnGroup.nextSibling);
-  },
-
   /* ================= 章节切换钩子 ================= */
 
   onChapterLoaded(chapterId) {
@@ -236,7 +190,6 @@ const ProgressPlus = {
 
   onGoHome() {
     this._accrueTime();
-    this.injectContinueCard();
     const fill = document.getElementById('readingProgressFill');
     if (fill) { fill.style.width = '0%'; fill.dataset.pct = '0'; }
   }

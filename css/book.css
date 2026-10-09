@@ -2835,6 +2835,69 @@ p {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
+
+/* ===== 小程序扫码入口 ===== */
+.hero-miniprogram {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: fit-content;
+  margin: 0 auto var(--space-xl);
+  padding: 12px 22px 12px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  text-align: left;
+}
+.hero-miniprogram:hover {
+  transform: translateY(-2px);
+  border-color: #22c55e;
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.15);
+}
+.miniprogram-qr {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background: #fff;
+  flex-shrink: 0;
+  display: block;
+}
+.miniprogram-info { min-width: 0; }
+.miniprogram-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+.miniprogram-desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+.miniprogram-features {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.miniprogram-features span {
+  font-size: var(--text-xs);
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+[data-theme="dark"] .miniprogram-features span {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.16);
+}
+@media (max-width: 480px) {
+  .hero-miniprogram { padding: 10px 16px 10px 10px; gap: 12px; }
+  .miniprogram-qr { width: 80px; height: 80px; }
+}
 .hero-stats {
   display: flex;
   justify-content: center;
@@ -4826,62 +4889,6 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 封面「继续学习」卡片 */
-.hero-continue-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  width: 100%;
-  max-width: 560px;
-  margin: 0 auto var(--space-lg);
-  padding: 14px 22px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-.hero-continue-card .hc-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-  min-width: 0;
-}
-.hero-continue-card .hc-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-}
-.hero-continue-card .hc-title {
-  font-size: var(--text-md);
-  font-weight: 700;
-  color: var(--color-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.hero-continue-card .hc-meta {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-}
-.hero-continue-card .hc-btn {
-  flex-shrink: 0;
-  padding: 10px 22px;
-  border: none;
-  border-radius: 100px;
-  background: var(--gradient-accent);
-  color: #fff;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
-}
-.hero-continue-card .hc-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-}
-
 /* 移动端适配 */
 @media (max-width: 768px) {
   .reader-popover {
@@ -4894,13 +4901,5 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
   }
   .resume-position-tip {
     flex-wrap: wrap;
-  }
-  .hero-continue-card {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-  }
-  .hero-continue-card .hc-info {
-    text-align: center;
   }
 }

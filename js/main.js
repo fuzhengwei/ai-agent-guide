@@ -70,10 +70,11 @@ const App = {
     this.renderSidebar();
     this.bindEvents();
     this.loadTheme();
-    Progress.updateUI();
-    ProgressPlus.init();
-    Reader.init();
-    AIChat.init();
+    // 可选模块带存在性防护：任一脚本缺失/加载失败不应阻断首页渲染
+    if (typeof Progress !== 'undefined') Progress.updateUI();
+    if (typeof ProgressPlus !== 'undefined') ProgressPlus.init();
+    if (typeof Reader !== 'undefined') Reader.init();
+    if (typeof AIChat !== 'undefined') AIChat.init();
     
     // 首页统计
     if (typeof BaiduAnalytics !== 'undefined') {
@@ -581,8 +582,8 @@ const App = {
     this.showCover();
 
     // 停止朗读、关闭阅读弹层；结算学习时长
-    Reader.onChapterChange();
-    ProgressPlus.onGoHome();
+    if (typeof Reader !== 'undefined') Reader.onChapterChange();
+    if (typeof ProgressPlus !== 'undefined') ProgressPlus.onGoHome();
     
     // 更新导航状态
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -671,7 +672,21 @@ const App = {
               📝 先考个试
             </button>
           </div>
-          
+
+          <!-- 小程序扫码入口 -->
+          <div class="hero-miniprogram">
+            <img class="miniprogram-qr" src="assets/wx.png?v=20260927" alt="AI Agent Guide 微信小程序码，扫码进入手机端学习" loading="lazy">
+            <div class="miniprogram-info">
+              <div class="miniprogram-title">📱 微信小程序 · 随身学</div>
+              <div class="miniprogram-desc">手机扫码进入小程序端学习</div>
+              <div class="miniprogram-features">
+                <span>🔊 语音朗读</span>
+                <span>🎙️ 语音背题</span>
+                <span>⏱️ 碎片时间刷面试题</span>
+              </div>
+            </div>
+          </div>
+
           <div class="hero-stats">
             <div class="hero-stat-item">
               <span class="stat-num" data-target="29">0</span>
@@ -844,9 +859,6 @@ const App = {
     // 数字计数动画
     this.animateNumbers();
 
-    // 封面：注入「继续学习」卡片
-    ProgressPlus.injectContinueCard();
-
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const breadcrumb = document.getElementById('breadcrumb');
     if (breadcrumb) breadcrumb.textContent = '首页';
@@ -901,7 +913,7 @@ const App = {
     document.body.dataset.chapterTitle = chapter.title;
 
     // 章节切换：停止朗读、关闭阅读弹层
-    Reader.onChapterChange();
+    if (typeof Reader !== 'undefined') Reader.onChapterChange();
 
     Progress.markLearning(chapterId);
 
@@ -998,7 +1010,7 @@ const App = {
     this.setupScrollCompletion(chapterId);
 
     // 学习进度增强：重置阅读条、检测恢复上次阅读位置
-    ProgressPlus.onChapterLoaded(chapterId);
+    if (typeof ProgressPlus !== 'undefined') ProgressPlus.onChapterLoaded(chapterId);
   },
 
   /**
