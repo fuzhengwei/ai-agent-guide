@@ -1,0 +1,211 @@
+page { display: flex; flex-direction: column; height: 100%; background: #f6f4ef; }
+.wrap { display: flex; flex-direction: column; height: 100%; }
+
+/* ===== 场景头（纸面编辑部风格）===== */
+.head {
+  display: flex; align-items: center;
+  background: #fffefb; padding: 20rpx 28rpx;
+  border-bottom: 1rpx solid #e0dbcf;
+}
+.head-info { flex: 1; min-width: 0; }
+.head-title { font-size: 30rpx; font-weight: 700; color: #1f1b16; font-family: "Songti SC", "Noto Serif SC", serif; }
+.head-sub { font-size: 22rpx; color: #837a6d; margin-top: 2rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reset-btn {
+  font-size: 24rpx; color: #9a4a1e; background: #f6ede3;
+  border: 1rpx solid #ddc4ab;
+  border-radius: 999rpx; padding: 10rpx 26rpx; flex-shrink: 0;
+}
+.reset-btn:active { background: #f0e2d0; }
+
+/* ===== 原理卡片 ===== */
+.article-card {
+  background: #fffefb; border-bottom: 1rpx solid #e0dbcf;
+  padding: 18rpx 28rpx;
+}
+.article-head { display: flex; align-items: center; gap: 14rpx; }
+.article-badge {
+  font-size: 19rpx; font-weight: 600; color: #9a4a1e;
+  background: #f6ede3; border: 1rpx solid #ddc4ab;
+  border-radius: 8rpx; padding: 4rpx 14rpx; flex-shrink: 0;
+}
+.article-title {
+  flex: 1; font-size: 26rpx; font-weight: 600; color: #3d372f;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.article-arrow { display: none; }
+.article-arrow.open { display: none; }
+.chapters { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
+.chapter-tag {
+  font-size: 20rpx; color: #837a6d;
+  background: #f6f4ef; border: 1rpx solid #e9e5da;
+  border-radius: 999rpx; padding: 4rpx 16rpx;
+}
+.article-body { margin-top: 16rpx; border-top: 1rpx solid #e9e5da; padding-top: 16rpx; }
+.article-lede {
+  font-size: 23rpx; color: #837a6d; line-height: 1.7;
+  padding: 14rpx 18rpx; background: #f6f4ef;
+  border-left: 4rpx solid #9a4a1e; border-radius: 0 10rpx 10rpx 0;
+  margin-bottom: 14rpx;
+}
+
+/* rich-text 内容样式（与 web 端文章排版对应） */
+.article-rich { display: block; font-size: 24rpx; color: #3d372f; line-height: 1.8; }
+
+/* ===== 消息区 ===== */
+.msgs { flex: 1; height: 0; padding: 20rpx 24rpx 0; box-sizing: border-box; }
+
+.empty { text-align: center; padding: 60rpx 40rpx 0; }
+.empty-icon { font-size: 68rpx; }
+.empty-title { font-size: 30rpx; font-weight: 700; color: #1f1b16; margin-top: 20rpx; font-family: "Songti SC", "Noto Serif SC", serif; }
+.empty-sub { font-size: 24rpx; color: #837a6d; margin-top: 8rpx; }
+
+/* ===== 示例问题芯片条（常驻输入框上方，点即发送）===== */
+.samples {
+  background: #f6f4ef; border-top: 1rpx solid #e9e5da;
+  width: 100%; white-space: nowrap;
+}
+.samples-track {
+  display: inline-flex; flex-direction: row; align-items: center;
+  gap: 14rpx; padding: 14rpx 24rpx;
+}
+.sample-chip {
+  display: inline-flex; align-items: center; gap: 10rpx;
+  background: #fffefb; border: 1rpx solid #ddc4ab;
+  border-radius: 999rpx; padding: 10rpx 22rpx;
+  box-shadow: 0 2rpx 8rpx rgba(154, 74, 30, 0.06);
+  flex-shrink: 0;
+}
+.chip-hover { background: #f6ede3; border-color: #9a4a1e; }
+.chip-dot {
+  width: 10rpx; height: 10rpx; border-radius: 50%;
+  background: #9a4a1e; flex-shrink: 0;
+}
+.chip-text {
+  font-size: 23rpx; color: #7f3c17; max-width: 420rpx;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.msg-list { padding-bottom: 20rpx; }
+.pad-bottom { height: 30rpx; }
+
+.row { display: flex; margin-bottom: 24rpx; }
+.row.user { justify-content: flex-end; }
+.bubble {
+  max-width: 84%; font-size: 27rpx; line-height: 1.7;
+  padding: 20rpx 26rpx; border-radius: 14rpx; word-break: break-all;
+}
+.user-bubble {
+  background: #1f1b16; color: #f3f0e9;
+  border-top-right-radius: 5rpx;
+}
+.agent-card { max-width: 92%; }
+.agent-bubble {
+  background: #fffefb; color: #3d372f;
+  border: 1rpx solid #e0dbcf;
+  border-top-left-radius: 5rpx;
+}
+.agent-bubble.failed { color: #a03028; background: #f8ece8; border-color: #e4c4bd; }
+
+/* ===== 思考中 ===== */
+.thinking {
+  display: flex; align-items: center; gap: 10rpx;
+  background: #fffefb; border: 1rpx solid #e0dbcf;
+  border-radius: 14rpx; padding: 22rpx 28rpx; width: fit-content;
+}
+.dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #c9a227; animation: blink 1.2s infinite both; }
+.dot.d2 { animation-delay: 0.2s; }
+.dot.d3 { animation-delay: 0.4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+.thinking-text { font-size: 24rpx; color: #837a6d; margin-left: 6rpx; }
+
+/* ===== 执行轨迹（web 端 tstep 风格）===== */
+.trace {
+  margin-top: 12rpx; background: #fffefb;
+  border: 1rpx solid #e0dbcf; border-radius: 14rpx;
+  overflow: hidden;
+}
+.trace-head {
+  display: flex; align-items: center; gap: 12rpx;
+  padding: 16rpx 24rpx; font-size: 23rpx; color: #837a6d;
+  background: #f6f4ef; border-bottom: 1rpx solid #e9e5da;
+}
+.trace-ms { font-size: 21rpx; color: #b8b0a0; }
+.trace-arrow { margin-left: auto; color: #b8b0a0; transition: transform 0.2s; transform: rotate(90deg); font-size: 26rpx; }
+.trace-arrow.open { transform: rotate(270deg); }
+
+.timeline { padding: 20rpx 24rpx 22rpx; }
+.tstep { display: flex; }
+.tstep-left { display: flex; flex-direction: column; align-items: center; width: 32rpx; flex-shrink: 0; }
+.tdot { width: 18rpx; height: 18rpx; border-radius: 50%; margin-top: 8rpx; flex-shrink: 0; }
+.tline { width: 2rpx; flex: 1; background: #e9e5da; margin: 4rpx 0; }
+.tstep-body { flex: 1; padding: 0 0 20rpx 18rpx; min-width: 0; }
+.tstep:last-child .tstep-body { padding-bottom: 4rpx; }
+.tlabel { font-size: 24rpx; font-weight: 700; letter-spacing: 0.4rpx; }
+.tdetail {
+  font-size: 22rpx; color: #3d372f; line-height: 1.6; margin-top: 6rpx;
+  word-break: break-all;
+  background: #f6f4ef; border-radius: 10rpx; padding: 10rpx 18rpx;
+  display: inline-block; max-width: 100%;
+}
+
+/* ===== 输入区 ===== */
+.input-bar {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fffefb; border-top: 1rpx solid #e0dbcf;
+}
+.input {
+  flex: 1; background: #f6f4ef; border: 1rpx solid #e9e5da;
+  border-radius: 999rpx; padding: 18rpx 30rpx; font-size: 27rpx; color: #1f1b16;
+}
+.send-btn {
+  background: #9a4a1e; color: #fdf9f4; font-size: 27rpx; font-weight: 600;
+  border-radius: 999rpx; padding: 16rpx 34rpx; flex-shrink: 0;
+}
+.send-btn.disabled { opacity: 0.4; }
+.send-btn:active { background: #7f3c17; }
+/* 文档开关按钮（发送右侧）：收起态 = 纸面描边，展开态 = 赭石实底 */
+.doc-btn {
+  background: #f6f4ef; color: #7f3c17; font-size: 27rpx; font-weight: 600;
+  border: 1rpx solid #ddc4ab; border-radius: 999rpx;
+  padding: 15rpx 26rpx; flex-shrink: 0;
+}
+.doc-btn.on { background: #f6ede3; border-color: #9a4a1e; }
+.doc-btn:active { opacity: 0.8; }
+
+/* ===== 流程图 / 时间线 切换 ===== */
+.view-switch {
+  display: flex; gap: 12rpx; padding: 16rpx 24rpx 4rpx;
+}
+.vtab {
+  font-size: 22rpx; font-weight: 600; color: #837a6d;
+  background: #f6f4ef; border: 1rpx solid #e9e5da;
+  border-radius: 999rpx; padding: 8rpx 22rpx;
+}
+.vtab.on { color: #9a4a1e; background: #f6ede3; border-color: #ddc4ab; }
+
+/* ===== 原生流程图（web 端 mermaid 泥土系配色复刻）===== */
+.dg { padding: 14rpx 24rpx 22rpx; display: flex; flex-direction: column; align-items: stretch; }
+.dg-user {
+  align-self: center; max-width: 90%;
+  font-size: 22rpx; color: #5c554a; background: #f4f4ef;
+  border: 1rpx dashed #b8b0a0; border-radius: 999rpx;
+  padding: 10rpx 26rpx; text-align: center;
+}
+.dg-node {
+  border-left: 6rpx solid #9a4a1e; border-radius: 10rpx;
+  padding: 14rpx 18rpx; display: flex; flex-direction: column; gap: 4rpx;
+}
+.dg-node.final { border-width: 6rpx; }
+.dg-title { font-size: 20rpx; font-weight: 700; }
+.dg-text { font-size: 22rpx; color: #3d372f; line-height: 1.55; word-break: break-all; }
+.dg-link { display: flex; flex-direction: column; align-items: center; padding: 2rpx 0; }
+.dg-line { width: 3rpx; height: 22rpx; background: #b8b0a0; }
+.dg-line.loop { background: none; border-left: 3rpx dashed #b8b0a0; height: 16rpx; }
+.dg-tri { font-size: 16rpx; color: #b8b0a0; line-height: 1; margin-top: -2rpx; }
+.dg-loop-tag {
+  font-size: 19rpx; color: #837a6d; background: #f6f4ef;
+  border: 1rpx dashed #b8b0a0; border-radius: 999rpx;
+  padding: 4rpx 18rpx; margin: 4rpx 0 2rpx;
+}
+.dg-via { font-size: 19rpx; color: #8a6116; margin-bottom: 2rpx; }

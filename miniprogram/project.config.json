@@ -9,6 +9,7 @@
     "postcss": true,
     "minified": true,
     "enhance": true,
+    "urlCheck": false,
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],

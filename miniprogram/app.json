@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/quiz/quiz",
+    "pages/toy/toy",
     "pages/project/project",
     "pages/mine/mine",
     "pages/notes/notes",
@@ -31,6 +32,12 @@
         "text": "面试",
         "iconPath": "assets/tab/quiz.png",
         "selectedIconPath": "assets/tab/quiz-active.png"
+      },
+      {
+        "pagePath": "pages/toy/toy",
+        "text": "实践",
+        "iconPath": "assets/tab/toy.png",
+        "selectedIconPath": "assets/tab/toy-active.png"
       },
       {
         "pagePath": "pages/project/project",
@@ -81,6 +88,12 @@
       "pages": [
         "pages/runner/runner",
         "pages/qa-listen/qa-listen"
+      ]
+    },
+    {
+      "root": "packages/toy",
+      "pages": [
+        "pages/chat/chat"
       ]
     }
   ]

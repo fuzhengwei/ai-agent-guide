@@ -1,0 +1,135 @@
+<view class="wrap">
+
+  <!-- 场景头（纸面风格） -->
+  <view class="head">
+    <view class="head-info">
+      <view class="head-title">{{title}}</view>
+      <view class="head-sub">{{sub}}</view>
+    </view>
+    <view class="reset-btn" bindtap="doReset">重置</view>
+  </view>
+
+  <!-- 原理 · 章节对照（与 web 端右侧文章同源） -->
+  <view class="article-card" wx:if="{{article}}">
+    <view class="article-head" bindtap="toggleArticle">
+      <view class="article-badge">原理</view>
+      <view class="article-title">{{article.title}}</view>
+      <view class="article-arrow {{articleOpen ? 'open' : ''}}">›</view>
+    </view>
+    <view class="chapters" wx:if="{{article.chapters.length > 0}}">
+      <text class="chapter-tag" wx:for="{{article.chapters}}" wx:key="*this">{{item}}</text>
+    </view>
+    <view class="article-body" wx:if="{{articleOpen}}">
+      <view class="article-lede" wx:if="{{article.lede}}">{{article.lede}}</view>
+      <rich-text class="article-rich" nodes="{{article.html}}"></rich-text>
+    </view>
+  </view>
+
+  <!-- 消息区 -->
+  <scroll-view class="msgs" scroll-y scroll-top="{{scrollTop}}" scroll-with-animation>
+    <view class="empty" wx:if="{{messages.length === 0}}">
+      <view class="empty-icon">🧪</view>
+      <view class="empty-title">发一条消息，看智能体怎么思考</view>
+      <view class="empty-sub">每次回答都会展示完整执行轨迹与流程图</view>
+    </view>
+
+    <view class="msg-list" wx:else>
+      <block wx:for="{{messages}}" wx:key="index">
+        <view class="row user" wx:if="{{item.role === 'user'}}">
+          <view class="bubble user-bubble">{{item.text}}</view>
+        </view>
+
+        <view class="row agent" wx:else>
+          <view class="agent-card">
+            <view class="bubble agent-bubble {{item.failed ? 'failed' : ''}}" bindtap="copyAnswer" data-text="{{item.text}}">{{item.text}}</view>
+
+            <view class="trace" wx:if="{{item.trace.length > 0}}">
+              <view class="trace-head" bindtap="toggleTrace" data-idx="{{index}}">
+                <text>执行轨迹 · {{item.trace.length}} 步</text>
+                <text class="trace-ms" wx:if="{{item.ms}}">{{item.ms}}ms</text>
+                <view class="trace-arrow {{item.showTrace ? 'open' : ''}}">›</view>
+              </view>
+
+              <block wx:if="{{item.showTrace}}">
+                <!-- 视图切换：流程图（默认，同 web 端先图后明细）/ 时间线 -->
+                <view class="view-switch">
+                  <view class="vtab {{item.viewMode !== 'timeline' ? 'on' : ''}}" data-idx="{{index}}" data-mode="diagram" bindtap="toggleView">🗺 流程图</view>
+                  <view class="vtab {{item.viewMode === 'timeline' ? 'on' : ''}}" data-idx="{{index}}" data-mode="timeline" bindtap="toggleView">📋 时间线</view>
+                </view>
+
+                <!-- 原生流程图（web 端 mermaid 的同款配色复刻） -->
+                <view class="dg" wx:if="{{item.viewMode !== 'timeline' && item.diagram.length > 0}}">
+                  <block wx:for="{{item.diagram}}" wx:for-item="n" wx:for-index="ni" wx:key="ni">
+                    <!-- 节点间连接线 -->
+                    <view class="dg-link" wx:if="{{ni > 0}}">
+                      <view class="dg-via" wx:if="{{n.via}}">{{n.via}}</view>
+                      <view class="dg-line {{n.loopIn ? 'loop' : ''}}"></view>
+                      <view class="dg-loop-tag" wx:if="{{n.loopIn}}">🔁 继续循环</view>
+                      <view class="dg-tri">▼</view>
+                    </view>
+                    <!-- 节点 -->
+                    <view class="dg-user" wx:if="{{n.kind === 'user'}}">👤 {{n.text}}</view>
+                    <view class="dg-node {{n.kind === 'final' ? 'final' : ''}}" wx:else style="border-left-color: {{n.color}}; background: {{n.bg}}">
+                      <text class="dg-title" style="color: {{n.color}}">{{n.title}}</text>
+                      <text class="dg-text">{{n.text}}</text>
+                    </view>
+                  </block>
+                </view>
+
+                <!-- 时间线 -->
+                <view class="timeline" wx:if="{{item.viewMode === 'timeline'}}">
+                  <view class="tstep" wx:for="{{item.trace}}" wx:for-item="step" wx:for-index="si" wx:key="si">
+                    <view class="tstep-left">
+                      <view class="tdot" style="background: {{step.color}}"></view>
+                      <view class="tline" wx:if="{{si < item.trace.length - 1}}"></view>
+                    </view>
+                    <view class="tstep-body">
+                      <view class="tlabel" style="color: {{step.color}}">{{step.label}}</view>
+                      <view class="tdetail">{{step.detail}}</view>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view class="row agent" wx:if="{{busy}}">
+        <view class="agent-card">
+          <view class="thinking">
+            <view class="dot d1"></view><view class="dot d2"></view><view class="dot d3"></view>
+            <text class="thinking-text">思考中…</text>
+          </view>
+        </view>
+      </view>
+      <view class="pad-bottom"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 示例问题：常驻横滑芯片条，点即发送 -->
+  <scroll-view class="samples" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{samples.length > 0}}">
+    <view class="samples-track">
+      <view class="sample-chip" wx:for="{{samples}}" wx:key="*this" bindtap="tapSample" data-text="{{item}}" hover-class="chip-hover">
+        <text class="chip-dot"></text>
+        <text class="chip-text">{{item}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区 -->
+  <view class="input-bar">
+    <input
+      class="input"
+      value="{{input}}"
+      placeholder="问点什么…"
+      confirm-type="send"
+      bindinput="onInput"
+      bindconfirm="send"
+      disabled="{{busy}}"
+    />
+    <view class="send-btn {{busy || !input ? 'disabled' : ''}}" bindtap="send">发送</view>
+    <view class="doc-btn {{articleOpen ? 'on' : ''}}" bindtap="toggleArticle">{{articleOpen ? '折叠' : '文档'}}</view>
+  </view>
+
+</view>

@@ -1,0 +1,54 @@
+<view class="wrap">
+
+  <!-- 顶部 Hero（纸面编辑部风格） -->
+  <view class="hero">
+    <view class="hero-deco d1"></view>
+    <view class="hero-deco d2"></view>
+    <view class="hero-badge">TOY AGENT · 实践案例</view>
+    <view class="hero-title">26 个接口类，边玩边学</view>
+    <view class="hero-sub">每个场景 = 一个最小可玩的智能体 · 执行轨迹全程可视</view>
+    <view class="hero-meta {{connected ? '' : 'off'}}">
+      <view class="meta-dot {{connected ? 'on' : ''}}"></view>
+      <text wx:if="{{connected}}">{{mode}}{{model ? ' · ' + model : ''}}</text>
+      <text wx:else>服务未连接 · 见下方提示</text>
+    </view>
+    <view class="offline-hint" wx:if="{{!connected && offlineHint}}">{{offlineHint}}</view>
+  </view>
+
+  <!-- 场景分组 -->
+  <view class="group" wx:for="{{groups}}" wx:key="name" wx:for-item="g">
+    <view class="group-head" bindtap="toggleGroup" data-name="{{g.name}}">
+      <view class="group-name">{{g.name}}</view>
+      <view class="group-count">{{g.list.length}} 个场景</view>
+      <view class="group-arrow {{g.open ? 'open' : ''}}">›</view>
+    </view>
+    <view class="scene-list" wx:if="{{g.open}}">
+      <view
+        wx:for="{{g.list}}"
+        wx:key="id"
+        class="scene-item"
+        data-id="{{item.id}}"
+        data-title="{{item.title}}"
+        data-sub="{{item.subtitle}}"
+        bindtap="openChat"
+        style="animation-delay: {{index * 30}}ms"
+      >
+        <view class="scene-num">{{item.num}}</view>
+        <view class="scene-info">
+          <view class="scene-title">
+            <text>{{item.title}}</text>
+            <text wx:if="{{item.limited}}" class="scene-tag">限看轨迹</text>
+          </view>
+          <view class="scene-sub">{{item.subtitle}}</view>
+        </view>
+        <view class="scene-arrow">›</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footnote">
+    「限看轨迹」场景依赖服务端运行时（终端 / ClassLoader 等），小程序内演示执行过程；
+    想动手改代码试跑，请访问 ToyAgent 网页版。
+  </view>
+
+</view>
