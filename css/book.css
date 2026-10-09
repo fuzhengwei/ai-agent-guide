@@ -2835,6 +2835,20 @@ p {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
+/* 实践案例（ToyAgent 玩具手柄）*/
+a.hero-btn {
+  text-decoration: none;
+}
+.hero-btn.practice {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);
+}
+.hero-btn.practice:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.4);
+}
 
 /* ===== 小程序扫码入口 ===== */
 .hero-miniprogram {

@@ -668,6 +668,9 @@ const App = {
             <button class="hero-btn primary" onclick="App.loadChapter('ch00')">
               📖 开始学习
             </button>
+            <a class="hero-btn practice" href="/toy-agent/" target="_blank" rel="noopener" title="ToyAgent：用 26 个接口类讲清楚智能体，边玩边学">
+              🎮 实践案例
+            </a>
             <button class="hero-btn secondary" onclick="App.startRandomExam()">
               📝 先考个试
             </button>
