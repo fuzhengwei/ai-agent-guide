@@ -9,6 +9,9 @@
     <view class="reset-btn" bindtap="doReset">重置</view>
   </view>
 
+  <!-- AI 生成内容提示（合规要求：全程固定展示） -->
+  <view class="ai-notice">⚠️ 本场景回复由 AI 生成，仅供学习参考，不构成专业建议</view>
+
   <!-- 原理 · 章节对照（与 web 端右侧文章同源） -->
   <view class="article-card" wx:if="{{article}}">
     <view class="article-head" bindtap="toggleArticle">
@@ -42,6 +45,7 @@
         <view class="row agent" wx:else>
           <view class="agent-card">
             <view class="bubble agent-bubble {{item.failed ? 'failed' : ''}}" bindtap="copyAnswer" data-text="{{item.text}}">{{item.text}}</view>
+            <view class="ai-tag" wx:if="{{!item.failed}}">【AI生成内容】</view>
 
             <view class="trace" wx:if="{{item.trace.length > 0}}">
               <view class="trace-head" bindtap="toggleTrace" data-idx="{{index}}">

@@ -155,20 +155,45 @@ Page({
     this.setData({ input: e.currentTarget.dataset.text }, () => this.send());
   },
 
+  // 内容安全校验（msgSecCheck v2，经 sec-check 云函数，密钥留云端）
+  async secCheck(text) {
+    try {
+      const res = await wx.cloud.callFunction({ name: 'sec-check', data: { text, scene: 2 } });
+      const r = (res && res.result) || {};
+      return r.ok !== false;
+    } catch (e) {
+      return true; // 云函数异常降级放行，不阻断教学主流程
+    }
+  },
+
   async send() {
     const text = (this.data.input || '').trim();
     if (!text || this.data.busy || !this.data.id) return;
     const messages = this.data.messages.concat([{ role: 'user', text }]);
     this.setData({ messages, input: '', busy: true, scrollTop: 999999 });
 
+    // 用户输入先过安全检测，未通过则拦截
+    const inputOk = await this.secCheck(text);
+    if (!inputOk) {
+      const blocked = this.data.messages.concat([
+        { role: 'agent', text: '你的输入未通过微信内容安全检测，请调整后重试。', trace: [], diagram: [], ms: 0, showTrace: false, failed: true },
+      ]);
+      this.setData({ messages: blocked, busy: false, scrollTop: 999999 });
+      return;
+    }
+
     try {
       const res = await api.chat(this.data.id, text);
+      let answer = res.answer || '';
+      // AI 输出展示前同样过安全检测，未通过则以提示语替代
+      const outputOk = await this.secCheck(answer);
+      if (!outputOk) answer = '该回复未通过内容安全检测，已替换为本提示。请尝试其他问题。';
       const trace = (res.trace || []).map(t => ({
         ...t,
         color: TRACE_COLORS[t.type] || '#9a4a1e',
       }));
       const msgs = this.data.messages.concat([
-        { role: 'agent', text: res.answer || '', trace, diagram: buildDiagram(trace, text), viewMode: 'diagram', ms: res.ms || 0, showTrace: true },
+        { role: 'agent', text: answer, trace, diagram: buildDiagram(trace, text), viewMode: 'diagram', ms: res.ms || 0, showTrace: true },
       ]);
       this.setData({ messages: msgs, busy: false, scrollTop: 999999 });
     } catch (e) {

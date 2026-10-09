@@ -209,3 +209,15 @@ page { display: flex; flex-direction: column; height: 100%; background: #f6f4ef;
   padding: 4rpx 18rpx; margin: 4rpx 0 2rpx;
 }
 .dg-via { font-size: 19rpx; color: #8a6116; margin-bottom: 2rpx; }
+
+/* ===== AI 内容合规标识 ===== */
+.ai-notice {
+  flex-shrink: 0;
+  font-size: 22rpx; font-weight: 700; color: #a03028;
+  background: #faeaea; border-bottom: 1rpx solid #e8c8c4;
+  padding: 12rpx 24rpx; text-align: center;
+}
+.ai-tag {
+  font-size: 20rpx; color: #a08c78; margin-top: 6rpx;
+  padding-left: 4rpx; align-self: flex-start;
+}
